@@ -1,0 +1,122 @@
+{
+  "conjunto": "cburnett",
+  "autor": "Colin M.L. Burnett",
+  "licenca_declarada": "GPLv2-or-later",
+  "licenca_escolhida_para_redistribuir": "GPL-3.0 (opção 'ou posterior')",
+  "fonte_local": "C:\\Python-Chess2\\Chess_diagram_to_FEN\\resources\\pieces\\chess\\lichess\\cburnett",
+  "documento_de_atribuicao": "C:\\Python-Chess2\\Chess_diagram_to_FEN\\resources\\COPYING.md, seção Lichess (lila)",
+  "upstream": "https://github.com/lichess-org/lila",
+  "gerado_em": "2026-09-09",
+  "gerado_por": "packaging/gerar_pecas_livres.py (PyMuPDF do .venv-pack)",
+  "lado_px": 70,
+  "arquivos": [
+    {
+      "svg": "bB.svg",
+      "png": "bb.png",
+      "sha256_do_svg": "77e9debfa5cb8052a096affd49d5d4d842313ccd5194d5a85e38b8a7831885bf",
+      "sha256_do_png": "bb74dc0251638378193e0f8027ceff1831c6b69011c7d059c471d8694b2f580e",
+      "bytes_do_png": 1171,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "bK.svg",
+      "png": "bk.png",
+      "sha256_do_svg": "c5f22c235fb93f2c9d8cf5780117400a7efbf2cfd87cee1b89abde6b85105a0c",
+      "sha256_do_png": "35ee44fceb4bf20b79170304154e9ae5258fb6e1fe6e60a02f97e95c94b82a1c",
+      "bytes_do_png": 2314,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "bN.svg",
+      "png": "bn.png",
+      "sha256_do_svg": "d0665564eaca328636763844a9ba4b16b3adfb85e2996ac9c3c3bc45dc38270b",
+      "sha256_do_png": "c749c4a7397e8cfdd4cdb6b508b52aac672ddec95ed46320a585ecf87995d058",
+      "bytes_do_png": 1634,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "bP.svg",
+      "png": "bp.png",
+      "sha256_do_svg": "09539f32260765e6626c4653978aeeb166c7107854a03de37cd23c77f5ec6e6a",
+      "sha256_do_png": "2b576c1a45660276ad48fc16d4c717899f1beaf8c771b3aad2507d05c9977a63",
+      "bytes_do_png": 728,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "bQ.svg",
+      "png": "bq.png",
+      "sha256_do_svg": "5abdb5aa2b31ffd8cee9f5000af841e343be1fa4653ca8708074c655a7bd4332",
+      "sha256_do_png": "3009c99aff800d63ad8479c2512c7eb6d8a1ac97b4ace49098feea49fe1f0adc",
+      "bytes_do_png": 2303,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "bR.svg",
+      "png": "br.png",
+      "sha256_do_svg": "c33a3d54113a71ed96eebe1d1ca22b8a9e330fc24f01c3f31aaa7841dde6fe9b",
+      "sha256_do_png": "a2e1449863421365133db035b2775c7de782adb0d1b7fc257feb107f05ad23f2",
+      "bytes_do_png": 637,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wB.svg",
+      "png": "wb.png",
+      "sha256_do_svg": "b7d1a118f4cfa74190ebf7f68dd88f4020072821e2c49236b0796766b34e159d",
+      "sha256_do_png": "cad356069cfc88953c988c4750e94a27e3bac2c98ecf0665caf6ab823bb9ca46",
+      "bytes_do_png": 1858,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wK.svg",
+      "png": "wk.png",
+      "sha256_do_svg": "bc7274dd13ea2cd49f5a800237d862c36aaec68083232c6b78bb409a3c7c66f4",
+      "sha256_do_png": "0a17c2acfcbe5071303c46539f8d049a623261b525129dec54db3d10cf4a36b5",
+      "bytes_do_png": 2211,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wN.svg",
+      "png": "wn.png",
+      "sha256_do_svg": "68b788d7c33b82d527acdac50f80d86b1a0c8c7e6743e498c9fbf230ea375650",
+      "sha256_do_png": "33f566850f40b1ff6131daea63ddcec417ffd2176d63aa52a9a23c02253d7d58",
+      "bytes_do_png": 1912,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wP.svg",
+      "png": "wp.png",
+      "sha256_do_svg": "0596b7ce6f71517800b5103f4ab0370d479e6d66e69c1411f27490d20772e8d6",
+      "sha256_do_png": "4f6a91d7432b132d3b60f6de9a82f3396fa3e19a657dc9b689b22438406fef17",
+      "bytes_do_png": 1252,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wQ.svg",
+      "png": "wq.png",
+      "sha256_do_svg": "79c9227e85d35d7daa1d00ce05934179e5386f146792f6641ab2ea6ba67b3538",
+      "sha256_do_png": "5239b1cb0ca3218146cd82bebce305fbab344e4e29442e195f0e5fa73bc464d6",
+      "bytes_do_png": 2850,
+      "largura": 70,
+      "altura": 70
+    },
+    {
+      "svg": "wR.svg",
+      "png": "wr.png",
+      "sha256_do_svg": "e9e95adce364f5d8c03c6dc4da9a9f84f55ec164b209102d46f7e6f5872ca5c7",
+      "sha256_do_png": "25e84eddad913641e1c0bf80f991ea74b044342f6c43b2d9298a2b9c2803a174",
+      "bytes_do_png": 804,
+      "largura": 70,
+      "altura": 70
+    }
+  ]
+}

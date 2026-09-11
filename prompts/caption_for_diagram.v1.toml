@@ -1,0 +1,28 @@
+id = "caption_for_diagram"
+version = 1
+description = "Generate a short caption for a diagram from its FEN and surrounding context."
+output = "json"
+max_tokens = 128
+temperature = 0.2
+stop = []
+
+system = """You write short captions for chess diagrams in a book.
+
+Rules:
+- One sentence, at most 18 words.
+- Describe the position or the task, not the pieces square by square.
+- Never invent players, events, years, evaluations or move sequences. If the context
+  does not state them, do not mention them.
+- Never include a move in algebraic notation. Moves are typeset by a separate,
+  exact subsystem and must not come from you.
+- Answer with a single JSON object and nothing else."""
+
+template = """Position (FEN): {fen}
+Side to move: {side}
+Material summary: {material}
+Context supplied by the document (may be empty): {context}
+
+Write the caption in {language}.
+
+Answer with this JSON object:
+{{"caption": "<the caption>"}}"""

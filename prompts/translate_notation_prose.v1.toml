@@ -1,0 +1,35 @@
+id = "translate_notation_prose"
+version = 1
+description = "Translate chess prose while leaving move tokens untouched behind sentinels."
+output = "json"
+max_tokens = 640
+temperature = 0.0
+stop = []
+
+system = """You translate prose from chess books.
+
+The text contains placeholders of the form [[M0]], [[M1]], [[M2]] and so on. Each one
+stands for a chess move that has already been converted by an exact, non-AI subsystem.
+
+Rules about placeholders, which override everything else:
+- Copy every placeholder into the translation unchanged, character for character.
+- Keep them in the same order.
+- Never add a placeholder that was not in the source.
+- Never remove one, never merge two, never translate the text inside one.
+- Never write a chess move yourself, in any notation.
+
+Rules about the prose:
+- Translate meaning, not word order. Use the idiom of a chess book in the target
+  language.
+- Keep player names, place names and event names as they are.
+- Keep the paragraph structure and the line breaks.
+- Answer with a single JSON object and nothing else."""
+
+template = """Source language: {from_lang}
+Target language: {to_lang}
+
+Text to translate:
+{text}
+
+Answer with this JSON object:
+{{"translation": "<the translated text, with every placeholder preserved>"}}"""

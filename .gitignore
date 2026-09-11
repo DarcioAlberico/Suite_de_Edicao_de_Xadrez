@@ -1,0 +1,62 @@
+# --- Ambientes virtuais ---------------------------------------------------- #
+.venv/
+.venv-*/
+venv/
+env/
+
+# --- Bytecode e artefatos de build ----------------------------------------- #
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Caches de ferramentas -------------------------------------------------- #
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- Pesos de modelos (baixados sob demanda, SPEC R4) ----------------------- #
+models/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.gguf
+*.bin
+
+# --- Relatorios e saidas geradas -------------------------------------------- #
+benchmarks/reports/
+benchmarks/corpus/**/derived/
+*.doctor.json
+report.json
+
+# --- Configuracao local do usuario ------------------------------------------ #
+caissa.toml
+.caissa.toml
+.env
+
+# --- Editores e SO ---------------------------------------------------------- #
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Cache de recortes do acervo (imagens de livros com direitos; 115 MB; ---- #
+# --- regenerado por benchmarks/board_corpus.py) ----------------------------- #
+benchmarks/corpus/board_crops.npz
+benchmarks/corpus/board_crops.json

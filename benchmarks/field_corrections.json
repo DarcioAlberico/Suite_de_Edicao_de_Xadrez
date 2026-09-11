@@ -1,0 +1,49 @@
+{
+  "_readme": [
+    "Proven errors in ChessVisionOFF_Puro/data/field_set.jsonl, as an OVERLAY.",
+    "",
+    "The field set is the measurement, and nothing here writes to it. This file exists so a",
+    "correction can be applied at measurement time, in the open, with its evidence attached,",
+    "and so that both numbers -- as-annotated and corrected -- are always published side by",
+    "side. A correction that cannot be justified to a reader who disagrees with it does not",
+    "belong in this file.",
+    "",
+    "Bar for entry: documentary proof from the book itself, or two independent readers plus",
+    "a glyph-convention argument that can be checked from the crop. A model preferring a",
+    "different answer is NOT evidence -- that is the thing being measured.",
+    "",
+    "Each entry replaces the `placement` of one annotated diagram, matched by pdf + page +",
+    "the diagram's index within that page's `diagrams` list."
+  ],
+  "corrections": [
+    {
+      "pdf": "Euwe, Kramer - Das Mittelspiel Band 7 (1958).pdf",
+      "page": 40,
+      "diagram": 0,
+      "from": "rr4k1/4R2p/p2p2p1/3P4/6n1/1P6/5PPP/R5K1",
+      "to": "rr4k1/4R2p/b2p2p1/3P4/6n1/1P6/5BBP/R5K1",
+      "squares": ["a6 p->b", "f2 P->B", "g2 P->B"],
+      "evidence": [
+        "The book's own move text, extracted from page 40 of the PDF with PyMuPDF, prints the",
+        "moves that follow this diagram (Stellung 58, after 32...Sh6xg4):",
+        "  '33. Lf 2-d4  Tb8-b4'   -- L = Laeufer = bishop. White's bishop stands on f2.",
+        "  '35. Tg7Xh7!  La6-b7'   -- black's bishop stands on a6.",
+        "Two of the three disputed squares are therefore named as bishops by the book itself.",
+        "",
+        "g2 carries the same glyph as f2 and a6 -- a wide brim over a flared base -- while b3,",
+        "d5, h2, d6, g6 and h7 carry the round-headed narrow-based pawn glyph. Rendered from",
+        "the PDF at 8x and compared square by square, the two families do not overlap.",
+        "",
+        "The second reader (Chess_diagram_to_FEN, an unrelated model) reads f2 and g2 as",
+        "OFFICERS too -- it says 'R' where the production model says 'B', which is its known",
+        "failure mode on this book: on Das Mittelspiel Band 1-2 p100 it turns every one of the",
+        "four bishops into a rook. It agrees they are not pawns.",
+        "",
+        "Material check: with the annotation as written, White would be a knight down against",
+        "a book line that ends 'mit Figurengewinn' (winning a piece) for White. With the",
+        "correction, material is level (R+R+B+B+3P against R+R+B+N+3P)."
+      ],
+      "verified_by": "F4 field report, 2026-09-10"
+    }
+  ]
+}

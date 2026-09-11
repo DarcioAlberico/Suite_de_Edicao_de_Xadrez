@@ -1,0 +1,80 @@
+{
+  "esquema": 1,
+  "gerado_em": "2026-09-09",
+  "comentario": [
+    "O que NAO viaja dentro do bundle e o usuario recebe depois, com verificacao SHA-256.",
+    "Ver docs/SPEC.md 12 (instalador abaixo de 150 MB) e LICENSING.md (por que dois lexicos",
+    "estao aqui em vez de dentro do .exe).",
+    "Cada 'sha256' e 'bytes' saiu de um arquivo em disco nesta maquina em 2026-09-09;",
+    "tests/integration/test_packaging.py reconfere contra o tronco quando ele esta presente."
+  ],
+  "base_url": null,
+  "base_url_nota": "Nao ha servidor de distribuicao publicado. Enquanto 'base_url' for null o unico caminho e a instalacao offline (--de-pasta), e o assistente diz isso em vez de tentar a rede.",
+  "componentes": [
+    {
+      "id": "classificador-de-pecas",
+      "titulo": "Classificador de casas (pecas)",
+      "destino": "models/piece_classifier.pt",
+      "origem_no_tronco": "models/piece_classifier.pt",
+      "sha256": "a907f61086da609f8f64f761a19bb73f9b935390a902869bd73b434e86321995",
+      "bytes": 8786520,
+      "obrigatorio": true,
+      "consentimento": false,
+      "licenca": "propria",
+      "procedencia": "Treinado neste projeto a partir do acervo do dono do projeto. Ver ChessVisionOFF_Puro/docs.",
+      "sem_ele": "A leitura neural de diagramas nao roda. A deteccao geometrica e o resto do programa continuam."
+    },
+    {
+      "id": "classificador-de-caracteres",
+      "titulo": "Classificador de caracteres (OCR por glifo)",
+      "destino": "models/char_classifier.pt",
+      "origem_no_tronco": "models/char_classifier.pt",
+      "sha256": "ca4bcc00b9c59b074780f48aa739358b2baa379267427d7d5edeaf44dd2ee162",
+      "bytes": 2795717,
+      "obrigatorio": false,
+      "consentimento": false,
+      "licenca": "propria",
+      "procedencia": "Treinado neste projeto (S-204 do tronco).",
+      "sem_ele": "O motor 'glifo' do OCR fica indisponivel; a cascata usa os outros motores."
+    },
+    {
+      "id": "metadados-de-caracteres",
+      "titulo": "Metadados do classificador de caracteres",
+      "destino": "models/char_meta.json",
+      "origem_no_tronco": "models/char_meta.json",
+      "sha256": "989a1085237c1da0331dbe796e7f316c7eefe77f3c63ed6f3f6d9ef49eda07dd",
+      "bytes": 10582,
+      "obrigatorio": false,
+      "consentimento": false,
+      "licenca": "propria",
+      "procedencia": "Gerado junto com o checkpoint acima.",
+      "sem_ele": "O checkpoint de caracteres nao pode ser interpretado."
+    },
+    {
+      "id": "lexico-idioma",
+      "titulo": "Lexico de idioma (10.010 palavras)",
+      "destino": "assets/lexico/idioma.txt.gz",
+      "origem_no_tronco": "assets/lexico/idioma.txt.gz",
+      "sha256": "d023b3ef048f1dba13e928cf791ad5e273578295143c0e96987a3bd3ace5e10e",
+      "bytes": 31017,
+      "obrigatorio": false,
+      "consentimento": true,
+      "licenca": "NAO APURADA",
+      "procedencia": "ChessVisionOFF_Puro/assets/lexico/PROCEDENCIA.md: sai de 'Dic-1.txt' e 'Novo Documento de Texto.txt', que chegaram sem cabecalho, licenca nem README. Origem nao declarada.",
+      "sem_ele": "Medido em 40 paginas de 11 livros: nenhum caractere muda no texto entregue; 39 palavras deixam de ser protegidas contra reescrita do dicionario."
+    },
+    {
+      "id": "lexico-nomes",
+      "titulo": "Lexico de nomes de jogadores (349.565 nomes)",
+      "destino": "assets/lexico/nomes.txt.gz",
+      "origem_no_tronco": "assets/lexico/nomes.txt.gz",
+      "sha256": "d7ae61ac9a65ac4c6e34e28692434a7dff7988589509ba23eae5fad9b64eb777",
+      "bytes": 1090287,
+      "obrigatorio": false,
+      "consentimento": true,
+      "licenca": "NAO APURADA (parcial)",
+      "procedencia": "PROCEDENCIA.md do tronco: 57,0% vem das bases PGN do proprio dono do projeto, 0,4% vem exclusivamente de 'MegaDatabase(Jogadores).txt' -- um extrato do indice de jogadores da base COMERCIAL da ChessBase --, e 42,6% mistura essas fontes com as duas listas de origem nao declarada.",
+      "sem_ele": "Medido nas mesmas 40 paginas: nenhum caractere muda; 22 palavras deixam de ser protegidas."
+    }
+  ]
+}

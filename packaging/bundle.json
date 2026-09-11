@@ -1,0 +1,80 @@
+{
+  "variante": "padrao",
+  "nome": "Caissa",
+  "mb": 295.3,
+  "arquivos": 1307,
+  "maiores": [
+    {
+      "nome": "cv2",
+      "mb": 100.4,
+      "arquivos": 14
+    },
+    {
+      "nome": "PyQt6",
+      "mb": 72.0,
+      "arquivos": 128
+    },
+    {
+      "nome": "pymupdf",
+      "mb": 37.7,
+      "arquivos": 3
+    },
+    {
+      "nome": "numpy.libs",
+      "mb": 20.0,
+      "arquivos": 2
+    },
+    {
+      "nome": "PIL",
+      "mb": 12.8,
+      "arquivos": 8
+    },
+    {
+      "nome": "numpy",
+      "mb": 5.9,
+      "arquivos": 13
+    },
+    {
+      "nome": "python311.dll",
+      "mb": 5.5,
+      "arquivos": 1
+    },
+    {
+      "nome": "libcrypto-3.dll",
+      "mb": 5.0,
+      "arquivos": 1
+    },
+    {
+      "nome": "_tcl_data",
+      "mb": 3.2,
+      "arquivos": 830
+    },
+    {
+      "nome": "licenses",
+      "mb": 0.8,
+      "arquivos": 99
+    },
+    {
+      "nome": "_tk_data",
+      "mb": 0.8,
+      "arquivos": 87
+    },
+    {
+      "nome": "fontTools",
+      "mb": 0.5,
+      "arquivos": 2
+    }
+  ],
+  "instalador": {
+    "tipo": "proxy-lzma2",
+    "ok": true,
+    "arquivo": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez\\dist\\caissa-0.1.0-padrao-proxy.7z",
+    "mb": 79.4,
+    "nota": "PROXY MEDIDO, nao o instalador. O Inno Setup nao esta nesta maquina. A compressao e a mesma que installer.iss pede (lzma2/max, solido); o setup.exe real acrescenta o stub do Inno (~1,2 MB) e os arquivos de idioma."
+  },
+  "teto_do_instalador_mb": 150.0,
+  "disco_livre_gb_antes": 33.94,
+  "disco_livre_gb_depois": 33.92,
+  "data": "2026-09-09",
+  "interpretador": "3.11.9"
+}

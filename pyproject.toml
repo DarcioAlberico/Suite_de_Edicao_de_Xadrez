@@ -1,0 +1,345 @@
+#
+# Caissa Studio -- project definition.
+#
+# Layout: src-layout (`src/caissa`). Target interpreter: CPython 3.11 (SPEC R5).
+#
+# Dependency groups
+# -----------------
+#   core    -> [project.dependencies]            (always installed)
+#   vision  -> [project.optional-dependencies]   pip install -e ".[vision]"
+#   ocr     -> [project.optional-dependencies]   pip install -e ".[ocr]"
+#   ui      -> [project.optional-dependencies]   pip install -e ".[ui]"
+#   export  -> [project.optional-dependencies]   pip install -e ".[export]"
+#   dev     -> [project.optional-dependencies]   pip install -e ".[dev]"
+#   all     -> union of every optional group
+#
+# PyTorch is deliberately ABSENT from every group. The Blackwell GPU on the
+# reference machine is sm_120 and requires the cu128 wheels, which only exist on
+# https://download.pytorch.org/whl/cu128 -- a custom index that cannot be
+# expressed in a portable `dependencies` list. `scripts/setup_env.ps1` installs
+# it explicitly (SPEC R1, ADR-0003).
+#
+# onnxruntime-gpu is also deliberately absent: per ADR-0003 it must never share
+# a process (and therefore never share an environment) with the cu128 torch
+# build. It lives in an isolated worker environment.
+#
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+# --------------------------------------------------------------------------- #
+# Project metadata
+# --------------------------------------------------------------------------- #
+
+[project]
+name = "caissa"
+version = "0.1.0"
+description = "Caissa Studio -- suite profissional de edicao, reconhecimento e publicacao de material de xadrez."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+# A obra agregada e AGPL, nao LGPL. Medido, nao suposto:
+#   pymupdf 1.28.2 -> "Dual Licensed - GNU AFFERO GPL 3.0 or Artifex Commercial License"
+#   PyQt6 (ADR-0009) -> GPL
+# AGPL e a mais restritiva das tres e absorve as outras, entao e ela que vale para
+# qualquer binario distribuido. A declaracao anterior dizia LGPL-3.0-or-later, o que
+# era falso: nao se redistribui dependencia AGPL sob termos LGPL. Ver LICENSING.md.
+# Para sair da AGPL seria preciso trocar o PyMuPDF (ou licenca comercial da Artifex);
+# para sair da GPL, migrar PyQt6 -> PySide6, que a disciplina ui/ vs qt/ mantem mecanica.
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "Caissa Studio" }]
+keywords = ["chess", "ocr", "pdf", "epub", "computer-vision", "typesetting"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "Natural Language :: Portuguese (Brazilian)",
+    "Operating System :: Microsoft :: Windows :: Windows 11",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Games/Entertainment :: Board Games",
+    "Topic :: Text Processing :: Markup",
+    "Typing :: Typed",
+]
+
+# --- group: core ------------------------------------------------------------
+# Pure-Python, small, no native toolchain. Everything in `caissa.core` must be
+# importable with only these installed -- that is what keeps unit tests fast and
+# `scripts/doctor.py` usable inside a half-broken environment.
+dependencies = [
+    "chess>=1.10,<2",
+    "platformdirs>=4.2,<5",
+    "python-ulid>=2.7,<4",
+    "tomli-w>=1.0,<2",
+    "typing-extensions>=4.12,<5",
+]
+
+[project.optional-dependencies]
+
+# --- group: vision ----------------------------------------------------------
+# opencv-python-HEADLESS on purpose: the regular `opencv-python` wheel ships its
+# own Qt plugins, which collide with PySide6 at runtime on Windows (ADR-0001).
+vision = [
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.10,<5",
+    "pillow>=10.3,<12",
+    "pymupdf>=1.24,<2",
+    "scipy>=1.13,<2",
+]
+
+# --- group: ocr -------------------------------------------------------------
+ocr = [
+    "caissa[vision]",
+    "pytesseract>=0.3.10,<0.4",
+    "rapidfuzz>=3.9,<4",
+    "regex>=2024.5.15",
+]
+
+# --- group: ui --------------------------------------------------------------
+ui = [
+    "caissa[vision]",
+    "pyside6-essentials>=6.7,<7",
+]
+
+# --- group: export ----------------------------------------------------------
+export = [
+    "ebooklib>=0.18,<0.19",
+    "jinja2>=3.1,<4",
+    "lxml>=5.2,<7",
+    "python-docx>=1.1,<2",
+    "reportlab>=4.2,<5",
+]
+
+# --- group: dev -------------------------------------------------------------
+dev = [
+    "mypy>=1.11,<2",
+    "pytest>=8.2,<9",
+    "pytest-cov>=5.0,<8",
+    "pytest-timeout>=2.3,<3",
+    "ruff>=0.6,<0.15",
+]
+
+# --- group: all -------------------------------------------------------------
+all = [
+    "caissa[vision]",
+    "caissa[ocr]",
+    "caissa[ui]",
+    "caissa[export]",
+    "caissa[dev]",
+]
+
+[project.urls]
+Documentation = "https://github.com/caissa-studio/caissa/tree/main/docs"
+
+# --------------------------------------------------------------------------- #
+# Build backend
+# --------------------------------------------------------------------------- #
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/caissa"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "docs", "pyproject.toml", "README.md"]
+
+# --------------------------------------------------------------------------- #
+# ruff -- linter + formatter
+# --------------------------------------------------------------------------- #
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+extend-exclude = [".venv", ".venv-onnx", "models", "benchmarks/reports"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "BLE",    # blind except must be deliberate
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "ISC",    # implicit str concat
+    "PIE",    # flake8-pie
+    "PT",     # flake8-pytest-style
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "ARG",    # unused arguments
+    "PTH",    # use pathlib
+    "PL",     # pylint subset
+    "PERF",   # perflint
+    "RUF",    # ruff-specific
+    "ANN",    # type annotations
+    "S",      # bandit
+    "D",      # pydocstyle
+]
+ignore = [
+    "D203",    # conflicts with D211
+    "D213",    # conflicts with D212
+    "ANN401",  # Any is occasionally the honest type (torch handles, model objects)
+    "PLR0913", # explicit keyword-heavy constructors are intentional here
+    "ISC001",  # conflicts with the formatter
+
+    # --- Calibracao 2026-09-07 -------------------------------------------------
+    # A selecao original ligava praticamente todo o catalogo do ruff e produzia
+    # 2.110 achados sobre 53 mil linhas. Um lint que grita em tudo nao e mais
+    # rigoroso: ele esconde o defeito real no meio do ruido de estilo. O que segue
+    # foi desligado com motivo, nao por conveniencia. Regras de CORRECAO
+    # (F, B, BLE, RET, SIM, ARG, PERF, S, PTH, DTZ) continuam todas ligadas.
+
+    # Docstring OBRIGATORIA em todo simbolo publico. Formato de docstring (D2xx,
+    # D4xx) continua valendo; exigir a existencia de uma em cada metodo gera
+    # docstring-carimbo, que e pior que a ausencia dela.
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+
+    # Caractere Unicode "ambiguo". Dispara 192 vezes contra acentuacao portuguesa
+    # legitima -- as strings de usuario sao em pt-BR por decisao de projeto
+    # (SPEC, secao de idioma). E falso positivo por construcao aqui.
+    "RUF001", "RUF002", "RUF003",
+
+    # Import fora do topo do modulo. E DELIBERADO neste projeto: dependencias
+    # opcionais (tesseract, easyocr, cairosvg, ollama) e o isolamento de runtime
+    # da ADR-0003 dependem de import tardio para que a ausencia de um pacote nao
+    # derrube a aplicacao inteira no import.
+    "PLC0415",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Testes tem contrato diferente do codigo de producao. Aqui o que importa e que o
+# teste seja legivel e que a falha aponte o defeito -- nao que ele seja uma API.
+"tests/**/*.py" = [
+    "S101",     # assert e o ponto do pytest
+    "S311",     # random.Random(seed) em gerador de corpus nao e criptografia
+    "PLR2004",  # valor literal numa asercao E a asercao; extrair para constante piora
+    "ANN",      # anotacao completa em teste custa mais do que rende
+    "ARG",      # fixture recebida e nao usada e padrao normal do pytest
+    "SLF001",   # teste legitimamente inspeciona interno
+]
+# Benchmarks e ferramentas sao scripts, nao biblioteca.
+"benchmarks/**/*.py" = ["S101", "S311", "PLR2004", "T201", "ANN"]
+"tools/**/*.py" = ["T201", "ANN"]
+"scripts/**/*.py" = ["T201"]
+"tests/**" = [
+    "S101",    # assert is the point
+    "D",       # docstrings not required in tests
+    "ANN",     # annotations not required in tests
+    "PLR2004", # magic numbers are fine in assertions
+    "SLF001",
+]
+"scripts/**" = [
+    "S603",    # subprocess with a fixed argv is how we reach nvidia-smi
+    "S607",    # ... and we intentionally resolve it from PATH
+    "T201",    # a diagnostics script prints
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["caissa"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+# --------------------------------------------------------------------------- #
+# mypy
+# --------------------------------------------------------------------------- #
+# `caissa.core` is held to the full --strict flag set, spelled out flag by flag
+# because mypy does not accept `strict = true` inside a per-module override.
+# The rest of the tree gets a strong-but-pragmatic baseline.
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
+packages = ["caissa"]
+namespace_packages = true
+explicit_package_bases = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_reexport = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+strict_equality = true
+extra_checks = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "caissa.core.*"
+disallow_any_generics = true
+disallow_any_unimported = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+no_implicit_reexport = true
+strict_equality = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+# torch ships its own stubs but a few submodules are still untyped; the runtime
+# layer is allowed to talk to them. Fronts that add other untyped native
+# dependencies (cv2, fitz, ...) append their own override block here.
+module = ["torch.*", "onnxruntime.*"]
+ignore_missing_imports = true
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+]
+markers = [
+    "gpu: requires a working CUDA device (deselect with -m 'not gpu')",
+    "slow: takes more than a second",
+    "golden: runs against the golden corpus (docs/SPEC.md 11.2)",
+]
+timeout = 120
+filterwarnings = [
+    # An unexpected warning is a bug. Tests that *expect* one use pytest.warns.
+    "error",
+    "default::DeprecationWarning",
+    "default::PendingDeprecationWarning",
+]
+log_cli_level = "WARNING"
+
+# --------------------------------------------------------------------------- #
+# coverage
+# --------------------------------------------------------------------------- #
+
+[tool.coverage.run]
+source = ["src/caissa"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]

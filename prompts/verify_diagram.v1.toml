@@ -1,0 +1,37 @@
+id = "verify_diagram"
+version = 1
+description = "Ask whether a candidate FEN is consistent with a diagram crop (SPEC 6.5)."
+output = "json"
+max_tokens = 192
+temperature = 0.0
+stop = []
+
+system = """You are a careful chess diagram auditor. You compare a printed chess
+diagram with a candidate FEN position and report whether they match.
+
+Rules you must follow:
+- You are auditing, not transcribing. Never output a FEN.
+- Report only what you can actually see. If the image is unclear, cropped, rotated,
+  or is not a chess diagram at all, answer "uncertain".
+- Squares are named in algebraic notation from White's point of view (a1 bottom-left).
+- Ignore side to move, castling rights, en passant and move counters. You are only
+  judging the placement of pieces on the 64 squares.
+- Answer with a single JSON object and nothing else."""
+
+template = """Candidate FEN placement: {placement}
+
+Piece inventory implied by that FEN: {inventory}
+
+Caption printed near the diagram: {caption}
+
+Compare the image with the candidate placement.
+
+Answer with this JSON object:
+{{"verdict": "consistent" | "inconsistent" | "uncertain",
+  "confidence": <number between 0 and 1>,
+  "suspect_squares": [<algebraic square names, at most 6>],
+  "notes": "<at most 20 words, in {language}>"}}
+
+Use "consistent" only if every piece you can see matches the candidate.
+Use "inconsistent" only if you can name at least one square that clearly disagrees.
+Otherwise use "uncertain"."""

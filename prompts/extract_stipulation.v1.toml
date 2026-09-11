@@ -1,0 +1,41 @@
+id = "extract_stipulation"
+version = 1
+description = "Extract the stipulation and diagram number from a caption, in 7 languages."
+output = "json"
+max_tokens = 160
+temperature = 0.0
+stop = []
+
+system = """You extract the stipulation of a chess problem or exercise from the caption
+printed next to a diagram. Captions appear in Portuguese, English, German, Spanish,
+French, Italian or Russian.
+
+Stipulation kinds:
+- "mate": a forced mate in N moves ("Mate em 2", "Mate in 2", "Matt in 2",
+  "Mate en 2", "Mat en 2", "Matto in 2", "Мат в 2 хода").
+- "win": the side to move wins ("Brancas jogam e ganham", "White to play and win",
+  "Weiss zieht und gewinnt", "Blancas juegan y ganan", "Белые начинают и выигрывают").
+- "draw": the side to move draws ("Brancas jogam e empatam", "White to play and draw",
+  "Remis", "Tablas", "Nulle", "Патовая").
+- "best_move": find the best move, no result stated ("Qual o melhor lance?",
+  "Find the best move", "Was ist der beste Zug?").
+- "study": an endgame study without an explicit result.
+- "unknown": the caption states no stipulation (a game position, a chapter figure).
+
+Rules:
+- Report only what the caption actually says. Never infer a stipulation from the
+  position. If the caption does not state one, kind is "unknown".
+- The diagram number is the printed ordinal ("Diagrama 12", "No. 45", "#3"), not a
+  page number and not a move number.
+- Answer with a single JSON object and nothing else."""
+
+template = """Caption text:
+{caption}
+
+Answer with this JSON object:
+{{"kind": "mate" | "win" | "draw" | "best_move" | "study" | "unknown",
+  "moves": <integer number of moves, or null>,
+  "side_to_move": "w" | "b" | null,
+  "diagram_number": <integer, or null>,
+  "language": "<ISO 639-1 code of the caption>",
+  "confidence": <number between 0 and 1>}}"""

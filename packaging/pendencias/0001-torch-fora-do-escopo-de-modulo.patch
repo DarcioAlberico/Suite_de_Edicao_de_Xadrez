@@ -1,0 +1,264 @@
+Tirar o torch do escopo de modulo, para a janela abrir sem ele
+
+    Frente que descobriu : F12 (empacotamento), ciclo 2, 2026-09-09
+    Dono dos arquivos    : F9 -- e NAO so `qt/`; ver "O diagnostico do ciclo 1 estava
+                           incompleto" abaixo
+    Teste que fica vermelho ate isto entrar:
+        tests/integration/test_packaging.py::TestPendencias::
+        test_a_janela_do_tronco_importa_sem_torch
+
+O QUE ACONTECE HOJE
+===================
+O instalador do Caissa Studio nao leva torch dentro (F12 ciclo 2: o torch e instalado na
+primeira execucao, com a roda certa para a GPU da maquina -- 2,6 GB de cu128 ou 128 MB de
+CPU). Isso tirou 19,3 MB de excesso do instalador e devolveu 5,8x de velocidade a quem tem
+placa.
+
+O preco e que existe uma janela de tempo -- entre instalar e rodar o assistente -- em que
+`Caissa.exe` e chamado sem torch. Medido, no bundle de 2026-09-09:
+
+    [FALHA] Auto-teste
+             codigo 7 - uma excecao escapou -- o traceback esta em logs/ (1.0 s)
+               File "app_pyqt.py", line 117, in selftest
+               File "chess_diagram_ocr\service.py", line 46, in <module>
+               File "chess_diagram_ocr\dataset.py", line 12, in <module>
+             ModuleNotFoundError: No module named 'torch'
+
+O programa **nao abre**. Nao abre degradado: nao abre. E o caminho neural e a unica coisa
+que precisa de torch -- a deteccao geometrica (OpenCV), o OCR, a notacao, a tipografia, o
+indice e os exportadores nao usam nenhuma linha dele.
+
+O DIAGNOSTICO DO CICLO 1 ESTAVA INCOMPLETO
+==========================================
+O `F12_REPORT.md` do ciclo 1 escreveu que *"`chess_diagram_ocr/qt/janela.py` importa `torch`
+no topo do modulo"* e concluiu que o conserto era **uma linha em `qt/`**. Nao e.
+
+Medido em 2026-09-09, importando a arvore com o torch bloqueado por um `MetaPathFinder`:
+
+    janela FALHOU: ModuleNotFoundError No module named 'torch'
+        \qt\janela.py:92        from chess_diagram_ocr.qt.campo import PainelDeCampo
+        \qt\campo.py:37         from chess_diagram_ocr.field_eval import load_field_set, ...
+        \field_eval.py:48       from .checkpoint import CheckpointDescription, ...
+        \checkpoint.py:27       import torch
+
+    TOTAL de modulos que falham sem torch: 49
+    Desses, em qt/: 9
+
+`qt/janela.py` **nao importa torch**. Ela importa quatro modulos que, transitivamente,
+chegam a ele. Analise estatica do grafo de imports de escopo de modulo, a partir de
+`qt.janela`:
+
+    folhas que importam torch : checkpoint, dataset, inference, training
+    arestas diretas da janela : service, qt.exportador, ui.pedido_de_treino, qt.campo
+    caminhos mais curtos:
+        qt.janela -> qt.campo            -> field_eval -> checkpoint
+        qt.janela -> service             -> dataset
+        qt.janela -> service             -> inference
+        qt.janela -> ui.pedido_de_treino -> training
+
+E por que nao "adiar o torch nas quatro folhas": porque duas delas **nao podem**. Medindo o
+uso de torch no escopo de modulo (base de classe, decorador, valor padrao):
+
+    checkpoint.py   0 usos no escopo de modulo   <- adiavel
+    inference.py    0 usos no escopo de modulo   <- adiavel
+    calibration.py  0                            <- adiavel
+    evaluation.py   0                            <- adiavel
+    dataset.py      2   class BoardFenDataset(Dataset), class BoardUnitDataset(Dataset)
+    training.py     3   class TransformSubset(torch.utils.data.Dataset), ImageChannelsOnly,
+                        _Unprepared  (todas nn.Module)
+    model.py        3   PieceClassifier, MobileNetClassifier, BoardHeadClassifier (nn.Module)
+    augment.py      2   _Sometimes, Clamp01 (nn.Module)
+
+`dataset.py`, `training.py`, `model.py` e `augment.py` **definem classes que herdam de
+`nn.Module`/`Dataset` na hora do import**. Adiar o torch neles exigiria mover as classes
+para dentro de funcoes -- uma reescrita, nao um conserto.
+
+O CONSERTO, ENTAO, E OUTRO: CORTAR AS ARESTAS
+=============================================
+Quatro mudancas, em quatro arquivos, nenhuma delas em `qt/`:
+
+  1. `checkpoint.py`  -- adiar `import torch` (0 usos no escopo de modulo).
+  2. `inference.py`   -- adiar `import torch`, `import torch.nn as nn` e
+                         `from .model import ...` (todos os usos estao dentro de funcoes).
+  3. `service.py`     -- mover `from .dataset import append_training_sample` para dentro do
+                         unico metodo que o usa.
+  4. `ui/pedido_de_treino.py` -- `from ..training import TrainingRun` so serve a uma
+                         anotacao; vai para `TYPE_CHECKING`.
+
+Verificado pelo mesmo grafo, com essas quatro arestas cortadas:
+
+    qt.janela  -> 0 folhas torch alcancadas
+    service    -> 0
+    qt.campo   -> 0
+
+`dataset`, `training`, `model` e `augment` continuam exigindo torch -- e devem: sao o
+treino e a rede. O que muda e que **abrir a janela deixa de importa-los**.
+
+Depois disso `qt/janela.py` importa num ambiente sem torch, e a janela sobe com o caminho
+neural indisponivel em vez de nao subir. Fazer o botao de reconhecer dizer *"instale o
+PyTorch pelo assistente"* em vez de levantar `ModuleNotFoundError` e o passo seguinte, e
+esse sim e em `qt/` -- o padrao a copiar existe e e da propria suite:
+`src/caissa/vision/runtime/device.py::import_torch()`, que devolve `None` e guarda o erro.
+
+------------------------------------------------------------------------------------------
+AS LINHAS EXATAS
+------------------------------------------------------------------------------------------
+
+diff --git a/src/chess_diagram_ocr/checkpoint.py b/src/chess_diagram_ocr/checkpoint.py
+--- a/src/chess_diagram_ocr/checkpoint.py
++++ b/src/chess_diagram_ocr/checkpoint.py
+@@ -24,8 +24,6 @@
+ from pathlib import Path
+ from typing import Any
+
+-import torch
+-
+ from .atomic_io import atomic_write_bytes
+ from .config import PIECE_CLASSES, PROJECT_ROOT
+
+@@ -73,7 +71,13 @@
+
+
+ def _load_raw(path: Path, *, map_location: str) -> Any:
++    # `import torch` aqui dentro, e nao no topo: este modulo nao usa torch em NENHUM
++    # escopo de modulo (medido: 0 usos), e o topo dele e o que faz `qt/janela.py` exigir
++    # torch para abrir -- pela cadeia qt.campo -> field_eval -> checkpoint. Um import
++    # dentro de funcao custa uma consulta a `sys.modules` por chamada, e `torch.load`
++    # sozinho custa cinco ordens de grandeza mais do que isso.
++    import torch
++
+     try:
+         return torch.load(path, map_location=map_location, weights_only=True)
+     except TypeError:
+@@ -125,6 +129,8 @@
+     eles foram treinados, então continuam carregando. Isso é deliberado: recusá-los
+     tornaria os números do BASELINE.md irreproduzíveis.
+     """
++    import torch
++
+     payload = {
+         "model_state": state,
+         "metadata": {**metadata, "checkpoint_format": CHECKPOINT_FORMAT},
+
+diff --git a/src/chess_diagram_ocr/inference.py b/src/chess_diagram_ocr/inference.py
+--- a/src/chess_diagram_ocr/inference.py
++++ b/src/chess_diagram_ocr/inference.py
+@@ -3,14 +3,21 @@
+ import logging
+ from collections.abc import Sequence
+ from dataclasses import dataclass
+ from pathlib import Path
++from typing import TYPE_CHECKING
+
+ import cv2
+ import numpy as np
+-import torch
+-import torch.nn as nn
+
+ from .board_detection import split_board_into_cells
+ from .checkpoint import load_checkpoint
++
++if TYPE_CHECKING:  # pragma: no cover - so para as anotacoes
++    # `from __future__ import annotations` (linha 1) ja transforma toda anotacao em texto,
++    # entao `nn.Module` nas assinaturas nao precisa de `nn` em execucao. Isto e o que
++    # permite este modulo -- que e o caminho da JANELA para o modelo -- importar sem torch.
++    import torch.nn as nn
++
+ from .config import (
+     APPLY_CALIBRATED_TEMPERATURE,
+     CONSTRAINED_DECODING,
+@@ -31,7 +38,6 @@
+ from .decode import DecodeResult, decode_constrained
+ from .fen_utils import PositionCheck, check_position, fen_from_class_indices, square_name
+-from .model import DEFAULT_ARCH, ArchConfig, build_model, preprocess_cell_to_tensor, with_coordinate_channels
+ from .orientation import (
+     ConfidenceMarginRule,
+     CoordinateRule,
+@@ -52,6 +58,11 @@
+ def describe_device(device: str) -> str:
+     """Descrição do dispositivo para log e barra de status (S-30)."""
++    import torch
++
+     if device.startswith("cuda") and torch.cuda.is_available():
+@@ -85,6 +96,10 @@
+     `config.APPLY_CALIBRATED_TEMPERATURE` para o que foi medido e por quê.
+     """
++    import torch
++
++    from .model import DEFAULT_ARCH, ArchConfig, build_model
++
+     dev = device or ("cuda" if torch.cuda.is_available() else "cpu")
+     model_path = Path(model_path)
+
+@@ -320,6 +335,10 @@
+     if not boards_rgb:
+         return []
+
++    import torch
++
++    from .model import DEFAULT_ARCH, preprocess_cell_to_tensor, with_coordinate_channels
++
+     arch = getattr(model, "arch", DEFAULT_ARCH)
+     temperature = float(getattr(model, "temperature", 1.0))
+
+    NOTA: `DEFAULT_ARCH` e `ArchConfig` aparecem em mais lugares de `inference.py` (o
+    `ast` acusa uso em `prediction_from_probs` e `predict_with_orientation`). Quem aplicar
+    este patch deve rodar
+
+        rg -n "DEFAULT_ARCH|ArchConfig|build_model|preprocess_cell_to_tensor|with_coordinate_channels" \
+           src/chess_diagram_ocr/inference.py
+
+    e pôr o import local no topo de cada funcao que os use. O criterio e mecanico: nenhum
+    nome vindo de `.model` pode ser avaliado no escopo de modulo.
+
+diff --git a/src/chess_diagram_ocr/service.py b/src/chess_diagram_ocr/service.py
+--- a/src/chess_diagram_ocr/service.py
++++ b/src/chess_diagram_ocr/service.py
+@@ -43,7 +43,6 @@
+     DEFAULT_ORIENTATION_MODE,
+ )
+-from .dataset import append_training_sample
+ from .detection import DiagramCandidate, detect_diagrams_in_pdf_page
+ from .fen_utils import PositionCheck, check_position, square_name
+@@ -793,6 +792,14 @@
+         decisão dela.
+         """
++        # `dataset.py` define `class BoardFenDataset(Dataset)` no escopo de modulo e por isso
++        # NAO pode adiar o proprio `import torch` sem reescrita. O que se adia e a ARESTA:
++        # o servico so precisa de `append_training_sample` quando alguem salva uma correcao
++        # de treino, e nao quando a janela abre. Sem esta linha, abrir um PDF exige torch.
++        from .dataset import append_training_sample
++
+         campos: dict[str, Any] = {"source_pdf": "", "source_page": ""}
+         if origin is not None:
+             campos = origin.sample_fields()
+
+diff --git a/src/chess_diagram_ocr/ui/pedido_de_treino.py b/src/chess_diagram_ocr/ui/pedido_de_treino.py
+--- a/src/chess_diagram_ocr/ui/pedido_de_treino.py
++++ b/src/chess_diagram_ocr/ui/pedido_de_treino.py
+@@ -20,10 +20,13 @@
+ from __future__ import annotations
+
+ from dataclasses import dataclass
+ from pathlib import Path
+-from typing import Any
++from typing import TYPE_CHECKING, Any
+
+-from ..training import TrainingRun
++if TYPE_CHECKING:  # pragma: no cover - `TrainingRun` so e usado em anotacao
++    # `training.py` importa `torch`, `torch.nn` e `torchvision.transforms.v2` no topo e
++    # define tres `nn.Module` no escopo de modulo -- nao da para adiar la dentro. Aqui o
++    # nome so aparece na assinatura de `summarize_run`, que o `from __future__ import
++    # annotations` ja deixa como texto.
++    from ..training import TrainingRun
+
+------------------------------------------------------------------------------------------
+COMO CONFERIR QUE ENTROU
+------------------------------------------------------------------------------------------
+No checkout da suite:
+
+    .venv\Scripts\python.exe -m pytest tests/integration/test_packaging.py -k sem_torch -q
+
+Vermelho hoje; verde quando os quatro arquivos acima estiverem consertados. O teste bloqueia
+`torch`, `torchvision`, `torchgen` e `functorch` num `MetaPathFinder` e importa
+`chess_diagram_ocr.qt.janela` num processo limpo -- sem mexer no ambiente de ninguem.

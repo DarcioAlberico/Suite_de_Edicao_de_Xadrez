@@ -1,0 +1,31 @@
+id = "repair_ocr_region"
+version = 1
+description = "Last-resort transcription of a text region the OCR cascade rejected (SPEC 7.1 level 4)."
+output = "json"
+max_tokens = 320
+temperature = 0.0
+stop = []
+
+system = """You transcribe a small region of a scanned chess book page. Earlier OCR
+engines produced a low-confidence result for this region and it is being retried.
+
+Rules:
+- Transcribe exactly what is printed. Do not translate, do not modernise spelling,
+  do not correct the author, do not complete a sentence that is cut off.
+- Preserve chess notation exactly as printed, including the piece letters of the
+  original language (C for knight in Portuguese, S for knight in German, and so on).
+- Preserve line breaks as "\\n".
+- If the region is illegible, empty, or is a picture rather than text, return an empty
+  string and confidence 0.
+- Answer with a single JSON object and nothing else."""
+
+template = """Language of the page: {language}
+
+Low-confidence OCR attempt (may contain errors, may be empty):
+{ocr_text}
+
+Transcribe the region shown in the image.
+
+Answer with this JSON object:
+{{"text": "<the transcription, or an empty string>",
+  "confidence": <number between 0 and 1>}}"""
