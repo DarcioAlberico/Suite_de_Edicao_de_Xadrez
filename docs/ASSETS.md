@@ -362,7 +362,7 @@ migração é mecânica: `pyqtSignal` → `Signal`, `pyqtSlot` → `Slot`.
 |---|---|---|
 | F0 Fundação | novo | Construir |
 | F1 Document IR | `ChessVisionOFF\text\rico.py` | Estender para diagrama, partida e 5 saídas |
-| F2 Ingestão PDF | `ChessVisionOFF\pdf_io.py`, `pdf_text.py` + `Editor\pdf_service.py` + `PDFimport\extract.py` | Unificar |
+| F2 Ingestão PDF | `ChessVisionOFF\pdf_io.py`, `pdf_text.py` + `Editor\pdf_service.py` + `PDFimport\extract.py` | **Unificado** em `caissa.ingest.pdf` (2026-09-11); a fórmula de coordenadas do Editor §48 (§2.8 acima) está **errada** em página girada com CropBox deslocada — ver `F2_REPORT.md` §5.1 |
 | F3 Detecção | `ChessVisionOFF\board_detection.py` + `detection\` | Manter, elevar recall, **acrescentar via A e via neural** |
 | F3-A Vetorial | **novo** | Construir — maior diferencial |
 | F4 Classificação | `ChessVisionOFF\model.py`, `inference.py`, `decode.py` | Portar para GPU; portar gerador sintético do `Chess_diagram_to_FEN` |

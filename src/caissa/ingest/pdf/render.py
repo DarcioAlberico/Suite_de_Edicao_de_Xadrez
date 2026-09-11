@@ -260,7 +260,9 @@ class PageRenderer:
         cached = self.cache.get(key)
         if cached is not None:
             return cached
-        rendered = self._render(page_index, frame, dpi, region, clip is None, colorspace, annotations)
+        rendered = self._render(
+            page_index, frame, dpi, region, clip is None, colorspace, annotations
+        )
         self.cache.put(key, rendered)
         return rendered
 
@@ -309,4 +311,3 @@ class PageRenderer:
     def invalidate(self) -> None:
         """Forget every render of this document (after an edit, for example)."""
         self.cache.clear(document=self._doc_key)
-

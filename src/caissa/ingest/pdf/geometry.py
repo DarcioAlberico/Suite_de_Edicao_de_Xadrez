@@ -288,8 +288,8 @@ class PageFrame:
         """
         s = self.scale_for(dpi)
         return (
-            int(math.ceil(self.width * s - _CEIL_SLACK)),
-            int(math.ceil(self.height * s - _CEIL_SLACK)),
+            math.ceil(self.width * s - _CEIL_SLACK),
+            math.ceil(self.height * s - _CEIL_SLACK),
         )
 
     def page_to_pixels(

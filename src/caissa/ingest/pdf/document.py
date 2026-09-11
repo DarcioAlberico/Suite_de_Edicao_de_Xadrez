@@ -75,6 +75,11 @@ _MAX_META_LEN: Final = 500
 #: accepted only when it is short enough to be a name.
 _MAX_PACKED_AUTHOR: Final = 60
 _MIN_PACKED_AUTHOR: Final = 2
+#: A file-name author is a surname, ``Karpov A`` or ``Euwe, Kramer`` -- three
+#: words at most; a longer head is a title.
+_MAX_AUTHOR_WORDS: Final = 3
+#: First code point outside the Basic Multilingual Plane.
+_ASTRAL: Final = 0x10000
 
 _opens = 0
 _opens_lock = threading.Lock()
@@ -102,7 +107,7 @@ def _pymupdf() -> Any:
         import pymupdf
     except ImportError:  # pragma: no cover - environment dependent
         try:
-            import fitz as pymupdf  # type: ignore[no-redef]
+            import fitz as pymupdf  # type: ignore[import-untyped, no-redef]
         except ImportError as exc:
             raise PdfOpenError(
                 "PyMuPDF não está instalado, portanto nenhum PDF pode ser aberto. "
@@ -127,7 +132,7 @@ def clean_metadata_text(text: str | None) -> str:
         cat = unicodedata.category(ch)
         if cat in ("Cc", "Cf", "Co", "Cn", "Cs") and ch != "\t":
             continue
-        if code >= 0x10000 and not (cat.startswith("L") or cat.startswith("N")):
+        if code >= _ASTRAL and not cat.startswith(("L", "N")):
             continue
         out.append(ch)
     cleaned = _WS.sub(" ", "".join(out)).strip(" _-.,;:")
@@ -171,11 +176,28 @@ class PdfMetadata:
             from_filename = True
         if author.lower() == "unknown":
             author = ""
-        # Calibre-made PDFs often pack "Title - Author" into the title field.
         if not author and " - " in title:
-            head, tail = title.rsplit(" - ", 1)
-            if _MIN_PACKED_AUTHOR < len(tail.strip()) < _MAX_PACKED_AUTHOR and head.strip():
-                title, author = head.strip(), tail.strip()
+            if from_filename:
+                # Measured on the 24 dashed file names of the reference
+                # collection: 19 are "Author - Title (year)", 5 are
+                # "Title - Author".  A short head that does not open with a
+                # digit picks the 19 and mislabels 2 ("Simple Chess - Stean",
+                # "Xadrez Vitorioso - ..."); the raw stem is kept in ``custom``
+                # so the user can see what was guessed from.
+                head, tail = title.split(" - ", 1)
+                head_words = head.strip().split()
+                if (
+                    0 < len(head_words) <= _MAX_AUTHOR_WORDS
+                    and not head_words[0][0].isdigit()
+                    and _MIN_PACKED_AUTHOR < len(head.strip()) < _MAX_PACKED_AUTHOR
+                    and tail.strip()
+                ):
+                    author, title = head.strip(), tail.strip()
+            else:
+                # Calibre packs "Title - Author" into the title *field*.
+                head, tail = title.rsplit(" - ", 1)
+                if _MIN_PACKED_AUTHOR < len(tail.strip()) < _MAX_PACKED_AUTHOR and head.strip():
+                    title, author = head.strip(), tail.strip()
         return cls(
             title=title,
             author=author,
@@ -442,7 +464,7 @@ def open_pdf(source: Path | str | bytes) -> PdfDocument:
         name = "O PDF recebido em memória"
         try:
             doc = pymupdf.open(stream=source, filetype="pdf")
-        except Exception as exc:  # noqa: BLE001 - MuPDF raises several types for "not a PDF"
+        except Exception as exc:  # MuPDF raises several types for "not a PDF"
             raise PdfOpenError(f"{name} não pôde ser lido como PDF: {exc}") from exc
     else:
         path = Path(source)
@@ -451,7 +473,7 @@ def open_pdf(source: Path | str | bytes) -> PdfDocument:
             raise PdfOpenError(f"O arquivo {path} não existe ou não é um arquivo.")
         try:
             doc = pymupdf.open(str(path))
-        except Exception as exc:  # noqa: BLE001 - see above
+        except Exception as exc:  # see above
             raise PdfOpenError(f"{name} não pôde ser aberto como PDF: {exc}") from exc
     with _opens_lock:
         _opens += 1
@@ -461,4 +483,3 @@ def open_pdf(source: Path | str | bytes) -> PdfDocument:
         doc.close()
         raise
     return PdfDocument(doc, path=path, owned=True, source_name=name)
-

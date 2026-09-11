@@ -26,7 +26,7 @@ O trabalho é dividido em **frentes** (F0–F12). Cada frente tem:
 
 ---
 
-## Estado atual — atualizado 2026-09-07
+## Estado atual — atualizado 2026-09-11
 
 > Leia `docs/ASSETS.md` v2.0 antes desta tabela. A maior parte do produto **já existe**;
 > as frentes abaixo são de elevação e unificação, não de construção do zero.
@@ -53,7 +53,7 @@ O trabalho é dividido em **frentes** (F0–F12). Cada frente tem:
 |---|---|---|---|
 | F0 | Fundação e ambiente | **✅ PORTÃO APROVADO** | `doctor.py`: 20 ok, 0 falha; GPU sm_120 a 30,5 TFLOP/s |
 | F1 | Document IR | **✅ concluída** | 1.125 testes, **99 % cobertura**, 49 tipos de nó |
-| F2 | Ingestão de PDF | ⬜ não iniciada | 3 implementações a unificar |
+| F2 | Ingestão de PDF | **✅ ciclo 1 fechado** | 3 implementações unificadas em `caissa.ingest.pdf`; 3 portões com sabotagem; 552 páginas do acervo sem falha; leitura lado a lado em 5 páginas (`F2_REPORT.md`) — crítica independente pendente |
 | F3 | Detecção | **✅ META ATINGIDA** | **recall 0,9913 · precisão 1,0000** |
 | F3-A | Detecção vetorial | ✅ absorvida pela F3 | catálogo de 18 fontes verificadas |
 | F4 | Classificação e FEN | **✅ acima da meta** | 99,9854 % por casa |
@@ -82,13 +82,14 @@ O trabalho é dividido em **frentes** (F0–F12). Cada frente tem:
 | F9 | 7 | **REPROVADO** | O conserto do ciclo 6 pôs o nome numa **dica de ferramenta**, e o portão escrito para impedir isso **aceita `toolTip()` como "na tela"**. |
 | F5 | 2 | **autocrítica** | O plano de registro estava errado quanto à causa — medi antes de construir e a arbitragem por região **não** fecha o defeito do Gaprindashvili (prosa e lances destruídos dividem a mesma linha). E a primeira sabotagem do veredito por região **passou nos 13 testes**: o portão estava cego. |
 
-### Os onze portões cegos
+### Os dezesseis portões cegos
 
 Em cada um destes, **a suíte de testes estava verde** e a funcionalidade estava quebrada.
 Nenhum foi encontrado por mais teste. Sete por crítica adversarial independente; o oitavo
 por medir a premissa do próprio plano antes de executá-lo; o nono por reler o código
-depois de a suíte já estar verde; e os dois últimos por **rodar o sistema de ponta a ponta
-com os motores reais**, coisa que nenhum teste de costura com motor falso alcança.
+depois de a suíte já estar verde; o décimo e o décimo primeiro por **rodar o sistema de
+ponta a ponta com os motores reais**, coisa que nenhum teste de costura com motor falso
+alcança; e os cinco últimos por ligar a ingestão de PDF sobre o acervo inteiro.
 
 | # | Portão | O que ele media | O que estava quebrado |
 |---|---|---|---|
@@ -103,6 +104,16 @@ com os motores reais**, coisa que nenhum teste de costura com motor falso alcan�
 | 9 | Caixas do nível 0 no laço por região | o teste não passava raster | com raster, a translação era aplicada duas vezes e as caixas saíam da página |
 | 10 | Veredito por região | a região sozinha | cortar a página **lavava** a acusação: 0,55 na página, 0,98 nas metades |
 | 11 | Calibração do Tesseract | um piso de confiança **de palavra** | aplicado ao agregado da página, zerava o motor em 12 de 12 — a cascata nunca decidiu nada |
+| 12 | Conversão de espaços do PDF (F3-A) | 80 geometrias do Editor | **somava a origem da CropBox**: numa página girada com CropBox deslocada o tabuleiro cai 40 pt longe da tinta — latente em 18.766 de 18.767 páginas sem rotação |
+| 13 | Detector vetorial (F3-A) | tabuleiros do conjunto de campo | dois tabuleiros lado a lado em alturas diferentes intercalam as linhas: **0 de 2** no Dvoretsky p. 203 |
+| 14 | Catálogo de fontes (F3-A) | 18 famílias verificadas | `SkakNew-Diagram` caía no padrão de figurino: os 5.334 diagramas do Polgar eram invisíveis à via exata |
+| 15 | Veredito da camada de texto (F5) | a página inteira | **glifos de tabuleiro julgados como prosa**: Polgar rejeitado em 11 de 11 páginas por "8 % de palavras" |
+| 16 | Mobília de página (F5) | todo inteiro na faixa de margem | o `22` de uma linha tabular no pé do Chernev sumia como fólio |
+
+Os cinco últimos (12–16) apareceram no mesmo dia, ao **ligar a ingestão de ponta a ponta**
+sobre o acervo inteiro (`docs/quality/F2_REPORT.md` §5): nenhum estava ao alcance dos testes
+da frente dona, porque cada um só se manifesta quando a página inteira, com sua tipografia
+real, atravessa a cadeia.
 
 **A prática que ficou:** todo portão novo precisa de **prova de vitalidade** — uma sabotagem
 que o faça reprovar. Um portão que só devolve zero é indistinguível de um portão cego.
@@ -253,10 +264,10 @@ Alvo da próxima iteração da F4.
 - Streaming: abrir PDF de 500 páginas sem carregar tudo.
 
 ### Portão F2
-- [ ] PDF de 500 páginas abre com primeira página em ≤ 2 s
-- [ ] Memória estável em varredura completa (sem crescimento linear)
-- [ ] Ordem de leitura correta em 100 % das páginas de coluna dupla do corpus
-- [ ] Crítico compara o IR extraído com o PDF original lado a lado e aprova
+- [x] PDF de 500 páginas abre com primeira página em ≤ 2 s — **10–21 ms** (`test_gates.py`)
+- [x] Memória estável em varredura completa (sem crescimento linear) — **+0,4 MB** em 200 páginas; a sabotagem cresce 1.198 MB
+- [x] Ordem de leitura correta em 100 % das páginas de coluna dupla — **40/40** sintéticas; Dvoretsky, Nunn e Chernev lidos lado a lado (`test_corpus.py`)
+- [ ] Crítico compara o IR extraído com o PDF original lado a lado e aprova — feito pelo construtor em 5 páginas (`F2_REPORT.md` §3); **crítico independente pendente**
 
 ---
 

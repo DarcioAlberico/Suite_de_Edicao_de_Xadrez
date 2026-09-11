@@ -23,6 +23,7 @@ from caissa.core.chess.notation_tables import (
     FigurineSet,
     MoveRenderStyle,
     PieceType,
+    piece_letter,
 )
 from caissa.core.model.base import IRNode
 from caissa.core.model.marks import Mark
@@ -615,6 +616,12 @@ def plain_text(nodes: tuple[Inline, ...]) -> str:
             parts.append(node.content)
         elif isinstance(node, Move):
             parts.append(node.san)
+        elif isinstance(node, PieceGlyph):
+            # The canonical English letter, for the same reason a move renders
+            # as canonical SAN: a figurine ``N`` before ``f3`` must be found by
+            # the reader who searches "Nf3".  Before this, the glyph vanished
+            # from the reading text and "Nf3" indexed as "f3" (found by F2).
+            parts.append(piece_letter(node.piece))
         elif isinstance(node, MathInline):
             parts.append(node.latex)
         elif isinstance(node, LineBreak):

@@ -37,19 +37,10 @@ from .font_catalog import (
     GlyphRole,
     LayoutSpec,
     family_by_key,
-    lookup_family,
     looks_like_chess_font,
+    lookup_family,
     normalize_char,
     normalize_font_name,
-)
-from .recall import (
-    EMBEDDED_CHECKER_FLOOR,
-    SEARCH_SCALES,
-    SQUARE_MIN_ELONGATION,
-    embedded_checker_floor,
-    multiscale_search,
-    recall_pack,
-    square_anchors,
 )
 from .orientation import (
     BoardOrientation,
@@ -72,6 +63,31 @@ from .vector_detect import (
     to_write_space,
     write_space_cropbox,
 )
+
+# ``recall`` imports the trunk (``chess_diagram_ocr``) at module level and
+# raises when it is not installed.  The font catalogue and the vector detector
+# need nothing of the kind, and the F2 importer's text path reads the
+# catalogue on every page -- so the recall names are resolved lazily (PEP 562)
+# and a checkout without the trunk can still import this package.
+_RECALL_NAMES = frozenset(
+    {
+        "EMBEDDED_CHECKER_FLOOR",
+        "SEARCH_SCALES",
+        "SQUARE_MIN_ELONGATION",
+        "embedded_checker_floor",
+        "multiscale_search",
+        "recall_pack",
+        "square_anchors",
+    }
+)
+
+
+def __getattr__(name: str) -> object:
+    if name in _RECALL_NAMES:
+        from . import recall
+
+        return getattr(recall, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # main entry point

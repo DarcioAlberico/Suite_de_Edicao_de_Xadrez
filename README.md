@@ -18,9 +18,9 @@ A especificação completa está em [`docs/SPEC.md`](docs/SPEC.md); as decisões
 arquiteturais vinculantes, em [`docs/adr/README.md`](docs/adr/README.md); o plano de
 execução, em [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-> **Estado atual:** frente F0 (fundação e ambiente). O que existe hoje é a base do
-> projeto: configuração em camadas, camada de runtime de GPU e o relatório de saúde do
-> ambiente. Os subsistemas de visão, OCR, IR e interface ainda não foram implementados.
+> **Estado atual (2026-09-11):** as quinze frentes do `ROADMAP.md` têm pelo menos um ciclo
+> fechado. A última a começar, a ingestão de PDF (F2), fechou o seu em 2026-09-11 —
+> `docs/quality/F2_REPORT.md`. Os relatórios por frente estão em `docs/quality/`.
 
 ---
 
@@ -142,6 +142,29 @@ Códigos de saída: `0` saudável · `1` requisito obrigatório reprovado · `2`
 `doctor` falhou.
 
 ---
+
+## Importando um PDF
+
+```python
+from caissa.ingest import import_pdf, PdfImportOptions
+from caissa.ingest.pdf import combined_finder
+
+# Camada de texto + diagramas vetoriais (fontes de xadrez), sem modelo nenhum:
+resultado = import_pdf(r"C:\livros\Dvoretsky.pdf", PdfImportOptions(lang="eng"))
+documento = resultado.document          # Document IR, com proveniência em cada nó
+print(resultado.report.describe_pt())   # páginas, origem do texto, diagramas, tempo
+
+# Com o detector raster do tronco e o classificador F4 na GPU (livros digitalizados):
+resultado = import_pdf(
+    r"C:\livros\Karpov.pdf",
+    PdfImportOptions(pages=range(60, 70), diagram_finder=combined_finder()),
+)
+```
+
+Uma página cuja camada de texto o nível 0 da F5 rejeita entra como imagem, com o motivo
+na proveniência; `PdfImportOptions.ocr` recebe um `OcrProvider` para essas páginas.
+`benchmarksench_ingest.py --dump` grava o IR de cada livro do acervo em texto, para a
+leitura lado a lado.
 
 ## Desenvolvimento
 

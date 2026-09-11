@@ -119,55 +119,53 @@ MIN_COLOURED_CELLS: Final = 16
 
 
 # --------------------------------------------------------------------------
-# The two coordinate spaces of a page (Editor, secao 48)
+# The two coordinate spaces of a page
 # --------------------------------------------------------------------------
 #
 # Everything the user sees and picks lives in `page.rect` space: the selection,
-# the gallery, the `rect_pdf` stored in the project.  But reading text --
-# `get_text`, including its `clip=` -- and writing to the page happen in *write
-# space*, which is what `page.transformation_matrix` produces.  The two only
-# coincide when there is neither rotation nor a displaced CropBox.
+# the gallery, the `rect_pdf` stored in the project.  Reading text and
+# drawings -- `get_text` (every mode, and its `clip=`), `get_image_info`,
+# `get_drawings` -- happens in *text space*: CropBox applied, rotation not.
 #
-#     page.rect = (write - origin) * rotation_matrix
-#     write     = page.rect * derotation_matrix + origin
+#     page.rect = text * page.rotation_matrix
+#     text      = page.rect * page.derotation_matrix
 #
-# where `origin` is the top-left corner of the CropBox *in write space*.  With
-# no rotation that origin is (0, 0) -- the transformation matrix already folds
-# the CropBox displacement in -- which is why the common case passes through
-# unchanged.  Measured over 80 geometries in the source project.
+# and nothing else.  The Editor's section-48 formula that used to live here
+# added the CropBox origin in write space; measured on PyMuPDF 1.28.2 across
+# four rotations, a displaced CropBox and a MediaBox with a non-zero origin
+# (tests/unit/ingest/test_geometry.py, against the rendered ink), the origin
+# term is wrong: on a rotated page with a displaced CropBox it put the board
+# 40 pt from where it is drawn.  Corrected 2026-09-11 by the F2 front, whose
+# `caissa.ingest.pdf.geometry.PageFrame` is the same conversion in pure
+# arithmetic; the two functions are kept here for their callers and now agree
+# with it.  Unrotated pages -- 18.766 of the collection's 18.767 -- never
+# noticed either way.
 
 
 def write_space_cropbox(page: Any) -> Any:
-    """The CropBox -- the visible region -- in write coordinates.
+    """The CropBox -- the visible region -- in text coordinates.
 
-    It is also the right clip for any converted rectangle: on a rotated page
-    ``page.rect`` has width and height swapped relative to write space, and
+    In text space the visible page starts at the origin: ``(0, 0, w, h)`` with
+    the *unrotated* width and height.  It is the right clip bound for any
+    rectangle converted with :func:`to_write_space`: on a rotated page
+    ``page.rect`` has width and height swapped relative to text space, and
     using it as the bound cuts away valid content.
     """
-    media = page.mediabox
-    crop = page.cropbox
-    native = pymupdf.Rect(crop.x0, media.y1 - crop.y1, crop.x1, media.y1 - crop.y0)
-    return native * page.transformation_matrix
+    rect = pymupdf.Rect(page.rect) * page.derotation_matrix
+    rect.normalize()
+    return rect
 
 
 def to_write_space(page: Any, rect: Rect) -> Any:
     """From the space the user sees to the space text and drawings live in."""
-    origin = write_space_cropbox(page).tl
-    return (
-        pymupdf.Rect(rect)
-        * page.derotation_matrix
-        * pymupdf.Matrix(1, 0, 0, 1, origin.x, origin.y)
-    )
+    out = pymupdf.Rect(rect) * page.derotation_matrix
+    out.normalize()
+    return out
 
 
 def from_write_space(page: Any, rect: Rect) -> Rect:
     """The exact inverse of :func:`to_write_space`."""
-    origin = write_space_cropbox(page).tl
-    out = (
-        pymupdf.Rect(rect)
-        * pymupdf.Matrix(1, 0, 0, 1, -origin.x, -origin.y)
-        * page.rotation_matrix
-    )
+    out = pymupdf.Rect(rect) * page.rotation_matrix
     out.normalize()
     return (float(out.x0), float(out.y0), float(out.x1), float(out.y1))
 
@@ -567,6 +565,25 @@ def _short_labels(page: Any, board: Rect) -> list[tuple[str, float, float, float
     return out
 
 
+#: Cells further apart than this many cell pitches along x belong to different
+#: boards.  1.6: a board's own columns are one pitch apart, and the gutter
+#: between side-by-side boards in the collection is never under two.
+_X_CLUSTER_GAP_CELLS: Final = 1.6
+
+
+def _split_by_x(cells: Sequence[_Glyph], gap: float) -> list[list[_Glyph]]:
+    """Group cells into horizontal clusters separated by at least ``gap``."""
+    clusters: list[list[_Glyph]] = []
+    last_x = 0.0
+    for g in sorted(cells, key=lambda c: c.ox):
+        if clusters and g.ox - last_x <= gap:
+            clusters[-1].append(g)
+        else:
+            clusters.append([g])
+        last_x = g.ox
+    return clusters
+
+
 def detect_glyph_boards(
     page: Any,
     *,
@@ -582,25 +599,32 @@ def detect_glyph_boards(
             continue
         tol = max(0.2, size * 0.2)
         cells = _merge_overprints(bucket, tol)
-        remaining = list(cells)
-        for _ in range(8):  # a page rarely holds more than a handful of boards
-            rows = _group_rows(remaining, tol=max(0.4, size * 0.4))
-            found: _Lattice | None = None
-            for start in range(0, max(0, len(rows) - 7)):
-                lattice = _extract_lattice(rows[start : start + 8])
-                if lattice is not None:
-                    found = lattice
+        # Two boards printed side by side at different heights interleave
+        # their rows when grouped page-wide, and no window of eight
+        # consecutive rows is then a board (Dvoretsky 2025, p. 203: the left
+        # board starts 36 pt lower than the right one, 0 of 2 detected).
+        # Split the cells at horizontal gaps wider than a cell first, so each
+        # column of boards is searched on its own.
+        for cluster in _split_by_x(cells, gap=max(size, 1.0) * _X_CLUSTER_GAP_CELLS):
+            remaining = list(cluster)
+            for _ in range(8):  # a page rarely holds more than a handful of boards
+                rows = _group_rows(remaining, tol=max(0.4, size * 0.4))
+                found: _Lattice | None = None
+                for start in range(0, max(0, len(rows) - 7)):
+                    lattice = _extract_lattice(rows[start : start + 8])
+                    if lattice is not None:
+                        found = lattice
+                        break
+                if found is None:
                     break
-            if found is None:
-                break
-            used = {id(g) for row in found.cells for g in row if g is not None}
-            remaining = [g for g in remaining if id(g) not in used]
-            board = _board_from_lattice(page, found, family, font_name, size, unknown_fonts)
-            if board is None:
-                continue
-            side = board.rect_write[2] - board.rect_write[0]
-            if side >= min_side_pt:
-                boards.append(board)
+                used = {id(g) for row in found.cells for g in row if g is not None}
+                remaining = [g for g in remaining if id(g) not in used]
+                board = _board_from_lattice(page, found, family, font_name, size, unknown_fonts)
+                if board is None:
+                    continue
+                side = board.rect_write[2] - board.rect_write[0]
+                if side >= min_side_pt:
+                    boards.append(board)
     boards.sort(key=lambda b: (b.rect_pdf[1], b.rect_pdf[0]))
     return boards
 

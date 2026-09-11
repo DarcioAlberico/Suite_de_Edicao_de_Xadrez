@@ -1,4 +1,4 @@
-# Handoff — estado em 2026-09-10 (atualizado no ciclo F5-C2)
+# Handoff — estado em 2026-09-11 (atualizado no ciclo F2-C1)
 
 > Documento de passagem. Diz **onde o trabalho está**, **o que ler**, **o que fazer a
 > seguir** e **o que não refazer**. Escrito para quem chega sem o contexto da conversa.
@@ -18,8 +18,8 @@ Caïssa Studio é a unificação de cinco projetos que já existiam em `C:\Pytho
 | Empacotamento | 4.181 | 9 |
 | Documentos | — | 44 |
 
-**Suíte: 3.507 testes, 1 pulado** (o pulo é WOFF2/Brotli, ausência declarada).
-Roda em ~12 min: `.venv\Scripts\python.exe -m pytest tests -q`
+**Suíte: 3.680 testes, 2 pulados** (WOFF2/Brotli e EPUBCheck, ausências declaradas).
+Roda em ~13 min: `.venv\Scripts\python.exe -m pytest tests -q` (3.678 passed, 2026-09-11)
 
 > **Um teste instável, ainda não diagnosticado (2026-09-10).**
 > `tests/unit/model/test_ids.py::test_a_fresh_id_carries_roughly_the_current_time`
@@ -53,9 +53,11 @@ Roda em ~12 min: `.venv\Scripts\python.exe -m pytest tests -q`
 >
 > Na próxima ocorrência o culpado virá nomeado em vez de suposto.
 
-**Quatorze das quinze frentes fechadas.** Duas passaram por crítica adversarial às cegas e
-foram **aprovadas**: tipografia no ciclo 10, interface no ciclo 15, depois de onze
-reprovações somadas.
+**As quinze frentes têm pelo menos um ciclo fechado** — a F2, última a começar, fechou o
+seu em 2026-09-11 (`docs/quality/F2_REPORT.md`). Duas passaram por crítica adversarial às
+cegas e foram **aprovadas**: tipografia no ciclo 10, interface no ciclo 15, depois de onze
+reprovações somadas. A F2 ainda não passou por crítico independente: a leitura lado a lado
+foi do construtor.
 
 ---
 
@@ -205,11 +207,24 @@ medição por compressão equivalente), **não há assinatura de código**, e **
 máquina Windows limpa sem Python**. O download de pesos nunca tocou a rede (`base_url: null`;
 só o caminho offline foi exercitado).
 
-### 4.4 F2 — unificar a ingestão de PDF
-A única frente nunca iniciada. Três implementações coexistem e **todas funcionam**: o
-`pdf_io.py`/`pdf_text.py` do tronco, o `pdf_service.py` do Editor (dois espaços de
-coordenadas, gravação atômica cancelável) e o `extract.py` do PDFimport (reconstrução de
-parágrafo). É limpeza interna, sem lacuna visível para o usuário.
+### 4.4 ~~F2 — unificar a ingestão de PDF~~ — **FEITO**, ver `F2_REPORT.md`
+`src/caissa/ingest/pdf/` (nove módulos, 5.754 linhas, 166 testes). `import_pdf(caminho)`
+devolve um `Document` com proveniência em cada nó; `PdfImportOptions.diagram_finder`
+recebe `combined_finder()` para ligar o detector do tronco e o classificador F4 (911
+diagramas lidos em 552 páginas do acervo); `PdfImportOptions.ocr` recebe um
+`OcrProvider` para as páginas que o nível 0 rejeita.
+
+**Não era "limpeza interna, sem lacuna visível".** Ligar a cadeia inteira achou cinco
+portões cegos em outras frentes (ROADMAP, portões 12–16): a fórmula de coordenadas do
+Editor está errada em página girada, o detector vetorial perdia tabuleiros lado a lado
+desalinhados, o catálogo tratava `SkakNew-Diagram` como figurino, o nível 0 rejeitava o
+Polgar por julgar glifos de tabuleiro como prosa, e todo inteiro na margem virava fólio.
+
+**O que fazer a seguir na F2, em ordem:** (1) crítica independente com
+`benchmarks\bench_ingest.py --dump` como material; (2) costurar o `PageRecognizer` da F5
+como `OcrProvider` padrão e medir no E8; (3) `Movetext` → `GameScore` pela F6; (4) as 3
+páginas do Chernev em que uma tabela de lances vira três colunas (`_columns_are_real`
+documenta as duas tentativas descartadas).
 
 ---
 
@@ -261,8 +276,8 @@ parágrafo). É limpeza interna, sem lacuna visível para o usuário.
 
 ## 7. A lição que vale mais que o código
 
-Dezesseis instrumentos de medição foram encontrados **cegos** durante o projeto. Em todos os
-dezesseis, **a suíte de testes estava verde e a funcionalidade estava quebrada**:
+Vinte e um instrumentos de medição foram encontrados **cegos** durante o projeto. Em todos,
+**a suíte de testes estava verde e a funcionalidade estava quebrada**:
 
 | # | o portão media | o que estava quebrado |
 |---|---|---|
@@ -282,13 +297,21 @@ dezesseis, **a suíte de testes estava verde e a funcionalidade estava quebrada*
 | 14 | as caixas do nível 0 no laço novo | o teste não passava raster, então a translação era no-op; com raster, caixas ao **dobro do deslocamento**, fora da página |
 | 15 | o veredito por região | cortar a página **lavava** a acusação: 0,55 na página, 0,98 nas duas metades |
 | 16 | a calibração do Tesseract | piso medido em *palavras* aplicado a um *agregado de página* — motor zerado em **12 de 12**, cascata decorativa |
+| 17 | os dois espaços de coordenadas do PDF (F3-A) | a fórmula do Editor **soma a origem da CropBox**: em página girada com CropBox deslocada o tabuleiro cai 40 pt longe da tinta |
+| 18 | o detector vetorial (F3-A) | dois tabuleiros lado a lado em alturas diferentes: **0 de 2** no Dvoretsky p. 203, e 16 rótulos de coordenada viravam parágrafos |
+| 19 | o catálogo de fontes (F3-A) | `SkakNew-Diagram` caía no padrão de figurino — 5.334 diagramas do Polgar invisíveis à via exata |
+| 20 | o veredito da camada de texto (F5) | julgava glifos de tabuleiro como prosa: Polgar rejeitado em **11 de 11** páginas por "8 % de palavras" |
+| 21 | a mobília de página (F5) | todo inteiro na faixa de margem era fólio — o `22` de uma linha tabular do Chernev sumia |
 
 Nenhum foi encontrado por mais teste. Doze por **crítica adversarial independente**, com
 mandato de reprovar, obrigação de remedir do zero, e liberdade para sabotar o próprio
 portão. O 13.º por **medir a premissa de um plano antes de executá-lo**. O 14.º por
-**releitura do código depois de a suíte ficar verde**. E o 15.º e o 16.º por **rodar o
+**releitura do código depois de a suíte ficar verde**. O 15.º e o 16.º por **rodar o
 sistema inteiro de ponta a ponta com os motores reais** — os testes de costura usavam um
-motor falso, e um motor falso nunca revela que o verdadeiro não consegue ganhar.
+motor falso, e um motor falso nunca revela que o verdadeiro não consegue ganhar. E os
+cinco últimos (17–21) num só dia, por **ligar a ingestão de PDF de ponta a ponta sobre o
+acervo inteiro** e ler cinco páginas lado a lado com o impresso (`F2_REPORT.md` §3, §5):
+cada um só se manifesta quando uma página real, com sua tipografia, atravessa a cadeia.
 
 Os quatro últimos têm a mesma moral por ângulos diferentes: **um portão verde não é
 evidência de nada até alguém tentar quebrá-lo**, e um sistema testado só por partes não

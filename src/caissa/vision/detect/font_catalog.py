@@ -329,6 +329,26 @@ _CHESSBASE_DIAGRAM = LayoutSpec(
     coordinates_unknown="12345678!\"#$%&'(",
 )
 
+# LAYOUT "skak"
+#   The ``skak`` LaTeX package's diagram font (SkakNew-Diagram, Torben Hoffmann's
+#   cut of Piet Tutelaers' chess font).  Case selects the piece colour on light
+#   squares (K Q R B N P white, k q r b n p black); on dark squares the piece
+#   letters are shifted to J L T A M O / j l t a m o, and the empty squares are
+#   '0' (light) and 'Z' (dark).  Read off the text layer of the Polgar
+#   (``Chess 5334 Problems``, SkakNew-Diagram) and cross-checked square by
+#   square against the printed page on 2026-09-11: ``ZKZ0Z0Z0`` is rank 7 with
+#   a white king on b7 (light), ``3Z0L0Z0Z0`` a white queen on c3 (dark).
+#   Before this entry the family fell under the *figurine* ``skaknew`` rule
+#   and the Polgar's 5.334 diagrams were invisible to the vector route.
+_SKAK = LayoutSpec(
+    light_white="PNBRQK",
+    light_black="pnbrqk",
+    dark_white="OMATLJ",
+    dark_black="omatlj",
+    empty_light="0",
+    empty_dark="Z",
+)
+
 # LAYOUT "unicode"
 #   The Unicode chess block.  Modern generators (LaTeX packages, python-chess,
 #   web-to-PDF pipelines) emit these directly.  They carry no square colour --
@@ -424,6 +444,11 @@ _FAMILY_SPECS: Final[Sequence[tuple[str, str, tuple[str, ...], LayoutSpec, FontK
      "Só havia subconjuntos extraídos de PDF; layout presumido, não conferido.", ""),
     ("hastings_diagram", "Hastings Diagram", (r"hastingsdiagram",), _CHESSBASE_DIAGRAM, "diagram", "unverified",
      "Só havia subconjuntos extraídos de PDF; layout presumido, não conferido.", ""),
+
+    ("skak_diagram", "SkakNew Diagram", (r"skaknewdiagram", r"skakdiagram"), _SKAK, "diagram",
+     "inferred",
+     "Codificação do pacote LaTeX skak, lida da camada de texto do Polgar e conferida "
+     "casa a casa contra a página impressa (2026-09-11).", ""),
 
     ("unicode", "Unicode Chess Symbols", (r"^$",), _UNICODE, "diagram", "verified",
      "Bloco Unicode U+2654-U+265F. Independente de fonte.", ""),

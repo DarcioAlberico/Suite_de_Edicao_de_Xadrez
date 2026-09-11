@@ -505,3 +505,20 @@ def test_corpus_reading_order_keeps_columns_apart(corpus_doc):
              for i in layout.order]
     # Once the right column starts, the left must never come back.
     assert sides == sorted(sides), sides
+
+
+def test_a_bare_number_away_from_the_folio_position_is_text():
+    """A tabular move line's ``22`` in the bottom band is not the page number.
+
+    Found by the F2 importer on Chernev's *Melhores Finais de Capablanca*:
+    the move number of the last row of a page fell inside the margin band and
+    vanished as a folio.  Across a book the folio sits at fixed positions;
+    a number elsewhere in the band is text.
+    """
+    pages = [two_column_page(head=None, folio=str(100 + n)) for n in range(6)]
+    stray = line("22", 160.0, PAGE.y1 - 20.0)
+    pages[3] = LayoutInput(page_box=pages[3].page_box, lines=(*pages[3].lines, stray))
+    layouts = analyze_document(pages)
+    kinds = {layouts[3].lines[i].text.strip(): k for i, k in enumerate(layouts[3].kinds)}
+    assert kinds["103"] is RegionKind.PAGE_NUMBER
+    assert kinds["22"] is RegionKind.PARAGRAPH

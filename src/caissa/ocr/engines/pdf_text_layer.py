@@ -53,6 +53,8 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
+from caissa.vision.detect.font_catalog import lookup_family
+
 from ..lexicon import (
     dictionary_hit_rate,
     implausible_char_ratio,
@@ -460,19 +462,31 @@ class PdfTextLayerEngine(OcrEngineBase):
     # -- assessment -------------------------------------------------------- #
 
     def assess(self, page: Any, *, lang: str = "",
-               clip: BBox | None = None) -> TextLayerVerdict:
+               clip: BBox | None = None,
+               ignore_diagram_fonts: bool = True) -> TextLayerVerdict:
         """Decide whether ``page``'s text layer can be trusted.
 
         Deterministic: the checks run in a fixed order and the first failure
         wins, so the same page always produces the same reason.
+
+        ``ignore_diagram_fonts`` leaves the glyphs of a *diagram* font (the
+        F3-A catalogue: Chess Merida, SkakNew-Diagram, ...) out of the text
+        being judged.  They are a chess position, not language, and on a
+        problem book they are most of the page: the Polgar's pages are 48
+        board glyphs plus a number and a running head, and judged whole they
+        score 8 % dictionary hits and are rejected -- every one of 11 sampled,
+        for a layer that is perfectly good.  Found by the F2 importer,
+        2026-09-11.  Inline figurine fonts are *not* excluded: their letters
+        are the notation whose integrity ``mangled_move_ratio`` measures.
         """
         th = self.thresholds
         doc = page.parent
         fonts = inspect_fonts(doc, page)
-        text = self._page_text(page, clip)
+        text = self._page_text(page, clip, ignore_diagram_fonts=ignore_diagram_fonts)
         char_total = sum(1 for c in text if not c.isspace())
 
-        unattributed = self._attribute_chars(page, fonts, clip)
+        unattributed = self._attribute_chars(page, fonts, clip,
+                                             ignore_diagram_fonts=ignore_diagram_fonts)
         broken_chars = sum(f.char_count for f in fonts
                            if f.risk is FontRisk.BROKEN)
         suspect_chars = sum(f.char_count for f in fonts
@@ -630,7 +644,10 @@ class PdfTextLayerEngine(OcrEngineBase):
         import pymupdf
         return pymupdf.Rect(clip.x0, clip.y0, clip.x1, clip.y1)
 
-    def _page_text(self, page: Any, clip: BBox | None) -> str:
+    def _page_text(self, page: Any, clip: BBox | None, *,
+                   ignore_diagram_fonts: bool = False) -> str:
+        if ignore_diagram_fonts:
+            return self._prose_text(page, clip)
         try:
             rect = self._clip_rect(page, clip)
             return page.get_text("text", clip=rect) or ""
@@ -640,8 +657,41 @@ class PdfTextLayerEngine(OcrEngineBase):
             except Exception:
                 return ""
 
+    @staticmethod
+    def _is_diagram_font(name: str) -> bool:
+        family = lookup_family(name)
+        return family is not None and family.kind == "diagram"
+
+    def _prose_text(self, page: Any, clip: BBox | None) -> str:
+        """The page's text with every diagram-font span left out.
+
+        Built from ``dict`` so spans can be judged by font; the ``text`` mode
+        has no font information.  Lines are joined the way ``text`` mode
+        joins them, so the lexical signals see the same word boundaries.
+        """
+        try:
+            rect = self._clip_rect(page, clip)
+            data = page.get_text("dict", clip=rect)
+        except Exception:
+            return self._page_text(page, clip)
+        lines: list[str] = []
+        for block in data.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                kept = [
+                    str(span.get("text", "") or "")
+                    for span in line.get("spans", [])
+                    if not self._is_diagram_font(str(span.get("font", "")))
+                ]
+                joined = "".join(kept)
+                if joined.strip():
+                    lines.append(joined)
+        return "\n".join(lines)
+
     def _attribute_chars(self, page: Any, fonts: Sequence[FontRecord],
-                         clip: BBox | None) -> int:
+                         clip: BBox | None, *,
+                         ignore_diagram_fonts: bool = False) -> int:
         """Count how many characters each font actually draws; return the
         number that could not be attributed to any of them.
 
@@ -684,6 +734,8 @@ class PdfTextLayerEngine(OcrEngineBase):
                     text = span.get("text", "") or ""
                     count = sum(1 for c in text if not c.isspace())
                     if not count:
+                        continue
+                    if ignore_diagram_fonts and self._is_diagram_font(name):
                         continue
                     targets = self._match_font(name, index, fonts)
                     if not targets:

@@ -410,3 +410,15 @@ def test_callout_and_group_kinds_cover_the_chess_book_vocabulary():
     assert {"exercise", "solution", "theory", "warning", "example"} <= kinds
     roles = {role.value for role in GroupRole}
     assert {"chapter", "exercise-set", "diagram-grid", "front-matter"} <= roles
+
+
+def test_plain_text_renders_a_piece_glyph_as_its_canonical_letter():
+    """A figurine knight before "f3" must be found by whoever searches "Nf3".
+
+    Found by the F2 importer: the glyph used to vanish from the reading text,
+    so a book set in a figurine font indexed every "Nf3" as "f3".
+    """
+    from caissa.core.chess.notation_tables import PieceType
+
+    inlines = (PieceGlyph(piece=PieceType.KNIGHT), Text(content="f3"))
+    assert plain_text(inlines) == "Nf3"

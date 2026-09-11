@@ -309,6 +309,11 @@ class RunningFurnitureDetector:
         self._pages = 0
         self._repeated: frozenset[str] = frozenset()
         self._finalized = False
+        #: Where bare numbers sit in the margin band, as a fraction of the
+        #: page width, rounded to a twentieth: a folio lives at one, two or
+        #: three fixed positions across a book.
+        self._folio_slots: Counter[int] = Counter()
+        self._folio_positions: frozenset[int] = frozenset()
 
     @property
     def pages_observed(self) -> int:
@@ -329,6 +334,8 @@ class RunningFurnitureDetector:
             text = line.text.strip()
             if not text:
                 continue
+            if is_page_number(text):
+                self._folio_slots[self._slot(line, page_box)] += 1
             key = fingerprint(text)
             # Count a pattern once per page: a page listing the same running
             # head twice must not vote twice.
@@ -341,8 +348,34 @@ class RunningFurnitureDetector:
                         int(self._pages * self.config.repeat_frac))
         self._repeated = frozenset(k for k, n in self._counts.items()
                                    if n >= threshold)
+        self._folio_positions = frozenset(
+            slot for slot, n in self._folio_slots.items() if n >= threshold
+        )
         self._finalized = True
         return self._repeated
+
+    @staticmethod
+    def _slot(line: LayoutLine, page_box: BBox) -> int:
+        """The line's horizontal position as a twentieth of the page width."""
+        width = page_box.w or 1.0
+        return int(round((line.box.cx - page_box.x0) / width * 20))
+
+    def _is_folio_here(self, line: LayoutLine, page_box: BBox) -> bool:
+        """A bare number in the band is the folio only where the book prints it.
+
+        A folio sits at the same one, two or three positions on every page.
+        A bare number elsewhere in the band -- the ``22`` of a tabular move
+        line that happens to fall in the bottom 7,5 % of a Chernev page -- is
+        text.  With no positional evidence yet (a single page) position is
+        not held against it.
+        """
+        if not self._folio_positions:
+            # Enough pages seen and no position ever repeated: the book has
+            # no folio in the band, so a bare number there is text.  Too few
+            # pages to know: position is not held against it.
+            return self._pages < self.config.min_repeats
+        slot = self._slot(line, page_box)
+        return any(abs(slot - known) <= 1 for known in self._folio_positions)
 
     def _margins(self, page_box: BBox) -> tuple[float, float]:
         band = page_box.h * self.config.margin_frac
@@ -364,7 +397,7 @@ class RunningFurnitureDetector:
             return None
         in_header = line.box.y1 <= top
         if is_page_number(text):
-            return RegionKind.PAGE_NUMBER
+            return RegionKind.PAGE_NUMBER if self._is_folio_here(line, page_box) else None
         if fingerprint(text) in self._repeated:
             return RegionKind.HEADER if in_header else RegionKind.FOOTER
         return None
