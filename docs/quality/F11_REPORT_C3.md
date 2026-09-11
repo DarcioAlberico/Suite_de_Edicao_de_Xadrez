@@ -145,7 +145,7 @@ deram CER mediano idêntico; a variação ficou nos lances inventados (99, 103, 
 | braço | respondeu | CER mediana | CER P90 | CER média | lances da verdade | mantidos | inventados |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | `tesseract` | 70 | 0,085 | 0,467 | 0,189 | 899 | 50,1 % | 18 |
-| `llm_hint` (produção) | 69 | **0,035** | 0,363 | 0,135 | 899 | **58,8 %** | **103** |
+| `llm_hint` (produção) | 69 | **0,035** | 0,363 | 0,130 | 899 | **58,8 %** | **103** |
 | `llm_blind` (sem dica, sem portão) | 66 | 0,258 | — | — | 899 | 40,9 % | 309 |
 | `llm_blind` (sem dica, com portão) | **2** | | | | | | |
 
@@ -163,7 +163,7 @@ deram CER mediano idêntico; a variação ficou nos lances inventados (99, 103, 
 Lidos em isolamento, os números da esquerda dizem "entregar": CER cai à metade, 69 lances
 consertados por 2 quebrados. O número da direita diz o contrário, e é ele que manda: **o
 modelo escreve 103 tokens com forma de lance que não estão na página**, contra 18 do
-Tesseract. O Tesseract, quando erra um lance, produz lixo (`2b7`, `l:th7`) que o léxico da
+Tesseract — em **30 das 70 regiões**, contra 11 em que o Tesseract faz o mesmo. O Tesseract, quando erra um lance, produz lixo (`2b7`, `l:th7`) que o léxico da
 F5 marca como mutilado e a fila de revisão exibe. O modelo, quando erra um lance, produz
 `Kf5` — legal, plausível, invisível. É a lição do ciclo 2 (`extract_stipulation`) na
 mesma forma: **um erro com cara de acerto é pior que um erro com cara de erro.**
@@ -200,8 +200,9 @@ página   : a5 Kg7 Kf4 Kf6 Ke4 Kf7 Kd5 Kf6 Kc6 Kxf5 Kb6 Ke6
 modelo   : f4 Kf6 Kf4 Kf4 Kf5 Kf6 Kf6 Kf5 Kf5 Kf6 Kf6 Kf5 ...  <- 37 inventados
 ```
 
-É o modelo entrando em repetição (`Kf5 Kf6 Kf5 Kf6…`) — e passando pelo portão de
-comprimento, porque o teto é 4× o texto do Tesseract e o Tesseract leu bastante lixo. Ver §6.
+É o modelo entrando em repetição (`Kf5 Kf6 Kf5 Kf6…`) — com confiança declarada 0,9, e
+passando pelo portão de comprimento porque a resposta tem só **1,16×** o tamanho da
+verdade: a repetição *substituiu* o texto em vez de alongá-lo. Ver §6.2.
 
 ---
 
@@ -260,17 +261,20 @@ ligada como sugestão.
 `repair_ocr_region` calcula `teto = max(80, 4 × len(dica))`. Quando a cascata devolve texto
 vazio para a região — o caso mais provável de uma região realmente ruim — qualquer
 transcrição com mais de 80 caracteres é descartada. O braço cego mostrou o efeito: 66
-respostas cruas, **2** aprovadas. A intenção do teto (barrar o modelo que narra em vez de
+respostas cruas, **2** aprovadas — e foi conferido à mão em 8 regiões rejeitadas: confiança
+0,9, decisão `accepted`, 126 a 316 caracteres contra um teto de 80. A intenção do teto (barrar o modelo que narra em vez de
 transcrever) é boa; a base do cálculo precisa ser a **área da imagem** (caracteres esperados
 por polegada quadrada), não a dica.
 
-### 6.2 Repetição passa pelo teto
+### 6.2 Repetição não é comprimento
 
-O caso `synth:Dvoretsky :103` da §3 — 37 lances inventados em ciclo `Kf5 Kf6 Kf5…` — passou
-porque o Tesseract leu bastante lixo e o teto de 4× ficou alto. Um detector de repetição
-(razão de tokens distintos, ou mesmo trigrama repetido ≥ 3 vezes) barraria este modo de
-falha a custo zero. É o mesmo modo de falha que `caption_for_diagram` já trata com `max_length`
-curto; aqui o texto é longo por natureza e o teto não protege.
+O caso `synth:Dvoretsky :103` da §3 — 37 lances inventados em ciclo `Kf5 Kf6 Kf5…`, CER
+0,83 — tem razão de comprimento **1,16** sobre a verdade e 305 caracteres de página.
+Nenhum teto de comprimento o pega, por mais apertado que seja: o modelo não narrou a mais,
+ele trocou o parágrafo por um ciclo do mesmo tamanho. O que pega é um detector de repetição
+— razão de tokens distintos sobre o total, ou trigrama repetido ≥ 3 vezes — e é barato.
+`caption_for_diagram` escapa deste modo de falha por ter `max_length` de 200; aqui o texto
+é longo por natureza.
 
 ---
 
@@ -339,4 +343,4 @@ python benchmarks/bench_llm.py --experiments i --repeats 3 --json benchmarks/rep
 ```
 
 Levantamento: ~4 min (Tesseract a 300 dpi em cada candidato). Benchmark: 24 s de
-Tesseract, 11 min de modelo (676 chamadas, mediana 1,2 s cada, modelo residente).
+Tesseract, 11 min de modelo (676 chamadas, mediana 1,17 s cada, modelo residente).
