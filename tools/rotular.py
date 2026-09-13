@@ -1258,7 +1258,7 @@ class TrainingDialog:
         self.base_model = tk.StringVar(value="")
         self.name_var = tk.StringVar(value="")
         self.iterations = tk.IntVar(value=2000)
-        self.rate = tk.StringVar(value="0.0001")
+        self.rate = tk.StringVar(value="0.001")
         self.extend = tk.BooleanVar(value=True)
         rows = [
             ("Verdade (ground_truth/)", self.gt_var, self._pick_dir),
@@ -1343,7 +1343,7 @@ class TrainingDialog:
             base_model=Path(self.base_model.get()) if self.base_model.get().strip() else None,
             model_name=self.name_var.get().strip(),
             max_iterations=int(self.iterations.get()),
-            learning_rate=float(self.rate.get() or "0.0001"),
+            learning_rate=float(self.rate.get() or "0.001"),
             extend_charset=bool(self.extend.get()),
         )
 

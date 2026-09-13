@@ -153,15 +153,25 @@ então são gerados uma vez só. O `lstmeval` da **base** pula as linhas que ela
 (`Encoding of string failed`) — o CER «antes» é do subconjunto sem figurinas; o «depois» é de
 todas. O relatório diz o tamanho do alfabeto e quais caracteres entraram.
 
-**Verificado em 2026-09-13**, ponta a ponta, com `models/tessdata_best/por.traineddata`
-(float) sobre 40 linhas da p. 10 do Dvoretsky (24 treino, 16 avaliação, 35 figurinas): o
-alfabeto passou a 122 caracteres, 1 048 iterações em 77 s, `caissa_fig.traineddata` gravado
-e carregável (`--tessdata-dir … -l caissa_fig`). **Mas o modelo não aprendeu as figurinas com
-isso**: erro de treino 15 %, CER de avaliação 12,9 %, e `♖a3!` sai `Da3!` — 24 linhas e um
-milhar de iterações não ensinam cinco classes novas a uma LSTM. A rota B é o mecanismo
-pronto; o resultado depende de rotular **dezenas de páginas** de figurinas (centenas de
-amostras por peça) e de milhares de iterações. Até lá, quem resolve figurinas é a rota A
-(§4b), que não precisa de treino.
+**Medido em 2026-09-13** com 724 linhas rotuladas à mão (11 páginas: Dvoretsky & Yusupov
+p9–p18, figurinas; Modern Endgame Manual p5), base `models/tessdata_best/por.traineddata`
+(float), 566 linhas fora da partição cega → 367 treino, 199 avaliação (72 com figurinas,
+136 figurinas). Avaliação por linha, `tesseract --psm 7`, CER por Levenshtein:
+
+| avaliação (199 linhas) | base `por` | lr 1e-4, 3 000 it | **lr 1e-3, 12 000 it** |
+|---|---:|---:|---:|
+| prosa (127 linhas), CER | 0,6 % | 0,3 % | 0,4 % |
+| linhas com figurinas (72), CER | 10,2 % | 8,3 % | **2,0 %** |
+| figurinas emitidas certas (de 136) | 0 | 0 | **122 (90 %)** |
+| por peça | — | — | ♕ 30/30 · ♖ 42/42 · ♘ 40/40 · ♗ 10/11 · **♔ 0/13** |
+
+Duas lições que viraram padrão: (1) a taxa de aprendizado do tesstrain para ajuste fino
+(1e-4) **não ativa classes novas** — com ela o modelo aprendeu a prosa e continuou mudo nas
+figurinas; 1e-3 é o padrão agora; (2) uma peça com poucas amostras não entra: o ♔ teve 29
+linhas no treino e saiu 0/13 (vira ♗ ou nada). O `lstmeval` do relatório (4,5 %) é sobre
+todas as linhas, inclusive as que a base não codifica, por isso é maior que o CER da tabela.
+O modelo está em `models/tessdata/caissa_por.traineddata` (registro em `weights.json`) e é
+o que `bench_sol.py --tessdata-dir models/tessdata --model-prefix caissa` mede.
 
 ### Medir o modelo treinado
 

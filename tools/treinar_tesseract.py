@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--name", default="", help="nome do modelo (padrão caissa_<idioma>)")
     parser.add_argument("--iterations", type=int, default=2000)
-    parser.add_argument("--learning-rate", type=float, default=0.0001)
+    parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument(
         "--tesseract", default=None, help="caminho do tesseract.exe, se não for achado"
     )

@@ -291,7 +291,10 @@ class FineTuneConfig:
     max_iterations: int = 2000
     #: Percent; ``lstmtraining`` stops early when the training error is below it.
     target_error_rate: float = 0.01
-    learning_rate: float = 0.0001
+    #: tesstrain's fine-tune default is 1e-4; measured on 367 labelled lines
+    #: with five new figurine classes, 1e-4 never activated them (0/136 after
+    #: 3000 iterations) and 1e-3 did (108/136 after 7800) — see ROTULAGEM.md §4c.
+    learning_rate: float = 0.001
     #: Held out of ``dev`` for evaluation when the index has no ``calib`` lines.
     eval_share: float = 0.1
     #: Characters the base cannot encode extend its alphabet (figurines);
