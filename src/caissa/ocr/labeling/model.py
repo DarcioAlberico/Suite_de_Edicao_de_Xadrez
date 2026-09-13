@@ -372,6 +372,11 @@ class LabelProject:
     reviewer: str = ""
     #: book (PDF stem) → path of the PDF on this machine.
     documents: dict[str, str] = field(default_factory=dict)
+    #: book → Tesseract language of the book (``eng``, ``por+eng``).  The
+    #: window restores it when the book is selected, so the language a page
+    #: is recognised and labelled with is the book's, not the window's default
+    #: — the manifest's ``prose_lang`` facet comes from it.
+    languages: dict[str, str] = field(default_factory=dict)
     pages: dict[str, PageLabels] = field(default_factory=dict)
     #: Word confidence below which a line is shown as doubtful.
     doubt_threshold: float = 0.85
@@ -387,6 +392,27 @@ class LabelProject:
 
     def pdf_for(self, document: str) -> Path:
         return Path(self.documents[document])
+
+    def set_language(self, document: str, lang: str) -> int:
+        """Record the book's language and re-stamp its labelled pages with it.
+
+        Returns how many pages changed.  The manifest facet (``pt``/``en``)
+        follows the page language, so a page recognised with the window's
+        default ``por+eng`` on an English book is corrected here.
+        """
+        from .recognise import iso_lang
+
+        self.languages[document] = lang
+        iso = iso_lang(lang)
+        changed = 0
+        for page in self.pages_of(document):
+            if page.lang != lang:
+                page.lang = lang
+                changed += 1
+            for region in page.regions:
+                region.prose_lang = iso
+                region.notation_lang = iso
+        return changed
 
     # -- pages ------------------------------------------------------------- #
 
@@ -508,6 +534,7 @@ class LabelProject:
             "name": self.name,
             "reviewer": self.reviewer,
             "documents": dict(self.documents),
+            "languages": dict(self.languages),
             "doubt_threshold": self.doubt_threshold,
             "created_at": self.created_at,
             "saved_at": _now(),
@@ -538,6 +565,7 @@ class LabelProject:
             name=str(data.get("name", "")),
             reviewer=str(data.get("reviewer", "")),
             documents={str(k): str(v) for k, v in data.get("documents", {}).items()},
+            languages={str(k): str(v) for k, v in data.get("languages", {}).items()},
             doubt_threshold=float(data.get("doubt_threshold", 0.85)),
             created_at=str(data.get("created_at", "")),
         )

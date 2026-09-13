@@ -225,6 +225,7 @@ class LabelWindow:
         menu.add_command(label="Fundir no manifesto dourado…", command=self.export_manifest)
         menu.add_command(label="Correções e pares de calibração", command=self.export_corrections)
         menu.add_separator()
+        menu.add_command(label="Idioma do documento = caixa «idioma»", command=self.apply_language)
         menu.add_command(label="Resumo do projeto", command=self.show_summary)
         export["menu"] = menu
         export.pack(side=tk.RIGHT, padx=(0, 6))
@@ -415,6 +416,9 @@ class LabelWindow:
             )
             return
         self.page_total.configure(text=f"/ {total - 1}")
+        remembered = self.project.languages.get(book)
+        if remembered:
+            self.lang_var.set(remembered)
         labelled = self.project.pages_of(book)
         self.go_page(labelled[0].page_index if labelled else 0)
 
@@ -451,6 +455,8 @@ class LabelWindow:
             return
         pdf, book, index = self.project.pdf_for(self.document), self.document, self.page_index
         dpi, lang = int(self.dpi_var.get()), self.lang_var.get()
+        if self.project.languages.get(book) != lang:
+            self.project.set_language(book, lang)
         self._set_status(f"Reconhecendo página {index} a {dpi} DPI ({lang})…")
         service = self._service()
 
@@ -1178,6 +1184,22 @@ class LabelWindow:
             f"{len(rows)} correções e {len(pairs)} linhas de pares gravadas em "
             f"{self.project.root}\n(retidas por região cega: {withheld_lines(self.project)})",
         )
+
+    def apply_language(self) -> None:
+        """Stamp the selected document (and its labelled pages) with the
+        language in the box — for pages recognised under the wrong default."""
+        if self.document is None:
+            return
+        lang = self.lang_var.get().strip()
+        changed = self.project.set_language(self.document, lang)
+        self.project.save()
+        messagebox.showinfo(
+            "Idioma",
+            f"{self.document}: idioma {lang}; {changed} página(s) rotulada(s) re-marcadas "
+            f"(faceta prose_lang = {lang.split('+')[0]}). Refaça «Fundir no manifesto» para "
+            f"o corpus refletir.",
+        )
+        self._refresh_status()
 
     def show_summary(self) -> None:
         summary = self.project.summary()

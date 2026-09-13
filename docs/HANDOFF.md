@@ -242,7 +242,12 @@ de CER/lances medem tipografia sintética. **A ferramenta para isso está pronta
 2026-09-13**: `python tools/rotular.py labeling --pdf <scan.pdf> --reviewer <nome>` (bancada
 Tk, linha a linha, com FEN inicial por região), exportação para o manifesto e ajuste fino do
 Tesseract (`tools/treinar_tesseract.py`, que exige um modelo float de `tessdata_best` —
-`--download-base`); `docs/quality/ROTULAGEM.md` é o guia; (2) instalar um segundo motor (Surya para cirílico)
+`--download-base`); `docs/quality/ROTULAGEM.md` é o guia. **Estado em 2026-09-13 (noite):** 13 páginas
+rotuladas (Dvoretsky SFC4 + Modern Endgame Manual), 256 regiões `pdf-scan` no manifesto
+privado; o leitor de glifos do tronco é candidato da fusão (figurinas `Hea!`→`♖e8!` sem
+treino); o ajuste fino do Tesseract com alfabeto estendido funciona (`caissa_por`: lances nos
+scans 52 % → 94 %) **mas regride fora do livro treinado** — modelo é por idioma/livro, treinar
+o Dvoretsky a partir do `eng`, não do `por`; (2) instalar um segundo motor (Surya para cirílico)
 e rodar `tests/unit/ocr/test_optional_engines.py` como contrato; (3) a janela de revisão sobre
 `caissa.ocr.review.ReviewQueue` quando o shell F9 entrar; (4) `python benchmarks/sol_gate.py
 --blind` só num release.

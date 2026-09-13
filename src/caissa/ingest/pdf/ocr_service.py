@@ -498,6 +498,19 @@ class OcrService:
                         candidates.append(candidate)
             regions.append(self._settle(region_outcome, candidates, task))
 
+        # A page where every region died inside the engine is not "a page
+        # with nothing to read": it is a setup fault (a tessdata folder
+        # without configs, a relative path the engine cannot see) and must
+        # say so, or a whole benchmark abstains in silence.
+        failed = [r for r in regions if r.result.is_empty
+                  and r.candidates and r.candidates[0].result.meta.get("error_detail")]
+        if regions and len(failed) == len(regions):
+            detail = str(failed[0].candidates[0].result.meta["error_detail"]).strip().splitlines()
+            note = (f"todas as {len(regions)} regiões falharam no motor "
+                    f"{failed[0].candidates[0].result.engine}: {detail[0] if detail else '?'}")
+            notes.append(note)
+            self.log.warning("página %d: %s", task.page_index, note)
+
         recognition = PageRecognition(
             page_index=task.page_index, dpi=task.dpi, regions=regions,
             portfolio=portfolio, notes=notes,

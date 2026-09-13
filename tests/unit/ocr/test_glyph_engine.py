@@ -281,3 +281,25 @@ def test_service_skips_the_glyph_reader_on_pure_prose():
     )
     service.recognize_image(inked_page(), dpi=300.0, lang="eng")
     assert glyph.strips_seen == []
+
+
+class FailingRaster(MockRaster):
+    """An engine that is available and dies on every region — a setup fault."""
+
+    def recognize(self, image, *, lang: str, psm_hint: RegionKind) -> OcrResult:
+        from caissa.ocr.types import empty_result
+
+        return empty_result(self.name, lang, region_kind=psm_hint,
+                            warning="O Tesseract terminou com código 1.",
+                            error_detail="Error opening data file models/tessdata/eng.traineddata")
+
+
+def test_a_page_where_every_region_failed_in_the_engine_says_so():
+    service = OcrService([FailingRaster("x")], OcrServiceConfig(use_portfolio=False,
+                                                              movetext_candidates=False,
+                                                              glyph_candidates=False), lang="eng")
+    recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    assert not recognition.answered
+    fault = [n for n in recognition.notes if "falharam" in n]
+    assert fault and "Error opening data file" in fault[0]
+    assert "falharam" in " ".join(recognition.trace()["notes"])

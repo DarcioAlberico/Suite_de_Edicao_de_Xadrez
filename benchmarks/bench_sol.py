@@ -202,6 +202,8 @@ def measure(system: System, item: GoldenItem, stratum: str) -> dict[str, Any] | 
         "decision": answer.get("decision", ""),
         "confidence": round(float(answer.get("confidence", 0.0)), 4),
         "below_threshold": bool(answer.get("below_threshold", False)),
+        #: Page notes that name a setup fault (every region failed in the engine).
+        "faults": [n for n in (answer.get("meta") or {}).get("notes", ()) if "falharam" in n],
     }
     text = answer.get("text")
     if item.is_control:
@@ -380,6 +382,12 @@ def main() -> int:
             if done % 25 == 0 or done == total:
                 elapsed = time.perf_counter() - started
                 print(f"  {done}/{total} em {elapsed:.0f} s")
+
+    answered = sum(1 for r in rows if r.get("answered"))
+    if rows and answered == 0:
+        notes = {n for r in rows for n in r.get("faults", ())}
+        print("  !!! NENHUMA linha respondida: o motor falhou em toda região — isto é um defeito de "
+              "instalação, não uma medição. " + (next(iter(notes)) if notes else ""))
 
     by_facet = {
         facet: {value: summarise_rows(group) for value, group in group_rows(rows, facet).items()}

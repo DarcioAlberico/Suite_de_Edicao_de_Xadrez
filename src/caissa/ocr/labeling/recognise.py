@@ -23,6 +23,7 @@ from .model import LineLabel, PageLabels, RectT, RegionLabel, WordHint
 
 __all__ = [
     "close_documents",
+    "iso_lang",
     "label_page",
     "page_count",
     "page_size",
@@ -309,8 +310,12 @@ def _union(boxes: Any) -> RectT:
     )
 
 
-def _first_lang(lang: str) -> str:
+def iso_lang(lang: str) -> str:
     """``por+eng`` → ``pt``: the manifest's two-letter facet from Tesseract's code."""
+    return _first_lang(lang)
+
+
+def _first_lang(lang: str) -> str:
     code = (lang or "").split("+")[0].strip()
     return _TESS_TO_ISO.get(code, code[:2] if code else "")
 
