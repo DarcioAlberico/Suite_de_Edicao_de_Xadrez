@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import queue
+import re
 import sys
 import threading
 import time
@@ -308,6 +309,24 @@ class LabelWindow:
         self.truth.bind("<Control-Up>", lambda _e: self.step(-1))
         self.truth.bind("<Alt-Key-1>", lambda _e: self._use_alternative(index=0))
         self.truth.bind("<Alt-Key-2>", lambda _e: self._use_alternative(index=1))
+        for key, glyph in FIGURINE_KEYS.items():
+            self.truth.bind(f"<Alt-Key-{key}>", lambda _e, g=glyph: self.insert_figurine(g))
+
+        # The figurine palette: what the truth must carry for the Tesseract
+        # fine-tune to learn ♔♕♖♗♘♙ (its alphabet is extended from the truth).
+        palette = ttk.Frame(right)
+        palette.pack(side=tk.TOP, fill=tk.X)
+        ttk.Label(palette, text="Figurinas:").pack(side=tk.LEFT)
+        for key, glyph in FIGURINE_KEYS.items():
+            ttk.Button(
+                palette,
+                text=f"{glyph} (Alt+{key.upper()})",
+                width=9,
+                command=lambda g=glyph: self.insert_figurine(g),
+            ).pack(side=tk.LEFT, padx=1)
+        ttk.Button(palette, text="Letras → figurinas", command=self.letters_to_figurines).pack(
+            side=tk.LEFT, padx=(8, 0)
+        )
 
         buttons = ttk.Frame(right)
         buttons.pack(side=tk.TOP, fill=tk.X, pady=4)
@@ -940,6 +959,25 @@ class LabelWindow:
             self.truth.insert("1.0", self.current[1].alternatives[index][1])
         return "break"
 
+    def insert_figurine(self, glyph: str) -> str:
+        """Type a figurine at the cursor of the truth field."""
+        self.truth.insert(tk.INSERT, glyph)
+        self.truth.focus_set()
+        return "break"
+
+    def letters_to_figurines(self) -> None:
+        """English piece letters in the truth's move tokens become figurines.
+
+        ``Nf3`` → ``♘f3``, ``22...Bf8`` → ``22...♗f8``; a pawn move, a word
+        or a lone capital is left alone.  Undo with Ctrl+Z.
+        """
+        text = self.truth.get("1.0", tk.END).rstrip("\n")
+        converted = letters_to_figurines(text)
+        if converted != text:
+            self.truth.delete("1.0", tk.END)
+            self.truth.insert("1.0", converted)
+        self.truth.focus_set()
+
     def _on_enter(self, _event: tk.Event) -> str:
         typed = self.truth.get("1.0", tk.END).strip()
         if self.current and typed and typed != self.current[1].hypothesis.strip():
@@ -1157,6 +1195,24 @@ class LabelWindow:
         self.root.destroy()
 
 
+#: Alt+key → figurine, in the truth field and on the palette.
+FIGURINE_KEYS = {"k": "♔", "q": "♕", "r": "♖", "b": "♗", "n": "♘", "p": "♙"}
+_LETTER_TO_FIGURINE = {"K": "♔", "Q": "♕", "R": "♖", "B": "♗", "N": "♘"}
+#: A piece letter that starts a move: optional glued move number before it,
+#: a square (with optional disambiguation and capture) after it.
+_PIECE_MOVE = re.compile(
+    r"(?<![A-Za-z♔-♙])(?P<number>\d{1,3}\.{0,3})?(?P<piece>[KQRBN])"
+    r"(?=[a-h]?[1-8]?x?[a-h][1-8])"
+)
+
+
+def letters_to_figurines(text: str) -> str:
+    """``Nf3`` → ``♘f3`` for every English piece letter that starts a move."""
+    return _PIECE_MOVE.sub(
+        lambda m: (m.group("number") or "") + _LETTER_TO_FIGURINE[m.group("piece")], text
+    )
+
+
 def _fen_problem(fen: str) -> str:
     """Why ``fen`` is not a position, or an empty string when it is."""
     try:
@@ -1203,6 +1259,7 @@ class TrainingDialog:
         self.name_var = tk.StringVar(value="")
         self.iterations = tk.IntVar(value=2000)
         self.rate = tk.StringVar(value="0.0001")
+        self.extend = tk.BooleanVar(value=True)
         rows = [
             ("Verdade (ground_truth/)", self.gt_var, self._pick_dir),
             ("Pasta de saída (tessdata)", self.out_var, self._pick_dir),
@@ -1231,6 +1288,9 @@ class TrainingDialog:
         ).pack(side=tk.LEFT, padx=4)
         ttk.Label(line, text="taxa").pack(side=tk.LEFT)
         ttk.Entry(line, textvariable=self.rate, width=8).pack(side=tk.LEFT, padx=4)
+        ttk.Checkbutton(line, text="estender alfabeto (figurinas)", variable=self.extend).pack(
+            side=tk.LEFT, padx=(8, 0)
+        )
         form.columnconfigure(1, weight=1)
         buttons = ttk.Frame(self.top, padding=(8, 0))
         buttons.pack(side=tk.TOP, fill=tk.X)
@@ -1284,6 +1344,7 @@ class TrainingDialog:
             model_name=self.name_var.get().strip(),
             max_iterations=int(self.iterations.get()),
             learning_rate=float(self.rate.get() or "0.0001"),
+            extend_charset=bool(self.extend.get()),
         )
 
     def _append(self, text: str) -> None:

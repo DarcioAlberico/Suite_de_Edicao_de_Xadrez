@@ -6,9 +6,13 @@ failure names the step and the file, not a Makefile rule:
 1. copy the base ``.traineddata`` into the work directory and unpack it
    (``combine_tessdata -u``): the ``.lstm`` to continue from and the
    ``.lstm-unicharset`` that says which characters the model can emit;
-2. check every ground-truth line against that unicharset — a line with a
-   character the model cannot encode is reported and left out, because
-   ``lstm.train`` would silently drop it;
+2. check every ground-truth line against that unicharset — a character the
+   base cannot encode (a figurine, ``♖``) **extends the alphabet**: the
+   characters of the truth are extracted (``unicharset_extractor``), merged
+   into the base's (``merge_unicharsets``) and sealed into a starter
+   ``.traineddata`` (``combine_lang_model``) that training continues into
+   with ``--old_traineddata``, the way tesstrain adds characters to a
+   model.  With ``extend_charset=False`` such lines are reported and left out;
 3. turn each line image into an ``.lstmf`` (``tesseract … lstm.train``);
 4. split by the partition the ground-truth index carries: ``dev`` trains,
    ``calib`` evaluates (a hashed tenth of ``dev`` when there is no
@@ -108,10 +112,24 @@ class TrainingTools:
     combine_tessdata: str
     lstmeval: str
     tessdata_dir: str
+    #: The three tools that extend an alphabet; empty when not installed,
+    #: in which case a new character is a reported exclusion, not a failure.
+    unicharset_extractor: str = ""
+    merge_unicharsets: str = ""
+    combine_lang_model: str = ""
+
+    @property
+    def can_extend_charset(self) -> bool:
+        return bool(
+            self.unicharset_extractor and self.merge_unicharsets and self.combine_lang_model
+        )
 
     def as_dict(self) -> dict[str, str]:
         return {
             "tesseract": self.tesseract,
+            "unicharset_extractor": self.unicharset_extractor,
+            "merge_unicharsets": self.merge_unicharsets,
+            "combine_lang_model": self.combine_lang_model,
             "lstmtraining": self.lstmtraining,
             "combine_tessdata": self.combine_tessdata,
             "lstmeval": self.lstmeval,
@@ -163,12 +181,17 @@ def find_training_tools(
             "/opt/homebrew/share/tessdata",
         ]
         tessdata_dir = next((c for c in candidates if c and Path(c).is_dir()), "")
+    optional = {
+        name: _sibling(tesseract, name) or ""
+        for name in ("unicharset_extractor", "merge_unicharsets", "combine_lang_model")
+    }
     return TrainingTools(
         tesseract=tesseract,
         lstmtraining=found["lstmtraining"],
         combine_tessdata=found["combine_tessdata"],
         lstmeval=found["lstmeval"],
         tessdata_dir=tessdata_dir or "",
+        **optional,
     )
 
 
@@ -271,6 +294,9 @@ class FineTuneConfig:
     learning_rate: float = 0.0001
     #: Held out of ``dev`` for evaluation when the index has no ``calib`` lines.
     eval_share: float = 0.1
+    #: Characters the base cannot encode extend its alphabet (figurines);
+    #: off, lines carrying them are excluded and listed.
+    extend_charset: bool = True
     workers: int = max(1, min(4, (os.cpu_count() or 2) - 1))
     copy_langs: tuple[str, ...] = COPY_LANGS
     train_timeout_s: float = 6 * 3600.0
@@ -290,6 +316,7 @@ class FineTuneConfig:
             "learning_rate": self.learning_rate,
             "eval_share": self.eval_share,
             "workers": self.workers,
+            "extend_charset": self.extend_charset,
         }
 
 
@@ -309,6 +336,9 @@ class FineTuneReport:
     lines_eval: int = 0
     lines_unencodable: int = 0
     unknown_chars: dict[str, int] = field(default_factory=dict)
+    #: True when the alphabet was extended with ``unknown_chars``.
+    charset_extended: bool = False
+    charset_size: int = 0
     lstmf_failed: int = 0
     iterations: int = 0
     best_train_error: float | None = None
@@ -352,7 +382,16 @@ class FineTuneReport:
             f"| base | {pct(self.cer_before)} | {pct(self.wer_before)} |",
             f"| ajustado | {pct(self.cer_after)} | {pct(self.wer_after)} |",
         ]
-        if self.unknown_chars:
+        if self.unknown_chars and self.charset_extended:
+            rows += [
+                "",
+                f"Caracteres acrescentados ao alfabeto (agora {self.charset_size}): "
+                + ", ".join(
+                    f"`{c}`×{n}"
+                    for c, n in sorted(self.unknown_chars.items(), key=lambda kv: -kv[1])
+                ),
+            ]
+        elif self.unknown_chars:
             rows += [
                 "",
                 "Caracteres fora do unicharset da base (linhas excluídas): "
@@ -461,6 +500,18 @@ def preflight(
                 counts[ch] = counts.get(ch, 0) + 1
         out["unknown_chars"] = dict(sorted(counts.items(), key=lambda kv: -kv[1]))
         out["charset_size"] = len(charset)
+        out["can_extend_charset"] = tools.can_extend_charset
+        if counts and config.extend_charset and tools.can_extend_charset:
+            out["note"] = (
+                f"{len(counts)} caractere(s) novo(s) entram no alfabeto do modelo "
+                f"(unicharset estendido): {' '.join(counts)}"
+            )
+        elif counts:
+            out["note"] = (
+                f"{len(counts)} caractere(s) fora do unicharset da base; as linhas "
+                f"com eles serão excluídas (instale as ferramentas de treino ou "
+                f"use --extend-charset)."
+            )
     if out.get("looks_integer"):
         out["warning"] = (
             f"{base.name} parece um modelo inteiro (tessdata_fast): o ajuste fino "
@@ -474,13 +525,16 @@ def preflight(
 # The trainer
 # --------------------------------------------------------------------------- #
 
+#: Tesseract 5.3 prints ``char train=``; 5.5 prints ``BCER train=``.
 _PROGRESS = re.compile(
     r"At iteration (\d+)/(\d+)/(\d+), mean rms=([\d.]+)%, delta=([\d.]+)%, "
-    r"char train=([\d.]+)%, word train=([\d.]+)%"
+    r"(?:char|BCER) train=([\d.]+)%, (?:word|BWER) train=([\d.]+)%"
 )
 _BEST = re.compile(r"New best BCER = ([\d.]+)")
 _FINISHED = re.compile(r"minimal training error rate \(BCER\) = ([\d.]+)")
 _EVAL = re.compile(r"Char error rate=([\d.]+), Word error rate=([\d.]+)")
+_EVAL_BCER = re.compile(r"BCER eval=([\d.]+), BWER eval=([\d.]+)")
+_PUNCT_RUN = re.compile(r"[.,;:!?()\[\]\"'+#=/-]+")
 _EVAL_ITER = re.compile(r"Eval Char error rate=([\d.]+), Word error rate=([\d.]+)")
 
 
@@ -630,16 +684,23 @@ class TesseractFineTuner:
         charset = read_unicharset(unicharset)
         counts: dict[str, int] = {}
         keep: list[dict[str, Any]] = []
+        extend = self.config.extend_charset and self.tools.can_extend_charset
         for row in rows:
             text = (self.gt_dir / f"{row['name']}.gt.txt").read_text("utf-8").strip("\n")
             unknown = unknown_characters(text, charset)
             if unknown:
                 for ch in unknown:
                     counts[ch] = counts.get(ch, 0) + 1
-                self.report.lines_unencodable += 1
-                continue
+                if not extend:
+                    self.report.lines_unencodable += 1
+                    continue
             keep.append(row)
         self.report.unknown_chars = dict(sorted(counts.items(), key=lambda kv: -kv[1]))
+        if counts and self.config.extend_charset and not self.tools.can_extend_charset:
+            self.log(
+                "aviso: unicharset_extractor/merge_unicharsets/combine_lang_model não instalados; "
+                "as linhas com caracteres novos foram excluídas."
+            )
         train = [r["name"] for r in keep if str(r.get("partition", "dev")) == "dev"]
         evaluate = [r["name"] for r in keep if str(r.get("partition", "dev")) == "calib"]
         if not evaluate and train:
@@ -712,7 +773,95 @@ class TesseractFineTuner:
                     self._progress({"lstmf": n, "lstmf_total": len(names)})
         return done
 
-    def train(self, lstm: Path, traineddata: Path, train_list: Path, eval_list: Path) -> Path:
+    def extend_unicharset(self, base_unicharset: Path, names: Sequence[str]) -> Path:
+        """A starter ``.traineddata`` with the base's alphabet plus the truth's.
+
+        It is what ``lstmtraining --old_traineddata`` continues into.
+
+        Returns the new traineddata.  ``combine_lang_model`` insists on a
+        ``radical-stroke.txt`` in its script directory even for a Latin
+        alphabet; an empty table satisfies it, and nothing is downloaded.
+        The word list is the truth's own vocabulary (tesstrain does the same).
+        """
+        tools = self.tools
+        work = self.work / "charset"
+        work.mkdir(exist_ok=True)
+        texts = [(self.gt_dir / f"{n}.gt.txt").read_text("utf-8").strip("\r\n") for n in names]
+        all_gt = work / "all-gt.txt"
+        all_gt.write_text("\n".join(texts) + "\n", encoding="utf-8")
+        # The three lists combine_lang_model turns into DAWGs — the truth's
+        # own words, numbers and punctuation runs, as tesstrain derives them.
+        # It refuses a word list without a punctuation list.
+        tokens = [w for t in texts for w in t.split()]
+        words = sorted({w for w in tokens if any(c.isalpha() for c in w)})
+        numbers = sorted({w for w in tokens if any(c.isdigit() for c in w)})
+        puncs = sorted(set(_PUNCT_RUN.findall("\n".join(texts)))) or ["."]
+        for name, rows in (("words", words), ("numbers", numbers), ("puncs", puncs)):
+            (work / f"{name}.txt").write_bytes(("\n".join(rows) + "\n").encode("utf-8"))
+        extracted = work / "gt.unicharset"
+        code = self._run(
+            [
+                tools.unicharset_extractor,
+                "--output_unicharset",
+                str(extracted),
+                "--norm_mode",
+                "2",
+                str(all_gt),
+            ]
+        )
+        if code != 0 or not extracted.is_file():
+            raise RuntimeError(f"unicharset_extractor falhou (código {code})")
+        merged = work / "merged.unicharset"
+        code = self._run(
+            [tools.merge_unicharsets, str(base_unicharset), str(extracted), str(merged)]
+        )
+        if code != 0 or not merged.is_file():
+            raise RuntimeError(f"merge_unicharsets falhou (código {code})")
+        script_dir = work / "script"
+        script_dir.mkdir(exist_ok=True)
+        # Bytes, not text: a Windows ``\r\n`` here is "invalid format at line 0".
+        (script_dir / "radical-stroke.txt").write_bytes(b"\n")
+        starter_dir = work / "starter"
+        starter_dir.mkdir(exist_ok=True)
+        code = self._run(
+            [
+                tools.combine_lang_model,
+                "--input_unicharset",
+                str(merged),
+                "--script_dir",
+                str(script_dir),
+                "--words",
+                str(work / "words.txt"),
+                "--numbers",
+                str(work / "numbers.txt"),
+                "--puncs",
+                str(work / "puncs.txt"),
+                "--output_dir",
+                str(starter_dir),
+                "--lang",
+                self.config.name,
+            ]
+        )
+        starter = starter_dir / self.config.name / f"{self.config.name}.traineddata"
+        if code != 0 or not starter.is_file():
+            raise RuntimeError(f"combine_lang_model falhou (código {code}); veja o log")
+        self.report.charset_extended = True
+        self.report.charset_size = len(read_unicharset(merged))
+        self.log(
+            f"alfabeto estendido: {self.report.charset_size} caracteres, "
+            f"novos: {' '.join(self.report.unknown_chars)}"
+        )
+        return starter
+
+    def train(
+        self,
+        lstm: Path,
+        traineddata: Path,
+        train_list: Path,
+        eval_list: Path,
+        *,
+        old_traineddata: Path | None = None,
+    ) -> Path:
         cfg = self.config
         prefix = self.work / cfg.name
         cmd = [
@@ -736,6 +885,10 @@ class TesseractFineTuner:
         ]
         if eval_list.is_file() and eval_list.read_text("utf-8").strip():
             cmd += ["--eval_listfile", str(eval_list)]
+        if old_traineddata is not None:
+            # The network's output layer is remapped from the old alphabet to
+            # the new one; the rest of the weights continue as they were.
+            cmd += ["--old_traineddata", str(old_traineddata)]
         output: list[str] = []
         code = self._run(cmd, capture=output, timeout_s=cfg.train_timeout_s)
         checkpoint = Path(f"{prefix}_checkpoint")
@@ -871,14 +1024,29 @@ class TesseractFineTuner:
                 raise RuntimeError("nenhum .lstmf gerado; veja o log")
             train_list = self.work / "list.train"
             eval_list = self.work / "list.eval"
-            train_list.write_text("\n".join(train_files) + "\n", encoding="utf-8")
-            eval_list.write_text(
-                "\n".join(eval_files) + ("\n" if eval_files else ""), encoding="utf-8"
+            # Bytes: a Windows text write would end each path in "\r", and
+            # lstmtraining then reports "Deserialize header failed" per file.
+            train_list.write_bytes(("\n".join(train_files) + "\n").encode("utf-8"))
+            eval_list.write_bytes(
+                ("\n".join(eval_files) + ("\n" if eval_files else "")).encode("utf-8")
             )
             if self.cancelled:
                 raise RuntimeError("cancelado antes do treino")
-            checkpoint = self.train(lstm, traineddata, train_list, eval_list)
-            model = self.finalize(checkpoint, traineddata)
+            starter: Path | None = None
+            if (
+                self.report.unknown_chars
+                and self.config.extend_charset
+                and self.tools.can_extend_charset
+            ):
+                starter = self.extend_unicharset(unicharset, [*train_names, *eval_names])
+            checkpoint = self.train(
+                lstm,
+                starter or traineddata,
+                train_list,
+                eval_list,
+                old_traineddata=traineddata if starter else None,
+            )
+            model = self.finalize(checkpoint, starter or traineddata)
             self.evaluate(eval_list, base_lstm=lstm, traineddata=traineddata, model=model)
             self.copy_languages()
             self.report.finished_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -948,7 +1116,7 @@ def _image_size(image: Path) -> tuple[int, int]:
 
 def _parse_eval(lines: Sequence[str]) -> tuple[float | None, float | None]:
     for line in reversed(lines):
-        match = _EVAL_ITER.search(line) or _EVAL.search(line)
+        match = _EVAL_ITER.search(line) or _EVAL.search(line) or _EVAL_BCER.search(line)
         if match:
             return float(match.group(1)), float(match.group(2))
     return None, None

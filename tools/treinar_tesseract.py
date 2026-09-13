@@ -65,6 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--preflight", action="store_true", help="só verificar, não treinar")
     parser.add_argument(
+        "--no-extend-charset",
+        action="store_true",
+        help="não acrescentar ao alfabeto os caracteres que a base não codifica (figurinas): "
+        "as linhas com eles ficam de fora",
+    )
+    parser.add_argument(
         "--download-base",
         action="store_true",
         help=f"baixar tessdata_best/<idioma>.traineddata para {BEST_DIR} e usá-lo como base",
@@ -96,6 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         model_name=args.name,
         max_iterations=args.iterations,
         learning_rate=args.learning_rate,
+        extend_charset=not args.no_extend_charset,
     )
     info = preflight(gt_dir, config, tools)
     print(json.dumps(info, ensure_ascii=False, indent=1))

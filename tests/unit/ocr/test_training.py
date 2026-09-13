@@ -59,17 +59,27 @@ def test_parse_eval_reads_the_last_rates():
     assert _parse_eval(["nothing"]) == (None, None)
 
 
-def _tools(tmp_path: Path) -> TrainingTools:
+def _tools(tmp_path: Path, *, charset_tools: bool = False) -> TrainingTools:
     tessdata = tmp_path / "tessdata"
     tessdata.mkdir()
     (tessdata / "por.traineddata").write_bytes(b"base" * 1000)
     (tessdata / "eng.traineddata").write_bytes(b"eng")
+    extra = (
+        {
+            "unicharset_extractor": "unicharset_extractor",
+            "merge_unicharsets": "merge_unicharsets",
+            "combine_lang_model": "combine_lang_model",
+        }
+        if charset_tools
+        else {}
+    )
     return TrainingTools(
         tesseract="tesseract",
         lstmtraining="lstmtraining",
         combine_tessdata="combine_tessdata",
         lstmeval="lstmeval",
         tessdata_dir=str(tessdata),
+        **extra,
     )
 
 
@@ -97,7 +107,7 @@ class FakeTools:
         self.calls: list[list[str]] = []
         self.integer_model = integer_model
 
-    def __call__(self, cmd, on_line, timeout_s=None) -> int:  # noqa: PLR0911 - one branch per tool
+    def __call__(self, cmd, on_line, timeout_s=None) -> int:  # noqa: PLR0911, PLR0912 - one branch per tool
         cmd = list(cmd)
         self.calls.append(cmd)
         tool = Path(cmd[0]).name
@@ -132,6 +142,34 @@ class FakeTools:
             )
             on_line("Finished! Selected model with minimal training error rate (BCER) = 4.25")
             Path(cmd[cmd.index("--model_output") + 1] + "_checkpoint").write_bytes(b"ckpt")
+            return 0
+        if tool == "unicharset_extractor":
+            text = Path(cmd[-1]).read_text("utf-8")
+            chars = sorted({c for c in text if not c.isspace()})
+            Path(cmd[cmd.index("--output_unicharset") + 1]).write_text(
+                f"{len(chars) + 1}\nNULL 0 NULL 0\n" + "".join(f"{c} 0 Common 0\n" for c in chars),
+                encoding="utf-8",
+            )
+            return 0
+        if tool == "merge_unicharsets":
+            base, extra, out = (Path(c) for c in cmd[1:4])
+            seen: list[str] = []
+            for src in (base, extra):
+                for line in src.read_text("utf-8").splitlines()[1:]:
+                    if line and line not in seen:
+                        seen.append(line)
+            out.write_text(f"{len(seen)}\n" + "\n".join(seen) + "\n", encoding="utf-8")
+            return 0
+        if tool == "combine_lang_model":
+            assert (
+                Path(cmd[cmd.index("--script_dir") + 1]) / "radical-stroke.txt"
+            ).read_bytes() == b"\n"
+            for flag in ("--words", "--puncs", "--numbers"):
+                assert Path(cmd[cmd.index(flag) + 1]).read_bytes().strip()
+            lang = cmd[cmd.index("--lang") + 1]
+            target = Path(cmd[cmd.index("--output_dir") + 1]) / lang
+            target.mkdir(parents=True, exist_ok=True)
+            (target / f"{lang}.traineddata").write_bytes(b"starter")
             return 0
         if tool == "lstmeval":
             base = "--traineddata" in cmd
@@ -198,6 +236,55 @@ def test_fine_tune_runs_the_pipeline_and_reports(tmp_path: Path):
         (tmp_path / "out" / "report.md").read_text("utf-8").startswith("# Ajuste fino — caissa_por")
     )
     assert any("iteration" in p for p in progress)
+
+
+def test_new_characters_extend_the_alphabet_when_the_tools_exist(tmp_path: Path):
+    fake = FakeTools()
+    tuner = TesseractFineTuner(
+        _gt(tmp_path),
+        tmp_path / "out",
+        FineTuneConfig(max_iterations=100),
+        tools=_tools(tmp_path, charset_tools=True),
+        runner=fake,
+    )
+    report = tuner.run()
+    assert report.status == "trained", report.failure
+    assert report.charset_extended
+    assert report.unknown_chars == {"♘": 1}
+    assert report.lines_unencodable == 0, "the ♘ line trains instead of being dropped"
+    assert report.lines_train == 3
+    assert report.charset_size == 6, "a b 1 . space + ♘"
+    tools_used = [Path(c[0]).name for c in fake.calls if c[-1] != "--version"]
+    assert tools_used[5:9] == [
+        "unicharset_extractor",
+        "merge_unicharsets",
+        "combine_lang_model",
+        "lstmtraining",
+    ]
+    train_cmd = next(c for c in fake.calls if "--train_listfile" in c)
+    assert "--old_traineddata" in train_cmd
+    assert train_cmd[train_cmd.index("--traineddata") + 1].endswith("caissa_por.traineddata")
+    assert train_cmd[train_cmd.index("--old_traineddata") + 1].endswith("por.traineddata")
+    stop_cmd = next(c for c in fake.calls if "--stop_training" in c)
+    assert stop_cmd[stop_cmd.index("--traineddata") + 1].endswith("caissa_por.traineddata")
+    charset = tmp_path / "out" / "work" / "charset"
+    assert "♘" in (charset / "gt.unicharset").read_text("utf-8")
+    assert "ab" in (charset / "words.txt").read_text("utf-8").split()
+    assert "acrescentados ao alfabeto" in (tmp_path / "out" / "report.md").read_text("utf-8")
+
+
+def test_extension_can_be_switched_off(tmp_path: Path):
+    tuner = TesseractFineTuner(
+        _gt(tmp_path),
+        tmp_path / "out",
+        FineTuneConfig(max_iterations=100, extend_charset=False),
+        tools=_tools(tmp_path, charset_tools=True),
+        runner=FakeTools(),
+    )
+    report = tuner.run()
+    assert report.status == "trained"
+    assert not report.charset_extended
+    assert report.lines_unencodable == 1
 
 
 def test_integer_base_model_is_refused_with_the_download_hint(tmp_path: Path):

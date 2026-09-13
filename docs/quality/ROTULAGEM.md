@@ -104,8 +104,9 @@ Passos (`caissa.ocr.training.tesseract_finetune`), cada um nomeado no log:
 1. copia a base para `work/` e desempacota (`combine_tessdata -u`) — `.lstm` para continuar
    e `.lstm-unicharset` com os caracteres que o modelo sabe emitir; copia `configs/`
    também, porque `--tessdata-dir` decide onde `lstm.train` é procurado;
-2. confere cada linha contra o unicharset; linha com caractere que a base não codifica
-   (`♘`, por exemplo) é **excluída e listada** no relatório;
+2. confere cada linha contra o unicharset; um caractere que a base não codifica (`♖`,
+   por exemplo) **estende o alfabeto** — ver §4c; com `--no-extend-charset` a linha é
+   excluída e listada;
 3. gera um `.lstmf` por linha (`tesseract <png> <base> --psm 13 lstm.train`), com o `.box`
    `WordStr` ao lado da imagem — é de lá que o Tesseract lê a verdade;
 4. divide pela partição do `index.jsonl`: **dev treina, calib avalia** (sem calib, um
@@ -125,6 +126,42 @@ rápido e **não aceitam ajuste fino** — o `lstmtraining` responde
 traduzida. O preflight avisa antes (tamanho do `.lstm`). É preciso o modelo float de
 `tessdata_best` (Apache-2.0): `--download-base` ou o botão «Baixar base» o buscam de
 `github.com/tesseract-ocr/tessdata_best` para `models/tessdata_best/`, com hash gravado.
+
+### 4c. Rota B — o Tesseract aprende as figurinas
+
+O caminho «FineReader» de verdade: o modelo passa a **emitir** ♔♕♖♗♘♙. Para isso a verdade
+precisa contê-los — a janela tem a **paleta de figurinas** (botões e `Alt+K/Q/R/B/N/P` no
+campo Verdade) e o botão **Letras → figurinas**, que converte `Nf3`→`♘f3`, `22...Bf8`→`22...♗f8`
+nos tokens de lance do campo (peão, palavra e maiúscula solta ficam como estão; Ctrl+Z desfaz).
+Com o leitor de glifos ligado (§4b) a hipótese já costuma vir com as figurinas; basta aceitar.
+
+No treinador (`extend_charset=True`, padrão; caixa «estender alfabeto» no diálogo), um
+caractere fora do unicharset da base dispara o que o tesstrain faz para acrescentar
+caracteres a um modelo:
+
+1. `unicharset_extractor --norm_mode 2` sobre a verdade → `gt.unicharset`;
+2. `merge_unicharsets base.lstm-unicharset gt.unicharset merged.unicharset`;
+3. `combine_lang_model` → `.traineddata` inicial com o alfabeto novo (listas de palavras,
+   números e pontuação tiradas da própria verdade; o `radical-stroke.txt` que ele exige mesmo
+   para latim é uma tabela vazia — nada é baixado);
+4. `lstmtraining --continue_from base.lstm --old_traineddata base.traineddata
+   --traineddata inicial.traineddata`: a camada de saída é remapeada para o alfabeto novo
+   (`Code range changed from 119 to 124`), o resto dos pesos continua.
+
+Os `.lstmf` não dependem do alfabeto (guardam o texto; a codificação acontece no treino),
+então são gerados uma vez só. O `lstmeval` da **base** pula as linhas que ela não codifica
+(`Encoding of string failed`) — o CER «antes» é do subconjunto sem figurinas; o «depois» é de
+todas. O relatório diz o tamanho do alfabeto e quais caracteres entraram.
+
+**Verificado em 2026-09-13**, ponta a ponta, com `models/tessdata_best/por.traineddata`
+(float) sobre 40 linhas da p. 10 do Dvoretsky (24 treino, 16 avaliação, 35 figurinas): o
+alfabeto passou a 122 caracteres, 1 048 iterações em 77 s, `caissa_fig.traineddata` gravado
+e carregável (`--tessdata-dir … -l caissa_fig`). **Mas o modelo não aprendeu as figurinas com
+isso**: erro de treino 15 %, CER de avaliação 12,9 %, e `♖a3!` sai `Da3!` — 24 linhas e um
+milhar de iterações não ensinam cinco classes novas a uma LSTM. A rota B é o mecanismo
+pronto; o resultado depende de rotular **dezenas de páginas** de figurinas (centenas de
+amostras por peça) e de milhares de iterações. Até lá, quem resolve figurinas é a rota A
+(§4b), que não precisa de treino.
 
 ### Medir o modelo treinado
 
@@ -162,8 +199,7 @@ indisponível com uma frase e nada muda.
 
 Isso **não treina** nada: o rótulo humano continua sendo a verdade, mas a hipótese que o
 revisor vê já vem com ♖e8!, e é isso que entra no `.gt.txt` quando ele aceita — o que, por
-sua vez, é o que permitiria a rota B (ensinar o próprio Tesseract as figurinas com unicharset
-estendido), ainda não feita.
+sua vez, alimenta a rota B (§4c).
 
 ## 5. O que foi verificado em 2026-09-13
 
