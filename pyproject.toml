@@ -314,6 +314,12 @@ warn_unused_ignores = true
 module = ["torch.*", "onnxruntime.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# The ChessVisionOFF trunk is reached by path (caissa.vision.classify.cvoff),
+# never installed: its modules have no stubs mypy can see.
+module = ["chess_diagram_ocr.*"]
+ignore_missing_imports = true
+
 # --------------------------------------------------------------------------- #
 # pytest
 # --------------------------------------------------------------------------- #

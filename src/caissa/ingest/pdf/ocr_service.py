@@ -102,6 +102,11 @@ class OcrServiceConfig:
     #: movetext profile and its strict (whitelisted) profile as extra
     #: candidates for fusion.  The strict one is never the sole reading.
     movetext_candidates: bool = True
+    #: The trunk's glyph classifier as a second opinion on regions that read
+    #: as movetext (:mod:`caissa.ocr.engines.glyph`): it reads figurines
+    #: (``♖e8!``) where a line engine returns Latin look-alikes (``Hea!``),
+    #: and the fusion swaps only the tokens that were not words or moves.
+    glyph_candidates: bool = True
     page: PageConfig = field(default_factory=PageConfig)
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
@@ -156,10 +161,13 @@ class Candidate:
     decision: RegionDecision
     score: float
     outcome: ArbitrationOutcome
+    #: A second opinion (the figurine reader): it supplies alternatives to
+    #: the fusion and never becomes the region's reading by itself.
+    secondary: bool = False
 
     @property
-    def rank(self) -> tuple[int, float]:
-        return _DECISION_RANK[self.decision.decision], self.score
+    def rank(self) -> tuple[int, int, float]:
+        return (0 if self.secondary else 1), _DECISION_RANK[self.decision.decision], self.score
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,11 +348,15 @@ class OcrService:
     def __init__(self, engines: Sequence[OcrEngine] | None = None,
                  config: OcrServiceConfig | None = None, *,
                  lang: str = "",
-                 logger: logging.Logger | None = None) -> None:
+                 logger: logging.Logger | None = None,
+                 glyph_engine: OcrEngine | None = None) -> None:
         self.config = config or OcrServiceConfig()
         self.log = logger or LOGGER
         self.lang = lang or self.config.default_lang
         self._engines: list[OcrEngine] | None = list(engines) if engines is not None else None
+        #: The figurine reader; built on first use unless injected (tests).
+        self._glyph_engine: OcrEngine | None = glyph_engine
+        self._glyph_probed = glyph_engine is not None
         self._recognizers: dict[str, PageRecognizer] = {}
         self.last: PageRecognition | None = None
         #: Set by the importer before each page: diagrams and notation locale.
@@ -475,6 +487,8 @@ class OcrService:
             candidates = [base]
             if cfg.movetext_candidates:
                 candidates.extend(self._profile_candidates(recognizer, region_outcome, task))
+            if cfg.glyph_candidates:
+                candidates.extend(self._glyph_candidates(recognizer, region_outcome, task))
             if self._wants_variants(region_outcome):
                 if portfolio is None:
                     portfolio = self._portfolio(image, int(task.dpi), notes)
@@ -621,6 +635,76 @@ class OcrService:
                                  decision=decision, score=score, outcome=arbitration))
         return out
 
+    def glyph_engine(self) -> OcrEngine | None:
+        """The trunk's glyph reader when this machine has it, else ``None``.
+
+        Probed once per service; its absence is logged once, not per page.
+        """
+        if not self._glyph_probed:
+            self._glyph_probed = True
+            from caissa.ocr.engines.glyph import default_glyph_engine
+
+            engine = default_glyph_engine()
+            if engine.available():
+                self._glyph_engine = engine
+            else:
+                self.log.info("leitor de figurinas indisponível: %s", engine.unavailable_reason())
+        return self._glyph_engine
+
+    def _glyph_candidates(self, recognizer: PageRecognizer,  # noqa: PLR0911 - each return is a reason not to run
+                          region_outcome: RegionOutcome, task: PageTask) -> list[Candidate]:
+        """The glyph classifier's reading of a movetext-like region.
+
+        One more candidate for the fusion, only where notation is: the
+        engine is a figurine reader, and its prose is worse than Tesseract's.
+        """
+        from caissa.ocr.decision import decide
+        from caissa.ocr.lexicon import normalise_lang
+
+        arbitration = region_outcome.outcome
+        result = arbitration.result
+        region = region_outcome.region
+        if result.is_empty or task.image is None:
+            return []
+        if not (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
+                or _carries_notation(result)):
+            return []
+        engine = self.glyph_engine()
+        if engine is None:
+            return []
+        box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        h, w = task.image.shape[:2]
+        x, y, cw, ch = box_px.clipped_to(BBox(0.0, 0.0, float(w), float(h))).to_int_tuple()
+        if cw <= 0 or ch <= 0:
+            return []
+        crop = task.image[y:y + ch, x:x + cw]
+        # One strip per line the anchor already found: the glyph reader then
+        # never merges two columns into one line, and the fusion pairs lines
+        # one to one.  Strips are in crop pixels.
+        strips = [line.box.translated(-float(x), -float(y)) for line in result.lines if line.words]
+        try:
+            read_lines = getattr(engine, "recognize_lines", None)
+            if read_lines is not None and strips:
+                reading = read_lines(crop, strips, lang=task.lang, psm_hint=RegionKind.MOVETEXT)
+            else:
+                reading = engine.recognize(crop, lang=task.lang, psm_hint=RegionKind.MOVETEXT)
+        except Exception as exc:  # noqa: BLE001 - an extra candidate must never fail the page
+            self.log.debug("leitor de figurinas falhou: %s", exc)
+            return []
+        if reading.is_empty:
+            return []
+        reading = _translate(reading, float(x), float(y)).with_meta(variant="glyph")
+        threshold = float(result.meta.get("arbiter_threshold", 0.78))
+        score = recognizer.arbiter.score(
+            reading, level=1, lang=task.lang,
+            task=RegionTask(image=crop, region_kind=RegionKind.MOVETEXT, lang=task.lang,
+                            scale=task.scale)).total
+        decision = decide(reading, score, policy=recognizer.config.arbiter.policy,
+                          image=task.image, langs=normalise_lang(task.lang),
+                          region_kind=RegionKind.MOVETEXT, accept_threshold=threshold)
+        return [Candidate(variant="glyph", engine=reading.engine, result=reading,
+                          decision=decision, score=score, outcome=arbitration, secondary=True)]
+
     def _settle(self, region_outcome: RegionOutcome, candidates: list[Candidate],
                 task: PageTask) -> RegionRecognition:
         """Pick the best candidate, fuse, validate, and record everything."""
@@ -633,7 +717,8 @@ class OcrService:
 
                 fused = fuse_candidates(
                     [(c.result, c.score, c.decision) for c in candidates],
-                    lang=task.lang, image=task.image if task.pdf_page is None else None)
+                    lang=task.lang, image=task.image if task.pdf_page is None else None,
+                    never_anchor=frozenset(c.result.engine for c in candidates if c.secondary))
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
             except ImportError:
@@ -731,6 +816,25 @@ def _looks_like_movetext(result: OcrResult) -> bool:
     if len(tokens) < 6:
         return False
     return sum(1 for t in tokens if is_move_token(t)) >= 0.5 * len(tokens)
+
+
+def _carries_notation(result: OcrResult, *, many: int = 4, min_share: float = 0.2) -> bool:
+    """Whether a region has enough notation in it to be worth a figurine reading.
+
+    Looser than :func:`_looks_like_movetext` on purpose: with figurines
+    read as Latin look-alikes (``Hea!``) no token *is* a move yet, so the
+    test counts what survives the cipher — move numbers, squares, marks —
+    and a page mixing prose and moves passes while pure prose does not.
+    """
+    from caissa.ocr.lexicon import is_chess_notation, tokenize
+
+    tokens = tokenize(result.text)
+    if not tokens:
+        return False
+    notation = sum(1 for t in tokens if is_chess_notation(t))
+    # A short region of moves (``36... Hea!``) passes on share; a long
+    # prose region with a few move numbers passes on count.
+    return notation >= 1 and (notation / len(tokens) >= min_share or notation >= many)
 
 
 _DEFAULT: OcrService | None = None

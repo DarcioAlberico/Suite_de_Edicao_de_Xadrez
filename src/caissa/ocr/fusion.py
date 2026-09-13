@@ -33,6 +33,12 @@ The method is deliberately conservative, in the order the rules apply:
    Among such alternatives the choice weighs word confidence, source score
    and the small, specific preferences: diacritics the language uses,
    punctuation the others confirm, a kept line-end hyphen.
+   One exception is specific and visual: a **figurine** read by a glyph
+   source (``♖e8!``) replaces an anchor token that is the same move with
+   a Latin look-alike in front (``Hea!``, ``2h6``, ``De2``), because that
+   is the substitution cipher of :mod:`caissa.ocr.notation.cipher` with
+   the evidence in hand instead of inferred.  Glyph sources never anchor
+   and never decide punctuation or case (``36...`` stays ``36...``).
 5. **Trust is not overridden downwards.**  When the anchor is the PDF text
    layer with an accepted verdict, its tokens are never replaced; the
    others only supply alternatives for the reviewer.
@@ -51,6 +57,7 @@ a reading-order question and happens after layout, not here.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -66,6 +73,12 @@ from .types import BBox, OcrLine, OcrResult, OcrWord
 __all__ = ["FusedRegion", "FusedToken", "FusionConfig", "fuse_candidates"]
 
 _TRUSTED_ENGINES = frozenset({"pdf_text_layer"})
+_FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
+_MARKS = ".,;:!?+#"
+#: A move number glued to a move: digits then dots or a space.  A bare
+#: digit before a square (``2d5``) is not a number — it is what a line engine
+#: makes of ♗.
+_NUMBER_PREFIX = re.compile(r"^(\d{1,3})(?:\.{1,3}|\s)")
 _DIACRITIC_LANGS = frozenset({"por", "spa", "deu", "fra", "ita", "nld", "ron"})
 
 
@@ -87,6 +100,11 @@ class FusionConfig:
     #: An anchor token at or above this confidence is kept even without
     #: lexical support (a rare name, a foreign word).
     anchor_trust_confidence: float = 0.90
+    #: A figurine reading from a glyph source replaces the anchor's Latin
+    #: look-alike only at or above this word confidence — the minimum over
+    #: its glyphs, a trailing comma included, which is why it sits below the
+    #: anchor trust level: the anchor already agrees on the square.
+    figurine_min_confidence: float = 0.70
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,14 +222,23 @@ def _pair_words(anchor: OcrLine, other: OcrLine, cfg: FusionConfig) -> dict[int,
 
 def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]], *,
                     lang: str = "", image: NDArray[np.uint8] | None = None,
-                    config: FusionConfig | None = None) -> FusedRegion | None:
-    """Fuse the candidates of one region.  ``None`` when there is nothing to fuse."""
+                    config: FusionConfig | None = None,
+                    never_anchor: frozenset[str] = frozenset()) -> FusedRegion | None:
+    """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
+
+    ``never_anchor`` names engines that only ever supply alternatives — the
+    figurine reader, whose prose is worse than the line engines' and whose
+    value is the tokens the anchor could not read.
+    """
     cfg = config or FusionConfig()
     usable = [(r, s, d) for r, s, d in candidates if r.lines and r.text.strip()]
     if len(usable) < 2:
         return None
     rank = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 0}
-    usable.sort(key=lambda c: (rank[c[2].decision], c[1]), reverse=True)
+    usable.sort(key=lambda c: (c[0].engine not in never_anchor, rank[c[2].decision], c[1]),
+                reverse=True)
+    if usable[0][0].engine in never_anchor:
+        return None
     anchor_result, anchor_score, anchor_decision = usable[0]
     anchor_name = _source_of(anchor_result)
     trusted = (anchor_result.engine in _TRUSTED_ENGINES
@@ -240,6 +267,7 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
                 slots[slot_index[(li, wi)]].append(
                     Reading(name, other_word.text, other_word.confidence, other_word.box))
 
+    secondary = frozenset(_source_of(r) for r, _, _ in usable if r.engine in never_anchor)
     tokens: list[FusedToken] = []
     changed = 0
     disputed = 0
@@ -247,7 +275,8 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
         line = anchor_result.lines[li]
         at_line_end = word is line.words[-1]
         chosen, alternative, is_disputed = _choose(
-            readings, cfg, source_scores, langs, diacritic_lang, at_line_end, trusted)
+            readings, cfg, source_scores, langs, diacritic_lang, at_line_end, trusted,
+            secondary=secondary)
         agreeing = [r for r in readings if _fold(r.text) == _fold(chosen.text)]
         confidence = max(r.confidence for r in agreeing)
         if len(agreeing) > 1:
@@ -298,17 +327,69 @@ def _supported(text: str, langs: tuple[str, ...]) -> bool:
     return bool(judged) and hit > 0
 
 
+def _figurine_fix(anchor: str, other: str) -> bool:
+    """``other`` is ``anchor`` with a figurine where a Latin look-alike was.
+
+    The cipher shape: same move after the first character (one misread
+    digit or letter tolerated, ``Hea!`` → ``♖e8!``), the alternative a move
+    token, and the anchor *not* already a figurine.
+    """
+    # ``22...♗f8`` and ``22...28``: a move number glued to the move is the
+    # same cipher one prefix later.  Both must carry the same prefix.
+    prefix_a = _NUMBER_PREFIX.match(anchor)
+    prefix_b = _NUMBER_PREFIX.match(other)
+    if (prefix_a is None) != (prefix_b is None):
+        return False
+    if prefix_a is not None and prefix_b is not None:
+        if prefix_a.group(1) != prefix_b.group(1):
+            return False
+        anchor, other = anchor[prefix_a.end():], other[prefix_b.end():]
+    if not other or other[0] not in _FIGURINES or not anchor or anchor[0] in _FIGURINES:
+        return False
+    if anchor[0] in "abcdefgh":
+        # A pawn move (``e4``) is not a cipher: the look-alikes of figurines
+        # are capitals, symbols and digits, never a file letter.
+        return False
+    if not is_move_token(other.strip(_MARKS)) or len(anchor) < 2:
+        return False
+    tail_a = anchor[1:].rstrip(_MARKS)
+    tail_b = other[1:].rstrip(_MARKS)
+    if not tail_b or abs(len(tail_a) - len(tail_b)) > 1:
+        return False
+    return levenshtein(tail_a, tail_b) <= 1
+
+
 def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[str, float],
             langs: tuple[str, ...], diacritic_lang: bool, at_line_end: bool,
-            trusted: bool) -> tuple[Reading, str, bool]:
+            trusted: bool, *, secondary: frozenset[str] = frozenset()
+            ) -> tuple[Reading, str, bool]:
     anchor = readings[0]
     if trusted or len(readings) == 1:
         return anchor, "", False
+
+    # A glyph source's figurine, where the anchor has the look-alike: the
+    # one replacement a secondary source may make on its own evidence.
+    for reading in readings[1:]:
+        if (reading.source in secondary and reading.confidence >= cfg.figurine_min_confidence
+                and _figurine_fix(anchor.text, reading.text)):
+            return reading, anchor.text, False
+
+    primary = [r for r in readings if r.source not in secondary]
     distinct: dict[str, list[Reading]] = {}
-    for reading in readings:
+    for reading in primary:
         distinct.setdefault(reading.text, []).append(reading)
     if len(distinct) == 1:
-        return anchor, "", False
+        # Only glyph readings differ.  They may still replace a nonword the
+        # anchor doubted (below), but never restyle a token the primaries agree on.
+        extra = [r for r in readings if r.source in secondary
+                 and _fold(r.text.rstrip(_MARKS)) != _fold(anchor.text.rstrip(_MARKS))]
+        if not extra or _supported(anchor.text, langs) \
+                or anchor.confidence >= cfg.anchor_trust_confidence:
+            return anchor, "", False
+        for reading in extra:
+            if _supported(reading.text, langs) and reading.confidence >= anchor.confidence - 0.10:
+                return reading, anchor.text, False
+        return anchor, extra[0].text, True
 
     def score_of(text: str, group: list[Reading]) -> float:
         base = max(cfg.source_weight * source_scores.get(r.source, 0.0)

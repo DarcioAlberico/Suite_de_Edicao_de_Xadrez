@@ -138,6 +138,33 @@ O portão (`sol_gate.py`) compara com o baseline como qualquer outra mudança.
 
 ---
 
+## 4b. Figurinas: o leitor de glifos como segunda opinião
+
+Nenhum motor de linha lê figurina: o `eng.traineddata` não tem ♖ no alfabeto, e o Tesseract
+devolve a forma latina mais parecida — sempre a mesma (♖→H, ♕→W, ♘→S, ♗→2/8/&). O tronco
+ChessVisionOFF tem um **classificador de glifos** treinado nessas formas
+(`models/char_classifier.pt`, 314 classes com ♔♕♖♗♘♙ e ligaduras como `♕x`; 99,1 % no teste).
+`caissa/ocr/engines/glyph.py` o expõe como motor, e o `OcrService` o consulta como
+**candidato secundário** em regiões que carregam notação (`glyph_candidates=True`, padrão):
+
+- roda **uma faixa por linha** que o Tesseract achou, para nunca fundir duas colunas;
+- na fusão SOL-6 ele **nunca ancora** e nunca decide pontuação ou caixa (`36...` continua `36...`);
+- a única troca que faz sozinho é a **figurina no lugar do sósia latino** — mesmo lance
+  depois do primeiro caractere (um dígito/letra trocado tolerado), lance válido, confiança
+  ≥ 0,70: `Hea!`→`♖e8!`, `2d5`→`♗d5`, `22...28,`→`22...♗f8,`, `De2`→`♘e2`; um lance de peão
+  (`e4`) nunca é tratado como cifra;
+- a prosa fica com o Tesseract (`If`, `40`, `Hubner:` — o leitor de glifos lê `lf`, `4o`).
+
+Medido na página 10 de *Dvoretsky & Yusupov, Secrets of Positional Play* (figurinas, inglês):
+das 27 linhas de lances, todas as figurinas saem certas depois da fusão; sem o candidato,
+nenhuma. Custo: ~2 s a mais por página na GPU. Sem o tronco na máquina, o motor se declara
+indisponível com uma frase e nada muda.
+
+Isso **não treina** nada: o rótulo humano continua sendo a verdade, mas a hipótese que o
+revisor vê já vem com ♖e8!, e é isso que entra no `.gt.txt` quando ele aceita — o que, por
+sua vez, é o que permitiria a rota B (ensinar o próprio Tesseract as figurinas com unicharset
+estendido), ainda não feita.
+
 ## 5. O que foi verificado em 2026-09-13
 
 - Três páginas de *Koblenz — El dominio del arte de la combinación (1978)* (scan, espanhol):
@@ -149,8 +176,8 @@ O portão (`sol_gate.py`) compara com o baseline como qualquer outra mudança.
   máquina. O pipeline a partir do `lstmtraining` está coberto por `tests/unit/ocr/test_training.py`
   com um executor falso (ordem das ferramentas, listas por partição, unicharset, relatório,
   registro de pesos, recusa do modelo inteiro).
-- 16 testes novos (`test_labeling.py`, `test_training.py`); a suíte `tests/unit/ocr`
-  inteira: 493 passam.
+- 16 testes novos (`test_labeling.py`, `test_training.py`) mais 8 do leitor de glifos
+  (`test_glyph_engine.py`); `tests/unit/ocr` + `tests/unit/ingest`: 686 passam.
 
 ## 6. O que continua faltando
 
