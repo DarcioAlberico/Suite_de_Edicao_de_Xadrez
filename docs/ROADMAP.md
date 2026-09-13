@@ -26,7 +26,7 @@ O trabalho é dividido em **frentes** (F0–F12). Cada frente tem:
 
 ---
 
-## Estado atual — atualizado 2026-09-11
+## Estado atual — atualizado 2026-09-13
 
 > Leia `docs/ASSETS.md` v2.0 antes desta tabela. A maior parte do produto **já existe**;
 > as frentes abaixo são de elevação e unificação, não de construção do zero.
@@ -66,6 +66,7 @@ O trabalho é dividido em **frentes** (F0–F12). Cada frente tem:
 | F10 | Índice e busca | **✅ concluída** | 126 testes; FTS5 com tokenizador de notação |
 | F11 | LLM local | **✅ 5/5 tarefas medidas (ciclo 3)** | 1 entregue (`translate_notation_prose`), 1 só como sugestão (`caption_for_diagram`), 3 rejeitadas por medição — `F11_REPORT_C3.md` |
 | F12 | Empacotamento | **✅ concluída** | instalador **79,4 MB**; torch cu128 na 1ª execução |
+| Sol | OCR de prosa (`Sol.md`) | **✅ ciclo 1 executado** — portões quantitativos ainda vermelhos | 12 entregas com código e testes (654 em ocr+ingest); OCR por padrão; CER cai em todo estrato degradado vs baseline congelado; 0 controles falsos; falta corpus humano e 2.º motor (`SOL_REPORT.md`) |
 
 ### Ciclos de crítica adversarial
 

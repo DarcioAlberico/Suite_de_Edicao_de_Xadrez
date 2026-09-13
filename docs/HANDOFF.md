@@ -226,6 +226,23 @@ como `OcrProvider` padrão e medir no E8; (3) `Movetext` → `GameScore` pela F6
 páginas do Chernev em que uma tabela de lances vira três colunas (`_columns_are_real`
 documenta as duas tentativas descartadas).
 
+### 4.5 Sol — OCR de prosa editorialmente confiável — **ciclo 1 executado**, ver `docs/quality/SOL_REPORT.md`
+O item (2) acima está feito e foi além: `PdfImportOptions.enable_ocr=True` liga por padrão o
+`OcrService` (`src/caissa/ingest/pdf/ocr_service.py`) — renderização seletiva, laço por
+região com decisão `ACCEPTED`/`REVIEW`/`ABSTAINED`, portfólio de pré-processamento
+condicionado, calibração ajustada na partição `calib` do corpus dourado, fusão por token,
+perfis Tesseract de prosa/lances, replay legal ligado ao diagrama, léxicos empacotados,
+traço completo no IR (`ocr_trace.json`) e fila de revisão sem janela. Medido contra o
+baseline congelado: CER cai em todo estrato degradado (sombra 0,076→0,031; foto
+0,24→0,12; 150 DPI 0,052→0,037), controles negativos 0/9, zero importação silenciosa.
+
+**O que fazer a seguir, em ordem:** (1) rotular scans reais — com FEN de partida dos trechos
+de lances — porque 98 % dos lances do corpus hoje não têm posição para o replay e os portões
+de CER/lances medem tipografia sintética; (2) instalar um segundo motor (Surya para cirílico)
+e rodar `tests/unit/ocr/test_optional_engines.py` como contrato; (3) a janela de revisão sobre
+`caissa.ocr.review.ReviewQueue` quando o shell F9 entrar; (4) `python benchmarks/sol_gate.py
+--blind` só num release.
+
 ---
 
 ## 5. O que NÃO refazer

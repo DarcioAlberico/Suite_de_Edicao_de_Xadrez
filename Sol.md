@@ -1,5 +1,7 @@
 # Sol — Roadmap de implementação para OCR de páginas de xadrez
 
+> **Estado em 2026-09-13:** ciclo 1 executado; ver `docs/quality/SOL_REPORT.md` para o que foi construído, o que foi medido e o que continua aberto. Caixas marcadas abaixo refletem esse relatório.
+
 > Documento de execução derivado de cinco análises independentes do projeto:
 > integração, imagem/layout, motores/arbitragem, inteligência enxadrística e
 > validação. O objetivo é transformar a infraestrutura existente em um OCR de
@@ -105,17 +107,17 @@ Página PDF ou imagem
 
 ### Entregáveis
 
-- [ ] Criar manifesto versionado do corpus dourado.
-- [ ] Selecionar no mínimo 200 páginas representativas.
-- [ ] Armazenar verdade textual Unicode por região e ordem de leitura.
-- [ ] Rotular caixas de prosa, movetext, títulos, notas, tabelas e legendas.
-- [ ] Marcar idioma da prosa e idioma da notação separadamente.
-- [ ] Registrar DPI, origem, qualidade, script, layout e tipo de dano.
-- [ ] Anotar tokens de lance e sua associação com partida/diagrama quando
+- [x] Criar manifesto versionado do corpus dourado.
+- [ ] Selecionar no mínimo 200 páginas representativas. *(190 itens medíveis, sem rótulo humano — `SOL_REPORT.md` §2)*
+- [x] Armazenar verdade textual Unicode por região e ordem de leitura.
+- [x] Rotular caixas de prosa, movetext, títulos, notas, tabelas e legendas.
+- [x] Marcar idioma da prosa e idioma da notação separadamente.
+- [x] Registrar DPI, origem, qualidade, script, layout e tipo de dano.
+- [x] Anotar tokens de lance e sua associação com partida/diagrama quando
       aplicável.
-- [ ] Criar partições fixas de desenvolvimento, calibração e teste cego.
-- [ ] Implementar executor único de benchmark com saída JSON e Markdown.
-- [ ] Versionar resultados do baseline atual.
+- [x] Criar partições fixas de desenvolvimento, calibração e teste cego.
+- [x] Implementar executor único de benchmark com saída JSON e Markdown.
+- [x] Versionar resultados do baseline atual.
 
 ### Estratos obrigatórios
 
@@ -159,14 +161,14 @@ Página PDF ou imagem
 
 ### Entregáveis
 
-- [ ] Implementar um `OcrService` concreto como padrão do importador.
-- [ ] Conectar `PdfImporter`, `PageRecognizer` e `page_text_from_ocr`.
-- [ ] Renderizar somente páginas ou regiões que precisem de OCR.
-- [ ] Usar 300 DPI como base e 400 DPI para texto pequeno ou baixa resolução.
-- [ ] Preservar `keep_scanned_pages` quando houver abstenção.
-- [ ] Permitir desligar OCR explicitamente para importação rápida.
-- [ ] Emitir progresso, cancelamento e relatório por página.
-- [ ] Garantir que falha de um motor não perca a página nem encerre o livro.
+- [x] Implementar um `OcrService` concreto como padrão do importador.
+- [x] Conectar `PdfImporter`, `PageRecognizer` e `page_text_from_ocr`.
+- [x] Renderizar somente páginas ou regiões que precisem de OCR.
+- [x] Usar 300 DPI como base e 400 DPI para texto pequeno ou baixa resolução.
+- [x] Preservar `keep_scanned_pages` quando houver abstenção.
+- [x] Permitir desligar OCR explicitamente para importação rápida.
+- [x] Emitir progresso, cancelamento e relatório por página.
+- [x] Garantir que falha de um motor não perca a página nem encerre o livro.
 
 ### Decisão de fonte
 
@@ -191,14 +193,14 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Criar enum de decisão: `ACCEPTED`, `REVIEW`, `ABSTAINED`.
-- [ ] Remover o `accepted` criado quando nenhum motor atinge o limiar.
-- [ ] Exigir limiar absoluto e evidência mínima para importação automática.
-- [ ] Rejeitar texto vazio, ruído curto e texto sem suporte geométrico.
-- [ ] Criar controles negativos com páginas brancas, tabuleiros sem texto,
+- [x] Criar enum de decisão: `ACCEPTED`, `REVIEW`, `ABSTAINED`.
+- [x] Remover o `accepted` criado quando nenhum motor atinge o limiar.
+- [x] Exigir limiar absoluto e evidência mínima para importação automática.
+- [x] Rejeitar texto vazio, ruído curto e texto sem suporte geométrico.
+- [x] Criar controles negativos com páginas brancas, tabuleiros sem texto,
       manchas, bordas e imagens aleatórias.
-- [ ] Impedir que tokens com aparência de lance sejam aceitos apenas por forma.
-- [ ] Manter a imagem original associada à região recusada.
+- [x] Impedir que tokens com aparência de lance sejam aceitos apenas por forma.
+- [x] Manter a imagem original associada à região recusada.
 
 ### Política inicial
 
@@ -220,14 +222,14 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Ligar `default_pipeline` ao serviço de OCR.
-- [ ] Sempre manter a imagem original como candidata.
-- [ ] Detectar sombra, inclinação, bleed-through, ruído e baixa resolução.
-- [ ] Gerar somente variantes justificadas pelos sinais detectados.
-- [ ] Implementar dewarp para fotografia ou curvatura de lombada.
-- [ ] Registrar transformações e parâmetros no resultado.
-- [ ] Comparar resultados por região, não apenas por página.
-- [ ] Adicionar testes para garantir que páginas limpas não sejam degradadas.
+- [x] Ligar `default_pipeline` ao serviço de OCR.
+- [x] Sempre manter a imagem original como candidata.
+- [x] Detectar sombra, inclinação, bleed-through, ruído e baixa resolução.
+- [x] Gerar somente variantes justificadas pelos sinais detectados.
+- [x] Implementar dewarp para fotografia ou curvatura de lombada.
+- [x] Registrar transformações e parâmetros no resultado.
+- [x] Comparar resultados por região, não apenas por página.
+- [x] Adicionar testes para garantir que páginas limpas não sejam degradadas.
 
 ### Portfólio inicial
 
@@ -250,15 +252,15 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Remover pisos e gammas provisórios não medidos.
-- [ ] Coletar confiança bruta por palavra e por linha de cada motor.
-- [ ] Calibrar por motor, idioma, script, DPI e tipo de região.
-- [ ] Usar partição exclusiva de calibração.
-- [ ] Medir ECE, Brier score e curvas de confiabilidade.
-- [ ] Criar limiares separados para aceitação e revisão.
-- [ ] Não contar camada PDF vazia/rejeitada no orçamento de motores.
-- [ ] Substituir ordem fixa por roteamento baseado em evidência.
-- [ ] Permitir que Surya/Paddle sejam executados quando o caso exigir.
+- [x] Remover pisos e gammas provisórios não medidos.
+- [x] Coletar confiança bruta por palavra e por linha de cada motor.
+- [x] Calibrar por motor, idioma, script, DPI e tipo de região.
+- [x] Usar partição exclusiva de calibração.
+- [x] Medir ECE, Brier score e curvas de confiabilidade.
+- [x] Criar limiares separados para aceitação e revisão.
+- [x] Não contar camada PDF vazia/rejeitada no orçamento de motores.
+- [x] Substituir ordem fixa por roteamento baseado em evidência.
+- [x] Permitir que Surya/Paddle sejam executados quando o caso exigir.
 
 ### Roteamento inicial
 
@@ -284,16 +286,16 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Implementar PP-StructureV3 como backend de layout real.
-- [ ] Manter PaddleOCR simples como backend distinto.
-- [ ] Atualizar Surya para a API atual e seu novo formato de blocos.
-- [ ] Criar testes contratuais por versão suportada.
-- [ ] Fixar intervalos de versões compatíveis.
-- [ ] Executar Paddle e Surya em workers isolados.
-- [ ] Controlar download, hash e versão dos pesos.
-- [ ] Medir CPU, GPU, RAM e VRAM por worker.
-- [ ] Verificar termos de licença dos pesos antes de distribuição comercial.
-- [ ] Corrigir extras de instalação e remover dependências não utilizadas.
+- [x] Implementar PP-StructureV3 como backend de layout real.
+- [x] Manter PaddleOCR simples como backend distinto.
+- [x] Atualizar Surya para a API atual e seu novo formato de blocos.
+- [x] Criar testes contratuais por versão suportada.
+- [x] Fixar intervalos de versões compatíveis.
+- [x] Executar Paddle e Surya em workers isolados.
+- [x] Controlar download, hash e versão dos pesos.
+- [ ] Medir CPU, GPU, RAM e VRAM por worker. *(medição implementada no worker; nenhum motor opcional instalado para medir)*
+- [x] Verificar termos de licença dos pesos antes de distribuição comercial.
+- [x] Corrigir extras de instalação e remover dependências não utilizadas.
 
 ### Critério de aceite
 
@@ -308,15 +310,15 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Alinhar linhas por sobreposição geométrica e baseline.
-- [ ] Alinhar palavras com distância textual e posição.
-- [ ] Construir um lattice de candidatos por token.
-- [ ] Preservar candidatos N-best e suas fontes.
-- [ ] Combinar camada PDF, variantes Tesseract e motores neurais.
-- [ ] Usar concordância entre motores como evidência, não como verdade.
-- [ ] Penalizar inserções sem suporte visual em outro candidato.
-- [ ] Fazer escolha específica para pontuação, diacríticos e hífens.
-- [ ] Tratar hifenização de fim de linha depois da ordem de leitura.
+- [x] Alinhar linhas por sobreposição geométrica e baseline.
+- [x] Alinhar palavras com distância textual e posição.
+- [x] Construir um lattice de candidatos por token.
+- [x] Preservar candidatos N-best e suas fontes.
+- [x] Combinar camada PDF, variantes Tesseract e motores neurais.
+- [x] Usar concordância entre motores como evidência, não como verdade.
+- [x] Penalizar inserções sem suporte visual em outro candidato.
+- [x] Fazer escolha específica para pontuação, diacríticos e hífens.
+- [x] Tratar hifenização de fim de linha depois da ordem de leitura.
 
 ### Regras conservadoras
 
@@ -338,15 +340,15 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Detectar idioma da prosa por documento e por região.
-- [ ] Detectar separadamente a convenção de letras das peças.
-- [ ] Criar `TesseractProfile.PROSE`.
-- [ ] Criar `TesseractProfile.MOVETEXT`.
-- [ ] Adicionar `user_words` com vocabulário editorial e enxadrístico.
-- [ ] Adicionar `user_patterns` para SAN, LAN, resultados e numeração.
-- [ ] Avaliar desativação de DAWGs somente no perfil de movetext.
-- [ ] Testar whitelist limitada somente em candidatos adicionais de movetext.
-- [ ] Manter pontuação, comentários e NAGs fora da whitelist estreita.
+- [x] Detectar idioma da prosa por documento e por região.
+- [x] Detectar separadamente a convenção de letras das peças.
+- [x] Criar `TesseractProfile.PROSE`.
+- [x] Criar `TesseractProfile.MOVETEXT`.
+- [x] Adicionar `user_words` com vocabulário editorial e enxadrístico.
+- [x] Adicionar `user_patterns` para SAN, LAN, resultados e numeração.
+- [x] Avaliar desativação de DAWGs somente no perfil de movetext.
+- [x] Testar whitelist limitada somente em candidatos adicionais de movetext.
+- [x] Manter pontuação, comentários e NAGs fora da whitelist estreita.
 
 ### Critério de aceite
 
@@ -361,17 +363,17 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Converter regiões `MOVETEXT` em tokens estruturados.
-- [ ] Associar cada região à partida, posição ou diagrama mais provável.
-- [ ] Usar FEN somente quando sua proveniência for confiável.
-- [ ] Propagar `side_to_move` explicitamente; não assumir valor padrão em silêncio.
-- [ ] Aplicar inferência de cifra antes do replay legal.
-- [ ] Corrigir homoglifos latinos/cirílicos antes da análise.
-- [ ] Gerar candidatos para separadores inseridos ou removidos pelo OCR.
-- [ ] Fazer replay de variantes e comentários, não apenas linha principal.
-- [ ] Autoaplicar somente correção única e integralmente legal.
-- [ ] Encaminhar ambiguidades para revisão com alternativas explicadas.
-- [ ] Registrar lances corrigidos, perdidos e inventados no benchmark.
+- [x] Converter regiões `MOVETEXT` em tokens estruturados.
+- [x] Associar cada região à partida, posição ou diagrama mais provável.
+- [x] Usar FEN somente quando sua proveniência for confiável.
+- [x] Propagar `side_to_move` explicitamente; não assumir valor padrão em silêncio.
+- [x] Aplicar inferência de cifra antes do replay legal.
+- [x] Corrigir homoglifos latinos/cirílicos antes da análise.
+- [x] Gerar candidatos para separadores inseridos ou removidos pelo OCR.
+- [x] Fazer replay de variantes e comentários, não apenas linha principal.
+- [x] Autoaplicar somente correção única e integralmente legal.
+- [x] Encaminhar ambiguidades para revisão com alternativas explicadas.
+- [x] Registrar lances corrigidos, perdidos e inventados no benchmark.
 
 ### Política contra alucinação
 
@@ -393,15 +395,15 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Remover dependência de caminho absoluto externo.
-- [ ] Auditar licença e origem de cada lista de palavras.
-- [ ] Criar pacote/versionamento dos léxicos aprovados.
-- [ ] Adicionar hash e metadados da versão usada em cada execução.
-- [ ] Separar léxicos por idioma e script.
-- [ ] Construir léxico cirílico e modelo de plausibilidade correspondente.
-- [ ] Adicionar nomes de jogadores, autores, aberturas, eventos e cidades.
-- [ ] Tratar flexões e ortografias históricas sem aceitar lixo arbitrário.
-- [ ] Permitir léxico específico por livro sem contaminar o global.
+- [x] Remover dependência de caminho absoluto externo.
+- [x] Auditar licença e origem de cada lista de palavras.
+- [x] Criar pacote/versionamento dos léxicos aprovados.
+- [x] Adicionar hash e metadados da versão usada em cada execução.
+- [x] Separar léxicos por idioma e script.
+- [ ] Construir léxico cirílico e modelo de plausibilidade correspondente. *(modelo de bigramas e lista autoral feitos; falta dicionário russo licenciado)*
+- [x] Adicionar nomes de jogadores, autores, aberturas, eventos e cidades.
+- [x] Tratar flexões e ortografias históricas sem aceitar lixo arbitrário.
+- [x] Permitir léxico específico por livro sem contaminar o global.
 
 ### Critério de aceite
 
@@ -416,15 +418,15 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Estender o contrato do `OcrProvider` para retornar resultado completo.
-- [ ] Preservar confiança por caractere, palavra, linha e região.
-- [ ] Preservar caixas, motor, versão e configuração.
-- [ ] Preservar variante de pré-processamento e DPI.
-- [ ] Preservar alternativas e concordância entre motores.
-- [ ] Preservar decisão do árbitro e motivos de escalada.
-- [ ] Armazenar CER estimado com confiança da estimativa.
-- [ ] Evitar limitar todos os blocos pela pior linha da página.
-- [ ] Criar relatório de importação com regiões críticas clicáveis.
+- [x] Estender o contrato do `OcrProvider` para retornar resultado completo.
+- [x] Preservar confiança por caractere, palavra, linha e região.
+- [x] Preservar caixas, motor, versão e configuração.
+- [x] Preservar variante de pré-processamento e DPI.
+- [x] Preservar alternativas e concordância entre motores.
+- [x] Preservar decisão do árbitro e motivos de escalada.
+- [x] Armazenar CER estimado com confiança da estimativa.
+- [x] Evitar limitar todos os blocos pela pior linha da página.
+- [x] Criar relatório de importação com regiões críticas clicáveis.
 
 ### Critério de aceite
 
@@ -439,14 +441,14 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão.
+- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão. *(modelo `ReviewQueue` pronto; janela depende do shell F9)*
 - [ ] Exibir recorte da imagem e texto lado a lado.
 - [ ] Destacar palavras de baixa confiança.
 - [ ] Mostrar candidatos alternativos e motor de origem.
 - [ ] Exibir motivo linguístico ou enxadrístico da dúvida.
 - [ ] Permitir aceitar, editar ou manter como imagem.
-- [ ] Registrar correções humanas para futura calibração.
-- [ ] Impedir que feedback do conjunto de teste cego volte ao treinamento.
+- [x] Registrar correções humanas para futura calibração.
+- [x] Impedir que feedback do conjunto de teste cego volte ao treinamento.
 
 ### Critério de aceite
 
@@ -461,16 +463,16 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Executar corpus dourado no CI ou em job de qualidade controlado.
-- [ ] Bloquear release quando uma meta crítica regredir.
-- [ ] Comparar por estrato, não apenas por média agregada.
-- [ ] Definir tolerância estatística e intervalo de confiança.
-- [ ] Guardar configuração, versões e hashes dos modelos.
-- [ ] Produzir relatório de diferenças por página e região.
-- [ ] Fazer revisão humana cega de pelo menos 20 páginas.
-- [ ] Comparar, quando disponíveis, ABBYY/Acrobat/outros baselines na mesma
+- [ ] Executar corpus dourado no CI ou em job de qualidade controlado. *(`benchmarks/sol_gate.py`; sem CI neste repositório)*
+- [x] Bloquear release quando uma meta crítica regredir.
+- [x] Comparar por estrato, não apenas por média agregada.
+- [x] Definir tolerância estatística e intervalo de confiança.
+- [x] Guardar configuração, versões e hashes dos modelos.
+- [x] Produzir relatório de diferenças por página e região.
+- [ ] Fazer revisão humana cega de pelo menos 20 páginas. *(pendente; a fila exporta o formato)*
+- [ ] Comparar, quando disponíveis, ABBYY/Acrobat/outros baselines na mesma *(não disponíveis)*
       amostra, sem misturar verdades de referência.
-- [ ] Monitorar tempo, memória e percentual de abstenção.
+- [x] Monitorar tempo, memória e percentual de abstenção.
 
 ### Portões bloqueantes
 
@@ -603,18 +605,18 @@ bloqueados por métricas reproduzíveis.
 
 O projeto Sol estará concluído quando:
 
-- [ ] OCR for parte padrão e configurável da importação;
-- [ ] camada PDF for julgada por span/região;
-- [ ] pré-processamento condicionado estiver ativo;
-- [ ] confiança estiver calibrada em corpus separado;
-- [ ] houver fusão por token com proveniência;
-- [ ] prosa e movetext tiverem perfis próprios;
-- [ ] reparação enxadrística estiver conectada ao IR;
-- [ ] não houver inserção silenciosa abaixo do limiar;
-- [ ] léxicos forem reproduzíveis e multilíngues;
-- [ ] revisão humana estiver orientada a regiões de risco;
-- [ ] os portões quantitativos e humanos estiverem verdes;
-- [ ] os resultados forem reproduzíveis em ambiente limpo.
+- [x] OCR for parte padrão e configurável da importação;
+- [x] camada PDF for julgada por span/região;
+- [x] pré-processamento condicionado estiver ativo;
+- [x] confiança estiver calibrada em corpus separado; *(partição `calib`, `calibration.md`)*
+- [x] houver fusão por token com proveniência;
+- [x] prosa e movetext tiverem perfis próprios;
+- [x] reparação enxadrística estiver conectada ao IR;
+- [x] não houver inserção silenciosa abaixo do limiar;
+- [x] léxicos forem reproduzíveis e multilíngues;
+- [ ] revisão humana estiver orientada a regiões de risco; *(modelo pronto, janela pendente)*
+- [ ] os portões quantitativos e humanos estiverem verdes; *(4 vermelhos — `SOL_REPORT.md` §3)*
+- [x] os resultados forem reproduzíveis em ambiente limpo.
 
 Até que todos esses critérios sejam satisfeitos, a aplicação deve apresentar o
 OCR como assistido e sujeito a revisão, não como transcrição editorialmente
