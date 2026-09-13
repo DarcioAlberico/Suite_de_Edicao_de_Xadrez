@@ -30,6 +30,7 @@ from caissa.ocr.arbiter import (
     RegionTask,
     arbitrate,
 )
+from caissa.ocr.decision import Decision
 from caissa.ocr.engines.base import EngineCapabilities, EngineLevel
 from caissa.ocr.types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
 
@@ -136,9 +137,22 @@ class MockEngine:
                            lang=lang, region_kind=psm_hint)
 
 
+def inked_region(height: int = 60, width: int = 900) -> np.ndarray:
+    """Paper with ink where the mock engine puts its words.
+
+    The decision policy (Sol §SOL-2) refuses a word floating over blank
+    paper, so a mock that reports words needs pixels under them: a row of
+    stripes across the mock's line is enough to look like print.
+    """
+    image = np.full((height, width), 255, dtype=np.uint8)
+    image[2:18, ::3] = 0
+    image[2:18, 1::3] = 30
+    return image
+
+
 @pytest.fixture
 def region() -> RegionTask:
-    return RegionTask(image=np.full((60, 900), 255, dtype=np.uint8),
+    return RegionTask(image=inked_region(),
                       lang="eng", region_kind=RegionKind.PARAGRAPH,
                       region_id="p1-r3")
 
@@ -427,11 +441,28 @@ def test_the_cascade_logs(region, caplog):
     assert any("p1-r3" in m for m in messages), messages
 
 
-def test_nothing_reaches_the_threshold_and_the_best_is_chosen(region):
+def test_nothing_reaches_the_threshold_and_the_best_is_carried_but_not_accepted(region):
+    """Sol §SOL-2: below the bar is review or abstention, never ``accepted``."""
     engines = [MockEngine("l1", EngineLevel.TESSERACT, NOISY, 0.30),
                MockEngine("l2", EngineLevel.PADDLE, NOISY, 0.55)]
     outcome = Arbiter(engines, identity_config()).run(region)
     assert outcome.result.engine == "l2"
+    exhausted = next(d for d in outcome.decisions if d.action == "exhausted")
+    assert "nenhum motor atingiu o limite" in exhausted.reason_pt
+    assert outcome.decision is not None
+    assert outcome.decision.decision in (Decision.REVIEW, Decision.ABSTAINED)
+    assert not outcome.accepted
+    assert outcome.decisions[-1].action == str(outcome.decision.decision)
+    assert not any(d.action == "accepted" for d in outcome.decisions)
+    assert outcome.candidates and {r.engine for r in outcome.candidates} == {"l1", "l2"}
+
+
+def test_the_legacy_cascade_still_labels_the_best_of_a_bad_lot_accepted(region):
+    """Off, the decision layer reproduces the pre-Sol baseline exactly."""
+    engines = [MockEngine("l1", EngineLevel.TESSERACT, NOISY, 0.30),
+               MockEngine("l2", EngineLevel.PADDLE, NOISY, 0.55)]
+    outcome = Arbiter(engines, identity_config(decision_enabled=False)).run(region)
+    assert outcome.decision is None
     assert outcome.decisions[-1].action == "accepted"
     assert "nenhum motor atingiu o limite" in outcome.decisions[-1].reason_pt
 

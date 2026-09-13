@@ -108,7 +108,7 @@ class MockOcr:
 
     name = "mock_ocr"
 
-    def __init__(self, text: str = "recuperado", confidence: float = 0.95):
+    def __init__(self, text: str = "recovered text", confidence: float = 0.95):
         self.text = text
         self.confidence = confidence
         self.crops: list[tuple[int, int]] = []
@@ -134,9 +134,18 @@ class MockOcr:
     def recognize(self, image, *, lang="eng",
                   psm_hint=RegionKind.PARAGRAPH) -> OcrResult:
         self.crops.append(tuple(image.shape[:2]))
-        word = OcrWord(text=self.text, box=MOCK_WORD_BOX,
-                       confidence=self.confidence)
-        line = OcrLine(words=(word,), box=MOCK_WORD_BOX, kind=psm_hint)
+        # One word per token, side by side from the fixed box, so the
+        # decision layer sees a line rather than one floating word.
+        words = []
+        x = MOCK_WORD_BOX.x
+        for token in self.text.split():
+            box = BBox(x, MOCK_WORD_BOX.y, MOCK_WORD_BOX.w, MOCK_WORD_BOX.h)
+            words.append(OcrWord(text=token, box=box, confidence=self.confidence))
+            x += MOCK_WORD_BOX.w + 4.0
+        line = OcrLine(words=tuple(words),
+                       box=BBox.from_edges(MOCK_WORD_BOX.x0, MOCK_WORD_BOX.y0,
+                                           x - 4.0, MOCK_WORD_BOX.y1),
+                       kind=psm_hint)
         return OcrResult(engine=self.name, lang=lang, lines=(line,),
                          region_kind=psm_hint, duration_s=0.01)
 
@@ -250,7 +259,7 @@ def test_a_diluted_page_hides_a_destroyed_block_and_the_region_does_not(pymupdf)
     level_zero = [s for s in bad.outcome.scores if s.engine == "pdf_text_layer"]
     assert level_zero and level_zero[0].total == 0.0, (
         "o nível 0 devolveu texto para um bloco que ele mesmo reprovou")
-    assert bad.outcome.decisions[-1].action == "accepted"
+    assert any(d.action == "accepted" for d in bad.outcome.decisions)
     assert bad.outcome.winner.total >= 0.78, (
         "o vencedor foi escolhido pelo ramo de 'melhor de um lote ruim'")
     assert "ll'lf3" not in outcome.text

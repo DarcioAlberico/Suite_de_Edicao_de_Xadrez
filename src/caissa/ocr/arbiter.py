@@ -43,18 +43,22 @@ import difflib
 import inspect
 import logging
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+from .decision import Decision, DecisionPolicy, RegionDecision, decide
 from .engines.base import EngineLevel, OcrEngine
+from .lexicon import normalise_lang
 from .quality import QualitySignals, measure_text, text_plausibility
 from .types import BBox, OcrResult, RegionKind, empty_result
 
 __all__ = [
+    "DEFAULT_CALIBRATIONS",
     "Arbiter",
     "ArbiterConfig",
     "ArbitrationOutcome",
@@ -62,7 +66,6 @@ __all__ = [
     "EngineScore",
     "EscalationDecision",
     "RegionTask",
-    "DEFAULT_CALIBRATIONS",
 ]
 
 LOGGER = logging.getLogger("caissa.ocr.arbiter")
@@ -180,6 +183,17 @@ class ArbiterConfig:
     min_chars_for_plausibility: int = 24
     calibrations: Mapping[str, EngineCalibration] = field(
         default_factory=lambda: dict(DEFAULT_CALIBRATIONS))
+    #: Sol §SOL-2.  When on, a region no engine cleared is *not* labelled
+    #: accepted: the outcome carries a :class:`RegionDecision` of ``REVIEW``
+    #: or ``ABSTAINED`` and the caller decides what to emit.  Off reproduces
+    #: the pre-Sol cascade for the versioned baseline, nothing else.
+    decision_enabled: bool = True
+    policy: DecisionPolicy = field(default_factory=DecisionPolicy)
+    #: Sol §SOL-4: an engine that returned nothing — a rejected or empty
+    #: text layer, an engine that crashed — does not spend the region's
+    #: engine budget.  Counting it did: on a scanned page level 0 came back
+    #: empty, Tesseract ran, and the third slot Surya needed was gone.
+    count_empty_in_budget: bool = False
 
     def threshold_for(self, level: int) -> float:
         return self.accept_threshold_by_level.get(level, self.accept_threshold)
@@ -250,7 +264,7 @@ class EscalationDecision:
     step: int
     engine: str
     level: int
-    action: str            # "ran" | "accepted" | "escalated" | "skipped" | "exhausted"
+    action: str            # accepted | escalated | skipped | exhausted | review | abstained
     score: float | None
     threshold: float | None
     reason_pt: str
@@ -271,6 +285,20 @@ class ArbitrationOutcome:
     engines_run: tuple[str, ...]
     escalated: bool
     total_duration_s: float
+    #: Sol §SOL-2: what the caller may do with :attr:`result`.  ``None`` only
+    #: when :attr:`ArbiterConfig.decision_enabled` is off.
+    decision: RegionDecision | None = None
+    #: Every result the engines produced, in the order they ran — the
+    #: candidates token fusion (SOL-6) and the review panel (SOL-11) need.
+    candidates: tuple[OcrResult, ...] = ()
+
+    @property
+    def accepted(self) -> bool:
+        return self.decision is None or self.decision.decision is Decision.ACCEPTED
+
+    @property
+    def abstained(self) -> bool:
+        return self.decision is not None and self.decision.decision is Decision.ABSTAINED
 
     @property
     def winner(self) -> EngineScore | None:
@@ -283,6 +311,8 @@ class ArbitrationOutcome:
         best = self.winner
         if best is not None:
             lines.append(f"Escolhido: {best.describe_pt()}")
+        if self.decision is not None:
+            lines.append(self.decision.describe_pt())
         return "\n".join(lines)
 
 
@@ -440,7 +470,9 @@ class Arbiter:
                     f"({cfg.max_level})"))
                 step += 1
                 continue
-            if len(engines_run) >= cfg.max_engines:
+            spent = (len(engines_run) if cfg.count_empty_in_budget
+                     else sum(1 for r in results if not r.is_empty))
+            if spent >= cfg.max_engines:
                 decisions.append(EscalationDecision(
                     step, engine.name, level, "skipped", None, None,
                     f"limite de {cfg.max_engines} motores por região atingido"))
@@ -494,6 +526,11 @@ class Arbiter:
             decisions.append(EscalationDecision(
                 step, "—", -1, "exhausted", None, None,
                 "nenhum motor de OCR estava disponível para esta região"))
+            none = RegionDecision(
+                Decision.ABSTAINED, 0.0, cfg.accept_threshold,
+                cfg.policy.review_score,
+                ("Nenhum motor de OCR pôde processar esta região.",),
+            ) if cfg.decision_enabled else None
             return ArbitrationOutcome(
                 result=empty_result(
                     "arbiter", task.lang, region_kind=task.region_kind,
@@ -503,25 +540,58 @@ class Arbiter:
                 scores=(), decisions=tuple(decisions), engines_run=(),
                 escalated=False,
                 total_duration_s=time.perf_counter() - started,
+                decision=none, candidates=tuple(results),
             )
 
         best = max(scores, key=lambda s: (s.total, -s.level, s.engine))
         chosen = next(r for r in results if r.engine == best.engine)
         escalated = len(engines_run) > 1
+        cleared = decisions[-1].action == "accepted"
+        threshold = cfg.threshold_for(best.level)
 
-        if escalated and decisions[-1].action != "accepted":
+        if not cleared:
+            if cfg.decision_enabled:
+                # Sol §SOL-2: below the bar is *not* accepted.  The best
+                # result is still carried — the decision below says whether
+                # it is reviewable or must be abstained.
+                decisions.append(EscalationDecision(
+                    step, best.engine, best.level, "exhausted", best.total,
+                    threshold,
+                    f"nenhum motor atingiu o limite; o melhor escore foi "
+                    f"{best.total:.3f} ({best.engine}) entre "
+                    f"{', '.join(sorted(engines_run))} — decisão abaixo"))
+                step += 1
+            elif escalated:
+                decisions.append(EscalationDecision(
+                    step, best.engine, best.level, "accepted", best.total,
+                    threshold,
+                    f"nenhum motor atingiu o limite; escolhido o melhor escore "
+                    f"({best.total:.3f}) entre "
+                    f"{', '.join(sorted(engines_run))}"))
+
+        decision: RegionDecision | None = None
+        if cfg.decision_enabled:
+            page_space = self._requires_page(best.engine)
+            decision = decide(
+                chosen, best.total, policy=cfg.policy,
+                image=None if page_space else task.image,
+                langs=normalise_lang(task.lang), region_kind=task.region_kind,
+                accept_threshold=threshold, reached_threshold=cleared,
+                trusted_source=page_space,
+            )
             decisions.append(EscalationDecision(
-                step, best.engine, best.level, "accepted", best.total,
-                cfg.threshold_for(best.level),
-                f"nenhum motor atingiu o limite; escolhido o melhor escore "
-                f"({best.total:.3f}) entre "
-                f"{', '.join(sorted(engines_run))}"))
+                step, best.engine, best.level, str(decision.decision), best.total,
+                threshold, " ".join(decision.reasons_pt) or "evidência e escore coerentes"))
 
         annotated = chosen.with_meta(
             arbiter_score=best.total,
             arbiter_engines=tuple(engines_run),
             arbiter_escalated=escalated,
             arbiter_decisions=tuple(str(d) for d in decisions),
+            arbiter_threshold=threshold,
+            **({"decision": str(decision.decision),
+                "decision_reasons": decision.reasons_pt}
+               if decision is not None else {}),
         )
         return ArbitrationOutcome(
             result=annotated,
@@ -530,9 +600,18 @@ class Arbiter:
             engines_run=tuple(engines_run),
             escalated=escalated,
             total_duration_s=time.perf_counter() - started,
+            decision=decision,
+            candidates=tuple(results),
         )
 
     # -- helpers ----------------------------------------------------------- #
+
+    def _requires_page(self, engine_name: str) -> bool:
+        """True when the engine's boxes are in page space, not crop space."""
+        for engine in self.engines:
+            if engine.name == engine_name:
+                return engine.capabilities().requires_pdf_page
+        return False
 
     def _level_of(self, engine_name: str) -> int:
         for engine in self.engines:

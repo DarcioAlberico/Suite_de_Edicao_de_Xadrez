@@ -1,0 +1,3632 @@
+{
+ "version": 1,
+ "corpus_version": "2026.09.13",
+ "built_at": "2026-09-13T07:52:03+00:00",
+ "partition_shares": [
+  0.5,
+  0.25,
+  0.25
+ ],
+ "strata": {
+  "native": {
+   "name": "native",
+   "dpi": 300,
+   "blur": 0.0,
+   "noise": 0.0,
+   "angle": 0.0,
+   "jpeg": 95,
+   "fade": 0.0,
+   "shadow": 0.0,
+   "bleed": 0.0,
+   "curl": 0.0,
+   "dither": false
+  },
+  "scan_clean_300": {
+   "name": "scan_clean_300",
+   "dpi": 300,
+   "blur": 0.4,
+   "noise": 4,
+   "angle": 0.0,
+   "jpeg": 80,
+   "fade": 0.0,
+   "shadow": 0.0,
+   "bleed": 0.0,
+   "curl": 0.0,
+   "dither": false
+  },
+  "scan_degraded_150": {
+   "name": "scan_degraded_150",
+   "dpi": 150,
+   "blur": 0.9,
+   "noise": 12,
+   "angle": 0.6,
+   "jpeg": 45,
+   "fade": 0.15,
+   "shadow": 0.0,
+   "bleed": 0.0,
+   "curl": 0.0,
+   "dither": false
+  },
+  "shadow_curl_bleed": {
+   "name": "shadow_curl_bleed",
+   "dpi": 200,
+   "blur": 0.5,
+   "noise": 8,
+   "angle": 0.4,
+   "jpeg": 60,
+   "fade": 0.0,
+   "shadow": 0.35,
+   "bleed": 0.25,
+   "curl": 0.6,
+   "dither": false
+  },
+  "fax_dither": {
+   "name": "fax_dither",
+   "dpi": 200,
+   "blur": 0.6,
+   "noise": 6,
+   "angle": 0.0,
+   "jpeg": 70,
+   "fade": 0.0,
+   "shadow": 0.0,
+   "bleed": 0.0,
+   "curl": 0.0,
+   "dither": true
+  },
+  "photo": {
+   "name": "photo",
+   "dpi": 180,
+   "blur": 0.8,
+   "noise": 10,
+   "angle": 1.5,
+   "jpeg": 55,
+   "fade": 0.0,
+   "shadow": 0.45,
+   "bleed": 0.0,
+   "curl": 1.0,
+   "dither": false
+  }
+ },
+ "notes": [
+  "Manifesto público: só texto que o repositório pode carregar (autoral, compostos e controles).",
+  "Itens de PDF são regiões (não páginas inteiras) de livros nativos com verdade conferida contra a tinta; a imagem é renderizada do PDF em tempo de medição.",
+  "Itens sintéticos são tipografados pelo benchmark a partir do texto; não são digitalizações reais e o relatório nomeia o estrato em todo número.",
+  "Ainda não há 200 páginas inteiras rotuladas por humanos: este manifesto é o esqueleto medível, e o rótulo humano entra por item sem mudar o esquema."
+ ],
+ "items": [
+  {
+   "id": "authored:de:0",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 0,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Nach 1.e4 e5 2.Sf3 Sc6 3.Lb5 a6 4.La4 Sf6 5.0-0 Le7 entsteht die geschlossene Variante der Spanischen Partie. Weiß hat die Wahl zwischen dem ruhigen 6.Te1 und dem schärferen 6.d4, das jedoch nach 6...exd4 7.e5 Se4 8.Sxd4 keinen Vorteil verspricht. Schwarz sollte die Rochade nicht hinauszögern; der Läufer auf a4 übt bereits Druck auf den Damenflügel aus.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "e4",
+      "e5",
+      "Sf3",
+      "Sc6",
+      "Lb5",
+      "a6",
+      "La4",
+      "Sf6",
+      "O-O",
+      "Le7",
+      "Te1",
+      "d4",
+      "exd4",
+      "e5",
+      "Se4",
+      "Sxd4",
+      "a4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:de:1",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Das Turmendspiel ist remis, obwohl Weiß einen Bauern mehr hat. Nach 41.Tb7 Ta2 42.Kf3 Ta3+ 43.Ke4 Ta4+ 44.Kd5 Ta5+ kann sich der König den Schachs nicht entziehen, ohne den Bauern b5 preiszugeben. Die Lehre aus dieser Stellung: der aktive Turm hinter dem Freibauern wiegt einen ganzen Bauern auf.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Tb7",
+      "Ta2",
+      "Kf3",
+      "Ta3+",
+      "Ke4",
+      "Ta4+",
+      "Kd5",
+      "Ta5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:de:2",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Im Mittelspiel plante Schwarz den Vorstoß ...f5, doch nach 18.Dh5 g6 19.Dh6 Te8 20.Sg5 Lf8 21.Dh4 wurde der Königsflügel zu schwach. Besser war das sofortige 18...Sf6, was den Springer auf ein sicheres Feld brachte und die Dame vom Angriff abhielt. Ein Tempo entscheidet hier über Angriff und Verteidigung.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "f5",
+      "Dh5",
+      "g6",
+      "Dh6",
+      "Te8",
+      "Sg5",
+      "Lf8",
+      "Dh4",
+      "Sf6"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:de:3",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 3,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Die Kombination beginnt mit dem Opfer 23.Lxh7+! Kxh7 24.Sg5+ Kg8 25.Dh5 Te8 26.Dxf7+ Kh8 27.Dh5+ Kg8 28.Dh7+ Kf8 29.Dh8+ Ke7 30.Dxg7 und Weiß gewinnt entscheidendes Material. Das klassische Läuferopfer auf h7 funktioniert nur, wenn die Dame das Feld h5 rechtzeitig erreichen kann.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Lxh7+",
+      "Kxh7",
+      "Sg5+",
+      "Kg8",
+      "Dh5",
+      "Te8",
+      "Dxf7+",
+      "Kh8",
+      "Dh5+",
+      "Kg8",
+      "Dh7+",
+      "Kf8",
+      "Dh8+",
+      "Ke7",
+      "Dxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:de:4",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 4,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Steinitz lehrte, dass der König im Endspiel eine starke Figur sei. Nach 35.Kf2 Kf7 36.Ke3 Ke6 37.Kd4 Kd6 38.c5+ Kc6 39.Kc4 hält Weiß die Opposition und gewinnt den Bauern a5. Der schwarze König ist zu spät gekommen, weil er zuvor die Türme tauschen musste.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Kf2",
+      "Kf7",
+      "Ke3",
+      "Ke6",
+      "Kd4",
+      "Kd6",
+      "c5+",
+      "Kc6",
+      "Kc4",
+      "a5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:de:5",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 5,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "In der Partie Lasker gegen Capablanca, St. Petersburg 1914, zeigte Weiß, wie ein kleiner Raumvorteil nach 12.f5! bewahrt wird. Der Springer auf e3 blockiert den Bauern, und der Turm greift über die f-Linie ein. Nach 20.Sc4 Sxc4 21.Lxc4 war die Stellung von Schwarz bereits schwierig zu verteidigen.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "f5",
+      "e3",
+      "Sc4",
+      "Sxc4",
+      "Lxc4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:es:6",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 6,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Tras 1.d4 d5 2.c4 e6 3.Cc3 Cf6 4.Ag5 Ae7 5.e3 0-0 6.Cf3 Cbd7 se llega a la Defensa Ortodoxa del Gambito de Dama. Las blancas suelen continuar con 7.Tc1, preparando el cambio en d5, mientras que las negras buscan liberarse con ...c5 o ...dxc4 seguido de ...b5. La lucha por el centro define el carácter de toda la partida.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Cc3",
+      "Cf6",
+      "Ag5",
+      "Ae7",
+      "e3",
+      "O-O",
+      "Cf3",
+      "Cbd7",
+      "Tc1",
+      "d5",
+      "c5",
+      "dxc4",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "calib"
+  },
+  {
+   "id": "authored:es:7",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 7,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "El final de alfiles de distinto color es tablas a pesar de los dos peones de ventaja. Después de 48.Ae4 Ad6 49.Rf3 Rf6 50.g4 Ab8 el rey negro bloquea la casilla f6 y el alfil vigila la diagonal larga. Las blancas no pueden crear un segundo peón pasado sin perder el de b5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Ae4",
+      "Ad6",
+      "Rf3",
+      "Rf6",
+      "g4",
+      "Ab8",
+      "f6",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:es:8",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 8,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "La combinación comienza con 25.Txf7! Rxf7 26.Dh5+ Rg8 27.Ac4+ Rh8 28.Dxh7+!! Rxh7 29.Th3+ Rg8 30.Th8 mate. Un sacrificio de torre, uno de dama y un mate con torre y alfil: la belleza del ajedrez está en la economía de los medios.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Txf7",
+      "Rxf7",
+      "Dh5+",
+      "Rg8",
+      "Ac4+",
+      "Rh8",
+      "Dxh7+",
+      "Rxh7",
+      "Th3+",
+      "Rg8",
+      "Th8"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:es:9",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 9,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Capablanca recomendaba simplificar cuando se tiene ventaja material. En la posición del diagrama, 31.Dxd8+ Txd8 32.Txd8+ Rh7 33.Td7 conduce a un final de torres donde el peón de más decide sin dificultad. Cambiar damas elimina cualquier posibilidad de contrajuego.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Dxd8+",
+      "Txd8",
+      "Txd8+",
+      "Rh7",
+      "Td7"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:es:10",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 10,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Las negras cometieron un error grave con 15...Cxe4? porque tras 16.Cxe4 dxe4 17.Axe7 Dxe7 18.Dxe4 el peón queda perdido y el rey blanco está completamente seguro. Era mejor 15...h6 16.Ah4 Ce4 con juego equilibrado. La prisa por ganar un peón cuesta a menudo la partida.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Cxe4",
+      "Cxe4",
+      "dxe4",
+      "Axe7",
+      "Dxe7",
+      "Dxe4",
+      "h6",
+      "Ah4",
+      "Ce4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:es:11",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 11,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "En el torneo de Zúrich de 1953, Bronstein anotó que la jugada 14.f4 debilita la casilla e4 pero abre la columna f para las torres. Después de 14...exf4 15.Axf4 Ce5 16.Cxe5 dxe5 17.Ae3 el alfil regresa y las blancas conservan una pequeña ventaja de espacio.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "f4",
+      "e4",
+      "exf4",
+      "Axf4",
+      "Ce5",
+      "Cxe5",
+      "dxe5",
+      "Ae3"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:ru:12",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 12,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "После 1.e4 e5 2.Кf3 Кc6 3.Сb5 a6 4.Сa4 Кf6 5.0-0 Сe7 6.Лe1 b5 7.Сb3 d6 8.c3 0-0 возникает закрытая система испанской партии. Белые готовят продвижение d2-d4, а чёрные стремятся к контригре на ферзевом фланге. Это одна из самых исследованных позиций дебютной теории.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "e4",
+      "e5",
+      "Кf3",
+      "Кc6",
+      "Сb5",
+      "a6",
+      "Сa4",
+      "Кf6",
+      "O-O",
+      "Сe7",
+      "Лe1",
+      "b5",
+      "Сb3",
+      "d6",
+      "c3",
+      "O-O",
+      "d2",
+      "d4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:ru:13",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 13,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Ладейный эндшпиль ничеен, несмотря на лишнюю пешку белых. После 42.Лb7 Лa2 43.Крf3 Лa3+ 44.Крe4 Лa4+ 45.Крd5 Лa5+ король не может уйти от шахов, не потеряв пешку b5. Активная ладья позади проходной пешки стоит целой пешки.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Лb7",
+      "Лa2",
+      "Лa3+",
+      "Лa4+",
+      "Лa5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:ru:14",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 14,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Комбинация начинается жертвой 23.Сxh7+! Крxh7 24.Кg5+ Крg8 25.Фh5 Лe8 26.Фxf7+ Крh8 27.Фh5+ Крg8 28.Фh7+ Крf8 29.Фh8+ Крe7 30.Фxg7, и белые выигрывают решающий материал. Классическая жертва слона на h7 работает только тогда, когда ферзь успевает попасть на h5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Сxh7+",
+      "Кg5+",
+      "Фh5",
+      "Лe8",
+      "Фxf7+",
+      "Фh5+",
+      "Фh7+",
+      "Фh8+",
+      "Фxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "calib"
+  },
+  {
+   "id": "authored:ru:15",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 15,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Ботвинник советовал в закрытых позициях не спешить с вскрытием игры. В партии против Смыслова после 19.Кd2 Кe8 20.f4 f5 21.Кf3 Кd6 22.b3 позиция оставалась напряжённой, и решающим стал только ход 31.g4, подготовленный десятью ходами манёвров.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Кd2",
+      "Кe8",
+      "f4",
+      "f5",
+      "Кf3",
+      "Кd6",
+      "b3",
+      "g4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:ru:16",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 16,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "В позиции на диаграмме чёрные ошиблись ходом 15...Кxe4?, так как после 16.Кxe4 dxe4 17.Сxe7 Фxe7 18.Фxe4 пешка теряется, а белый король в полной безопасности. Лучше было 15...h6 16.Сh4 Кe4 с равной игрой. Поспешность в выигрыше пешки часто стоит партии.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Кxe4",
+      "Кxe4",
+      "dxe4",
+      "Сxe7",
+      "Фxe7",
+      "Фxe4",
+      "h6",
+      "Сh4",
+      "Кe4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:ru:17",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 17,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "single",
+   "columns": 1,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Пешечный эндшпиль выигран за белых благодаря оппозиции. После 36.Крf2 Крf7 37.Крe3 Крe6 38.Крd4 Крd6 39.c5+ Крc6 40.Крc4 чёрный король вынужден отступить, и пешка a5 гибнет. Чёрные опоздали на один темп, потому что раньше им пришлось разменять ладьи.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "c5+",
+      "a5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:pt:18",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 18,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Depois de 1.e4 c5 2.Cf3 d6 3.d4 cxd4 4.Cxd4 Cf6 5.Cc3 a6 chegamos à Variante Najdorf da Defesa Siciliana. As brancas escolhem entre o ataque 6.Bg5, o posicional 6.Be2 e o moderno 6.Be3, cada um com uma ideia diferente sobre o centro. As pretas, por sua vez, preparam ...e5 ou ...e6 conforme o lance adversário.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "e4",
+      "c5",
+      "Cf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Cxd4",
+      "Cf6",
+      "Cc3",
+      "a6",
+      "Bg5",
+      "Be2",
+      "Be3",
+      "e5",
+      "e6"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:pt:19",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 19,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "O final de torres é empatado apesar do peão a mais das brancas. Após 41.Tb7 Ta2 42.Rf3 Ta3+ 43.Re4 Ta4+ 44.Rd5 Ta5+ o rei não consegue escapar dos xeques sem abandonar o peão b5. A lição desta posição é antiga: a torre ativa atrás do peão passado vale um peão inteiro.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Tb7",
+      "Ta2",
+      "Rf3",
+      "Ta3+",
+      "Re4",
+      "Ta4+",
+      "Rd5",
+      "Ta5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:pt:20",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 20,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "A combinação começa com o sacrifício 23.Bxh7+! Rxh7 24.Cg5+ Rg8 25.Dh5 Te8 26.Dxf7+ Rh8 27.Dh5+ Rg8 28.Dh7+ Rf8 29.Dh8+ Re7 30.Dxg7 e as brancas ganham material decisivo. O clássico sacrifício do bispo em h7 só funciona quando a dama alcança h5 a tempo.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Bxh7+",
+      "Rxh7",
+      "Cg5+",
+      "Rg8",
+      "Dh5",
+      "Te8",
+      "Dxf7+",
+      "Rh8",
+      "Dh5+",
+      "Rg8",
+      "Dh7+",
+      "Rf8",
+      "Dh8+",
+      "Re7",
+      "Dxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "calib"
+  },
+  {
+   "id": "authored:en:21",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 21,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "After 1.d4 Nf6 2.c4 g6 3.Nc3 Bg7 4.e4 d6 5.Nf3 0-0 6.Be2 e5 we reach the Classical King's Indian. White may close the centre with 7.d5, when Black plays for ...f5 on the kingside, or keep the tension with 7.0-0 Nc6 8.d5 Ne7 9.Ne1, preparing f2-f3 and a queenside expansion with c4-c5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "d5",
+      "f5",
+      "O-O",
+      "Nc6",
+      "d5",
+      "Ne7",
+      "Ne1",
+      "f2",
+      "f3",
+      "c4",
+      "c5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "authored:en:22",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 22,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "The queen sacrifice 27.Qxf7+!! Rxf7 28.Rd8+ Rf8 29.Rxf8+ Kxf8 30.Bc5+ Kg8 31.Re8# is the point of the whole attack. Note that 27.Rd8 first would fail to 27...Qxd8 28.Qxf7+ Kh8, when the bishop on c5 has no check. Move order is everything in a mating combination.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Qxf7+",
+      "Rxf7",
+      "Rd8+",
+      "Rf8",
+      "Rxf8+",
+      "Kxf8",
+      "Bc5+",
+      "Kg8",
+      "Re8#",
+      "Rd8",
+      "Qxd8",
+      "Qxf7+",
+      "Kh8",
+      "c5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "authored:en:23",
+   "source": "synth",
+   "book": "authored",
+   "page_index": 23,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "single",
+   "columns": 1,
+   "genre": "movetext",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "movetext",
+     "truth": "Rubinstein showed how to convert a small endgame edge. After 34.Kf2 Kf7 35.Ke3 Ke6 36.Kd4 Kd6 37.b4 axb4 38.axb4 g5 39.g3 White keeps the opposition and will eventually win the c-pawn. The black king arrived one tempo too late because the rooks had to be exchanged first.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Kf2",
+      "Kf7",
+      "Ke3",
+      "Ke6",
+      "Kd4",
+      "Kd6",
+      "b4",
+      "axb4",
+      "axb4",
+      "g5",
+      "g3"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150",
+    "shadow_curl_bleed",
+    "fax_dither",
+    "photo"
+   ],
+   "tags": [
+    "synthetic",
+    "authored"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:0",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 0,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Nach 1.e4 e5 2.Sf3 Sc6 3.Lb5 a6 4.La4 Sf6 5.0-0 Le7 entsteht die geschlossene Variante der Spanischen Partie. Weiß hat die Wahl zwischen dem ruhigen 6.Te1 und dem schärferen 6.d4, das jedoch nach 6...exd4 7.e5 Se4 8.Sxd4 keinen Vorteil verspricht. Schwarz sollte die Rochade nicht hinauszögern; der Läufer auf a4 übt bereits Druck auf den Damenflügel aus.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "e4",
+      "e5",
+      "Sf3",
+      "Sc6",
+      "Lb5",
+      "a6",
+      "La4",
+      "Sf6",
+      "O-O",
+      "Le7",
+      "Te1",
+      "d4",
+      "exd4",
+      "e5",
+      "Se4",
+      "Sxd4",
+      "a4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Das Turmendspiel ist remis, obwohl Weiß einen Bauern mehr hat. Nach 41.Tb7 Ta2 42.Kf3 Ta3+ 43.Ke4 Ta4+ 44.Kd5 Ta5+ kann sich der König den Schachs nicht entziehen, ohne den Bauern b5 preiszugeben. Die Lehre aus dieser Stellung: der aktive Turm hinter dem Freibauern wiegt einen ganzen Bauern auf.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Tb7",
+      "Ta2",
+      "Kf3",
+      "Ta3+",
+      "Ke4",
+      "Ta4+",
+      "Kd5",
+      "Ta5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:1",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Im Mittelspiel plante Schwarz den Vorstoß ...f5, doch nach 18.Dh5 g6 19.Dh6 Te8 20.Sg5 Lf8 21.Dh4 wurde der Königsflügel zu schwach. Besser war das sofortige 18...Sf6, was den Springer auf ein sicheres Feld brachte und die Dame vom Angriff abhielt. Ein Tempo entscheidet hier über Angriff und Verteidigung.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "f5",
+      "Dh5",
+      "g6",
+      "Dh6",
+      "Te8",
+      "Sg5",
+      "Lf8",
+      "Dh4",
+      "Sf6"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Die Kombination beginnt mit dem Opfer 23.Lxh7+! Kxh7 24.Sg5+ Kg8 25.Dh5 Te8 26.Dxf7+ Kh8 27.Dh5+ Kg8 28.Dh7+ Kf8 29.Dh8+ Ke7 30.Dxg7 und Weiß gewinnt entscheidendes Material. Das klassische Läuferopfer auf h7 funktioniert nur, wenn die Dame das Feld h5 rechtzeitig erreichen kann.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Lxh7+",
+      "Kxh7",
+      "Sg5+",
+      "Kg8",
+      "Dh5",
+      "Te8",
+      "Dxf7+",
+      "Kh8",
+      "Dh5+",
+      "Kg8",
+      "Dh7+",
+      "Kf8",
+      "Dh8+",
+      "Ke7",
+      "Dxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "twocol:a:2",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Steinitz lehrte, dass der König im Endspiel eine starke Figur sei. Nach 35.Kf2 Kf7 36.Ke3 Ke6 37.Kd4 Kd6 38.c5+ Kc6 39.Kc4 hält Weiß die Opposition und gewinnt den Bauern a5. Der schwarze König ist zu spät gekommen, weil er zuvor die Türme tauschen musste.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Kf2",
+      "Kf7",
+      "Ke3",
+      "Ke6",
+      "Kd4",
+      "Kd6",
+      "c5+",
+      "Kc6",
+      "Kc4",
+      "a5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "In der Partie Lasker gegen Capablanca, St. Petersburg 1914, zeigte Weiß, wie ein kleiner Raumvorteil nach 12.f5! bewahrt wird. Der Springer auf e3 blockiert den Bauern, und der Turm greift über die f-Linie ein. Nach 20.Sc4 Sxc4 21.Lxc4 war die Stellung von Schwarz bereits schwierig zu verteidigen.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "f5",
+      "e3",
+      "Sc4",
+      "Sxc4",
+      "Lxc4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:3",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 3,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "After 1.d4 Nf6 2.c4 g6 3.Nc3 Bg7 4.e4 d6 5.Nf3 0-0 6.Be2 e5 we reach the Classical King's Indian. White may close the centre with 7.d5, when Black plays for ...f5 on the kingside, or keep the tension with 7.0-0 Nc6 8.d5 Ne7 9.Ne1, preparing f2-f3 and a queenside expansion with c4-c5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "d4",
+      "Nf6",
+      "c4",
+      "g6",
+      "Nc3",
+      "Bg7",
+      "e4",
+      "d6",
+      "Nf3",
+      "O-O",
+      "Be2",
+      "e5",
+      "d5",
+      "f5",
+      "O-O",
+      "Nc6",
+      "d5",
+      "Ne7",
+      "Ne1",
+      "f2",
+      "f3",
+      "c4",
+      "c5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "The queen sacrifice 27.Qxf7+!! Rxf7 28.Rd8+ Rf8 29.Rxf8+ Kxf8 30.Bc5+ Kg8 31.Re8# is the point of the whole attack. Note that 27.Rd8 first would fail to 27...Qxd8 28.Qxf7+ Kh8, when the bishop on c5 has no check. Move order is everything in a mating combination.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Qxf7+",
+      "Rxf7",
+      "Rd8+",
+      "Rf8",
+      "Rxf8+",
+      "Kxf8",
+      "Bc5+",
+      "Kg8",
+      "Re8#",
+      "Rd8",
+      "Qxd8",
+      "Qxf7+",
+      "Kh8",
+      "c5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "twocol:a:4",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 4,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "mixed",
+   "notation_lang": "mixed",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Rubinstein showed how to convert a small endgame edge. After 34.Kf2 Kf7 35.Ke3 Ke6 36.Kd4 Kd6 37.b4 axb4 38.axb4 g5 39.g3 White keeps the opposition and will eventually win the c-pawn. The black king arrived one tempo too late because the rooks had to be exchanged first.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Kf2",
+      "Kf7",
+      "Ke3",
+      "Ke6",
+      "Kd4",
+      "Kd6",
+      "b4",
+      "axb4",
+      "axb4",
+      "g5",
+      "g3"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Tras 1.d4 d5 2.c4 e6 3.Cc3 Cf6 4.Ag5 Ae7 5.e3 0-0 6.Cf3 Cbd7 se llega a la Defensa Ortodoxa del Gambito de Dama. Las blancas suelen continuar con 7.Tc1, preparando el cambio en d5, mientras que las negras buscan liberarse con ...c5 o ...dxc4 seguido de ...b5. La lucha por el centro define el carácter de toda la partida.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "d4",
+      "d5",
+      "c4",
+      "e6",
+      "Cc3",
+      "Cf6",
+      "Ag5",
+      "Ae7",
+      "e3",
+      "O-O",
+      "Cf3",
+      "Cbd7",
+      "Tc1",
+      "d5",
+      "c5",
+      "dxc4",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:5",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 5,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "El final de alfiles de distinto color es tablas a pesar de los dos peones de ventaja. Después de 48.Ae4 Ad6 49.Rf3 Rf6 50.g4 Ab8 el rey negro bloquea la casilla f6 y el alfil vigila la diagonal larga. Las blancas no pueden crear un segundo peón pasado sin perder el de b5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Ae4",
+      "Ad6",
+      "Rf3",
+      "Rf6",
+      "g4",
+      "Ab8",
+      "f6",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "La combinación comienza con 25.Txf7! Rxf7 26.Dh5+ Rg8 27.Ac4+ Rh8 28.Dxh7+!! Rxh7 29.Th3+ Rg8 30.Th8 mate. Un sacrificio de torre, uno de dama y un mate con torre y alfil: la belleza del ajedrez está en la economía de los medios.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Txf7",
+      "Rxf7",
+      "Dh5+",
+      "Rg8",
+      "Ac4+",
+      "Rh8",
+      "Dxh7+",
+      "Rxh7",
+      "Th3+",
+      "Rg8",
+      "Th8"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:6",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 6,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Capablanca recomendaba simplificar cuando se tiene ventaja material. En la posición del diagrama, 31.Dxd8+ Txd8 32.Txd8+ Rh7 33.Td7 conduce a un final de torres donde el peón de más decide sin dificultad. Cambiar damas elimina cualquier posibilidad de contrajuego.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Dxd8+",
+      "Txd8",
+      "Txd8+",
+      "Rh7",
+      "Td7"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Las negras cometieron un error grave con 15...Cxe4? porque tras 16.Cxe4 dxe4 17.Axe7 Dxe7 18.Dxe4 el peón queda perdido y el rey blanco está completamente seguro. Era mejor 15...h6 16.Ah4 Ce4 con juego equilibrado. La prisa por ganar un peón cuesta a menudo la partida.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Cxe4",
+      "Cxe4",
+      "dxe4",
+      "Axe7",
+      "Dxe7",
+      "Dxe4",
+      "h6",
+      "Ah4",
+      "Ce4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:7",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 7,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "mixed",
+   "notation_lang": "mixed",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "En el torneo de Zúrich de 1953, Bronstein anotó que la jugada 14.f4 debilita la casilla e4 pero abre la columna f para las torres. Después de 14...exf4 15.Axf4 Ce5 16.Cxe5 dxe5 17.Ae3 el alfil regresa y las blancas conservan una pequeña ventaja de espacio.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "f4",
+      "e4",
+      "exf4",
+      "Axf4",
+      "Ce5",
+      "Cxe5",
+      "dxe5",
+      "Ae3"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Depois de 1.e4 c5 2.Cf3 d6 3.d4 cxd4 4.Cxd4 Cf6 5.Cc3 a6 chegamos à Variante Najdorf da Defesa Siciliana. As brancas escolhem entre o ataque 6.Bg5, o posicional 6.Be2 e o moderno 6.Be3, cada um com uma ideia diferente sobre o centro. As pretas, por sua vez, preparam ...e5 ou ...e6 conforme o lance adversário.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "e4",
+      "c5",
+      "Cf3",
+      "d6",
+      "d4",
+      "cxd4",
+      "Cxd4",
+      "Cf6",
+      "Cc3",
+      "a6",
+      "Bg5",
+      "Be2",
+      "Be3",
+      "e5",
+      "e6"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "twocol:a:8",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 8,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "O final de torres é empatado apesar do peão a mais das brancas. Após 41.Tb7 Ta2 42.Rf3 Ta3+ 43.Re4 Ta4+ 44.Rd5 Ta5+ o rei não consegue escapar dos xeques sem abandonar o peão b5. A lição desta posição é antiga: a torre ativa atrás do peão passado vale um peão inteiro.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Tb7",
+      "Ta2",
+      "Rf3",
+      "Ta3+",
+      "Re4",
+      "Ta4+",
+      "Rd5",
+      "Ta5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "A combinação começa com o sacrifício 23.Bxh7+! Rxh7 24.Cg5+ Rg8 25.Dh5 Te8 26.Dxf7+ Rh8 27.Dh5+ Rg8 28.Dh7+ Rf8 29.Dh8+ Re7 30.Dxg7 e as brancas ganham material decisivo. O clássico sacrifício do bispo em h7 só funciona quando a dama alcança h5 a tempo.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Bxh7+",
+      "Rxh7",
+      "Cg5+",
+      "Rg8",
+      "Dh5",
+      "Te8",
+      "Dxf7+",
+      "Rh8",
+      "Dh5+",
+      "Rg8",
+      "Dh7+",
+      "Rf8",
+      "Dh8+",
+      "Re7",
+      "Dxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "twocol:a:9",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 9,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "После 1.e4 e5 2.Кf3 Кc6 3.Сb5 a6 4.Сa4 Кf6 5.0-0 Сe7 6.Лe1 b5 7.Сb3 d6 8.c3 0-0 возникает закрытая система испанской партии. Белые готовят продвижение d2-d4, а чёрные стремятся к контригре на ферзевом фланге. Это одна из самых исследованных позиций дебютной теории.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "e4",
+      "e5",
+      "Кf3",
+      "Кc6",
+      "Сb5",
+      "a6",
+      "Сa4",
+      "Кf6",
+      "O-O",
+      "Сe7",
+      "Лe1",
+      "b5",
+      "Сb3",
+      "d6",
+      "c3",
+      "O-O",
+      "d2",
+      "d4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Ладейный эндшпиль ничеен, несмотря на лишнюю пешку белых. После 42.Лb7 Лa2 43.Крf3 Лa3+ 44.Крe4 Лa4+ 45.Крd5 Лa5+ король не может уйти от шахов, не потеряв пешку b5. Активная ладья позади проходной пешки стоит целой пешки.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Лb7",
+      "Лa2",
+      "Лa3+",
+      "Лa4+",
+      "Лa5+",
+      "b5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:10",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 10,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "Комбинация начинается жертвой 23.Сxh7+! Крxh7 24.Кg5+ Крg8 25.Фh5 Лe8 26.Фxf7+ Крh8 27.Фh5+ Крg8 28.Фh7+ Крf8 29.Фh8+ Крe7 30.Фxg7, и белые выигрывают решающий материал. Классическая жертва слона на h7 работает только тогда, когда ферзь успевает попасть на h5.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Сxh7+",
+      "Кg5+",
+      "Фh5",
+      "Лe8",
+      "Фxf7+",
+      "Фh5+",
+      "Фh7+",
+      "Фh8+",
+      "Фxg7",
+      "h7",
+      "h5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Ботвинник советовал в закрытых позициях не спешить с вскрытием игры. В партии против Смыслова после 19.Кd2 Кe8 20.f4 f5 21.Кf3 Кd6 22.b3 позиция оставалась напряжённой, и решающим стал только ход 31.g4, подготовленный десятью ходами манёвров.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Кd2",
+      "Кe8",
+      "f4",
+      "f5",
+      "Кf3",
+      "Кd6",
+      "b3",
+      "g4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "twocol:a:11",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 11,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "two-column",
+   "columns": 2,
+   "genre": "mixed",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "paragraph",
+     "truth": "В позиции на диаграмме чёрные ошиблись ходом 15...Кxe4?, так как после 16.Кxe4 dxe4 17.Сxe7 Фxe7 18.Фxe4 пешка теряется, а белый король в полной безопасности. Лучше было 15...h6 16.Сh4 Кe4 с равной игрой. Поспешность в выигрыше пешки часто стоит партии.",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Кxe4",
+      "Кxe4",
+      "dxe4",
+      "Сxe7",
+      "Фxe7",
+      "Фxe4",
+      "h6",
+      "Сh4",
+      "Кe4"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "paragraph",
+     "truth": "Пешечный эндшпиль выигран за белых благодаря оппозиции. После 36.Крf2 Крf7 37.Крe3 Крe6 38.Крd4 Крd6 39.c5+ Крc6 40.Крc4 чёрный король вынужден отступить, и пешка a5 гибнет. Чёрные опоздали на один темп, потому что раньше им пришлось разменять ладьи.",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "c5+",
+      "a5"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "reading-order"
+   ],
+   "notes": "",
+   "partition": "calib"
+  },
+  {
+   "id": "table:0",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 0,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "1. Kasparov – Karpov  Moscovo 1985  Siciliana, Scheveningen  47\n2. Fischer – Spassky  Reykjavik 1972  Nimzo-Índia  112\n3. Capablanca – Marshall  Nova Iorque 1918  Ruy López  9\n4. Tal – Botvinnik  Moscovo 1960  Francesa, Winawer  203\n5. Anand – Kramnik  Bona 2008  Gambito da Dama Recusado  88",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "table:1",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "6. Fischer – Spassky  Reykjavik 1972  Nimzo-Índia  112\n7. Capablanca – Marshall  Nova Iorque 1918  Ruy López  9\n8. Tal – Botvinnik  Moscovo 1960  Francesa, Winawer  203\n9. Anand – Kramnik  Bona 2008  Gambito da Dama Recusado  88\n10. Carlsen – Nakamura  Wijk aan Zee 2011  Índia do Rei  301",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "table:2",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "11. Capablanca – Marshall  Nova Iorque 1918  Ruy López  9\n12. Tal – Botvinnik  Moscovo 1960  Francesa, Winawer  203\n13. Anand – Kramnik  Bona 2008  Gambito da Dama Recusado  88\n14. Carlsen – Nakamura  Wijk aan Zee 2011  Índia do Rei  301\n15. Steinitz – Zukertort  St. Louis 1886  Abertura Escocesa  15",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "calib"
+  },
+  {
+   "id": "table:3",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 3,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "16. Tal – Botvinnik  Moscovo 1960  Francesa, Winawer  203\n17. Anand – Kramnik  Bona 2008  Gambito da Dama Recusado  88\n18. Carlsen – Nakamura  Wijk aan Zee 2011  Índia do Rei  301\n19. Steinitz – Zukertort  St. Louis 1886  Abertura Escocesa  15\n20. Lasker – Rubinstein  São Petersburgo 1914  Espanhola  56",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "table:4",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 4,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "21. Anand – Kramnik  Bona 2008  Gambito da Dama Recusado  88\n22. Carlsen – Nakamura  Wijk aan Zee 2011  Índia do Rei  301\n23. Steinitz – Zukertort  St. Louis 1886  Abertura Escocesa  15\n24. Lasker – Rubinstein  São Petersburgo 1914  Espanhola  56\n25. Alekhine – Euwe  Haia 1937  Eslava  140",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "table:5",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 5,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "26. Carlsen – Nakamura  Wijk aan Zee 2011  Índia do Rei  301\n27. Steinitz – Zukertort  St. Louis 1886  Abertura Escocesa  15\n28. Lasker – Rubinstein  São Petersburgo 1914  Espanhola  56\n29. Alekhine – Euwe  Haia 1937  Eslava  140\n30. Petrosian – Spassky  Moscovo 1966  Inglesa  77",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "table:6",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 6,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "31. Steinitz – Zukertort  St. Louis 1886  Abertura Escocesa  15\n32. Lasker – Rubinstein  São Petersburgo 1914  Espanhola  56\n33. Alekhine – Euwe  Haia 1937  Eslava  140\n34. Petrosian – Spassky  Moscovo 1966  Inglesa  77\n35. Karpov – Korchnoi  Baguio 1978  Espanhola, Aberta  230",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "table:7",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 7,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "table",
+   "columns": 1,
+   "genre": "table",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "table",
+     "truth": "36. Lasker – Rubinstein  São Petersburgo 1914  Espanhola  56\n37. Alekhine – Euwe  Haia 1937  Eslava  140\n38. Petrosian – Spassky  Moscovo 1966  Inglesa  77\n39. Karpov – Korchnoi  Baguio 1978  Espanhola, Aberta  230\n40. Kramnik – Leko  Brissago 2004  Petroff  184",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "table"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "problem:0",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 0,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "Nº 12 — Brancas jogam e ganham",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Txf7! Rxf7 2.Dh5+ Rg8 3.Bc4+ Rh8 4.Dxh7#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Txf7",
+      "Rxf7",
+      "Dh5+",
+      "Rg8",
+      "Bc4+",
+      "Rh8",
+      "Dxh7#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "problem:1",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "No. 7 — White to play and mate in three",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Qg8+! Rxg8 2.Nf7+ Kh7 3.Nxd8",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Qg8+",
+      "Rxg8",
+      "Nf7+",
+      "Kh7",
+      "Nxd8"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "problem:2",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "Nr. 23 — Weiß zieht und gewinnt",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Dxh7+! Kxh7 2.Th3+ Kg8 3.Th8#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Dxh7+",
+      "Kxh7",
+      "Th3+",
+      "Kg8",
+      "Th8#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "problem:3",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 3,
+   "clip": null,
+   "synth_font": "calibri.ttf",
+   "control": null,
+   "prose_lang": "es",
+   "notation_lang": "es",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "Nº 31 — Juegan las blancas y ganan",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "es",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Cf6+! gxf6 2.Dg4+ Rh8 3.Dg7#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "es",
+     "notation_lang": "es",
+     "moves": [
+      "Cf6+",
+      "gxf6",
+      "Dg4+",
+      "Rh8",
+      "Dg7#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "problem:4",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 4,
+   "clip": null,
+   "synth_font": "times.ttf",
+   "control": null,
+   "prose_lang": "ru",
+   "notation_lang": "ru",
+   "notation_style": "algebraic",
+   "script": "cyrillic",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "№ 44 — Белые начинают и выигрывают",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "ru",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Фxh7+! Крxh7 2.Лh3+ Крg8 3.Лh8#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "ru",
+     "notation_lang": "ru",
+     "moves": [
+      "Фxh7+",
+      "Лh3+",
+      "Лh8#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "blind"
+  },
+  {
+   "id": "problem:5",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 5,
+   "clip": null,
+   "synth_font": "BOOKOS.TTF",
+   "control": null,
+   "prose_lang": "pt",
+   "notation_lang": "pt",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "Nº 58 — Pretas jogam e empatam",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "pt",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1...Th1+! 2.Rxh1 Df1+ 3.Rh2 Dh3+ 4.Rg1 Dg3+",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "pt",
+     "notation_lang": "pt",
+     "moves": [
+      "Th1+",
+      "Rxh1",
+      "Df1+",
+      "Rh2",
+      "Dh3+",
+      "Rg1",
+      "Dg3+"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "problem:6",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 6,
+   "clip": null,
+   "synth_font": "georgia.ttf",
+   "control": null,
+   "prose_lang": "en",
+   "notation_lang": "en",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "No. 61 — Black to play and win",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "en",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1...Bxh2+! 2.Kxh2 Qh4+ 3.Kg1 Ng4 4.Re1 Qh2#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "en",
+     "notation_lang": "en",
+     "moves": [
+      "Bxh2+",
+      "Kxh2",
+      "Qh4+",
+      "Kg1",
+      "Ng4",
+      "Re1",
+      "Qh2#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "problem:7",
+   "source": "synth",
+   "book": "composite",
+   "page_index": 7,
+   "clip": null,
+   "synth_font": "constan.ttf",
+   "control": null,
+   "prose_lang": "de",
+   "notation_lang": "de",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "problems",
+   "columns": 1,
+   "genre": "problems",
+   "quality": "clean",
+   "damage": "",
+   "regions": [
+    {
+     "kind": "diagram_label",
+     "truth": "Nr. 75 — Matt in zwei Zügen",
+     "box": null,
+     "reading_order": 0,
+     "prose_lang": "de",
+     "notation_lang": "",
+     "moves": [],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    },
+    {
+     "kind": "movetext",
+     "truth": "1.Sd5! Kxd5 2.Dd4#",
+     "box": null,
+     "reading_order": 1,
+     "prose_lang": "de",
+     "notation_lang": "de",
+     "moves": [
+      "Sd5",
+      "Kxd5",
+      "Dd4#"
+     ],
+     "moves_verified": false,
+     "game_ref": null,
+     "diagram_ref": null,
+     "start_fen": null
+    }
+   ],
+   "strata": [
+    "scan_clean_300",
+    "scan_degraded_150"
+   ],
+   "tags": [
+    "synthetic",
+    "problems",
+    "board-without-prose"
+   ],
+   "notes": "",
+   "partition": "dev"
+  },
+  {
+   "id": "control:blank:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "blank",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "blind"
+  },
+  {
+   "id": "control:blank:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "blank",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "blind"
+  },
+  {
+   "id": "control:board:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "board",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "blind"
+  },
+  {
+   "id": "control:board:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "board",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "calib"
+  },
+  {
+   "id": "control:stains:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "stains",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:stains:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "stains",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:border:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "border",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:border:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "border",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:noise:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "noise",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:noise:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "noise",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  },
+  {
+   "id": "control:photo:1",
+   "source": "control",
+   "book": "",
+   "page_index": 1,
+   "clip": null,
+   "synth_font": "",
+   "control": "photo",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "calib"
+  },
+  {
+   "id": "control:photo:2",
+   "source": "control",
+   "book": "",
+   "page_index": 2,
+   "clip": null,
+   "synth_font": "",
+   "control": "photo",
+   "prose_lang": "",
+   "notation_lang": "",
+   "notation_style": "algebraic",
+   "script": "latin",
+   "layout": "none",
+   "columns": 1,
+   "genre": "control",
+   "quality": "control",
+   "damage": "",
+   "regions": [],
+   "strata": [
+    "native"
+   ],
+   "tags": [
+    "negative-control"
+   ],
+   "notes": "a resposta certa é abster-se",
+   "partition": "dev"
+  }
+ ]
+}

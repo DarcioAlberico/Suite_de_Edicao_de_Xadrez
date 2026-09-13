@@ -39,6 +39,7 @@ models/
 # --- Relatorios e saidas geradas -------------------------------------------- #
 benchmarks/reports/
 benchmarks/corpus/**/derived/
+benchmarks/corpus/golden/manifest.private.json
 *.doctor.json
 report.json
 

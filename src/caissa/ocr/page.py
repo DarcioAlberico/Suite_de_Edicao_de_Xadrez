@@ -42,13 +42,15 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 from .arbiter import Arbiter, ArbiterConfig, ArbitrationOutcome, RegionTask
+from .decision import Decision, RegionDecision
 from .engines.base import OcrEngine
 from .layout.analyze import (
     LayoutConfig,
@@ -62,10 +64,10 @@ from .layout.analyze import (
 from .types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
 
 __all__ = [
+    "PageConfig",
+    "PageOutcome",
     "PageRecognizer",
     "PageTask",
-    "PageOutcome",
-    "PageConfig",
     "RegionOutcome",
     "recognize_page",
 ]
@@ -97,6 +99,13 @@ class PageConfig:
     #: Hard ceiling on region count, so a pathological page cannot spend
     #: minutes.  Beyond it the page is treated as one region.
     max_regions: int = 60
+    #: Sol §SOL-1, the confidence mask.  A page whose text layer was rejected
+    #: for a *localised* defect — a broken font used by some spans, damaged
+    #: notation in one block — is still cut into regions, and each region is
+    #: judged on its own: the good spans keep the layer, the bad ones go to
+    #: OCR.  Off, a rejected page goes to OCR whole, as before Sol.  A page
+    #: with no text at all is whole-page OCR either way.
+    localized_level0: bool = True
     layout: LayoutConfig = field(default_factory=LayoutConfig)
     arbiter: ArbiterConfig = field(default_factory=ArbiterConfig)
 
@@ -164,6 +173,20 @@ class RegionOutcome:
     def escalated(self) -> bool:
         return self.outcome.escalated
 
+    @property
+    def decision(self) -> RegionDecision | None:
+        return self.outcome.decision
+
+    @property
+    def emits_text(self) -> bool:
+        """False for an abstained region: its text never enters the body."""
+        return not self.outcome.abstained
+
+    @property
+    def needs_review(self) -> bool:
+        d = self.outcome.decision
+        return d is not None and d.decision is Decision.REVIEW
+
 
 @dataclass(frozen=True, slots=True)
 class PageOutcome:
@@ -179,9 +202,14 @@ class PageOutcome:
 
     @property
     def text(self) -> str:
-        """Every region's text, in reading order."""
+        """Every emitted region's text, in reading order.
+
+        An abstained region (Sol §SOL-2) contributes nothing: its best
+        candidate is still in :attr:`regions` for the review panel, but it
+        is not text the page can be said to contain.
+        """
         return "\n".join(r.result.text for r in self.regions
-                         if r.result.text.strip())
+                         if r.result.text.strip() and r.emits_text)
 
     @property
     def body_text(self) -> str:
@@ -189,9 +217,26 @@ class PageOutcome:
         return "\n".join(
             r.result.text for r in self.regions
             if r.result.text.strip()
+            and r.emits_text
             and not r.kind.is_furniture
             and r.kind is not RegionKind.DIAGRAM_LABEL
         )
+
+    @property
+    def review_regions(self) -> tuple[RegionOutcome, ...]:
+        return tuple(r for r in self.regions if r.needs_review)
+
+    @property
+    def abstained_regions(self) -> tuple[RegionOutcome, ...]:
+        return tuple(r for r in self.regions if not r.emits_text)
+
+    @property
+    def decision_counts(self) -> dict[str, int]:
+        counts = {str(d): 0 for d in Decision}
+        for region in self.regions:
+            if region.decision is not None:
+                counts[str(region.decision.decision)] += 1
+        return counts
 
     @property
     def engines_used(self) -> tuple[str, ...]:
@@ -211,6 +256,8 @@ class PageOutcome:
         lines: list[OcrLine] = []
         warnings: list[str] = []
         for region in self.regions:
+            if not region.emits_text:
+                continue
             lines.extend(region.result.lines)
             warnings.extend(region.result.warnings)
         engines = self.engines_used
@@ -225,6 +272,7 @@ class PageOutcome:
                 "regions": len(self.regions),
                 "whole_page": self.whole_page,
                 "escalated": len(self.escalated_regions),
+                "decisions": self.decision_counts,
                 "notes": self.notes,
                 **dict(self.signals),
             },
@@ -237,10 +285,12 @@ class PageOutcome:
         for note in self.notes:
             head.append(f"  · {note}")
         for region in self.regions:
+            decision = region.decision
             head.append(
                 f"  [{region.region.reading_order}] {region.kind} → "
                 f"{region.engine}"
-                + ("" if region.own_verdict else " (veredito da página)"))
+                + ("" if region.own_verdict else " (veredito da página)")
+                + (f" · {decision.decision}" if decision is not None else ""))
         return "\n".join(head)
 
 
@@ -319,11 +369,19 @@ class PageRecognizer:
         if engine is not None:
             page_verdict = engine.assess(task.pdf_page, lang=task.lang)
             if not page_verdict.accepted:
+                localized = (self.config.localized_level0
+                             and not page_verdict.is_image_only
+                             and self._is_localized(page_verdict, engine))
+                if not localized:
+                    notes.append(
+                        "a camada de texto da página inteira foi reprovada "
+                        f"({page_verdict.reason}) — o nível 0 não concorre em "
+                        f"região nenhuma desta página.")
+                    return self._whole_page(task, started, notes, layout=layout)
                 notes.append(
-                    "a camada de texto da página inteira foi reprovada "
-                    f"({page_verdict.reason}) — o nível 0 não concorre em "
-                    f"região nenhuma desta página.")
-                return self._whole_page(task, started, notes, layout=layout)
+                    "a camada de texto da página foi reprovada "
+                    f"({page_verdict.reason}), mas o defeito é localizável: "
+                    "cada região é julgada por si, e só as reprovadas vão ao OCR.")
 
         outcomes = [self._run_region(task, layout, region, engine, page_verdict)
                     for region in regions]
@@ -351,8 +409,34 @@ class PageRecognizer:
                 "own_verdicts": sum(1 for o in outcomes if o.own_verdict),
                 "page_verdict": (page_verdict.reason if page_verdict
                                  else "sem motor de nível 0"),
+                "page_verdict_accepted": bool(page_verdict and page_verdict.accepted),
             },
         )
+
+    @staticmethod
+    def _is_localized(page_verdict: Any, engine: Any) -> bool:
+        """Can a rejected page still have trustworthy regions?
+
+        Yes when the rejection names something that lives in *part* of the
+        page: a font that only some spans use, or damaged notation (which is
+        a property of the figurine font, and a region without figurines is
+        untouched by it).  No when the layer is globally unusable — a CMap
+        that maps everything to nonsense, a page that is mostly implausible
+        characters — because then every region shares the defect and
+        judging thirty of them is thirty ways to be wrong.
+        """
+        signals = page_verdict.signals
+        thresholds = getattr(engine, "thresholds", None)
+        if thresholds is None:
+            return False
+        mangled = signals.get("mangled_move_ratio", 0.0)
+        judged = signals.get("moves_judged", 0.0)
+        if (judged >= thresholds.min_moves_for_notation_check
+                and mangled > thresholds.max_mangled_move_ratio):
+            return True
+        broken = getattr(page_verdict, "broken_fonts", ())
+        healthy = [f for f in getattr(page_verdict, "fonts", ()) if f not in broken]
+        return bool(broken) and bool(healthy)
 
     # -- assembling the region list ---------------------------------------- #
 
@@ -455,14 +539,31 @@ class PageRecognizer:
         arbitration is for.
         """
         thresholds = getattr(engine, "thresholds", None)
-        if thresholds is None or not verdict.accepted or not page_verdict.accepted:
+        if thresholds is None or not verdict.accepted:
             return verdict
         bar = thresholds.max_mangled_move_ratio
         judged = page_verdict.signals.get("moves_judged", 0.0)
         page_damaged = (
             judged >= thresholds.min_moves_for_notation_check
             and page_verdict.signals.get("mangled_move_ratio", 0.0) > bar)
-        if not page_damaged or verdict.confidence <= page_verdict.confidence:
+        if not page_damaged:
+            return verdict
+        if not page_verdict.accepted:
+            # Sol §SOL-1: the page was *rejected* for its notation.  A region
+            # that judged enough moves of its own and passed has evidence the
+            # page-wide finding does not override; a region with too few
+            # moves to judge has none, and inherits the rejection — otherwise
+            # cutting the page up launders the verdict (F5_REPORT_C2 §5.1).
+            own = verdict.signals.get("moves_judged", 0.0)
+            if own >= thresholds.min_moves_for_notation_check:
+                return verdict
+            return replace(
+                verdict, accepted=False, confidence=0.0,
+                reason=(f"{verdict.reason} Região com {own:.0f} lance(s), poucos "
+                        f"para julgar a notação por si; a página foi reprovada "
+                        f"por notação danificada e a fonte é a mesma."),
+            )
+        if verdict.confidence <= page_verdict.confidence:
             return verdict
         return replace(
             verdict,
@@ -503,7 +604,9 @@ class PageRecognizer:
             total_duration_s=time.perf_counter() - started,
             whole_page=True,
             signals={"regions": 1, "escalated": int(arbitration.escalated),
-                     "own_verdicts": 1},
+                     "own_verdicts": 1,
+                     "decision": (str(arbitration.decision.decision)
+                                  if arbitration.decision else "n/a")},
         )
 
     # -- geometry ---------------------------------------------------------- #
