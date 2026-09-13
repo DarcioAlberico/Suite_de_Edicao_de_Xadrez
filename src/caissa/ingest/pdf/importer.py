@@ -583,8 +583,12 @@ class PdfImporter:
             verdict = (
                 self._engine.assess(page, lang=self._lang) if not text.is_empty else None
             )
-            source, reason, confidence, text = self._decide_source(page, frame, text, verdict)
+            # Diagrams first: the OCR's legality replay (Sol §SOL-8) starts
+            # from the position a solution follows, so the boards must be
+            # known before the text is read.
             hits: list[DiagramHit] = list(finder(page, frame, text)) if finder is not None else []
+            self._share_page_context(index, text, hits)
+            source, reason, confidence, text = self._decide_source(page, frame, text, verdict)
         report = PageReport(index=index, source=source, verdict=reason, confidence=confidence)
         pending = self._pending_ocr
         if pending is not None and pending[0] == index:
@@ -721,6 +725,25 @@ class PdfImporter:
         total = sum(w for _, w in weights)
         confidence = sum(c * w for c, w in weights) / total if total else 0.0
         return result, confidence
+
+    def _share_page_context(self, index: int, text: PageText, hits: Sequence[DiagramHit]) -> None:
+        """Hand the OCR service the page's diagrams and their captions' side."""
+        service = self._ocr_service
+        if service is None or not hasattr(service, "page_context"):
+            return
+        from caissa.ingest.pdf.ocr_service import DiagramRef, PageContext
+
+        contexts, _ = self._contexts(index, text, [h.box for h in hits]) if hits else ([], [])
+        refs = []
+        for hit, context in zip(hits, contexts, strict=False):
+            trusted = hit.fen is not None and (
+                hit.path is RecognitionPath.VECTOR or hit.confidence >= _CONFIDENT)
+            side = None
+            if context is not None and context.side_to_move is not None:
+                side = "w" if context.side_to_move else "b"
+            refs.append(DiagramRef(box=hit.box, fen=hit.fen, trusted=trusted, side_to_move=side))
+        service.page_context = PageContext(
+            diagrams=tuple(refs), notation_locale=self.report.notation_lang or None)
 
     def _adapt_language(self, result: PageText) -> None:
         """A scanned book has no layer to survey: learn the language from the

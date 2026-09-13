@@ -56,8 +56,10 @@ from caissa.ocr.portfolio import Portfolio, PortfolioConfig, Variant, build_port
 from caissa.ocr.types import BBox, OcrResult, RegionKind
 
 __all__ = [
+    "DiagramRef",
     "OcrService",
     "OcrServiceConfig",
+    "PageContext",
     "PageRecognition",
     "RegionRecognition",
     "default_ocr_service",
@@ -105,6 +107,38 @@ class OcrServiceConfig:
     #: below this score is not worth the variants either (noise is noise
     #: on every image).  In between, the portfolio earns its cost.
     min_score_for_variants: float = 0.15
+
+
+# --------------------------------------------------------------------------- #
+# Page context (Sol §SOL-8)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True, slots=True)
+class DiagramRef:
+    """A diagram the importer located on the page, for movetext association.
+
+    Attributes:
+        box: Board rectangle in ``page.rect`` points.
+        fen: The position read, or ``None`` when only located.
+        trusted: Whether the FEN's provenance allows a legality replay to
+            start from it (an exact vector read, or a verified reading).
+        side_to_move: ``"w"``/``"b"`` when the caption said so; ``None``
+            otherwise — never defaulted.
+    """
+
+    box: tuple[float, float, float, float]
+    fen: str | None = None
+    trusted: bool = False
+    side_to_move: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PageContext:
+    """What the importer knows about the page before the OCR runs."""
+
+    diagrams: tuple[DiagramRef, ...] = ()
+    notation_locale: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -302,6 +336,8 @@ class OcrService:
         self._engines: list[OcrEngine] | None = list(engines) if engines is not None else None
         self._recognizers: dict[str, PageRecognizer] = {}
         self.last: PageRecognition | None = None
+        #: Set by the importer before each page: diagrams and notation locale.
+        self.page_context: PageContext | None = None
 
     # -- engines ----------------------------------------------------------- #
 
@@ -591,19 +627,25 @@ class OcrService:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
             except ImportError:
                 pass
-        legality: dict[str, Any] = {}
-        movetext = (region_outcome.region.kind is RegionKind.MOVETEXT
-                    or _looks_like_movetext(result))
-        if cfg.validate_notation and movetext and not result.is_empty:
-            try:
-                from caissa.ocr.notation.validate import validate_region
-
-                validated = validate_region(result, decision, lang=task.lang)
-                result, decision, legality = validated.result, validated.decision, validated.as_dict()
-            except ImportError:
-                pass
         region = region_outcome.region
         box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        legality: dict[str, Any] = {}
+        movetext = (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result))
+        if cfg.validate_notation and movetext and not result.is_empty:
+            from caissa.ocr.notation.validate import validate_region
+
+            diagram = self._diagram_for(box_px, task)
+            context = self.page_context
+            validated = validate_region(
+                result, decision, lang=task.lang,
+                start_fen=diagram.fen if diagram else None,
+                fen_trusted=bool(diagram and diagram.trusted),
+                side_to_move=diagram.side_to_move if diagram else None,
+                notation_locale=context.notation_locale if context else None,
+                image=task.image if task.pdf_page is None else None)
+            result, decision, legality = validated.result, validated.decision, validated.as_dict()
+            if diagram is not None:
+                legality["diagram"] = list(diagram.box)
         return RegionRecognition(
             reading_order=region.reading_order, kind=region.kind, box_px=box_px,
             result=result, decision=decision, engine=result.engine or best.engine,
@@ -611,6 +653,32 @@ class OcrService:
             candidates=tuple(candidates), own_verdict=region_outcome.own_verdict,
             legality=legality, fusion=fusion,
         )
+
+
+    def _diagram_for(self, box_px: BBox, task: PageTask) -> DiagramRef | None:
+        """The diagram a movetext region most plausibly continues from.
+
+        The nearest one *above* the region that shares its column: a solution
+        follows its diagram, and the column keeps a left-hand board from
+        claiming a right-hand line.  A diagram below or beside is not "the
+        position before these moves", whatever its confidence.
+        """
+        context = self.page_context
+        if context is None or not context.diagrams or task.pdf_page is None:
+            return None
+        best: tuple[float, DiagramRef] | None = None
+        for diagram in context.diagrams:
+            if diagram.fen is None:
+                continue
+            dbox = BBox.from_edges(*diagram.box).scaled(task.scale)
+            if dbox.y1 > box_px.y0 + 0.25 * box_px.h:
+                continue
+            if dbox.horizontal_overlap(box_px) < 0.3:
+                continue
+            gap = box_px.y0 - dbox.y1
+            if best is None or gap < best[0]:
+                best = (gap, diagram)
+        return best[1] if best else None
 
 
 # --------------------------------------------------------------------------- #
