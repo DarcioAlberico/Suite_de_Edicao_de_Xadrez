@@ -79,6 +79,21 @@ com CER 0,036. 35 % dos itens vão para revisão, 5 abstêm (0,9 %), **0** entra
 Nenhum estrato regrediu fora do IC bootstrap; o limpo não foi degradado por variante alguma
 (o original é sempre candidato — SOL-3).
 
+### 1.1 A rodada cega (release) — 2026-09-13
+
+```
+.venv\Scripts\python benchmarksench_sol.py --system baseline --label baseline_blind --publish --blind
+.venv\Scripts\python benchmarks\sol_gate.py --blind --label sol_blind --baseline docs\quality\solaseline_blind.json
+```
+
+Partições `dev` + `calib` + `blind` (700 medições, 12 controles). O veredito é o mesmo: **bloqueado**
+nos quatro portões absolutos (CER limpo 0,0142; CER 150 DPI 0,0346; lances 0,780; 304 inventados),
+verde em tudo o mais — 0 importações silenciosas, **0/12** controles, ordem de leitura 1,000,
+ambiente reproduz o baseline, e nenhuma regressão por estrato: sombra 0,075→**0,031**, foto
+0,240→**0,127**, 150 DPI 0,050→**0,035**, limpo 0,027→0,026, nativo 0,0023 =, fax 0,065→0,069
+(dentro do IC). A partição cega sozinha (`sol_blind.json`, faceta `partition=blind`) não se
+desvia das outras, o que é o que se espera de limiares que não foram ajustados nela.
+
 ---
 
 ## 2. O corpus: o que ele é e o que ele não é
