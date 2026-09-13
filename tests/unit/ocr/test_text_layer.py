@@ -590,39 +590,30 @@ def test_escalation_is_justified_by_what_the_engines_actually_do(
 
 
 @pytest.mark.golden
-def test_the_cascade_past_level_zero_is_currently_decorative(
+def test_a_damaged_text_layer_no_longer_beats_tesseract_on_fixed_confidence(
         pymupdf, corpus_doc):
-    """**A known defect, asserted rather than hidden.**
+    """**The defect F5_REPORT_C2 §5 recorded, closed by Sol §SOL-4.**
 
-    Flagging a damaged page at 0.55 was supposed to let a real OCR engine
-    compete for it.  Escalation does now happen — the region loop runs
-    Tesseract on both regions of Gaprindashvili p202 — but **Tesseract cannot
-    win**, because its calibrated confidence is ~0.
+    Until Sol this test asserted the opposite: escalation happened on
+    Gaprindashvili p202 — Tesseract ran on the damaged page — but Tesseract
+    could not win, because ``EngineCalibration(floor=0.55, gamma=1.4)`` was a
+    statement about a single word applied to a page aggregate, and it
+    flattened Tesseract's confidence to 0.01–0.07.  The floor was deliberately
+    not tuned by eye ("choosing it until Tesseract wins is exactly how a gate
+    gets bought") and the state was recorded here.
 
-    The cause is a category error in the calibration table, not a judgement:
-    ``EngineCalibration(floor=0.55)`` was set from the documented reputation
-    that "Tesseract's word confidence rarely drops below 0.60 even on
-    nonsense".  That is a statement about a **single word**.  It is applied to
-    a **page aggregate**, whose measured range over twelve corpus pages is
-    0.216 to 0.614 — so the floor sits in the middle of the distribution and
-    ``gamma=1.4`` flattens what survives to 0.01-0.07.
-
-    Half of the compound has been fixed: the weak-word term used the minimum,
-    which is 0.000 on every page of every book, and is now a low quantile
-    (``test_one_dead_word_destroys_the_minimum_but_not_the_quantile``).  That
-    moved the zeroed pages from 12 of 12 to 6 of 12 and changed no outcome.
-
-    **The floor itself is deliberately not tuned.**  Choosing it by eye until
-    Tesseract wins is exactly how a gate gets bought; the calibration table's
-    own docstring says honest values need the labelled corpus of SPEC §11.2,
-    which does not exist.  So the state is recorded here instead.
-
-    When that corpus exists and the floor is fitted, this test should start
-    failing.  That is the intended outcome — update it, do not delete it.
+    Sol §SOL-4 removed the reputation numbers and fits calibration per facet
+    on the calibration partition of the golden corpus.  With the neutral
+    default (and with the fitted table, when present) Tesseract's calibrated
+    confidence on this page is ~0.6 and its score beats the damaged layer's,
+    which is what flagging the page at 0.55 was always for.  The region then
+    goes to *review*, not to acceptance: 0.73 is under the 0.78 bar, and a
+    reviewer sees both readings (Sol §SOL-2).
     """
     import numpy as np
 
     from caissa.ocr.arbiter import Arbiter, RegionTask
+    from caissa.ocr.decision import Decision
     from caissa.ocr.engines.tesseract import TesseractEngine
 
     engine = TesseractEngine()
@@ -647,9 +638,12 @@ def test_the_cascade_past_level_zero_is_currently_decorative(
     # ...and its language plausibility is *higher* than the damaged layer's.
     assert scores["tesseract"].plausibility > scores["pdf_text_layer"].plausibility
 
-    # And it still loses, on calibrated confidence alone.
-    assert scores["tesseract"].confidence < 0.10, (
-        f"a calibração do Tesseract mudou "
-        f"({scores['tesseract'].confidence:.3f}) — se ela foi ajustada com o "
-        f"corpus rotulado, atualize este teste e o §5 do relatório")
-    assert outcome.result.engine == "pdf_text_layer"
+    # And it now wins: the layer's fixed 0.55 no longer outranks a calibrated
+    # engine that read the page better.
+    assert scores["tesseract"].confidence > 0.40, (
+        f"a confiança calibrada do Tesseract voltou a ser esmagada "
+        f"({scores['tesseract'].confidence:.3f})")
+    assert scores["tesseract"].total > scores["pdf_text_layer"].total
+    assert outcome.result.engine == "tesseract"
+    assert outcome.decision is not None
+    assert outcome.decision.decision in (Decision.REVIEW, Decision.ACCEPTED)

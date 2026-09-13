@@ -51,9 +51,17 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from .calibration import (
+    CalibrationSet,
+    CalibrationTable,
+    FacetKey,
+    facet_key,
+    packaged_calibration,
+)
 from .decision import Decision, DecisionPolicy, RegionDecision, decide
 from .engines.base import EngineLevel, OcrEngine
-from .lexicon import normalise_lang
+from .lexicon import normalise_lang, script_profile
+from .routing import Router
 from .quality import QualitySignals, measure_text, text_plausibility
 from .types import BBox, OcrResult, RegionKind, empty_result
 
@@ -118,6 +126,14 @@ class EngineCalibration:
     #: Weight of the weak-word term against the length-weighted mean.  See the
     #: module docstring: averages hide the failures that matter.
     worst_word_weight: float = 0.30
+    #: Sol §SOL-4: a fitted map from the engine's raw word confidence to the
+    #: measured probability of the word being right.  When present it
+    #: replaces floor and gamma entirely and is applied *per word* before
+    #: aggregation.  ``key`` names the facet table that answered.
+    table: CalibrationTable | None = None
+    key: str = ""
+    #: True while the numbers are a reputation rather than a measurement.
+    provisional: bool = True
     #: *Which* weak word.  Not the minimum: on a page-sized unit the minimum is
     #: 0.000 for every engine and every page, so the term becomes a constant
     #: and the weight above turns into a flat penalty.  Measured in
@@ -126,6 +142,8 @@ class EngineCalibration:
     weak_word_quantile: float = 0.05
 
     def apply(self, raw: float) -> float:
+        if self.table is not None:
+            return self.table.apply(raw)
         if raw <= self.floor:
             return 0.0
         span = 1.0 - self.floor
@@ -133,24 +151,33 @@ class EngineCalibration:
             return 1.0
         return float(min(1.0, ((raw - self.floor) / span) ** self.gamma))
 
+    def with_table(self, key: str, table: CalibrationTable) -> "EngineCalibration":
+        return EngineCalibration(
+            floor=0.0, gamma=1.0, worst_word_weight=self.worst_word_weight,
+            weak_word_quantile=self.weak_word_quantile, table=table, key=key,
+            provisional=False)
 
+
+#: Sol §SOL-4 removed the provisional floors and gammas (floor 0.55 and
+#: gamma 1.4 for Tesseract, 0.40 and 1.2 for the neural engines): they were
+#: reputations, not measurements, and measured on the corpus the Tesseract
+#: floor alone zeroed 12 of 12 pages (F5_REPORT_C2 §5).  What remains here is
+#: neutral — raw confidence passes through — and is overridden per facet by
+#: the fitted tables of ``caissa/ocr/data/calibration.json`` whenever one
+#: exists for the engine.  An engine with no fitted table is scored on its
+#: raw number and flagged ``provisional`` in the outcome.
 DEFAULT_CALIBRATIONS: dict[str, EngineCalibration] = {
-    # Tesseract's word confidence rarely drops below 0.60 even on nonsense, so
-    # the bottom third of its range carries no information and gamma pulls the
-    # middle down.
-    "tesseract": EngineCalibration(floor=0.55, gamma=1.4, worst_word_weight=0.35),
+    "tesseract": EngineCalibration(worst_word_weight=0.35),
     # The text layer has no per-word confidence: the number it reports is the
     # verdict from its own CMap audit, which is already a calibrated judgement.
-    "pdf_text_layer": EngineCalibration(floor=0.0, gamma=1.0,
-                                        worst_word_weight=0.0),
-    "paddleocr": EngineCalibration(floor=0.40, gamma=1.2, worst_word_weight=0.30),
-    "surya": EngineCalibration(floor=0.40, gamma=1.2, worst_word_weight=0.30),
+    "pdf_text_layer": EngineCalibration(worst_word_weight=0.0, provisional=False),
+    "paddleocr": EngineCalibration(worst_word_weight=0.30),
+    "rapidocr": EngineCalibration(worst_word_weight=0.30),
+    "surya": EngineCalibration(worst_word_weight=0.30),
 }
 
-#: Used for an engine with no entry above — neutral, and deliberately a little
-#: pessimistic so an unknown engine cannot outrank a characterised one on
-#: confidence alone.
-FALLBACK_CALIBRATION = EngineCalibration(floor=0.35, gamma=1.3)
+#: Used for an engine with no entry above — neutral.
+FALLBACK_CALIBRATION = EngineCalibration()
 
 
 # --------------------------------------------------------------------------- #
@@ -183,6 +210,11 @@ class ArbiterConfig:
     min_chars_for_plausibility: int = 24
     calibrations: Mapping[str, EngineCalibration] = field(
         default_factory=lambda: dict(DEFAULT_CALIBRATIONS))
+    #: Sol §SOL-4: the fitted tables.  ``None`` loads the packaged set; an
+    #: empty :class:`CalibrationSet` disables fitted calibration (tests).
+    calibration_set: CalibrationSet | None = None
+    #: Sol §SOL-4: engine order by evidence instead of by level alone.
+    router: Router = field(default_factory=Router)
     #: Sol §SOL-2.  When on, a region no engine cleared is *not* labelled
     #: accepted: the outcome carries a :class:`RegionDecision` of ``REVIEW``
     #: or ``ABSTAINED`` and the caller decides what to emit.  Off reproduces
@@ -198,8 +230,18 @@ class ArbiterConfig:
     def threshold_for(self, level: int) -> float:
         return self.accept_threshold_by_level.get(level, self.accept_threshold)
 
-    def calibration_for(self, engine: str) -> EngineCalibration:
-        return self.calibrations.get(engine, FALLBACK_CALIBRATION)
+    def calibration_for(self, engine: str,
+                        key: FacetKey | None = None) -> EngineCalibration:
+        base = self.calibrations.get(engine, FALLBACK_CALIBRATION)
+        if base.table is not None:
+            return base
+        fitted = (self.calibration_set if self.calibration_set is not None
+                  else packaged_calibration())
+        found = fitted.lookup(key or FacetKey(engine=engine))
+        if found is None:
+            return base
+        name, table = found
+        return base.with_table(name, table)
 
 
 # --------------------------------------------------------------------------- #
@@ -249,6 +291,9 @@ class EngineScore:
     agreement: float
     char_count: int
     duration_s: float
+    #: Sol §SOL-4: which fitted table calibrated the confidence ("" = none).
+    calibration_key: str = ""
+    provisional: bool = True
 
     def describe_pt(self) -> str:
         return (f"{self.engine} (nível {self.level}): escore {self.total:.3f} "
@@ -337,14 +382,43 @@ class Arbiter:
 
     # -- scoring ----------------------------------------------------------- #
 
-    def _confidence_of(self, result: OcrResult) -> tuple[float, float]:
-        """``(calibrated, raw)`` confidence for a result."""
-        calibration = self.config.calibration_for(result.engine)
+    def _confidence_of(self, result: OcrResult,
+                       task: RegionTask | None = None
+                       ) -> tuple[float, float, EngineCalibration]:
+        """``(calibrated, raw, calibration)`` for a result.
+
+        With a fitted table (Sol §SOL-4) every word is calibrated first and
+        the mean and weak-word terms are taken over calibrated values; the
+        provisional path calibrates the aggregate, as before.
+        """
+        key = self._facet_key(result, task)
+        calibration = self.config.calibration_for(result.engine, key)
         mean = result.mean_confidence
         weak = result.weak_word_confidence(calibration.weak_word_quantile)
         weight = calibration.worst_word_weight
         raw = (1.0 - weight) * mean + weight * weak
-        return calibration.apply(raw), raw
+        if calibration.table is None:
+            return calibration.apply(raw), raw, calibration
+        words = [w for w in result.words if w.text.strip()]
+        if not words:
+            return 0.0, raw, calibration
+        scores = [(calibration.apply(w.confidence), max(1, len(w.text))) for w in words]
+        total = sum(c * n for c, n in scores)
+        length = sum(n for _, n in scores)
+        cal_mean = total / length if length else 0.0
+        ordered = sorted(c for c, _ in scores)
+        index = int(calibration.weak_word_quantile * (len(ordered) - 1))
+        cal_weak = ordered[max(0, min(index, len(ordered) - 1))]
+        return (1.0 - weight) * cal_mean + weight * cal_weak, raw, calibration
+
+    @staticmethod
+    def _facet_key(result: OcrResult, task: RegionTask | None) -> FacetKey:
+        profile = script_profile(result.text)
+        script = max(profile, key=lambda k: (profile[k], k)) if profile else ""
+        if task is None:
+            return facet_key(result.engine, script=script, kind=str(result.region_kind))
+        return facet_key(result.engine, lang=task.lang, script=script,
+                         dpi=task.scale * 72.0, kind=str(task.region_kind))
 
     @staticmethod
     def _agreement(result: OcrResult,
@@ -367,10 +441,11 @@ class Arbiter:
         return float(best), True
 
     def score(self, result: OcrResult, *, level: int, lang: str,
-              others: Sequence[OcrResult] = ()) -> EngineScore:
+              others: Sequence[OcrResult] = (),
+              task: RegionTask | None = None) -> EngineScore:
         """Score one result.  Pure: no state, no I/O, no randomness."""
         cfg = self.config
-        confidence, raw = self._confidence_of(result)
+        confidence, raw, calibration = self._confidence_of(result, task)
         signals: QualitySignals = measure_text(result.text, lang or result.lang)
 
         has_text = signals.char_count >= cfg.min_chars_for_plausibility
@@ -401,6 +476,8 @@ class Arbiter:
             agreement=agreement,
             char_count=signals.char_count,
             duration_s=result.duration_s,
+            calibration_key=calibration.key,
+            provisional=calibration.provisional,
         )
 
     # -- running ----------------------------------------------------------- #
@@ -461,7 +538,7 @@ class Arbiter:
         engines_run: list[str] = []
         step = 0
 
-        for engine in self.engines:
+        for engine in cfg.router.order(self.engines, task):
             level = engine.capabilities().level
             if level > cfg.max_level:
                 decisions.append(EscalationDecision(
@@ -495,7 +572,7 @@ class Arbiter:
             # second engine corroborates it.
             scores = [
                 self.score(r, level=self._level_of(r.engine), lang=task.lang,
-                           others=[o for o in results if o is not r])
+                           others=[o for o in results if o is not r], task=task)
                 for r in results
             ]
             current = next(s for s in scores if s.engine == result.engine)

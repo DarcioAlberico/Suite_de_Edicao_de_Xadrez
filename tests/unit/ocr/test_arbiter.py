@@ -483,15 +483,40 @@ def test_an_empty_result_scores_zero(region):
 # --------------------------------------------------------------------------- #
 
 
-def test_calibration_pushes_a_flattering_engine_down():
-    """Tesseract's word confidence rarely drops below 0.60 even on nonsense, so
-    the bottom of its range carries no information."""
+def test_default_calibrations_are_neutral_and_provisional():
+    """Sol §SOL-4: no floor, no gamma — a reputation is not a measurement.
+
+    The fitted tables of ``caissa/ocr/data/calibration.json`` are what bend
+    the curve now, per facet, and an engine without one is scored on its raw
+    number and *says so* through ``provisional``.
+    """
     from caissa.ocr.arbiter import DEFAULT_CALIBRATIONS
 
     tess = DEFAULT_CALIBRATIONS["tesseract"]
-    assert tess.apply(0.50) == 0.0, "abaixo do piso deveria valer zero"
-    assert tess.apply(0.80) < 0.80, "gamma deveria puxar o meio para baixo"
-    assert tess.apply(1.0) == pytest.approx(1.0)
+    assert tess.floor == 0.0 and tess.gamma == 1.0
+    assert tess.apply(0.50) == pytest.approx(0.50)
+    assert tess.provisional and tess.table is None
+    assert not DEFAULT_CALIBRATIONS["pdf_text_layer"].provisional
+
+
+def test_a_fitted_table_is_used_per_facet_and_flagged():
+    from caissa.ocr.calibration import CalibrationSet, CalibrationTable
+
+    fitted = CalibrationSet(tables={
+        "l1": CalibrationTable(knots=((0.0, 0.0), (1.0, 0.5)), samples=100),
+        "l1|lang=eng": CalibrationTable(knots=((0.0, 0.0), (1.0, 1.0)), samples=100),
+    })
+    config = identity_config(calibration_set=fitted)
+    config.calibrations = {}          # nothing static: only the fitted set answers
+    from caissa.ocr.calibration import facet_key
+
+    english = config.calibration_for("l1", facet_key("l1", lang="eng"))
+    assert english.key == "l1|lang=eng" and not english.provisional
+    assert english.apply(0.8) == pytest.approx(0.8)
+    other = config.calibration_for("l1", facet_key("l1", lang="deu"))
+    assert other.key == "l1"
+    assert other.apply(0.8) == pytest.approx(0.4)
+    assert config.calibration_for("l9").provisional
 
 
 def test_calibration_is_monotone():
@@ -502,12 +527,13 @@ def test_calibration_is_monotone():
         assert values == sorted(values), name
 
 
-def test_an_unknown_engine_gets_the_pessimistic_fallback():
-    config = ArbiterConfig()
+def test_an_unknown_engine_gets_a_neutral_provisional_fallback():
+    from caissa.ocr.calibration import CalibrationSet
+
+    config = ArbiterConfig(calibration_set=CalibrationSet())
     fallback = config.calibration_for("something-new")
-    known = config.calibration_for("tesseract")
-    assert fallback.floor > 0.0
-    assert fallback is not known
+    assert fallback.floor == 0.0 and fallback.provisional
+    assert fallback.apply(0.7) == pytest.approx(0.7)
 
 
 # --------------------------------------------------------------------------- #
@@ -628,7 +654,7 @@ def test_the_quantile_is_what_the_arbiter_actually_blends():
     arbiter = Arbiter([], ArbiterConfig(
         calibrations={"mock": EngineCalibration(floor=0.0, gamma=1.0,
                                                 worst_word_weight=0.35)}))
-    calibrated, raw = arbiter._confidence_of(_result_with([0.9] * 99 + [0.0]))
+    calibrated, raw, _ = arbiter._confidence_of(_result_with([0.9] * 99 + [0.0]))
     assert raw == pytest.approx(0.9, abs=0.01), (
         "o árbitro voltou a misturar o mínimo: uma palavra morta em cem "
         "derrubou a confiança da página inteira")
