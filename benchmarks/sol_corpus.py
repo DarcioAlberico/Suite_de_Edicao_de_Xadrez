@@ -62,12 +62,33 @@ class Rendered:
 _PDF_CACHE: dict[str, Any] = {}
 
 
+#: Labelling projects (``tools/rotular.py``) register where a reviewer's scans
+#: live; a ``pdf-scan`` item whose book is not in ``PDF_DIR`` is found there.
+LABELING_PROJECTS = (REPO_ROOT / "labeling",)
+
+
+def _labelled_pdfs() -> dict[str, Path]:
+    import json
+
+    found: dict[str, Path] = {}
+    for root in LABELING_PROJECTS:
+        index = root / "project.json"
+        if index.is_file():
+            data = json.loads(index.read_text("utf-8"))
+            for book, path in data.get("documents", {}).items():
+                if Path(path).is_file():
+                    found[str(book)] = Path(path)
+    return found
+
+
 def _open_pdf(book: str) -> Any | None:
     import fitz
 
     if book in _PDF_CACHE:
         return _PDF_CACHE[book]
     path = next((p for p in sorted(PDF_DIR.glob("*.pdf")) if p.stem[:50] == book[:50]), None)
+    if path is None:
+        path = next((p for stem, p in _labelled_pdfs().items() if stem[:50] == book[:50]), None)
     doc = fitz.open(path) if path is not None else None
     _PDF_CACHE[book] = doc
     return doc

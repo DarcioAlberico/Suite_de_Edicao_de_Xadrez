@@ -959,6 +959,12 @@ class TesseractFineTuner:
 
     def copy_languages(self) -> None:
         src = Path(self.tools.tessdata_dir)
+        # ``--tessdata-dir`` also relocates the config files (``tsv``, ``hocr``,
+        # ``lstm.train``); without them every recognition in the output
+        # directory fails with "Can't open tsv" and the arbiter abstains.
+        for folder in ("configs", "tessconfigs"):
+            if (src / folder).is_dir():
+                shutil.copytree(src / folder, self.out_dir / folder, dirs_exist_ok=True)
         for lang in self.config.copy_langs:
             source = src / f"{lang}.traineddata"
             target = self.out_dir / source.name

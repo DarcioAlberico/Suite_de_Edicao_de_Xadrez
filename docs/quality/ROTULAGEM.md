@@ -183,6 +183,32 @@ python benchmarks/bench_sol.py --tessdata-dir models/tessdata --model-prefix cai
 usa a base copiada. O relatório registra `tessdata_dir` e `model_prefix` no ambiente.
 O portão (`sol_gate.py`) compara com o baseline como qualquer outra mudança.
 
+**Medido em 2026-09-13** (corpus com 256 `pdf-scan`, 738 linhas por rodada, mesmo hash), sem
+modelo → com `caissa_por` (aplicado a todo item `por`/`por+eng`):
+
+| | sem | com `caissa_por` |
+|---|---:|---:|
+| scans rotulados (155 itens `pt`): lances certos | 222 / 425 (52 %) | **398 / 425 (94 %)** |
+| scans: lances inventados · abstenções | 25 · 59 | **11 · 45** |
+| scans: CER ponderado nos itens que ambos leram (127) | 1,21 % | **1,02 %** |
+| `synth` (prosa portuguesa tipografada, 382): CER | 5,7 % | 6,4 % |
+| `pdf-native` (152): CER | 1,06 % | 1,47 % |
+
+Duas leituras. (1) Onde foi treinado, o modelo entrega o que prometia: as figurinas viram
+lances e as abstenções caem. A média de CER por item nos scans *sobe* (3,1 → 3,4 %) porque
+19 regiões curtas que a base abstinha passaram a ser respondidas com erro (CER médio 18 %
+nelas) — abstenção conta zero na média, resposta errada conta. (2) **Fora dos scans o
+modelo regrediu**: 367 linhas inglesas em cima do `por` desaprenderam um pouco de português
+(`synth` e `pdf-native` pioram), e o starter do `combine_lang_model` não carrega os
+dicionários da base. Consequência prática: um modelo ajustado é **por livro/idioma**, não um
+substituto global do `por` — treinar o Dvoretsky a partir do `eng` (`--base-lang eng
+--download-base`) e rotular as páginas com o idioma certo (`eng`, não `por+eng`: 155 dos
+199 itens de scan estão com `prose_lang=pt` por causa do padrão da janela) é o próximo passo.
+Três defeitos achados por esta medição e corrigidos: `--tessdata-dir` relativo quebrava no
+diretório temporário do motor; a pasta do modelo precisa de `configs/` (o treinador copia);
+e um motor "disponível" que falha em toda região abstinha em silêncio — agora se declara
+indisponível com a frase que diz o que copiar.
+
 ---
 
 ## 4b. Figurinas: o leitor de glifos como segunda opinião

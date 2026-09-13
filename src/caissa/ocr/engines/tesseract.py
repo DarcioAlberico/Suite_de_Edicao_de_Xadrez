@@ -551,13 +551,24 @@ class TesseractEngine(OcrEngineBase):
                 f"por LSTM exige a versão 4 ou superior (recomendada: 5). "
                 f"Atualize a instalação em {binary}."
             )
+        if self.config.tessdata_dir:
+            # ``--tessdata-dir`` relocates the config files too: without
+            # ``configs/tsv`` every call fails with "Can't open tsv" and the
+            # pipeline would abstain on every region in silence.
+            configs = os.path.join(self.config.tessdata_dir, "configs")
+            if not os.path.isfile(os.path.join(configs, "tsv")):
+                return False, (
+                    f"A pasta tessdata {self.config.tessdata_dir} não tem configs/tsv e "
+                    f"configs/hocr: copie a pasta configs da instalação do Tesseract para lá "
+                    f"(tools/treinar_tesseract.py faz isso ao gravar um modelo)."
+                )
         return True, None
 
     def _discover_languages(self) -> set[str]:
         assert self._binary is not None
         cmd = [self._binary, "--list-langs"]
         if self.config.tessdata_dir:
-            cmd += ["--tessdata-dir", self.config.tessdata_dir]
+            cmd += ["--tessdata-dir", os.path.abspath(self.config.tessdata_dir)]
         proc = self._run(cmd, timeout=30.0)
         out = (proc.stdout or "") + "\n" + (proc.stderr or "")
         langs: set[str] = set()
@@ -637,7 +648,7 @@ class TesseractEngine(OcrEngineBase):
         cmd = [self._binary, str(image_path), str(out_base),
                "-l", lang, "--psm", str(psm), "--oem", str(self.config.oem)]
         if self.config.tessdata_dir:
-            cmd += ["--tessdata-dir", self.config.tessdata_dir]
+            cmd += ["--tessdata-dir", os.path.abspath(self.config.tessdata_dir)]
         if self.config.dpi:
             cmd += ["--dpi", str(int(self.config.dpi))]
         if self.config.want_char_boxes:
