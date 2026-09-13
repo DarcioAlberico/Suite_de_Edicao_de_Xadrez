@@ -121,6 +121,24 @@ def make_baseline() -> System:
     return run
 
 
+#: ``--tessdata-dir`` / ``--model-prefix``: measure a fine-tuned model
+#: (``tools/treinar_tesseract.py``) — ``por`` becomes ``<prefix>_por`` when
+#: that file exists in the directory, so the same run reads every language
+#: the reviewer trained and the base for the rest.
+TESSDATA_DIR: Path | None = None
+MODEL_PREFIX: str = ""
+
+
+def model_lang(lang: str) -> str:
+    if TESSDATA_DIR is None or not MODEL_PREFIX:
+        return lang
+    parts = []
+    for part in lang.split("+"):
+        tuned = f"{MODEL_PREFIX}_{part}"
+        parts.append(tuned if (TESSDATA_DIR / f"{tuned}.traineddata").is_file() else part)
+    return "+".join(parts)
+
+
 def make_sol() -> System:
     """The production service.  ``SOL_CONFIG='{"fuse": false}'`` (JSON kwargs of
     :class:`OcrServiceConfig`) switches parts off for an ablation run."""
@@ -129,11 +147,16 @@ def make_sol() -> System:
     from caissa.ingest.pdf.ocr_service import OcrService, OcrServiceConfig
 
     overrides = json.loads(os.environ.get("SOL_CONFIG", "{}"))
-    service = OcrService(config=OcrServiceConfig(**overrides))
+    engines = None
+    if TESSDATA_DIR is not None:
+        from caissa.ocr.engines.tesseract import TesseractConfig, TesseractEngine
+
+        engines = [TesseractEngine(TesseractConfig(tessdata_dir=str(TESSDATA_DIR)))]
+    service = OcrService(engines, config=OcrServiceConfig(**overrides))
 
     def run(rendered: Rendered, item: GoldenItem) -> Answer:
         recognition = service.recognize_image(rendered.gray, dpi=float(rendered.dpi),
-                                              lang=tesseract_lang(item))
+                                              lang=model_lang(tesseract_lang(item)))
         text = recognition.text
         return Answer(
             text=text if recognition.answered else None,
@@ -323,7 +346,13 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=REPORTS)
     parser.add_argument("--publish", action="store_true",
                         help="also write the Markdown and a text-free JSON under docs/quality/sol")
+    parser.add_argument("--tessdata-dir", type=Path, default=None,
+                        help="tessdata with a fine-tuned model (tools/treinar_tesseract.py output)")
+    parser.add_argument("--model-prefix", default="caissa",
+                        help="with --tessdata-dir: use <prefix>_<lang>.traineddata when present")
     args = parser.parse_args()
+    global TESSDATA_DIR, MODEL_PREFIX  # run options read by the system factory
+    TESSDATA_DIR, MODEL_PREFIX = args.tessdata_dir, args.model_prefix
 
     manifest = load_manifest(args.manifest, include_blind=args.blind)
     items = items_sorted(manifest.items)
@@ -360,10 +389,16 @@ def main() -> int:
         "system": args.system,
         "label": args.label or args.system,
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        "corpus_hash": manifest.content_hash(),
+        # The corpus identity is the whole manifest, blind partition included,
+        # so a release run (--blind) and a development run report the same
+        # hash and the environment gate compares them on what they measured,
+        # recorded separately in ``blind_included``.
+        "corpus_hash": load_manifest(args.manifest, include_blind=True).content_hash(),
         "corpus_version": manifest.corpus_version,
         "blind_included": args.blind,
-        "environment": environment(),
+        "environment": {**environment(),
+                        "tessdata_dir": str(TESSDATA_DIR) if TESSDATA_DIR else None,
+                        "model_prefix": MODEL_PREFIX if TESSDATA_DIR else None},
         "thresholds": GateThresholds().__dict__ if hasattr(GateThresholds(), "__dict__") else {},
         "summary": {
             "overall": summarise_rows(rows),

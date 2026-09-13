@@ -238,7 +238,11 @@ baseline congelado: CER cai em todo estrato degradado (sombra 0,076→0,031; fot
 
 **O que fazer a seguir, em ordem:** (1) rotular scans reais — com FEN de partida dos trechos
 de lances — porque 98 % dos lances do corpus hoje não têm posição para o replay e os portões
-de CER/lances medem tipografia sintética; (2) instalar um segundo motor (Surya para cirílico)
+de CER/lances medem tipografia sintética. **A ferramenta para isso está pronta desde
+2026-09-13**: `python tools/rotular.py labeling --pdf <scan.pdf> --reviewer <nome>` (bancada
+Tk, linha a linha, com FEN inicial por região), exportação para o manifesto e ajuste fino do
+Tesseract (`tools/treinar_tesseract.py`, que exige um modelo float de `tessdata_best` —
+`--download-base`); `docs/quality/ROTULAGEM.md` é o guia; (2) instalar um segundo motor (Surya para cirílico)
 e rodar `tests/unit/ocr/test_optional_engines.py` como contrato; (3) a janela de revisão sobre
 `caissa.ocr.review.ReviewQueue` quando o shell F9 entrar; (4) `python benchmarks/sol_gate.py
 --blind` só num release.

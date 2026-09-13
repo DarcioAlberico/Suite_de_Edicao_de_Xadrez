@@ -188,11 +188,15 @@ for instalado, `tests/unit/ocr/test_optional_engines.py` é o contrato e `Isolat
 
 1. **Rótulo humano em scans reais** — sem isso os portões de CER e de lances medem tipografia
    sintética. A fila de revisão (SOL-11) já exporta no formato de calibração e do manifesto.
+   *(2026-09-13: a bancada existe — `tools/rotular.py` rotula por linha, exporta para o
+   manifesto como `pdf-scan`, e `tools/treinar_tesseract.py` faz o ajuste fino do Tesseract
+   sobre a verdade; ver `ROTULAGEM.md`. O que falta é sentar e rotular.)*
 2. **Um segundo motor instalado** — os estratos degradados estão no teto do Tesseract sozinho; o
    roteador e o orçamento já chegam ao Surya/Paddle quando existirem.
 3. **Janela de revisão** — o modelo existe; a janela é do shell F9, que não está neste repositório.
 4. **Revisão humana cega de ≥ 20 páginas** e comparação com ABBYY/Acrobat — procedimento: a fila
-   exporta `corrections()`, que entram no manifesto como regiões rotuladas.
+   exporta `corrections()`, que entram no manifesto como regiões rotuladas *(ou a bancada de
+   `ROTULAGEM.md` §3, que grava o mesmo formato)*.
 5. **Dicionário russo licenciado** e mais vocabulário para de/fr/it/nl.
 
 ---

@@ -108,7 +108,7 @@ Página PDF ou imagem
 ### Entregáveis
 
 - [x] Criar manifesto versionado do corpus dourado.
-- [ ] Selecionar no mínimo 200 páginas representativas. *(190 itens medíveis, sem rótulo humano — `SOL_REPORT.md` §2)*
+- [ ] Selecionar no mínimo 200 páginas representativas. *(190 itens medíveis, sem rótulo humano — `SOL_REPORT.md` §2; a bancada de rotulagem existe: `tools/rotular.py`, `docs/quality/ROTULAGEM.md`)*
 - [x] Armazenar verdade textual Unicode por região e ordem de leitura.
 - [x] Rotular caixas de prosa, movetext, títulos, notas, tabelas e legendas.
 - [x] Marcar idioma da prosa e idioma da notação separadamente.
@@ -441,12 +441,12 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão. *(modelo `ReviewQueue` pronto; janela depende do shell F9)*
-- [ ] Exibir recorte da imagem e texto lado a lado.
-- [ ] Destacar palavras de baixa confiança.
-- [ ] Mostrar candidatos alternativos e motor de origem.
-- [ ] Exibir motivo linguístico ou enxadrístico da dúvida.
-- [ ] Permitir aceitar, editar ou manter como imagem.
+- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão. *(modelo `ReviewQueue` pronto; janela do produto depende do shell F9. A bancada Tk de rotulagem — `tools/rotular.py`, `docs/quality/ROTULAGEM.md` — já faz o que os cinco itens abaixo pedem, por linha, e é onde o rótulo humano é produzido; os itens ficam abertos até a janela do shell existir)*
+- [ ] Exibir recorte da imagem e texto lado a lado. *(bancada: sim)*
+- [ ] Destacar palavras de baixa confiança. *(bancada: sim, por limiar)*
+- [ ] Mostrar candidatos alternativos e motor de origem. *(bancada: sim, variante × motor)*
+- [ ] Exibir motivo linguístico ou enxadrístico da dúvida. *(bancada: motivos da decisão e palavras fracas)*
+- [ ] Permitir aceitar, editar ou manter como imagem. *(bancada: aceitar / editar / rejeitar, auditado e cronometrado)*
 - [x] Registrar correções humanas para futura calibração.
 - [x] Impedir que feedback do conjunto de teste cego volte ao treinamento.
 

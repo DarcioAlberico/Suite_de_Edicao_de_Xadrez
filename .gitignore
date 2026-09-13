@@ -40,6 +40,8 @@ models/
 benchmarks/reports/
 benchmarks/corpus/**/derived/
 benchmarks/corpus/golden/manifest.private.json
+# Projetos de rotulagem (tools/rotular.py): trechos de livros do acervo, nao saem da maquina
+/labeling/
 *.doctor.json
 report.json
 
