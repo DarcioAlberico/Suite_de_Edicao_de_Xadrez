@@ -96,6 +96,10 @@ class OcrServiceConfig:
     fuse: bool = True
     #: Replay movetext regions for legality (Sol §SOL-8).
     validate_notation: bool = True
+    #: Sol §SOL-7: on a region that reads as movetext, add Tesseract's
+    #: movetext profile and its strict (whitelisted) profile as extra
+    #: candidates for fusion.  The strict one is never the sole reading.
+    movetext_candidates: bool = True
     page: PageConfig = field(default_factory=PageConfig)
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
@@ -375,12 +379,26 @@ class OcrService:
 
     # -- recognition ------------------------------------------------------- #
 
+    @staticmethod
+    def engine_lang(lang: str) -> str:
+        """The language string the engines get.
+
+        A Cyrillic book writes its squares in Latin letters — ``Кd2``, ``f4``
+        — and Tesseract's ``rus`` model alone reads ``f4`` as ``14``.  So a
+        Cyrillic language always travels with ``eng`` (Sol §SOL-7, the
+        notation convention is detected separately from the prose language).
+        """
+        parts = [p for p in (lang or "").split("+") if p]
+        if any(p in ("rus", "ukr", "bul", "srp", "bel", "mkd") for p in parts) and "eng" not in parts:
+            parts.append("eng")
+        return "+".join(parts)
+
     def recognize(self, page: Any, frame: PageFrame,
                   verdict: TextLayerVerdict | None = None, *,
                   lang: str = "", diagrams: Sequence[BBox] = ()) -> PageRecognition:
         """OCR one PDF page: layout from the text layer when it has one."""
         started = time.perf_counter()
-        lang = lang or self.lang
+        lang = self.engine_lang(lang or self.lang)
         dpi = self.choose_dpi(page, frame, verdict)
         image = self.render(page, dpi)
         task = PageTask(pdf_page=page, image=image, lang=lang, dpi=float(dpi),
@@ -392,7 +410,7 @@ class OcrService:
         """OCR a raster with no PDF behind it (a photograph, the benchmark)."""
         started = time.perf_counter()
         gray = _to_gray(image)
-        task = PageTask(image=gray, lang=lang or self.lang, dpi=float(dpi),
+        task = PageTask(image=gray, lang=self.engine_lang(lang or self.lang), dpi=float(dpi),
                         page_index=page_index)
         return self._recognize_task(task, gray, started)
 
@@ -408,6 +426,8 @@ class OcrService:
         for region_outcome in outcome.regions:
             base = self._candidate("original", region_outcome)
             candidates = [base]
+            if cfg.movetext_candidates:
+                candidates.extend(self._profile_candidates(recognizer, region_outcome, task))
             if self._wants_variants(region_outcome):
                 if portfolio is None:
                     portfolio = self._portfolio(image, int(task.dpi), notes)
@@ -495,6 +515,64 @@ class OcrService:
             score=arbitration.winner.total if arbitration.winner else 0.0,
             outcome=arbitration,
         )
+
+    def _profile_candidates(self, recognizer: PageRecognizer, region_outcome: RegionOutcome,
+                            task: PageTask) -> list[Candidate]:
+        """Sol §SOL-7: the movetext and strict readings of a movetext-like region.
+
+        Only when Tesseract is the engine that read it (the profiles are
+        Tesseract's), only when the region looks like notation, and only on
+        the original render — the variants get the region-kind profile by
+        themselves through ``psm_hint``.
+        """
+        from caissa.ocr.decision import decide
+        from caissa.ocr.engines.profiles import TesseractProfile
+        from caissa.ocr.lexicon import normalise_lang
+
+        arbitration = region_outcome.outcome
+        result = arbitration.result
+        region = region_outcome.region
+        if result.is_empty or result.engine != "tesseract" or task.image is None:
+            return []
+        movetext = region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
+        if not movetext:
+            return []
+        engine = next((e for e in recognizer.engines
+                       if getattr(e, "name", "") == "tesseract"
+                       and hasattr(e, "recognize_with_profile")), None)
+        if engine is None:
+            return []
+        box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        h, w = task.image.shape[:2]
+        x, y, cw, ch = box_px.clipped_to(BBox(0.0, 0.0, float(w), float(h))).to_int_tuple()
+        if cw <= 0 or ch <= 0:
+            return []
+        crop = task.image[y:y + ch, x:x + cw]
+        profiles = [TesseractProfile.MOVETEXT_STRICT]
+        if str(result.meta.get("profile", "")) != str(TesseractProfile.MOVETEXT):
+            profiles.insert(0, TesseractProfile.MOVETEXT)
+        out: list[Candidate] = []
+        threshold = float(result.meta.get("arbiter_threshold", 0.78))
+        for profile in profiles:
+            try:
+                reading = engine.recognize_with_profile(
+                    crop, lang=task.lang, psm_hint=RegionKind.MOVETEXT, profile=profile)
+            except Exception as exc:  # noqa: BLE001 - an extra candidate must never fail the page
+                self.log.debug("perfil %s falhou: %s", profile, exc)
+                continue
+            if reading.is_empty:
+                continue
+            reading = _translate(reading, float(x), float(y)).with_meta(variant=str(profile))
+            score = recognizer.arbiter.score(
+                reading, level=1, lang=task.lang,
+                task=RegionTask(image=crop, region_kind=RegionKind.MOVETEXT, lang=task.lang,
+                                scale=task.scale)).total
+            decision = decide(reading, score, policy=recognizer.config.arbiter.policy,
+                              image=task.image, langs=normalise_lang(task.lang),
+                              region_kind=RegionKind.MOVETEXT, accept_threshold=threshold)
+            out.append(Candidate(variant=str(profile), engine=reading.engine, result=reading,
+                                 decision=decision, score=score, outcome=arbitration))
+        return out
 
     def _settle(self, region_outcome: RegionOutcome, candidates: list[Candidate],
                 task: PageTask) -> RegionRecognition:

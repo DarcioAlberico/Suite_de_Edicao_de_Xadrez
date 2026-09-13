@@ -55,7 +55,8 @@ def test_move_tokens_cover_the_corpus_notations():
     assert move_tokens("1.e4 e5 2.Nf3 Nc6 3.Bb5") == ["e4", "e5", "Nf3", "Nc6", "Bb5"]
     assert move_tokens("1.e4 c5 2.Cf3 d6 3.d4 cxd4") == ["e4", "c5", "Cf3", "d6", "d4", "cxd4"]
     assert move_tokens("Sf3 Lb5 0-0 Te1 e8=D") == ["Sf3", "Lb5", "O-O", "Te1", "e8=D"]
-    assert move_tokens("1.e4 e5 2.Кf3 Кc6 3.Сb5") == ["e4", "e5", "Кf3", "Кc6", "Сb5"]
+    # Cyrillic homoglyphs fold to Latin: the same ink is the same move.
+    assert move_tokens("1.e4 e5 2.Кf3 Кc6 3.Сb5") == ["e4", "e5", "Kf3", "Kc6", "Cb5"]
     assert move_tokens("the e4-square and rank 5") == []
 
 

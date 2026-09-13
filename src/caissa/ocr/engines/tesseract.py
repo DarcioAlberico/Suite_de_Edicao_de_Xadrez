@@ -57,6 +57,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
+from .profiles import ProfileConfig, ProfileFiles, TesseractProfile, profile_for
 from .base import (
     EngineCapabilities,
     EngineLevel,
@@ -203,6 +204,11 @@ class TesseractConfig:
     box_file_fallback: bool | None = None
     #: Directory holding ``*.traineddata``; ``None`` uses Tesseract's own.
     tessdata_dir: str | None = None
+    #: Sol §SOL-7: choose the prose or movetext profile by region kind and
+    #: hand Tesseract the matching word and pattern files.  Off, every
+    #: region gets the plain configuration.
+    use_profiles: bool = True
+    profiles: ProfileConfig = field(default_factory=ProfileConfig)
 
 
 # --------------------------------------------------------------------------- #
@@ -483,6 +489,8 @@ class TesseractEngine(OcrEngineBase):
     name = "tesseract"
 
     def __init__(self, config: TesseractConfig | None = None) -> None:
+        self._profile_files = ProfileFiles((config or TesseractConfig()).profiles)
+        self._forced_profile: TesseractProfile | None = None
         super().__init__()
         self.config = config or TesseractConfig()
         self._binary: str | None = None
@@ -623,7 +631,8 @@ class TesseractEngine(OcrEngineBase):
     # -- recognition ------------------------------------------------------- #
 
     def _build_command(self, image_path: Path, out_base: Path, *,
-                       lang: str, psm: int) -> list[str]:
+                       lang: str, psm: int,
+                       profile: TesseractProfile | None = None) -> list[str]:
         assert self._binary is not None
         cmd = [self._binary, str(image_path), str(out_base),
                "-l", lang, "--psm", str(psm), "--oem", str(self.config.oem)]
@@ -633,7 +642,10 @@ class TesseractEngine(OcrEngineBase):
             cmd += ["--dpi", str(int(self.config.dpi))]
         if self.config.want_char_boxes:
             cmd += ["-c", "hocr_char_boxes=1"]
-        for key, value in sorted(self.config.extra_config.items()):
+        params = dict(self.config.extra_config)
+        if profile is not None:
+            params.update(self._profile_files.parameters(profile, lang))
+        for key, value in sorted(params.items()):
             cmd += ["-c", f"{key}={value}"]
         cmd += ["tsv", "hocr"]
         if self._use_box_file():
@@ -647,6 +659,17 @@ class TesseractEngine(OcrEngineBase):
             return self.config.box_file_fallback
         return self._box_fallback_armed
 
+    def recognize_with_profile(self, image: NDArray[np.uint8], *, lang: str,
+                               psm_hint: RegionKind,
+                               profile: TesseractProfile) -> OcrResult:
+        """Recognise with an explicit profile — the strict movetext candidate
+        the service adds for token fusion (Sol §SOL-7)."""
+        self._forced_profile = profile
+        try:
+            return self.recognize(image, lang=lang, psm_hint=psm_hint)
+        finally:
+            self._forced_profile = None
+
     def _recognize(
         self,
         image: NDArray[np.uint8],
@@ -659,6 +682,9 @@ class TesseractEngine(OcrEngineBase):
         gray = normalise_gray(image)
         psm = PSM_BY_REGION.get(psm_hint, 3)
         warnings: list[str] = []
+        profile: TesseractProfile | None = None
+        if self.config.use_profiles:
+            profile = self._forced_profile or profile_for(psm_hint)
 
         known = self.languages()
         requested = [p for p in lang.split("+") if p]
@@ -684,7 +710,7 @@ class TesseractEngine(OcrEngineBase):
             pil.save(image_path, format="PNG", **save_kwargs)
 
             cmd = self._build_command(image_path, out_base,
-                                      lang=effective_lang, psm=psm)
+                                      lang=effective_lang, psm=psm, profile=profile)
             proc = self._run(cmd, timeout=self.config.timeout_s, cwd=tmp)
             if proc.returncode != 0:
                 raise OcrError(
@@ -752,6 +778,7 @@ class TesseractEngine(OcrEngineBase):
             warnings=tuple(warnings[:12]),
             meta={
                 "psm": psm,
+                "profile": str(profile) if profile is not None else "",
                 "oem": self.config.oem,
                 "binary": self._binary,
                 "version": self._version,

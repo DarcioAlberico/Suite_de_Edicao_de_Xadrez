@@ -122,9 +122,14 @@ def make_baseline() -> System:
 
 
 def make_sol() -> System:
-    from caissa.ingest.pdf.ocr_service import OcrService
+    """The production service.  ``SOL_CONFIG='{"fuse": false}'`` (JSON kwargs of
+    :class:`OcrServiceConfig`) switches parts off for an ablation run."""
+    import os
 
-    service = OcrService()
+    from caissa.ingest.pdf.ocr_service import OcrService, OcrServiceConfig
+
+    overrides = json.loads(os.environ.get("SOL_CONFIG", "{}"))
+    service = OcrService(config=OcrServiceConfig(**overrides))
 
     def run(rendered: Rendered, item: GoldenItem) -> Answer:
         recognition = service.recognize_image(rendered.gray, dpi=float(rendered.dpi),

@@ -91,9 +91,18 @@ def normalise(text: str) -> str:
     return " ".join(text.split())
 
 
+#: Cyrillic capitals that are visually identical to Latin ones.  A Russian
+#: page prints the knight as ``К``; an engine (or a PDF) hands back ``K``.
+#: For *scoring* the two are the same reading of the same ink — the IR's
+#: notation layer (Sol §SOL-8) decides the canonical piece — so move tokens
+#: are compared with the homoglyphs folded to Latin.
+_HOMOGLYPHS = str.maketrans({"К": "K", "С": "C", "Р": "P", "В": "B", "А": "A", "Е": "E",
+                             "М": "M", "Т": "T", "Н": "H", "О": "O", "Х": "X"})
+
+
 def move_tokens(text: str) -> list[str]:
     """Move-shaped tokens of ``text`` in scoring form, in order."""
-    return MOVE_TOKEN.findall(normalise(text))
+    return [t.translate(_HOMOGLYPHS) for t in MOVE_TOKEN.findall(normalise(text))]
 
 
 # --------------------------------------------------------------------------- #

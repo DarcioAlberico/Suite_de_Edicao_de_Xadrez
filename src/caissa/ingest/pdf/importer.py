@@ -324,6 +324,12 @@ class ImportReport:
     duration_s: float = 0.0
     #: Sol §SOL-10: every region the OCR sent to review or abstained on.
     review_items: list[ReviewItem] = field(default_factory=list)
+    #: Sol §SOL-7: the prose language and the notation convention detected
+    #: (or given), with the detector's reason.
+    prose_lang: str = ""
+    prose_lang_reason: str = ""
+    notation_lang: str = ""
+    notation_lang_reason: str = ""
 
     @property
     def pages_by_source(self) -> dict[str, int]:
@@ -412,6 +418,11 @@ class PdfImporter:
         self._page_reports: dict[int, PageReport] = {}
         self._ocr_service: Any = None
         self._ocr_unavailable = False
+        #: The language the verdicts and the OCR use: the option, or what the
+        #: survey (or the first OCR page) detected.
+        self._lang: str = self.options.lang
+        self._language_samples: list[str] = []
+        self._movetext_samples: list[str] = []
         self._pending_ocr: tuple[int, dict[str, Any]] | None = None
         #: Abstained OCR regions of the page being built, as figure entries.
         self._abstained_figures: list[_FigureEntry] = []
@@ -495,9 +506,12 @@ class PdfImporter:
                 if size > 0:
                     self._size_weights[size] += max(1, line.char_count)
             self._integers[index] = bare_integers(text)
+            if len(self._language_samples) < 40 and text.char_count > 200:
+                self._language_samples.append(text.text)
             if n % 20 == 0:
                 self._progress(n, 2 * total)
         self.report.furniture_patterns = len(self._furniture.finalize())
+        self._detect_languages()
         if self._size_weights:
             self.report.body_size = max(self._size_weights.items(), key=lambda kv: (kv[1], -kv[0]))[
                 0
@@ -508,6 +522,31 @@ class PdfImporter:
         if self.options.detect_bold_by_ink and total >= 2:  # noqa: PLR2004 - needs two faces
             self._bold_fonts = stroke_bold_fonts(self.document, list(indices))
             self.report.bold_fonts = tuple(sorted(self._bold_fonts))
+
+    def _detect_languages(self) -> None:
+        """Sol §SOL-7: the prose language from the survey sample, the
+        notation convention from the moves seen so far."""
+        from caissa.ocr.language import detect_notation_convention, document_language
+
+        if self._language_samples:
+            guess = document_language(self._language_samples, hint=self.options.lang)
+            if self.options.lang:
+                self.report.prose_lang = self.options.lang
+                self.report.prose_lang_reason = "idioma informado na importação"
+            elif not guess.abstained:
+                self._lang = guess.lang
+                self.report.prose_lang = guess.lang
+                self.report.prose_lang_reason = guess.reason_pt
+            else:
+                self.report.prose_lang_reason = guess.reason_pt
+            notation = detect_notation_convention(
+                "\n".join(self._language_samples)[:100_000], prose_lang=self._lang)
+            if not notation.abstained:
+                self.report.notation_lang = notation.locale or ""
+            self.report.notation_lang_reason = notation.reason_pt
+        elif self.options.lang:
+            self.report.prose_lang = self.options.lang
+            self.report.prose_lang_reason = "idioma informado na importação"
 
     # -- pass 2 ------------------------------------------------------------ #
 
@@ -542,7 +581,7 @@ class PdfImporter:
             page = doc[index]
             text = extract_page_text(page, frame, mapper=self._mapper, bold_fonts=self._bold_fonts)
             verdict = (
-                self._engine.assess(page, lang=self.options.lang) if not text.is_empty else None
+                self._engine.assess(page, lang=self._lang) if not text.is_empty else None
             )
             source, reason, confidence, text = self._decide_source(page, frame, text, verdict)
             hits: list[DiagramHit] = list(finder(page, frame, text)) if finder is not None else []
@@ -648,7 +687,7 @@ class PdfImporter:
         if self._ocr_service is None:
             from caissa.ingest.pdf.ocr_service import OcrService
 
-            service = OcrService(lang=self.options.lang)
+            service = OcrService(lang=self._lang)
             if not service.available:
                 self._ocr_unavailable = True
                 self.report.notes.append(
@@ -674,6 +713,7 @@ class PdfImporter:
         self._record_ocr(frame, provider, (time.perf_counter() - started) * 1000.0)
         if result is None or result.is_empty:
             return None
+        self._adapt_language(result)
         # Sol §SOL-10: the page number is a summary, not a cap.  Each block
         # keeps its own spans' confidence; the worst line of the page must not
         # drag every other block down with it.
@@ -681,6 +721,24 @@ class PdfImporter:
         total = sum(w for _, w in weights)
         confidence = sum(c * w for c, w in weights) / total if total else 0.0
         return result, confidence
+
+    def _adapt_language(self, result: PageText) -> None:
+        """A scanned book has no layer to survey: learn the language from the
+        first pages the OCR reads and hand it to the service for the rest."""
+        if self.options.lang or self.report.prose_lang:
+            return
+        from caissa.ocr.language import detect_prose_language
+
+        self._language_samples.append(result.text)
+        guess = detect_prose_language("\n".join(self._language_samples))
+        if guess.abstained:
+            return
+        self._lang = guess.lang
+        self.report.prose_lang = guess.lang
+        self.report.prose_lang_reason = guess.reason_pt + " (detectado no OCR)"
+        if self._ocr_service is not None:
+            self._ocr_service.lang = guess.lang
+        self.report.notes.append(f"Idioma da prosa detectado pelo OCR: {guess.lang}.")
 
     def _record_ocr(self, frame: PageFrame, provider: Any, elapsed_ms: float) -> None:
         """Copy the service's trace into the page report and the review list."""
