@@ -75,21 +75,27 @@ def test_a_trusted_text_layer_anchor_is_never_overridden():
     assert fused.changed == 0
 
 
-def test_a_close_call_is_disputed_and_kept_for_review():
+def test_a_known_anchor_token_is_never_replaced_only_disputed():
+    """``rook`` is a word: a clearly more confident ``rock`` (also a word) is a
+    dispute for the reviewer; an equally confident one is nothing at all."""
     a = result_of("the rook belongs behind", [0.9, 0.62, 0.9, 0.9])
-    b = result_of("the rock belongs behind", [0.9, 0.62, 0.9, 0.9], variant="deskew_shadow")
-    fused = fuse_candidates([(a, 0.85, decision()), (b, 0.85, decision())], lang="eng",
-                            config=FusionConfig(dispute_margin=0.2))
+    b = result_of("the rock belongs behind", [0.9, 0.95, 0.9, 0.9], variant="deskew_shadow")
+    fused = fuse_candidates([(a, 0.85, decision()), (b, 0.85, decision())], lang="eng")
     assert fused is not None
     token = fused.tokens[1]
     assert token.text == "rook" and token.disputed
     assert token.alternative == "rock"
-    assert fused.disputed == 1
+    assert fused.disputed == 1 and fused.changed == 0
+    same = result_of("the rock belongs behind", [0.9, 0.62, 0.9, 0.9], variant="deskew_shadow")
+    quiet = fuse_candidates([(a, 0.85, decision()), (same, 0.85, decision())], lang="eng")
+    assert quiet is not None and quiet.disputed == 0 and quiet.tokens[1].text == "rook"
 
 
 def test_many_disputes_send_the_region_to_review():
-    a = result_of("the rook belongs behind", [0.62] * 4)
-    b = result_of("tho rock belonga behlnd", [0.62] * 4, variant="upscale")
+    # Anchor tokens are nonwords the engine doubted; the alternatives are
+    # words but not clearly better: every slot is a dispute.
+    a = result_of("tbe r0ok belongz behlnd", [0.62] * 4)
+    b = result_of("the rook belongs behind", [0.62] * 4, variant="upscale")
     fused = fuse_candidates([(a, 0.85, decision()), (b, 0.85, decision())], lang="eng",
                             config=FusionConfig(dispute_margin=0.9))
     assert fused is not None

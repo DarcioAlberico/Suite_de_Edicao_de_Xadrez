@@ -324,6 +324,10 @@ class ImportReport:
     duration_s: float = 0.0
     #: Sol §SOL-10: every region the OCR sent to review or abstained on.
     review_items: list[ReviewItem] = field(default_factory=list)
+    #: Sol §SOL-10: the OCR's full trace per page (decisions, candidates,
+    #: variants, fusion, legality), JSON-ready, for the review panel and for
+    #: selective reprocessing.  Written to ``asset_dir/ocr_trace.json``.
+    ocr_traces: dict[int, dict[str, Any]] = field(default_factory=dict)
     #: Sol §SOL-7: the prose language and the notation convention detected
     #: (or given), with the detector's reason.
     prose_lang: str = ""
@@ -469,6 +473,17 @@ class PdfImporter:
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))
         document = self._to_ir(entries)
         self.report.duration_s = time.perf_counter() - started
+        if self.options.asset_dir is not None and self.report.ocr_traces:
+            import json
+
+            target = Path(self.options.asset_dir) / "ocr_trace.json"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(
+                {"pages": self.report.ocr_traces,
+                 "review_items": [_review_item_dict(i) for i in self.report.review_items],
+                 "prose_lang": self.report.prose_lang,
+                 "notation_lang": self.report.notation_lang},
+                ensure_ascii=False, indent=1), encoding="utf-8")
         return ImportResult(document=document, report=self.report)
 
     def _check_cancel(self) -> None:
@@ -783,6 +798,10 @@ class PdfImporter:
         if report is not None:
             for key, value in pending.items():
                 setattr(report, key, value)
+        try:
+            self.report.ocr_traces[frame.index] = recognition.trace()
+        except Exception as exc:  # noqa: BLE001 - a trace that cannot be serialised is a note
+            self.report.notes.append(f"traço do OCR da página {frame.index} não registrado: {exc}")
         for region in recognition.regions:
             decision = region.decision.decision
             if decision.value == "accepted":
@@ -1260,6 +1279,15 @@ def _rect(box: RectT) -> Rect:
     return Rect(
         x=box[0], y=box[1], width=max(0.0, box[2] - box[0]), height=max(0.0, box[3] - box[1])
     )
+
+
+def _review_item_dict(item: ReviewItem) -> dict[str, Any]:
+    return {
+        "page_index": item.page_index, "rect": list(item.rect), "kind": item.kind,
+        "decision": item.decision, "reasons": list(item.reasons), "text": item.text,
+        "engine": item.engine, "score": item.score,
+        "alternatives": [list(a) for a in item.alternatives],
+    }
 
 
 def _slot_for_box(rows: PageRows, box: RectT) -> int:

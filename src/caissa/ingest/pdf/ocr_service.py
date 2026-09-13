@@ -207,7 +207,18 @@ class RegionRecognition:
             "fusion": self.fusion,
             "chars": self.result.char_count,
             "mean_confidence": round(self.result.mean_confidence, 4),
+            "estimated_cer": self.estimated_cer,
         }
+
+    @property
+    def estimated_cer(self) -> dict[str, float]:
+        """Sol §SOL-10: the CER estimate *and* how much to trust the estimate."""
+        from caissa.ocr.quality import estimate_cer
+
+        if self.result.is_empty:
+            return {"cer": 1.0, "confidence": 1.0}
+        cer, confidence = estimate_cer(self.result.text, self.result.lang)
+        return {"cer": round(float(cer), 4), "confidence": round(float(confidence), 3)}
 
 
 @dataclass(slots=True)

@@ -190,3 +190,21 @@ def test_negative_controls_never_produce_accepted_text(kind):
             f"{kind}: '{region.result.text[:60]}' foi aceito — "
             + decision.describe_pt())
     assert outcome.text.strip() == "" or outcome.decision_counts["accepted"] == 0
+
+
+def test_a_litter_of_short_tokens_is_noise_even_when_the_dictionary_accepts_them():
+    """The board control read as ``4 À be r Fr bi À be À be …``: every fragment
+    is a dictionary word somewhere, and the region is still not text."""
+    litter = "4 À be r Fr bi À be À be À be À r Y r r 4 be À be À be À be Y r Y r q be be À q"
+    d = decide(result_of(litter, 0.9), 0.9, image=inked(width=2400), langs=("por", "eng"))
+    assert d.decision is Decision.ABSTAINED
+    assert "forma de ruído" in " ".join(d.reasons_pt)
+    assert d.evidence is not None and d.evidence.short_token_share > 0.6
+    # Real short-worded prose (Portuguese function words) stays well under it.
+    prose = "a torre fica atrás do peão passado e o rei vai para o canto antes que ele avance"
+    assert decide(result_of(prose, 0.9), 0.9, image=inked(width=2400),
+                  langs=("por",)).decision is Decision.ACCEPTED
+    # A move list is two-character tokens by nature and is exempt.
+    moves = "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 d6 8.c3 O-O"
+    assert decide(result_of(moves, 0.95), 0.9, image=inked(width=2400),
+                  langs=("eng",)).decision is not Decision.ABSTAINED

@@ -23,11 +23,16 @@ The method is deliberately conservative, in the order the rules apply:
    left to right by horizontal overlap, then by edit distance among the
    overlapping ones.  A word with no partner simply contributes nothing.
 4. **Choice per slot.**  Each slot has the anchor's reading and up to one
-   reading per other candidate.  Readings are weighted by their calibrated
-   word confidence, the source's score and lexical support (a dictionary
-   word, a move token), with small, specific preferences for a reading
-   that keeps diacritics the language uses, that keeps punctuation the
-   others confirm, and that keeps a line-end hyphen.  The anchor wins ties.
+   reading per other candidate.  **An anchor token that is already a word
+   or a move is never replaced** — measured on the fax stratum, letting a
+   supported alternative outvote a supported anchor raised CER from 0.031
+   to 0.082 on a page, because a noisy variant is confident about its own
+   misreadings too.  Only an anchor token with no lexical support and no
+   strong confidence is open, and then an alternative must itself be
+   supported (a dictionary word, a move token) and at least as confident.
+   Among such alternatives the choice weighs word confidence, source score
+   and the small, specific preferences: diacritics the language uses,
+   punctuation the others confirm, a kept line-end hyphen.
 5. **Trust is not overridden downwards.**  When the anchor is the PDF text
    layer with an accepted verdict, its tokens are never replaced; the
    others only supply alternatives for the reviewer.
@@ -79,6 +84,9 @@ class FusionConfig:
     hyphen_bonus: float = 0.03
     #: Weight of the source's region score against the word confidence.
     source_weight: float = 0.35
+    #: An anchor token at or above this confidence is kept even without
+    #: lexical support (a rare name, a foreign word).
+    anchor_trust_confidence: float = 0.90
 
 
 @dataclass(frozen=True, slots=True)
@@ -279,6 +287,17 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
         sources=tuple(source_scores), changed=changed, disputed=disputed)
 
 
+def _supported(text: str, langs: tuple[str, ...]) -> bool:
+    """A reading with lexical support: a move token or a dictionary word."""
+    core = text.strip(".,;:!?()\"'")
+    if not core:
+        return False
+    if is_move_token(core):
+        return True
+    hit, judged = dictionary_hit_rate(core, langs)
+    return bool(judged) and hit > 0
+
+
 def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[str, float],
             langs: tuple[str, ...], diacritic_lang: bool, at_line_end: bool,
             trusted: bool) -> tuple[Reading, str, bool]:
@@ -291,40 +310,51 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
     if len(distinct) == 1:
         return anchor, "", False
 
-    scored: list[tuple[float, str, Reading]] = []
-    for text, group in distinct.items():
+    def score_of(text: str, group: list[Reading]) -> float:
         base = max(cfg.source_weight * source_scores.get(r.source, 0.0)
                    + (1.0 - cfg.source_weight) * r.confidence for r in group)
-        # Every agreeing source adds evidence.
         base += 0.10 * (len(group) - 1)
-        support = 0.0
-        if is_move_token(text):
-            support += cfg.move_bonus
-        else:
-            hit, judged = dictionary_hit_rate(text, langs)
-            if judged and hit > 0:
-                support += cfg.lexicon_bonus
         if diacritic_lang and _has_diacritics(text) and all(
                 _fold(t) == _fold(text) for t in distinct):
-            support += cfg.diacritic_bonus
+            base += cfg.diacritic_bonus
         if text and text[-1] in ".,;:!?" and any(
                 _fold(t.rstrip(".,;:!?")) == _fold(text.rstrip(".,;:!?")) and t != text
                 for t in distinct):
-            support += cfg.punctuation_bonus
+            base += cfg.punctuation_bonus
         if at_line_end and text.endswith("-"):
-            support += cfg.hyphen_bonus
-        scored.append((base + support, text, group[0]))
-    scored.sort(key=lambda s: (-s[0], s[1] != anchor.text, s[1]))
-    best_score, best_text, best_reading = scored[0]
-    anchor_score = next(s for s, t, _ in scored if t == anchor.text)
+            base += cfg.hyphen_bonus
+        return base
+
+    scored = sorted(((score_of(t, g), t, g[0]) for t, g in distinct.items()),
+                    key=lambda s: (-s[0], s[1] != anchor.text, s[1]))
+    anchor_score = next(sc for sc, t, _ in scored if t == anchor.text)
+    others = [(sc, t, r) for sc, t, r in scored if t != anchor.text]
+
     # Readings that differ only in diacritics, case or a trailing mark are
     # exactly what the specific preferences decide; they are not a dispute.
     if len({_fold(t.rstrip(".,;:!?-")) for t in distinct}) == 1:
-        return (best_reading if best_text != anchor.text else anchor,
-                anchor.text if best_text != anchor.text else scored[1][1], False)
-    if best_text == anchor.text:
-        runner = scored[1]
-        return anchor, runner[1], (best_score - runner[0]) < cfg.dispute_margin
+        best_score, best_text, best_reading = scored[0]
+        if best_text != anchor.text:
+            return best_reading, anchor.text, False
+        return anchor, others[0][1] if others else "", False
+
+    anchor_known = (_supported(anchor.text, langs)
+                    or anchor.confidence >= cfg.anchor_trust_confidence)
+    if anchor_known:
+        # Never replaced.  A supported alternative that is also clearly more
+        # confident is a dispute for the reviewer, nothing more.
+        for sc, text, _ in others:
+            if _supported(text, langs) and sc - anchor_score >= cfg.dispute_margin:
+                return anchor, text, True
+        return anchor, "", False
+
+    # The anchor is a nonword the engine itself doubted: a supported, at
+    # least as confident alternative may replace it.
+    candidates = [(sc, t, r) for sc, t, r in others
+                  if _supported(t, langs) and r.confidence >= anchor.confidence - 0.10]
+    if not candidates:
+        return anchor, others[0][1] if others else "", bool(others)
+    best_score, best_text, best_reading = candidates[0]
     if best_score - anchor_score < cfg.dispute_margin:
         return anchor, best_text, True
     return best_reading, anchor.text, False

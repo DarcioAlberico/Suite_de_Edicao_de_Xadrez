@@ -100,6 +100,17 @@ class DecisionPolicy:
     #: confident, or a legality replay, to be accepted; shape alone is review.
     movetext_share: float = 0.50
     move_token_confidence: float = 0.80
+    #: Word shape.  An engine reading a checkerboard or a photograph produces
+    #: a litter of one- and two-letter tokens that the dictionary, absurdly,
+    #: accepts ("be", "by", "À", "spa").  Measured over every truth of the
+    #: golden corpus with at least twelve word tokens: the share of tokens of
+    #: two characters or fewer never exceeds 0.47 and the mean token length
+    #: never drops under 3.05; the board and photo controls score 1.00/1.4
+    #: and 0.71/2.1.  Move tokens are left out of the count (``e4`` is two
+    #: characters and perfectly real).
+    min_tokens_for_shape: int = 12
+    max_short_token_share: float = 0.60
+    min_mean_token_length: float = 2.6
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +127,9 @@ class Evidence:
     geometry_outliers: int
     low_confidence_share: float
     move_token_confidence: float
+    short_token_share: float = 0.0
+    mean_token_length: float = 0.0
+    word_tokens: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -129,6 +143,9 @@ class Evidence:
             "geometry_outliers": self.geometry_outliers,
             "low_confidence_share": round(self.low_confidence_share, 3),
             "move_token_confidence": round(self.move_token_confidence, 3),
+            "short_token_share": round(self.short_token_share, 3),
+            "mean_token_length": round(self.mean_token_length, 2),
+            "word_tokens": self.word_tokens,
         }
 
 
@@ -253,13 +270,18 @@ def measure_evidence(result: OcrResult, image: NDArray[np.uint8] | None,
     move_words = [w for w in words if is_move_token(w.text.strip())]
     move_conf = (sum(w.confidence for w in move_words) / len(move_words)
                  if move_words else 0.0)
+    word_tokens = [t for t in tokens if any(c.isalpha() for c in t) and not is_move_token(t)]
+    short_share = (sum(1 for t in word_tokens if len(t) <= 2) / len(word_tokens)
+                   if word_tokens else 0.0)
+    mean_length = (sum(len(t) for t in word_tokens) / len(word_tokens)) if word_tokens else 0.0
 
     return Evidence(
         chars=chars, words=len(words), dictionary_words=dictionary_words,
         move_tokens=move_count, move_share=move_share,
         unsupported_share=unsupported_share, ink_measured=ink_measured,
         geometry_outliers=outliers, low_confidence_share=low_share,
-        move_token_confidence=move_conf,
+        move_token_confidence=move_conf, short_token_share=short_share,
+        mean_token_length=mean_length, word_tokens=len(word_tokens),
     ), tuple(flagged)
 
 
@@ -321,6 +343,16 @@ def decide(result: OcrResult, score: float, *, policy: DecisionPolicy | None = N
         reasons.append(
             f"{evidence.unsupported_share:.0%} dos caracteres estão em palavras sem tinta "
             f"sob a caixa: o motor leu papel em branco.")
+        return RegionDecision(Decision.ABSTAINED, score, accept_bar, review_bar,
+                              tuple(reasons), evidence, flagged, False, legality)
+    if (not trusted_source and evidence.word_tokens >= policy.min_tokens_for_shape
+            and evidence.move_share < 0.3
+            and (evidence.short_token_share > policy.max_short_token_share
+                 or evidence.mean_token_length < policy.min_mean_token_length)):
+        reasons.append(
+            f"{evidence.short_token_share:.0%} das palavras têm até dois caracteres "
+            f"(comprimento médio {evidence.mean_token_length:.1f}): forma de ruído, não de "
+            f"texto, ainda que o dicionário aceite os fragmentos.")
         return RegionDecision(Decision.ABSTAINED, score, accept_bar, review_bar,
                               tuple(reasons), evidence, flagged, False, legality)
     if evidence.words >= 3 and evidence.geometry_outliers > evidence.words / 2:
