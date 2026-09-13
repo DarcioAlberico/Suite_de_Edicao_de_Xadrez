@@ -215,9 +215,30 @@ def _make_tesseract() -> OcrEngine:
     return TesseractEngine()
 
 
+#: Sol §SOL-5 / ADR-0003: the engines that bring their own runtime (Paddle's
+#: inference runtime, Surya's torch) run in an isolated worker process by
+#: default, so a crash or a CUDA collision in one of them costs a page, not
+#: the batch.  ``CAISSA_OCR_INPROCESS=1`` hosts them in-process (debugging).
+ISOLATED_BY_DEFAULT = ("paddleocr", "paddle_structure", "surya")
+
+
+def _isolate(name: str, direct: Callable[[], OcrEngine]) -> OcrEngine:
+    import os
+
+    if os.environ.get("CAISSA_OCR_INPROCESS") == "1":
+        return direct()
+    from .worker import IsolatedEngine
+    return IsolatedEngine(hosted=name)
+
+
 def _make_paddle() -> OcrEngine:
     from .paddle import PaddleOcrEngine
-    return PaddleOcrEngine()
+    return _isolate("paddleocr", PaddleOcrEngine)
+
+
+def _make_paddle_structure() -> OcrEngine:
+    from .paddle_structure import PaddleStructureEngine
+    return _isolate("paddle_structure", PaddleStructureEngine)
 
 
 def _make_rapidocr() -> OcrEngine:
@@ -227,7 +248,7 @@ def _make_rapidocr() -> OcrEngine:
 
 def _make_surya() -> OcrEngine:
     from .surya import SuryaEngine
-    return SuryaEngine()
+    return _isolate("surya", SuryaEngine)
 
 
 def build_default_registry() -> EngineRegistry:
@@ -248,6 +269,10 @@ def build_default_registry() -> EngineRegistry:
     # runs; omitting it would have made the engine table on this machine
     # describe a cascade nobody uses.
     registry.register("paddleocr", EngineLevel.PADDLE, _make_paddle,
+                      optional=True)
+    # Sol §SOL-5: PP-StructureV3 is a distinct backend from plain PaddleOCR
+    # — the layout engine the router sends tables to.
+    registry.register("paddle_structure", EngineLevel.PADDLE, _make_paddle_structure,
                       optional=True)
     registry.register("rapidocr", EngineLevel.PADDLE, _make_rapidocr,
                       optional=True)

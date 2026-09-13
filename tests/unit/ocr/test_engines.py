@@ -40,12 +40,15 @@ def test_the_default_registry_is_the_spec_cascade():
     """SPEC §7.1 levels 0 to 3.  Level 4 (the VLM) belongs to F11 and is
     deliberately absent rather than stubbed."""
     registry = build_default_registry()
+    # Sol §SOL-5 added ``paddle_structure`` (PP-StructureV3) as a backend of
+    # its own at level 2, distinct from plain PaddleOCR.
     assert registry.names == ("pdf_text_layer", "tesseract",
-                              "paddleocr", "rapidocr", "surya")
+                              "paddle_structure", "paddleocr", "rapidocr", "surya")
     levels = {row.name: row.level for row in registry.describe()}
     assert levels["pdf_text_layer"] == EngineLevel.PDF_TEXT_LAYER
     assert levels["tesseract"] == EngineLevel.TESSERACT
     assert levels["paddleocr"] == levels["rapidocr"] == EngineLevel.PADDLE
+    assert levels["paddle_structure"] == EngineLevel.PADDLE
     assert levels["surya"] == EngineLevel.SURYA
 
 

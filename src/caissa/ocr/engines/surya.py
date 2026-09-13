@@ -31,6 +31,7 @@ from numpy.typing import NDArray
 
 from ..types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
 from .base import EngineCapabilities, EngineLevel, OcrEngineBase, OcrError, normalise_gray
+from .contracts import SchemaError, check_version
 
 __all__ = ["SuryaEngine", "SuryaConfig"]
 
@@ -71,10 +72,15 @@ class SuryaEngine(OcrEngineBase):
         self.config = config or SuryaConfig()
         self._predictor: Any = None
         self._api: str = ""
+        self._version: str | None = None
 
     # -- availability ------------------------------------------------------ #
 
     def _probe(self) -> tuple[bool, str | None]:
+        ok, version, reason = check_version("surya-ocr", engine=self.name)
+        self._version = version
+        if not ok:
+            return False, reason
         try:
             import surya  # noqa: F401
         except ImportError:
@@ -177,6 +183,7 @@ class SuryaEngine(OcrEngineBase):
             warnings=() if lines else ("Nenhum texto reconhecido nesta região.",),
             meta={
                 "api": self._api,
+                "version": self._version,
                 "device": self.config.device,
                 "surya_langs": codes,
                 "image_shape": tuple(int(v) for v in gray.shape),
@@ -200,10 +207,12 @@ class SuryaEngine(OcrEngineBase):
     def _to_lines(predictions: Any, region_kind: RegionKind) -> list[OcrLine]:
         """Normalise Surya's ``OCRResult`` objects into :class:`OcrLine`.
 
-        Attribute access is defensive throughout for the same reason as in the
-        Paddle adapter: the schema of an optional dependency is not under this
-        project's control, and a field rename must degrade to "no text" rather
-        than to a traceback in the middle of a 500-book batch.
+        Surya 0.13+ reports ``chars`` per text line — each with its own
+        ``bbox`` and ``confidence`` — and those are used when present, so the
+        character boxes are measured, not interpolated.  Older shapes (a
+        line with ``text``/``bbox``/``confidence`` only, or dicts) are still
+        read.  A page object with none of the known fields raises
+        :class:`~caissa.ocr.engines.contracts.SchemaError` (Sol §SOL-5).
         """
         if not predictions:
             return []
@@ -211,30 +220,67 @@ class SuryaEngine(OcrEngineBase):
         raw_lines = getattr(page, "text_lines", None)
         if raw_lines is None and isinstance(page, dict):
             raw_lines = page.get("text_lines")
+        if raw_lines is None:
+            raise SchemaError("surya", f"resultado {type(page).__name__} sem text_lines")
         if not raw_lines:
             return []
 
         lines: list[OcrLine] = []
         for index, item in enumerate(raw_lines):
-            text = getattr(item, "text", None)
-            bbox = getattr(item, "bbox", None)
-            confidence = getattr(item, "confidence", None)
-            if text is None and isinstance(item, dict):
-                text = item.get("text")
-                bbox = item.get("bbox")
-                confidence = item.get("confidence")
+            get = (item.get if isinstance(item, dict)
+                   else (lambda key, _i=item: getattr(_i, key, None)))
+            text, bbox, confidence = get("text"), get("bbox"), get("confidence")
+            if text is None and bbox is None:
+                raise SchemaError("surya", f"linha {type(item).__name__} sem text/bbox")
             if not text or not str(text).strip() or not bbox or len(bbox) < 4:
                 continue
             score = float(confidence) if confidence is not None else 0.5
             box = BBox.from_edges(float(bbox[0]), float(bbox[1]),
                                   float(bbox[2]), float(bbox[3]))
+            words = _words_from_chars(get("chars"), box, score, index) or _split_line(
+                str(text), box, score, index)
             lines.append(OcrLine(
-                words=_split_line(str(text), box, score, index),
-                box=box, baseline=None,
+                words=words, box=box, baseline=None,
                 block_index=0, paragraph_index=0, line_index=index,
                 kind=region_kind, font_size=box.h,
             ))
         return lines
+
+
+def _words_from_chars(chars: Any, line_box: BBox, line_confidence: float,
+                      line_index: int) -> tuple[OcrWord, ...]:
+    """Words from Surya's per-character output, when the version has it."""
+    if not chars:
+        return ()
+    words: list[OcrWord] = []
+    current: list[OcrChar] = []
+
+    def flush() -> None:
+        if not current:
+            return
+        box = BBox.union_of([c.box for c in current])
+        confidence = sum(c.confidence for c in current) / len(current)
+        words.append(OcrWord(text="".join(c.text for c in current), box=box,
+                             confidence=confidence, chars=tuple(current), block_index=0,
+                             paragraph_index=0, line_index=line_index, word_index=len(words)))
+        current.clear()
+
+    for item in chars:
+        get = item.get if isinstance(item, dict) else (lambda key, _i=item: getattr(_i, key, None))
+        text = get("text")
+        bbox = get("bbox")
+        if text is None or bbox is None or len(bbox) < 4:
+            return ()
+        if str(text).isspace():
+            flush()
+            continue
+        confidence = get("confidence")
+        current.append(OcrChar(
+            text=str(text), box=BBox.from_edges(*(float(v) for v in bbox[:4])),
+            confidence=float(confidence) if confidence is not None else line_confidence,
+            inherited_confidence=confidence is None))
+    flush()
+    return tuple(words)
 
 
 def _split_line(text: str, box: BBox, confidence: float,

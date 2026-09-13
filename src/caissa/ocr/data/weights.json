@@ -1,0 +1,15 @@
+{
+ "version": 1,
+ "notes": [
+  "Registro dos pesos que cada motor opcional baixa na primeira execução (Sol SOL-5). Hash vazio = ainda não visto nesta máquina; registre com caissa.ocr.engines.weights.record_weights depois de uma execução verificada.",
+  "Notas de licença são fatos sobre as fontes publicadas, não parecer jurídico. 'verify' marca o que precisa de conferência antes de qualquer distribuição comercial."
+ ],
+ "artifacts": [
+  {"engine": "paddleocr", "name": "PP-OCRv5_server_det", "source": "PaddleOCR model zoo (BOS/HuggingFace, baixado pelo pacote paddleocr)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv5", "sha256": "", "size_bytes": 0, "note": "detecção de texto"},
+  {"engine": "paddleocr", "name": "PP-OCRv5_server_rec", "source": "PaddleOCR model zoo", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv5", "sha256": "", "size_bytes": 0, "note": "reconhecimento multilíngue (latim, cirílico)"},
+  {"engine": "paddle_structure", "name": "PP-DocLayout-L", "source": "PaddleOCR model zoo (PP-StructureV3)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-StructureV3", "sha256": "", "size_bytes": 0, "note": "detecção de leiaute (texto, título, tabela, figura, cabeçalho, rodapé, número)"},
+  {"engine": "paddle_structure", "name": "SLANeXt / PP-TableStructure", "source": "PaddleOCR model zoo (PP-StructureV3)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-StructureV3", "sha256": "", "size_bytes": 0, "note": "estrutura de tabelas"},
+  {"engine": "rapidocr", "name": "ch_PP-OCRv4 det/rec (ONNX)", "source": "rapidocr-onnxruntime (empacotado no wheel)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv4", "sha256": "", "size_bytes": 0, "note": "roda em onnxruntime; processo isolado por ADR-0003"},
+  {"engine": "surya", "name": "surya_det / surya_rec (foundation + recognition)", "source": "HuggingFace datalab-to/*, baixado pelo pacote surya-ocr", "license": "código GPL-3.0; pesos CC-BY-NC-SA-4.0 com exceção comercial condicionada a limite de receita do editor", "commercial_use": "verify", "version": "surya-ocr 0.6–0.x", "sha256": "", "size_bytes": 0, "note": "Verificar os termos vigentes em datalab.to antes de qualquer distribuição comercial; uso local e não comercial coberto."}
+ ]
+}

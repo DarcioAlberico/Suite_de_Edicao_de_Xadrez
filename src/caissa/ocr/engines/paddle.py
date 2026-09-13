@@ -31,6 +31,7 @@ from numpy.typing import NDArray
 
 from ..types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
 from .base import EngineCapabilities, EngineLevel, OcrEngineBase, OcrError, normalise_gray
+from .contracts import SchemaError, check_version
 
 __all__ = ["PaddleOcrEngine", "PaddleConfig"]
 
@@ -86,17 +87,23 @@ class PaddleOcrEngine(OcrEngineBase):
     # -- availability ------------------------------------------------------ #
 
     def _probe(self) -> tuple[bool, str | None]:
+        ok, version, reason = check_version("paddleocr", engine=self.name)
+        if version is not None:
+            self._version = version
+        if not ok:
+            return False, reason
         try:
             import paddleocr  # noqa: F401
         except ImportError:
             return False, INSTALL_HINT_PT
-        except Exception as exc:  # a broken install is not a missing one
+        except Exception as exc:  # noqa: BLE001 - a broken install must be reported, not hidden
             return False, (
                 f"PaddleOCR está instalado mas não pôde ser carregado: {exc}. "
                 f"Reinstale o pacote ou remova-o para que o nível 2 seja "
                 f"simplesmente ignorado."
             )
-        self._version = getattr(paddleocr, "__version__", "desconhecida")
+        if self._version is None:
+            self._version = getattr(paddleocr, "__version__", None) or "?"
         return True, None
 
     def _discover_languages(self) -> set[str]:
@@ -155,10 +162,16 @@ class PaddleOcrEngine(OcrEngineBase):
         started = time.perf_counter()
         try:
             instance = self._instance(lang)
-            raw = instance.ocr(rgb, cls=self.config.use_angle_cls)
-        except TypeError:
-            raw = instance.ocr(rgb)
-        except Exception as exc:
+            if hasattr(instance, "predict") and not hasattr(instance, "ocr"):
+                raw = list(instance.predict(rgb))
+            else:
+                try:
+                    raw = instance.ocr(rgb, cls=self.config.use_angle_cls)
+                except TypeError:
+                    raw = instance.ocr(rgb)
+        except OcrError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - the engine's own failure, reported explicitly
             raise OcrError(self.name,
                            f"PaddleOCR falhou nesta região: {exc}",
                            detail=str(exc)) from exc
@@ -183,43 +196,81 @@ class PaddleOcrEngine(OcrEngineBase):
     def _to_lines(raw: Any, region_kind: RegionKind) -> list[OcrLine]:
         """Normalise PaddleOCR's output into :class:`OcrLine`.
 
-        The shape has changed across major versions: 2.x returns
-        ``[[ [box, (text, score)], ... ]]`` (one entry per image), 3.x has
-        returned both that and an unwrapped variant.  Both are accepted, and
-        anything unrecognised yields no lines rather than an exception — a
-        version bump in an optional dependency must not break the cascade.
+        Two shapes are parsed: 2.x ``[[ [polygon, (text, score)], ... ]]``
+        (one entry per image, sometimes unwrapped) and 3.x result objects,
+        dict-like, with ``rec_texts``, ``rec_scores`` and ``rec_polys`` (or
+        ``dt_polys``).  A non-empty payload in any other shape raises
+        :class:`~caissa.ocr.engines.contracts.SchemaError` (Sol §SOL-5): a
+        version bump must fail loudly, not as an empty page.
         """
         if not raw:
+            return []
+        first = raw[0] if isinstance(raw, (list, tuple)) else raw
+        if _dict_like(first) and _get(first, "rec_texts") is not None:
+            return PaddleOcrEngine._lines_from_v3(first, region_kind)
+        if first is None:
             return []
         page = raw[0] if (isinstance(raw, (list, tuple)) and raw
                           and isinstance(raw[0], (list, tuple))
                           and raw[0] and isinstance(raw[0][0], (list, tuple))
                           and len(raw[0][0]) == 2) else raw
         lines: list[OcrLine] = []
+        parsed = 0
         for index, entry in enumerate(page or []):
             try:
                 polygon, payload = entry[0], entry[1]
                 text = str(payload[0])
                 score = float(payload[1])
-            except (TypeError, IndexError, ValueError):
+            except (TypeError, IndexError, ValueError, KeyError):
                 continue
+            parsed += 1
             if not text.strip():
                 continue
             xs = [float(p[0]) for p in polygon]
             ys = [float(p[1]) for p in polygon]
             box = BBox.from_edges(min(xs), min(ys), max(xs), max(ys))
-
-            # Paddle recognises a whole detected line at once and reports no
-            # word boxes.  Splitting the line box proportionally is an
-            # approximation and is labelled as one via ``inherited_confidence``
-            # on the characters, so no caller mistakes it for measurement.
             words = _split_line(text, box, score, index)
             lines.append(OcrLine(
                 words=words, box=box, baseline=None,
                 block_index=0, paragraph_index=0, line_index=index,
                 kind=region_kind, font_size=box.h,
             ))
+        if not parsed and page:
+            raise SchemaError("paddleocr", f"primeiro item: {type(page[0]).__name__}: "
+                                           f"{str(page[0])[:200]}")
         return lines
+
+    @staticmethod
+    def _lines_from_v3(result: Any, region_kind: RegionKind) -> list[OcrLine]:
+        texts = _get(result, "rec_texts") or []
+        scores = _get(result, "rec_scores") or []
+        polys = _get(result, "rec_polys") or _get(result, "dt_polys") or []
+        if texts and not polys:
+            raise SchemaError("paddleocr", "rec_texts sem rec_polys/dt_polys")
+        lines: list[OcrLine] = []
+        for index, (text, poly) in enumerate(zip(texts, polys, strict=False)):
+            if not str(text).strip():
+                continue
+            xs = [float(p[0]) for p in poly]
+            ys = [float(p[1]) for p in poly]
+            box = BBox.from_edges(min(xs), min(ys), max(xs), max(ys))
+            score = float(scores[index]) if index < len(scores) else 0.5
+            lines.append(OcrLine(
+                words=_split_line(str(text), box, score, index), box=box, baseline=None,
+                block_index=0, paragraph_index=0, line_index=index,
+                kind=region_kind, font_size=box.h))
+        return lines
+
+
+def _dict_like(obj: Any) -> bool:
+    return isinstance(obj, dict) or (hasattr(obj, "get") and callable(obj.get))
+
+
+def _get(obj: Any, key: str) -> Any:
+    try:
+        return obj.get(key)
+    except (AttributeError, TypeError):
+        return None
 
 
 def _split_line(text: str, box: BBox, confidence: float,
