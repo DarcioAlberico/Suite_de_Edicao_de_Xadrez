@@ -1,0 +1,128 @@
+{
+ "version": 2,
+ "built_at": "2026-09-13T08:27:04+00:00",
+ "files": {
+  "deu.txt": {
+   "lang": "deu",
+   "words": 186,
+   "sha256": "0b52527628c7301a75fd98dc06a8eba1d731eabc9c36e5343b5b6953bde949cc",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "eng.txt": {
+   "lang": "eng",
+   "words": 287,
+   "sha256": "926cc048e404ee0295ebbc0857c12eb2a0e73aca1e5f24474856fbfc717da769",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "fra.txt": {
+   "lang": "fra",
+   "words": 144,
+   "sha256": "98be28cf09213d1c15116ef79f42b692d7489bb745af9a185283e626390a2b0f",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "ita.txt": {
+   "lang": "ita",
+   "words": 122,
+   "sha256": "a06697bfd3e8838d9c20639835b059096bf49ca4b313562492eeb9b71883a380",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "names.txt": {
+   "lang": "",
+   "words": 207,
+   "sha256": "b41f7e751a600e7a21994515f54a574d3162b088865339fdbac90dd958c4c013",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "nld.txt": {
+   "lang": "nld",
+   "words": 125,
+   "sha256": "a7b24c4848e2e31beda25daf642c556e644281eab6454c66dbc9ae54590b49ad",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "por.txt": {
+   "lang": "por",
+   "words": 284,
+   "sha256": "b358faad57b1f2a30ca72ee86b77b758b209b78722dea4b8c4677b79643c1ed3",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "rus.txt": {
+   "lang": "rus",
+   "words": 197,
+   "sha256": "223df030c9d2f20e95d7fd425f450545b89a79b3b5ec8350761ad6f5b1e47ef5",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "spa.txt": {
+   "lang": "spa",
+   "words": 195,
+   "sha256": "41c27c0ad4f5372a656f9e9312a1a8cca0d8a18af224686a3823d8286a6ada24",
+   "source": "autoral (este projeto)",
+   "license": "AGPL-3.0-or-later"
+  },
+  "eng.dic.gz": {
+   "lang": "eng",
+   "words": 49545,
+   "sha256": "57740c922411da393a7efe49028c00cfa6b9bf83db348dabc1c37d8568d019ce",
+   "source": "en_US Hunspell dictionary derived from SCOWL, LibreOffice dict-en",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-en\\en_US.dic",
+   "source_sha256": "f0b1a234bd178bdd01875b2a392a9647f888b8fe879f79c52aae62c2759b3647",
+   "license": "SCOWL (MIT-style, Kevin Atkinson et al.; see README_en_US.txt)"
+  },
+  "eng.aff.gz": {
+   "lang": "eng",
+   "rules": 73,
+   "sha256": "e46e99d8c4ad86b505d6e5430750e2c5186ed01d44f98398a7b320c711ea1ee5",
+   "source": "en_US Hunspell dictionary derived from SCOWL, LibreOffice dict-en",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-en\\en_US.aff",
+   "source_sha256": "e746c882dd6f303c2c46e7452804b9201115a6942cfeb15f18f8edf774d2e24e",
+   "license": "SCOWL (MIT-style, Kevin Atkinson et al.; see README_en_US.txt)"
+  },
+  "por.dic.gz": {
+   "lang": "por",
+   "words": 312366,
+   "sha256": "1ee3c3e92ab9cea5672203f64ee330bb7685f03fe2d689413cf3b99d8bf45827",
+   "source": "pt_BR Hunspell dictionary, LibreOffice dict-pt-BR",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-pt-BR\\pt_BR.dic",
+   "source_sha256": "a38bfb26b68ece2834e79fe83e48d5792652970ace12db89d1b9674bf9933183",
+   "license": "LGPLv3 / MPL (Projeto Vero, Raimundo Santos Moura)"
+  },
+  "por.aff.gz": {
+   "lang": "por",
+   "rules": 25933,
+   "sha256": "40094ef22c6a0e9b5825f642e5af2ff8117de16a5423ac2edfa2e34bf84f116b",
+   "source": "pt_BR Hunspell dictionary, LibreOffice dict-pt-BR",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-pt-BR\\pt_BR.aff",
+   "source_sha256": "21d8ad2a769a60e17e2b5ea4ef11d4d593a58b9e2a82d642ef82d6a4c5523865",
+   "license": "LGPLv3 / MPL (Projeto Vero, Raimundo Santos Moura)"
+  },
+  "spa.dic.gz": {
+   "lang": "spa",
+   "words": 58221,
+   "sha256": "9787817db945a8759ed786421047ada4cd8719f1459586a4133e42ef83f69430",
+   "source": "es_ES Hunspell dictionary, LibreOffice dict-es",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-es\\es_ES.dic",
+   "source_sha256": "6975dddec3d5d2c676069537bc67b4b5f786c65c5d4cf6703a82acf779ac9ec1",
+   "license": "GPLv3 / LGPLv3 / MPL 1.1 (RLA-ES)"
+  },
+  "spa.aff.gz": {
+   "lang": "spa",
+   "rules": 6842,
+   "sha256": "d0ccf809643bfc7cb7761460dc5483db62e325819c0393373b2d5be8a2491358",
+   "source": "es_ES Hunspell dictionary, LibreOffice dict-es",
+   "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-es\\es_ES.aff",
+   "source_sha256": "e73a9bf8e1383f4986a5dc9e2fbed49371c0c61f511c626d15586bd433c1cad9",
+   "license": "GPLv3 / LGPLv3 / MPL 1.1 (RLA-ES)"
+  }
+ },
+ "notes": [
+  "Listas autorais (*.txt): palavras funcionais, vocabulário enxadrístico e editorial, nomes de jogadores, autores, cidades, editoras e eventos. Origem: este projeto; licença: AGPL-3.0-or-later.",
+  "Dicionários Hunspell (*.dic.gz + *.aff.gz): radicais com flags e regras de afixo, aplicadas em sentido inverso na consulta (caissa.ocr.hunspell), de fontes com licença que permite redistribuição em obra AGPL; origem e licença por arquivo abaixo.",
+  "As listas do tronco ChessVisionOFF (acervo/idioma/nomes) não são empacotadas: a origem de idioma.txt e nomes.txt não está declarada (PROCEDENCIA.md). Continuam opcionais via CAISSA_LEXICON_DIR, com hash registrado por execução."
+ ]
+}

@@ -89,13 +89,44 @@ def test_polgar_diagrams_are_read_exactly_from_the_skak_font():
     assert not paragraphs_of(result.document), "páginas de problemas não têm prosa"
 
 
-def test_a_scan_without_a_text_layer_imports_as_pictures():
+def test_a_scan_without_a_text_layer_imports_as_pictures_when_ocr_is_off():
     path = corpus_file("Mauricio Flores Rios")
-    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[100, 101]))
+    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[100, 101], enable_ocr=False))
     assert [p.source for p in result.report.pages] == ["image-only", "image-only"]
     kinds = [type(b).__name__ for b in result.document.body]
     assert kinds == ["ImageBlock", "ImageBlock"]
     assert result.report.counters["scanned_pages"] == 2
+
+
+def test_a_scan_without_a_text_layer_is_read_by_default():
+    """Sol §SOL-1: no callback, no option — the scanned page comes back as text,
+    with the OCR's own decision and provenance on every block."""
+    from caissa.core.model import Paragraph, SourceKind
+
+    from caissa.ocr.engines.tesseract import find_tesseract
+
+    if find_tesseract() is None:
+        pytest.skip("Tesseract não instalado")
+    path = corpus_file("Mauricio Flores Rios")
+    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[100, 101], lang="eng"))
+    assert [p.source for p in result.report.pages] == ["ocr", "ocr"]
+    for page in result.report.pages:
+        assert page.ocr_engine == "tesseract"
+        assert page.ocr_dpi == 300.0
+        assert sum(page.ocr_decisions.values()) >= 1
+        assert page.ocr_decisions["abstained"] < sum(page.ocr_decisions.values())
+    paragraphs = [b for b in result.document.body if isinstance(b, Paragraph)]
+    assert len(paragraphs) >= 10
+    assert all(p.provenance is not None and p.provenance.kind is SourceKind.OCR
+               for p in paragraphs)
+    assert all(p.provenance.engine == "tesseract" for p in paragraphs)
+    text = " ".join(paragraphs_of(result.document))
+    assert "critical position" in text
+    # Nothing below the bar is imported without a mark: every review item
+    # has its page and rectangle.
+    for item in result.report.review_items:
+        assert item.decision in ("review", "abstained")
+        assert item.rect[2] > item.rect[0]
 
 
 def test_nunn_ocr_layer_keeps_the_paragraphs_whole():

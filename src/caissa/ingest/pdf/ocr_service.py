@@ -264,7 +264,7 @@ class PageRecognition:
             review = region.decision.decision is Decision.REVIEW
             for index, line in enumerate(region.result.lines):
                 text = line.text
-                if not text.strip():
+                if not text.strip() or _is_board_coordinates(text):
                     continue
                 px = (line.box.x0, line.box.y0, line.box.x1, line.box.y1)
                 box = frame.pixels_to_page(px, self.dpi)
@@ -551,6 +551,20 @@ def _translate(result: OcrResult, dx: float, dy: float) -> OcrResult:
     from caissa.ocr.page import PageRecognizer as _Runner
 
     return _Runner._to_page_space(result, (dx, dy))  # noqa: SLF001 - the one translation routine
+
+
+_COORDINATE_TOKEN = frozenset("abcdefgh12345678")
+
+
+def _is_board_coordinates(text: str) -> bool:
+    """``a b c d e f g h`` or ``8 7 6 5``: the letters and digits printed around
+    a diagram, which an engine reads as a line of one-character words.  Not
+    prose, and a movetext line always has a longer token."""
+    tokens = text.split()
+    if len(tokens) < 2:
+        return False
+    flat = "".join(tokens)
+    return all(len(t) <= 2 and set(t) <= _COORDINATE_TOKEN for t in tokens) and len(flat) <= 16
 
 
 def _looks_like_movetext(result: OcrResult) -> bool:

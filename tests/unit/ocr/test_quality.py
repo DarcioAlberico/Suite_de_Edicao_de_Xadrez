@@ -205,8 +205,11 @@ def test_is_chess_notation_is_stricter_than_the_notation_front():
 
 
 def test_modelled_script_share():
+    """Latin and, since Sol §SOL-9, Cyrillic have a model; Greek does not."""
     assert lex.modelled_script_share("the rook belongs") == 1.0
-    assert lex.modelled_script_share("Кр d3—сЗ Крe7") < 0.6
+    assert lex.modelled_script_share("Кр d3—сЗ Крe7") == 1.0
+    assert lex.modelled_script_share("αβγ δεζ ηθι") == 0.0
+    assert lex.modelled_script_share("the rook αβγ") == pytest.approx(7 / 10)
     assert lex.modelled_script_share("1. 2. 3.") == 0.0
     assert lex.modelled_script_share("") == 0.0
 

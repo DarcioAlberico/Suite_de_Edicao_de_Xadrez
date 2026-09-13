@@ -52,6 +52,10 @@ import re
 import unicodedata
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .hunspell import HunspellDictionary
 
 __all__ = [
     "SUPPORTED_LANGUAGES",
@@ -59,6 +63,8 @@ __all__ = [
     "EXTERNAL_LEXICON_FILES",
     "external_lexicon_dir",
     "external_lexicon",
+    "book_lexicon",
+    "packaged_manifest",
     "lexicon_source",
     "reset_lexicon_cache",
     "normalise_lang",
@@ -84,105 +90,68 @@ __all__ = [
 # Word lists
 # --------------------------------------------------------------------------- #
 
-_PT = """
-a o e de do da das dos em um uma para com não uma os as se por mais como mas
-foi ao ele das tem à seu sua ou ser quando muito há nos já está eu também só
-pelo pela até isso ela entre era depois sem mesmo aos seus quem nas me esse
-eles você essa num nem suas meu às minha numa pelos elas qual nós lhe deles
-essas esses pelas este dele tu te vocês vos lhes meus minhas teu tua teus tuas
-nosso nossa nossos nossas dela delas esta estes estas aquele aquela aqueles
-brancas pretas branco preto peça peças rei dama torre bispo cavalo peão peões
-lance lances jogo jogos partida partidas posição posições tabuleiro casa casas
-abertura defesa ataque ataques variante variantes final finais meio campeonato
-xadrez jogador jogadores torneio vitória empate derrota vantagem melhor
-diagrama capítulo página exemplo exercício solução resposta análise
-"""
+# --------------------------------------------------------------------------- #
+# The packaged lists — Sol §SOL-9
+# --------------------------------------------------------------------------- #
 
-_EN = """
-the of and to in a is that it for on with as was he are be by this from at or
-an will his not have has had but they which one you were all their there been
-if more when who would its into so what about them can no time only some could
-than other these two may then do first any my now such like our over man me
-even most made after also did many before must through back years where much
-your way well down should because each just those people mr how too little
-state good very make world still own see men work long get here between both
-white black piece pieces king queen rook bishop knight pawn pawns move moves
-game games position positions board square squares opening defence defense
-attack variation variations endgame middlegame chess player players tournament
-win wins draw loss advantage better best diagram chapter page example exercise
-solution answer analysis line lines threat threats check mate castling
-"""
+#: Where the versioned word lists live: one file per language plus
+#: ``names.txt`` (players, authors, cities, publishers, events) and a
+#: ``MANIFEST.json`` with the origin, licence, word count and SHA-256 of
+#: each.  They replaced the literals that used to sit in this module so the
+#: lists are data with provenance rather than code, and so every run can
+#: record the hash of exactly what it used.
+_DATA_PACKAGE = "caissa.ocr.data.lexicon"
 
-_DE = """
-der die das und in zu den von mit sich des auf für ist im dem nicht ein eine
-als auch es an werden aus er hat dass sie nach wird bei einer um am sind noch
-wie einem über einen so zum war haben nur oder aber vor bis mehr durch man
-sein wurde sei kann gegen vom kann schon wenn habe seine ihre wieder mir uns
-weiss schwarz figur figuren könig dame turm läufer springer bauer bauern zug
-züge partie partien stellung stellungen brett feld felder eröffnung verteidigung
-angriff variante endspiel mittelspiel schach spieler turnier sieg remis
-vorteil besser diagramm kapitel seite beispiel übung lösung antwort analyse
-"""
 
-_ES = """
-de la que el en y a los se del las un por con no una su para es al lo como más
-o pero sus le ha me si sin sobre este ya entre cuando todo esta ser son dos
-también fue había era muy años hasta desde está mi porque qué sólo han yo hay
-vez puede todos así nos ni parte tiene él uno donde bien tiempo
-blancas negras pieza piezas rey dama torre alfil caballo peón peones jugada
-jugadas partida partidas posición posiciones tablero casilla casillas apertura
-defensa ataque variante variantes final medio ajedrez jugador jugadores torneo
-victoria tablas derrota ventaja mejor diagrama capítulo página ejemplo análisis
-"""
+def _packaged_text(name: str) -> str:
+    from importlib import resources
 
-_FR = """
-de la le et les des en un une du dans il que pour qui sur ne pas plus par au
-se ce est sont avec mais ou été son aux nous comme leur sans elle si tout même
-deux fait bien où peut être encore aussi quand très après cette faire dont
-blancs noirs pièce pièces roi dame tour fou cavalier pion pions coup coups
-partie parties position positions échiquier case cases ouverture défense
-attaque variante variantes finale milieu échecs joueur joueurs tournoi
-victoire nulle défaite avantage meilleur diagramme chapitre page exemple
-"""
+    try:
+        return resources.files(_DATA_PACKAGE).joinpath(name).read_text("utf-8")
+    except (FileNotFoundError, OSError, ModuleNotFoundError):
+        return ""
 
-_IT = """
-di che e la il un in per non una sono mi si ma con le ha come da lo se ci ho
-ti al ne dei della sul nel questo tutto anche quando più molto essere fare
-bianco nero pezzo pezzi re donna torre alfiere cavallo pedone pedoni mossa
-mosse partita partite posizione posizioni scacchiera casa case apertura difesa
-attacco variante varianti finale mediogioco scacchi giocatore torneo vittoria
-patta sconfitta vantaggio migliore diagramma capitolo pagina esempio analisi
-"""
 
-_NL = """
-de het een en van in is dat op te zijn met voor niet aan er maar die ook als
-om dan bij nog uit door over naar wat wel heeft was werd deze veel meer kan
-wit zwart stuk stukken koning dame toren loper paard pion pionnen zet zetten
-partij partijen stelling stellingen bord veld velden opening verdediging
-aanval variant varianten eindspel middenspel schaak speler spelers toernooi
-overwinning remise verlies voordeel beter diagram hoofdstuk pagina voorbeeld
-"""
+def _packaged_words(name: str) -> list[str]:
+    return [line.strip() for line in _packaged_text(name).splitlines()
+            if line.strip() and not line.startswith("#")]
 
-_RU = """
-и в не на я быть он с что а по это она этот к но они мы как из у который то
-за свой весь год от так о для ты же все тот мочь вы человек такой его сказать
-только или ещё бы себя один как уже до когда вот кто да говорить
-белые чёрные черные фигура фигуры король ферзь ладья слон конь пешка пешки ход
-ходы партия партии позиция позиции доска поле поля дебют защита атака вариант
-варианты эндшпиль миттельшпиль шахматы игрок турнир победа ничья поражение
-преимущество лучше диаграмма глава страница пример упражнение решение анализ
-"""
 
-_RAW_LEXICONS: dict[str, str] = {
-    "por": _PT,
-    "eng": _EN,
-    "deu": _DE,
-    "spa": _ES,
-    "fra": _FR,
-    "ita": _IT,
-    "nld": _NL,
-    "rus": _RU,
+@lru_cache(maxsize=1)
+def packaged_manifest() -> dict[str, object]:
+    """The ``MANIFEST.json`` of the packaged lists (empty when absent)."""
+    import json
+
+    text = _packaged_text("MANIFEST.json")
+    try:
+        return dict(json.loads(text)) if text else {}
+    except ValueError:
+        return {}
+
+
+_LANGUAGE_FILES: dict[str, str] = {
+    "por": "por.txt", "eng": "eng.txt", "deu": "deu.txt", "spa": "spa.txt",
+    "fra": "fra.txt", "ita": "ita.txt", "nld": "nld.txt", "rus": "rus.txt",
 }
+
+#: language code -> its words, one string per language as the n-gram model
+#: and the reference scores below expect.  Proper nouns (``names.txt``) are
+#: deliberately *not* here: they are looked up, never modelled — training the
+#: letter statistics on Slavic and Hungarian surnames is what the model must
+#: not do (see :func:`reset_lexicon_cache`).
+_RAW_LEXICONS: dict[str, str] = {
+    code: " ".join(_packaged_words(name)) for code, name in _LANGUAGE_FILES.items()
+}
+_NAMES: frozenset[str] = frozenset(_packaged_words("names.txt"))
+
+
+def _packaged_dictionary(code: str) -> "HunspellDictionary | None":
+    """The licensed Hunspell dictionary packaged for ``code``, or ``None``.
+    Loaded once, on first lookup, so importing this module stays cheap."""
+    from .hunspell import load_packaged_dictionary
+
+    return load_packaged_dictionary(code)
+
 
 SUPPORTED_LANGUAGES: tuple[str, ...] = tuple(sorted(_RAW_LEXICONS))
 
@@ -222,10 +191,12 @@ def normalise_lang(lang: str) -> tuple[str, ...]:
 
 LOGGER = logging.getLogger("caissa.ocr.lexicon")
 
-#: Default location of the trunk's ``assets/lexico``.  Overridden by
-#: ``CAISSA_LEXICON_DIR``; absent is normal and not an error.
-_DEFAULT_LEXICON_DIR = Path(
-    r"C:\Python-Chess2\ChessVisionOFF_Puro\assets\lexico")
+#: Sol §SOL-9 removed the absolute default path to the trunk's
+#: ``assets/lexico``: a clean install must reproduce the same linguistic
+#: scores as this machine, and it cannot if this machine silently reads
+#: 164,723 extra words from a sibling checkout.  The trunk's lists are still
+#: usable — point ``CAISSA_LEXICON_DIR`` at them — and when they are, their
+#: hashes go into :func:`lexicon_source` so the run says what it used.
 
 #: file -> whether it is loaded by default.  ``nomes`` carries 150k proper
 #: nouns; it is on because chess prose is dense with player and place names and
@@ -240,7 +211,9 @@ EXTERNAL_LEXICON_FILES: dict[str, bool] = {
 def external_lexicon_dir() -> Path | None:
     """Where the trunk's lists are, or ``None``."""
     raw = os.environ.get("CAISSA_LEXICON_DIR")
-    candidate = Path(raw) if raw else _DEFAULT_LEXICON_DIR
+    if not raw:
+        return None
+    candidate = Path(raw)
     return candidate if candidate.is_dir() else None
 
 
@@ -273,18 +246,43 @@ def external_lexicon() -> frozenset[str]:
 
 
 def lexicon_source() -> dict[str, object]:
-    """What the lexicon is actually made of, for the report and the UI."""
+    """What the lexicon is actually made of, for the report and the UI.
+
+    Sol §SOL-9: includes the version and SHA-256 of every packaged file and
+    of every external file read, so two runs can be compared on what they
+    looked words up in, not on what they hoped they did.
+    """
+    import hashlib
+
     external = external_lexicon()
     embedded = frozenset(
         word for raw in _RAW_LEXICONS.values() for word in raw.split())
+    dictionaries = {code: len(d) for code in SUPPORTED_LANGUAGES
+                    if (d := _packaged_dictionary(code)) is not None}
     directory = external_lexicon_dir()
+    manifest = packaged_manifest()
+    external_hashes: dict[str, str] = {}
+    if directory is not None:
+        for name, wanted in EXTERNAL_LEXICON_FILES.items():
+            path = directory / name
+            if wanted and path.is_file():
+                external_hashes[name] = hashlib.sha256(path.read_bytes()).hexdigest()[:16]
     return {
         "embedded_words": len(embedded),
+        "names": len(_NAMES),
         "external_words": len(external),
         "external_dir": str(directory) if directory else None,
         "external_files": tuple(
             name for name, wanted in EXTERNAL_LEXICON_FILES.items() if wanted),
-        "total_words": len(embedded | external),
+        "external_hashes": external_hashes,
+        "packaged_version": manifest.get("version"),
+        "packaged_files": {
+            name: {"sha256": str(info.get("sha256", ""))[:16], "words": info.get("words")}
+            for name, info in dict(manifest.get("files", {})).items()
+        } if isinstance(manifest.get("files"), dict) else {},
+        "dictionaries": dictionaries,
+        "total_words": len(embedded | external | _NAMES) + sum(dictionaries.values()),
+        "book_words": len(_book_words()),
     }
 
 
@@ -300,6 +298,7 @@ def reset_lexicon_cache() -> None:
     external_lexicon.cache_clear()
     lexicon_for.cache_clear()
     _folded_lexicon.cache_clear()
+    _dictionaries_for.cache_clear()
 
 
 @lru_cache(maxsize=64)
@@ -317,7 +316,47 @@ def lexicon_for(langs: tuple[str, ...]) -> frozenset[str]:
         raw = _RAW_LEXICONS.get(code)
         if raw:
             words.update(raw.split())
-    return frozenset(words) | external_lexicon()
+    return frozenset(words) | _NAMES | external_lexicon()
+
+
+@lru_cache(maxsize=64)
+def _dictionaries_for(langs: tuple[str, ...]) -> tuple["HunspellDictionary", ...]:
+    """The packaged Hunspell dictionaries of ``langs`` (all when empty)."""
+    codes = langs or SUPPORTED_LANGUAGES
+    found = [_packaged_dictionary(code) for code in codes]
+    return tuple(d for d in found if d is not None)
+
+
+# --------------------------------------------------------------------------- #
+# Per-book lexicon — Sol §SOL-9
+# --------------------------------------------------------------------------- #
+
+import contextlib as _contextlib
+import contextvars as _contextvars
+from collections.abc import Iterable as _Iterable
+from collections.abc import Iterator as _Iterator
+
+_BOOK: _contextvars.ContextVar[frozenset[str]] = _contextvars.ContextVar(
+    "caissa_book_lexicon", default=frozenset())
+
+
+def _book_words() -> frozenset[str]:
+    return _BOOK.get()
+
+
+@_contextlib.contextmanager
+def book_lexicon(words: _Iterable[str]) -> _Iterator[None]:
+    """Words known to be in *this* book — a player index, a glossary — that
+    count as dictionary hits while the block runs and vanish after it.
+
+    A context variable rather than a global, so a batch importing two books
+    in two threads cannot leak one book's names into the other's scores.
+    """
+    token = _BOOK.set(frozenset(_fold(w) for w in words if w.strip()))
+    try:
+        yield
+    finally:
+        _BOOK.reset(token)
 
 
 # --------------------------------------------------------------------------- #
@@ -393,6 +432,47 @@ def _folded_lexicon(langs: tuple[str, ...]) -> frozenset[str]:
     return frozenset(_fold(w) for w in lexicon_for(langs))
 
 
+#: Pre-reform spellings, applied only when the direct lookup fails.  Each is
+#: one-directional and conservative: the folded form must itself be a word.
+_HISTORICAL = (
+    ("ph", "f"), ("th", "t"), ("rh", "r"), ("mm", "m"), ("nn", "n"), ("ll", "l"),
+    ("ss", "s"), ("ch", "c"), ("y", "i"), ("ß", "ss"),
+    ("ѣ", "е"), ("і", "и"), ("ѳ", "ф"), ("ъ", ""),
+)
+#: Inflectional endings whose removal may reveal a lemma in the list.  A
+#: stem must keep four letters and be a word itself, so ``lixo`` cannot be
+#: made a word by chopping letters off it.
+_SUFFIXES = ("es", "s", "en", "er", "em", "n", "e", "a", "o", "os", "as", "ão", "ões",
+             "mente", "ing", "ed", "ly", "ая", "ые", "ой", "ом", "ов", "ах", "ами")
+
+
+def _known(token: str, words: frozenset[str], langs: tuple[str, ...] = ()) -> bool:
+    """Is ``token`` a word — directly, by a per-book list, by a packaged
+    Hunspell dictionary (inflections through its own affix rules), by
+    pre-reform spelling, or by a safe inflection of a listed word?
+    Sol §SOL-9, "tratar flexões e ortografias históricas sem aceitar lixo
+    arbitrário"."""
+    folded = _fold(token)
+    if folded in words or folded in _book_words():
+        return True
+    lowered = token.casefold()
+    for dictionary in _dictionaries_for(langs):
+        if dictionary.is_word(lowered) or dictionary.is_word(folded):
+            return True
+    historical = folded
+    for old, new in _HISTORICAL:
+        if old in historical:
+            historical = historical.replace(old, new)
+    if historical != folded and historical in words:
+        return True
+    for suffix in _SUFFIXES:
+        if folded.endswith(suffix) and len(folded) - len(suffix) >= 4:
+            stem = folded[:-len(suffix)]
+            if stem in words:
+                return True
+    return False
+
+
 def dictionary_hit_rate(text: str, langs: tuple[str, ...] = ()) -> tuple[float, int]:
     """Fraction of word tokens found in the lexicon, and how many were judged.
 
@@ -409,7 +489,7 @@ def dictionary_hit_rate(text: str, langs: tuple[str, ...] = ()) -> tuple[float, 
         if is_chess_notation(token):
             continue
         considered += 1
-        if _fold(token) in words:
+        if _known(token, words, langs):
             hits += 1
     return (hits / considered if considered else 0.0), considered
 
@@ -557,10 +637,10 @@ def is_mangled_move(token: str, langs: tuple[str, ...] = ()) -> bool:
     if not _SQUARE.search(token):
         return False
     words = _folded_lexicon(langs)
-    if _fold(token) in words:
+    if _known(token, words, langs):
         return False
     parts = _COMPOUND_SPLIT.split(token)
-    if len(parts) > 1 and any(len(p) > 2 and _fold(p) in words for p in parts):
+    if len(parts) > 1 and any(len(p) > 2 and _known(p, words, langs) for p in parts):
         return False
     core = _TRAILING_MARKS.sub("", token)
     return any(c not in NOTATION_ALPHABET for c in core)
@@ -598,12 +678,19 @@ _BOUNDARY = "\x02"
 _UNKNOWN = "\x01"
 
 
-def _build_bigrams() -> tuple[dict[str, int], dict[str, int], int]:
-    """Bigram and unigram counts over every lexicon word, with boundaries."""
+#: Which script each language's list trains — Sol §SOL-9 gives Cyrillic its
+#: own model instead of letting the Latin one abstain on it.
+_MODEL_SCRIPT_OF_LANG: dict[str, str] = {"rus": "cyrillic"}
+
+
+def _build_bigrams(script: str) -> tuple[dict[str, int], dict[str, int], int]:
+    """Bigram and unigram counts over the lexicon words of one script."""
     bigrams: dict[str, int] = {}
     unigrams: dict[str, int] = {}
     total = 0
-    for raw in _RAW_LEXICONS.values():
+    for code, raw in _RAW_LEXICONS.items():
+        if _MODEL_SCRIPT_OF_LANG.get(code, "latin") != script:
+            continue
         for word in raw.split():
             padded = _BOUNDARY + _fold(word) + _BOUNDARY
             for i in range(len(padded) - 1):
@@ -614,15 +701,43 @@ def _build_bigrams() -> tuple[dict[str, int], dict[str, int], int]:
     return bigrams, unigrams, total
 
 
-_BIGRAMS, _UNIGRAMS, _BIGRAM_TOTAL = _build_bigrams()
-_ALPHABET_SIZE = max(64, len(_UNIGRAMS) * 2)
+class _NgramModel:
+    """One script's bigram model with its calibration anchors."""
+
+    def __init__(self, script: str) -> None:
+        self.script = script
+        self.bigrams, self.unigrams, self.total = _build_bigrams(script)
+        self.alphabet = max(64, len(self.unigrams) * 2)
+        self.good_logp = 0.0
+        self.bad_logp = 0.0
+
+    @property
+    def usable(self) -> bool:
+        return self.total >= 500
+
+    def token_logp(self, form: str) -> tuple[float, int]:
+        padded = _BOUNDARY + form + _BOUNDARY
+        total = 0.0
+        n = 0
+        for i in range(len(padded) - 1):
+            pair = padded[i:i + 2]
+            count = self.bigrams.get(pair, 0)
+            context = self.unigrams.get(pair[0], 0)
+            total += math.log((count + 1.0) / (context + self.alphabet))
+            n += 1
+        return total, n
+
+
+_MODELS: dict[str, _NgramModel] = {
+    script: _NgramModel(script) for script in ("latin", "cyrillic")
+}
+_BIGRAMS, _UNIGRAMS, _BIGRAM_TOTAL = (
+    _MODELS["latin"].bigrams, _MODELS["latin"].unigrams, _MODELS["latin"].total)
+_ALPHABET_SIZE = _MODELS["latin"].alphabet
 
 #: Log-probability per bigram for text that is entirely unseen.  Used to
 #: normalise the raw score into 0..1 so thresholds read as fractions.
 _WORST_LOGP = math.log(1.0 / (_BIGRAM_TOTAL + _ALPHABET_SIZE))
-#: Empirically the mean log-probability of clean lexicon text; recomputed here
-#: rather than hard-coded so that editing the word lists cannot silently
-#: invalidate every threshold in the package.
 
 
 def _model_form(token: str) -> str:
@@ -639,12 +754,24 @@ def _model_form(token: str) -> str:
     return "".join(c if c.isalpha() else _UNKNOWN for c in _fold(token))
 
 
-def ngram_log_probability(text: str) -> tuple[float, int]:
+def _token_script(token: str) -> str:
+    """The script of a token's letters: the majority one."""
+    counts: dict[str, int] = {}
+    for ch in token:
+        if ch.isalpha():
+            name = _script_of(ch)
+            counts[name] = counts.get(name, 0) + 1
+    return max(counts, key=lambda k: (counts[k], k)) if counts else "other"
+
+
+def ngram_log_probability(text: str, script: str | None = None) -> tuple[float, int]:
     """Mean add-one-smoothed log P(bigram) over the word-shaped tokens.
 
     Returns ``(mean_log_p, n_bigrams)``.  Chess notation and bare numbers are
     skipped: they are legitimate and they are not words, so scoring them as
-    words would make every page of move text look corrupt.
+    words would make every page of move text look corrupt.  Each token is
+    scored by the model of *its own* script (Sol §SOL-9); a token of a
+    script with no model is skipped rather than scored as garbage.
     """
     total = 0.0
     n = 0
@@ -653,83 +780,98 @@ def ngram_log_probability(text: str) -> tuple[float, int]:
             continue
         if is_chess_notation(token):
             continue
-        padded = _BOUNDARY + _model_form(token) + _BOUNDARY
-        for i in range(len(padded) - 1):
-            pair = padded[i:i + 2]
-            count = _BIGRAMS.get(pair, 0)
-            context = _UNIGRAMS.get(pair[0], 0)
-            total += math.log((count + 1.0) / (context + _ALPHABET_SIZE))
-            n += 1
+        model = _MODELS.get(script or _token_script(token))
+        if model is None or not model.usable:
+            continue
+        logp, count = model.token_logp(_model_form(token))
+        total += logp
+        n += count
     return (total / n if n else 0.0), n
 
 
-def _reference_scores() -> tuple[float, float]:
+def _reference_scores(model: _NgramModel) -> tuple[float, float]:
     """Calibration anchors: clean lexicon prose, and uniform random letters."""
     sample = " ".join(
-        word for raw in _RAW_LEXICONS.values() for word in raw.split()[:80]
+        word for code, raw in _RAW_LEXICONS.items()
+        if _MODEL_SCRIPT_OF_LANG.get(code, "latin") == model.script
+        for word in raw.split()[:80]
     )
-    good, _ = ngram_log_probability(sample)
+    good, _ = ngram_log_probability(sample, model.script)
     # A deterministic pseudo-random string standing in for garbage.  Seeded by
     # a fixed constant so the calibration cannot drift between runs.
+    alphabet = "abcdefghijklmnopqrstuvwxyz" if model.script == "latin" else (
+        "абвгдежзийклмнопрстуфхцчшщъыьэюя")
     state = 12345
     letters = []
     for _ in range(4000):
         state = (1103515245 * state + 12345) % (1 << 31)
-        letters.append(chr(ord("a") + state % 26))
+        letters.append(alphabet[state % len(alphabet)])
         if state % 7 == 0:
             letters.append(" ")
-    bad, _ = ngram_log_probability("".join(letters))
+    bad, _ = ngram_log_probability("".join(letters), model.script)
     return good, bad
 
 
-_GOOD_LOGP, _BAD_LOGP = _reference_scores()
+for _model in _MODELS.values():
+    if _model.usable:
+        _model.good_logp, _model.bad_logp = _reference_scores(_model)
+_GOOD_LOGP, _BAD_LOGP = _MODELS["latin"].good_logp, _MODELS["latin"].bad_logp
 
 
 def ngram_plausibility(text: str) -> tuple[float, int]:
     """Map the bigram log-probability onto 0..1, where 1 is clean prose.
 
-    The two anchors are computed at import time from the lexicon itself and
-    from a fixed pseudo-random string, so the scale survives edits to the word
-    lists.  Values are clamped; a score above 1 would only mean the text is
-    even more lexicon-like than the lexicon.
+    The anchors are computed at import time per script from the lexicon
+    itself and from a fixed pseudo-random string, so the scale survives edits
+    to the word lists.  Mixed-script text is scored per token by its own
+    model and combined by bigram count.  Values are clamped.
     """
-    score, n = ngram_log_probability(text)
+    sums: dict[str, list[float]] = {}
+    for token in tokenize(text or ""):
+        if not any(c.isalpha() for c in token) or is_chess_notation(token):
+            continue
+        script = _token_script(token)
+        model = _MODELS.get(script)
+        if model is None or not model.usable:
+            continue
+        logp, count = model.token_logp(_model_form(token))
+        acc = sums.setdefault(script, [0.0, 0.0])
+        acc[0] += logp
+        acc[1] += count
+    n = int(sum(acc[1] for acc in sums.values()))
     if n == 0:
         return 0.0, 0
-    span = _GOOD_LOGP - _BAD_LOGP
-    if span <= 0:  # pragma: no cover - only if the word lists are emptied
-        return 0.0, n
-    return max(0.0, min(1.0, (score - _BAD_LOGP) / span)), n
+    # Normalise per script over the script's whole share of the text, as the
+    # single-model version did over the whole text: clamping token by token
+    # would let no well-formed word compensate for a rare one.
+    total = 0.0
+    for script, (logp_sum, count) in sums.items():
+        model = _MODELS[script]
+        span = model.good_logp - model.bad_logp
+        if span <= 0 or count <= 0:  # pragma: no cover - only if a list is emptied
+            continue
+        total += max(0.0, min(1.0, (logp_sum / count - model.bad_logp) / span)) * count
+    return total / n, n
 
 
-#: The alphabet the bigram model was trained on.  Everything outside it hits
-#: the smoothing floor, which reads as "implausible" and is not what it means.
+#: The scripts that have a bigram model.  Everything outside them hits the
+#: smoothing floor, which reads as "implausible" and is not what it means.
 MODELLED_SCRIPT = "latin"
+MODELLED_SCRIPTS = frozenset(s for s, m in _MODELS.items() if m.usable)
 
 
 def modelled_script_share(text: str) -> float:
-    """Fraction of the letters in ``text`` the n-gram model can actually judge.
+    """Fraction of the letters in ``text`` the n-gram models can judge.
 
-    The bigram model is built from the embedded Latin word lists.  Cyrillic and
-    Greek are perfectly good letters that it has simply never seen, so every
-    bigram made of them lands on the smoothing floor and
-    :func:`ngram_plausibility` returns ~0.0 — *indistinguishable from garbage*.
-
-    Measured on the corpus (E6, Boleslavsky, PDF text layer, five pages): the
-    pages are 88–93 % Cyrillic and score 0.000, 0.026, 0.000, 0.115, 0.091.
-    Page 60 of that book is a table of Russian figurine moves with almost no
-    prose, and the combination of a 97-word Russian lexicon and a zero n-gram
-    score rejected a text layer that is entirely correct.
-
-    Callers must use this to let the n-gram term **abstain** rather than vote.
-    An abstention is a smaller mistake than a confident wrong answer, and this
-    is exactly the sort of page — non-Latin, mostly notation — where a wrong
-    rejection costs the user an hour of needless OCR.
+    Latin has a model since F5; Sol §SOL-9 added a Cyrillic one, built from
+    the packaged Russian list, so a Russian page is *scored* rather than
+    excused.  Greek, Hebrew or a private-use font still land outside, and
+    callers must let the n-gram term abstain on them rather than vote.
     """
     letters = [c for c in (text or "") if c.isalpha()]
     if not letters:
         return 0.0
-    modelled = sum(1 for c in letters if _script_of(c) == MODELLED_SCRIPT)
+    modelled = sum(1 for c in letters if _script_of(c) in MODELLED_SCRIPTS)
     return modelled / len(letters)
 
 

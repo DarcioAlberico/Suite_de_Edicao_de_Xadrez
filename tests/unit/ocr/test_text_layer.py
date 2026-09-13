@@ -26,7 +26,7 @@ from caissa.ocr.engines.pdf_text_layer import (
     inspect_fonts,
     parse_tounicode,
 )
-from caissa.ocr.lexicon import modelled_script_share
+from caissa.ocr.lexicon import script_profile, modelled_script_share
 
 from .conftest import (
     blank_pdf,
@@ -428,13 +428,15 @@ def test_dobonov_third_party_ocr_layer_is_usable(corpus_doc):
 
 @pytest.mark.golden
 def test_cyrillic_pages_are_not_rejected_for_being_cyrillic(corpus_doc):
-    """The regression this front's own measurement found.
+    """The regression this front's own measurement found, and Sol §SOL-9.
 
-    The n-gram model is trained on Latin bigrams and the non-Latin part of the
-    lexicon is the embedded core alone, so on an E6 page both signals reported
-    "garbage" for a text layer that is entirely correct — and page 60 of
-    Boleslavsky, a correct table of Russian figurine moves, was rejected.  Both
-    lexical terms now abstain below ``min_modelled_script_share``.
+    The n-gram model used to be trained on Latin bigrams only, so on an E6
+    page both lexical signals reported "garbage" for a text layer that is
+    entirely correct — page 60 of Boleslavsky, a correct table of Russian
+    figurine moves, was rejected — and F5 made the terms *abstain* on
+    non-Latin text.  Sol §SOL-9 replaced the abstention with a Cyrillic
+    model and a Russian list: these pages are now *judged* (the lexical
+    terms apply) and accepted on their own evidence, not excused.
     """
     import glob
     import os
@@ -454,15 +456,17 @@ def test_cyrillic_pages_are_not_rejected_for_being_cyrillic(corpus_doc):
             if page >= doc.page_count:
                 continue
             text = doc[page].get_text()
-            assert modelled_script_share(text) < 0.50, (
+            profile = script_profile(text)
+            assert profile.get("cyrillic", 0) > 0.5 * sum(profile.values()), (
                 f"p{page} não é predominantemente cirílica; escolha outra "
                 f"página para este teste")
+            assert modelled_script_share(text) > 0.90
             verdict = engine.assess(doc[page], lang="rus")
             assert verdict.accepted, (page, verdict.reason)
-            assert verdict.signals["lexical_terms_apply"] == 0.0
-            # Accepted, but honestly: nothing here read the words.
-            assert verdict.confidence <= 0.80
-            assert "alfabeto" in verdict.reason
+            # Judged, not excused: the Cyrillic model and list voted.
+            assert verdict.signals["lexical_terms_apply"] == 1.0
+            assert verdict.signals["ngram_plausibility"] > 0.30
+            assert "alfabeto" not in verdict.reason
     finally:
         doc.close()
 
