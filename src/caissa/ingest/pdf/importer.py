@@ -21,10 +21,15 @@ across the second pass, not by trusting this paragraph.
 
 **The text layer is judged before it is believed** (F5's level 0).  A page
 whose layer is rejected -- broken CMap, figurines destroyed beyond salvage --
-goes to the OCR provider when one is given, and is otherwise imported as a
-full-page image with the reason in its provenance.  A page with no text at
-all is a scan and is treated the same way.  Nothing here ever emits text the
-verdict called garbage.
+goes to OCR, and a page with no text at all is a scan and goes the same way.
+Since Sol §SOL-1 the OCR is on by default: the
+:class:`~caissa.ingest.pdf.ocr_service.OcrService` renders only the pages
+that need it, lays them out from whatever layer they have, runs the cascade
+per region with the decision policy of §SOL-2 and the preprocessing
+portfolio of §SOL-3, and answers with text, a review mark, or an abstention.
+An abstained page (or region) is imported as an image with the reason in its
+provenance; ``enable_ocr=False`` skips all of it for a fast import.  Nothing
+here ever emits text the verdict called garbage.
 
 **Diagrams are positions, not pictures** (SPEC 5.3).  The default finder is the
 vector detector (F3-A): exact reads from chess-font glyphs, no model, about
@@ -123,6 +128,7 @@ __all__ = [
     "PageReport",
     "PdfImportOptions",
     "PdfImporter",
+    "ReviewItem",
     "import_pdf",
     "vector_diagram_finder",
 ]
@@ -221,7 +227,17 @@ class PdfImportOptions:
     #: Locate (and, when possible, read) chess diagrams.
     detect_diagrams: bool = True
     diagram_finder: DiagramFinder | None = None
+    #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
+    #: Off, such pages import as images -- the fast path for a book whose
+    #: text will be read another day.
+    enable_ocr: bool = True
+    #: A custom provider.  ``None`` with ``enable_ocr`` builds the default
+    #: :class:`~caissa.ingest.pdf.ocr_service.OcrService` lazily, on the
+    #: first page that needs it.
     ocr: OcrProvider | None = None
+    #: Keep an image of every OCR region that was abstained, placed where the
+    #: region was, so the reader sees what the text could not say.
+    keep_abstained_regions: bool = True
     #: Directory that receives extracted images and diagram crops as PNG.
     #: ``None`` keeps the IR free of files: resources are declared with their
     #: size and provenance but no bytes.
@@ -255,6 +271,42 @@ class PageReport:
     figures: int = 0
     inline_images: int = 0
     duration_ms: float = 0.0
+    #: Sol §SOL-10: what the OCR did on this page, when it ran.
+    ocr_engine: str = ""
+    ocr_dpi: float = 0.0
+    ocr_decisions: dict[str, int] = field(default_factory=dict)
+    ocr_regions: int = 0
+    ocr_review: int = 0
+    ocr_abstained: int = 0
+    ocr_variants: tuple[str, ...] = ()
+    ocr_duration_ms: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewItem:
+    """A region the OCR could not settle -- clickable in the import report.
+
+    Attributes:
+        page_index: Zero-based page.
+        rect: Region in ``page.rect`` points.
+        kind: Layout kind of the region.
+        decision: ``review`` or ``abstained``.
+        reasons: The decision's reasons, in Portuguese.
+        text: The best reading (empty for a region with none).
+        engine: Engine of the best reading.
+        score: Arbiter score of the best reading.
+        alternatives: Other candidates' text, by ``variant/engine``.
+    """
+
+    page_index: int
+    rect: RectT
+    kind: str
+    decision: str
+    reasons: tuple[str, ...]
+    text: str = ""
+    engine: str = ""
+    score: float = 0.0
+    alternatives: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(slots=True)
@@ -270,6 +322,8 @@ class ImportReport:
     furniture_patterns: int = 0
     notes: list[str] = field(default_factory=list)
     duration_s: float = 0.0
+    #: Sol §SOL-10: every region the OCR sent to review or abstained on.
+    review_items: list[ReviewItem] = field(default_factory=list)
 
     @property
     def pages_by_source(self) -> dict[str, int]:
@@ -289,6 +343,11 @@ class ImportReport:
             f"{c.get('figures', 0)} figuras, {c.get('inline_images', 0)} imagens em linha",
             "origem: " + ", ".join(f"{k} {v}" for k, v in sorted(by.items())),
         ]
+        if self.review_items:
+            review = sum(1 for i in self.review_items if i.decision == "review")
+            parts.append(
+                f"OCR: {review} região(ões) para revisão, "
+                f"{len(self.review_items) - review} abstida(s)")
         return "; ".join(parts)
 
 
@@ -308,6 +367,9 @@ class _FigureEntry:
     page_index: int
     image: ImagePlacement
     full_page: bool = False
+    #: Set for an abstained OCR region kept as an image: the reason, for the
+    #: provenance note and the resource description.
+    note: str = ""
 
 
 @dataclass(slots=True)
@@ -348,6 +410,11 @@ class PdfImporter:
         self._resources: list[Resource] = []
         self._asset_counter = 0
         self._page_reports: dict[int, PageReport] = {}
+        self._ocr_service: Any = None
+        self._ocr_unavailable = False
+        self._pending_ocr: tuple[int, dict[str, Any]] | None = None
+        #: Abstained OCR regions of the page being built, as figure entries.
+        self._abstained_figures: list[_FigureEntry] = []
 
     # -- driver ------------------------------------------------------------ #
 
@@ -480,6 +547,11 @@ class PdfImporter:
             source, reason, confidence, text = self._decide_source(page, frame, text, verdict)
             hits: list[DiagramHit] = list(finder(page, frame, text)) if finder is not None else []
         report = PageReport(index=index, source=source, verdict=reason, confidence=confidence)
+        pending = self._pending_ocr
+        if pending is not None and pending[0] == index:
+            for key, value in pending[1].items():
+                setattr(report, key, value)
+            self._pending_ocr = None
         report.lines = len(text.lines)
         report.diagrams = len(hits)
         report.diagrams_read = sum(1 for h in hits if h.fen)
@@ -525,6 +597,10 @@ class PdfImporter:
         report.inline_images = sum(len(r.inline_images) for r in rows.rows)
 
         slots = self._slot_entries(rows, hits, contexts, index)
+        for figure in self._abstained_figures:
+            slot = _slot_for_box(rows, figure.image.box)
+            slots.setdefault(slot, []).append(figure)
+        self._abstained_figures = []
         entries.extend(self._feed(builder, rows, slots))
         return report, entries
 
@@ -563,21 +639,92 @@ class PdfImporter:
             return "rejected", verdict.describe_pt(), 0.0, text
         return "text-layer", verdict.reason, verdict.confidence, text
 
+    def _ocr_provider(self) -> OcrProvider | None:
+        """The configured provider, or the default service built once."""
+        if self.options.ocr is not None:
+            return self.options.ocr
+        if not self.options.enable_ocr or self._ocr_unavailable:
+            return None
+        if self._ocr_service is None:
+            from caissa.ingest.pdf.ocr_service import OcrService
+
+            service = OcrService(lang=self.options.lang)
+            if not service.available:
+                self._ocr_unavailable = True
+                self.report.notes.append(
+                    "OCR indisponível: nenhum motor de rasterização instalado; páginas "
+                    "sem camada de texto ficam como imagem.")
+                return None
+            self._ocr_service = service
+        return self._ocr_service
+
     def _try_ocr(
         self, page: Any, frame: PageFrame, verdict: TextLayerVerdict | None
     ) -> tuple[PageText, float] | None:
-        if self.options.ocr is None:
+        provider = self._ocr_provider()
+        if provider is None:
             return None
         stub = verdict or TextLayerVerdict(False, "a página não contém texto.", 0.0, {}, (), True)
+        started = time.perf_counter()
         try:
-            result = self.options.ocr(page, frame, stub)
+            result = provider(page, frame, stub)
         except Exception as exc:  # noqa: BLE001 - OCR failing must not lose the book
             self.report.notes.append(f"OCR falhou na página {frame.index}: {exc}")
             return None
+        self._record_ocr(frame, provider, (time.perf_counter() - started) * 1000.0)
         if result is None or result.is_empty:
             return None
-        confidence = min((line.confidence for line in result.lines), default=0.0)
+        # Sol §SOL-10: the page number is a summary, not a cap.  Each block
+        # keeps its own spans' confidence; the worst line of the page must not
+        # drag every other block down with it.
+        weights = [(line.confidence, max(1, len(line.text.strip()))) for line in result.lines]
+        total = sum(w for _, w in weights)
+        confidence = sum(c * w for c, w in weights) / total if total else 0.0
         return result, confidence
+
+    def _record_ocr(self, frame: PageFrame, provider: Any, elapsed_ms: float) -> None:
+        """Copy the service's trace into the page report and the review list."""
+        recognition = getattr(provider, "last", None)
+        if recognition is None or getattr(recognition, "page_index", -1) != frame.index:
+            return
+        report = self._page_reports.get(frame.index)
+        pending: dict[str, Any] = {
+            "ocr_engine": recognition.engine,
+            "ocr_dpi": float(recognition.dpi),
+            "ocr_decisions": dict(recognition.decision_counts),
+            "ocr_regions": len(recognition.regions),
+            "ocr_review": len(recognition.review_regions),
+            "ocr_abstained": len(recognition.abstained_regions),
+            "ocr_variants": tuple(recognition.portfolio.names[1:]) if recognition.portfolio else (),
+            "ocr_duration_ms": elapsed_ms,
+        }
+        self._pending_ocr = (frame.index, pending)
+        if report is not None:
+            for key, value in pending.items():
+                setattr(report, key, value)
+        for region in recognition.regions:
+            decision = region.decision.decision
+            if decision.value == "accepted":
+                continue
+            rect = frame.pixels_to_page(
+                (region.box_px.x0, region.box_px.y0, region.box_px.x1, region.box_px.y1),
+                recognition.dpi)
+            self.report.review_items.append(ReviewItem(
+                page_index=frame.index, rect=rect, kind=str(region.kind),
+                decision=decision.value, reasons=tuple(region.decision.reasons_pt),
+                text=region.text, engine=region.engine, score=float(region.score),
+                alternatives=tuple(
+                    (f"{c.variant}/{c.engine}", c.result.text) for c in region.candidates
+                    if c.result.text.strip() and c.result.text != region.text),
+            ))
+            if decision.value == "abstained" and self.options.keep_abstained_regions:
+                width = max(1, int(region.box_px.w))
+                height = max(1, int(region.box_px.h))
+                self._abstained_figures.append(_FigureEntry(
+                    page_index=frame.index,
+                    image=ImagePlacement(box=rect, width=width, height=height),
+                    note="OCR abstido: " + " ".join(region.decision.reasons_pt),
+                ))
 
     def _contexts(
         self, index: int, text: PageText, boxes: Sequence[RectT]
@@ -608,13 +755,7 @@ class PdfImporter:
         slots: dict[int, list[_Entry]] = {}
 
         def slot_for(box: RectT) -> int:
-            best = -1
-            for r, row in enumerate(rows.rows):
-                if row.box[1] <= box[1] and (
-                    row.column == -1 or _column_of(rows, box) in (-1, row.column)
-                ):
-                    best = r
-            return best
+            return _slot_for_box(rows, box)
 
         for image in rows.full_page_images:
             slots.setdefault(-1, []).append(_FigureEntry(index, image, full_page=True))
@@ -727,17 +868,22 @@ class PdfImporter:
         *,
         kind: SourceKind,
         note: str | None = None,
+        engine: str | None = None,
+        band: ConfidenceBand | None = None,
     ) -> Provenance:
+        report = self._page_reports.get(page_index)
+        dpi = report.ocr_dpi if (report is not None and kind is SourceKind.OCR) else None
         return Provenance(
             kind=kind,
             document_path=str(self.document.path) if self.document.path else None,
             document_hash=self.document.content_hash,
             page_index=page_index,
             rect=_rect(rect) if rect is not None else None,
-            engine=_EXTRACTOR,
+            dpi=dpi or None,
+            engine=engine or _EXTRACTOR,
             engine_version=_EXTRACTOR_VERSION,
             confidence=confidence,
-            band=_band(confidence),
+            band=band or _band(confidence),
             extracted_at=datetime.now(UTC),
             note=note,
         )
@@ -758,10 +904,27 @@ class PdfImporter:
             if draft.first_page == draft.last_page
             else f"continua até a página {draft.last_page}"
         )
-        # Text-layer spans carry 1.0; the page's verdict is what bounds them
-        # (0.98 for an accepted layer, lower when the notation is damaged).
-        confidence = min(draft.confidence, report.confidence if report is not None else 1.0)
-        provenance = self._provenance(page, draft.boxes.get(page), confidence, kind=kind, note=note)
+        if kind is SourceKind.OCR:
+            # Sol §SOL-10: an OCR block carries its own spans' confidence,
+            # engine and review flag -- never the page's worst line.
+            confidence = draft.confidence
+            engines = sorted({sp.engine for sp in draft.spans if sp.engine})
+            review = any(sp.review for sp in draft.spans)
+            notes = [n for n in (note,) if n]
+            if review:
+                notes.append("OCR para revisão: confiança ou evidência insuficiente na região")
+            provenance = self._provenance(
+                page, draft.boxes.get(page), confidence, kind=kind,
+                note="; ".join(notes) or None,
+                engine="+".join(engines) if engines else None,
+                band=ConfidenceBand.DOUBTFUL if review and confidence >= _DOUBTFUL else None,
+            )
+        else:
+            # Text-layer spans carry 1.0; the page's verdict is what bounds them
+            # (0.98 for an accepted layer, lower when the notation is damaged).
+            confidence = min(draft.confidence, report.confidence if report is not None else 1.0)
+            provenance = self._provenance(
+                page, draft.boxes.get(page), confidence, kind=kind, note=note)
         props = ParagraphProps(style=draft.style)
         if draft.kind is RegionKind.HEADING:
             return Heading(
@@ -848,11 +1011,17 @@ class PdfImporter:
 
     def _figure_node(self, entry: _FigureEntry) -> Block | None:
         resource = self._asset_crop(
-            entry.page_index, entry.image.box, f"figura-p{entry.page_index + 1}", image=entry.image
+            entry.page_index, entry.image.box,
+            f"regiao-p{entry.page_index + 1}" if entry.note else f"figura-p{entry.page_index + 1}",
+            image=entry.image,
+            description=(f"Região da página {entry.page_index + 1} mantida como imagem. "
+                         f"{entry.note}") if entry.note else None,
         )
         if resource is None:
             return None
-        provenance = self._provenance(entry.page_index, entry.image.box, 1.0, kind=SourceKind.IMAGE)
+        provenance = self._provenance(
+            entry.page_index, entry.image.box, 0.0 if entry.note else 1.0,
+            kind=SourceKind.IMAGE, note=entry.note or None)
         block = ImageBlock(
             resource=resource.key,
             alt_text=resource.description,
@@ -1010,6 +1179,17 @@ def _rect(box: RectT) -> Rect:
     return Rect(
         x=box[0], y=box[1], width=max(0.0, box[2] - box[0]), height=max(0.0, box[3] - box[1])
     )
+
+
+def _slot_for_box(rows: PageRows, box: RectT) -> int:
+    """Index of the last row above ``box`` in its column; ``-1`` for none."""
+    best = -1
+    for r, row in enumerate(rows.rows):
+        if row.box[1] <= box[1] and (
+            row.column == -1 or _column_of(rows, box) in (-1, row.column)
+        ):
+            best = r
+    return best
 
 
 def _band(confidence: float) -> ConfidenceBand:

@@ -166,6 +166,10 @@ class TextSpan:
             font (board glyphs, not prose).
         baseline: Baseline ``y`` in ``page.rect`` points.
         confidence: ``1.0`` for a text layer; the engine's value for OCR.
+        engine: The OCR engine that read the span (Sol §SOL-10); empty for
+            the text layer.
+        review: The span comes from a region the OCR decision sent to
+            review (Sol §SOL-2); the IR marks it and the reviewer sees it.
     """
 
     text: str
@@ -181,6 +185,8 @@ class TextSpan:
     diagram_font: str | None = None
     baseline: float = 0.0
     confidence: float = 1.0
+    engine: str = ""
+    review: bool = False
 
     def same_style(self, other: TextSpan) -> bool:
         return (
