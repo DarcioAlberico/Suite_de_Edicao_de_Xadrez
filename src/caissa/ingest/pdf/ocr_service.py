@@ -800,7 +800,7 @@ class OcrService:
                 or _carries_notation(result)):
             return []
         engine = self.glyph_engine()
-        if engine is None:
+        if engine is None or not engine.supports_language(task.lang):
             return []
         box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
         h, w = task.image.shape[:2]

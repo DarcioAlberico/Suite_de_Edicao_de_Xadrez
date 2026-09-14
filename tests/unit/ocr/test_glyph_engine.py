@@ -391,3 +391,14 @@ def test_cyrillic_pages_get_neither_figurine_reader():
         assert service._figurine_lang("rus+eng") is None
         assert service._figurine_lang("eng") == "caissa_eng"
         assert service._figurine_lang("eng+rus") == "caissa_eng"
+
+
+def test_service_skips_the_glyph_reader_on_languages_it_does_not_serve():
+    glyph = FakeGlyph({})
+    glyph.supports_language = lambda lang: "rus" not in lang  # type: ignore[method-assign]
+    service = OcrService([MockRaster("36... Hea! 37 Exd5 Hb6 38 2g5", 0.75)],
+                         OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                                          figurine_candidates=False),
+                         lang="rus+eng", glyph_engine=glyph)
+    service.recognize_image(inked_page(), dpi=300.0, lang="rus+eng")
+    assert glyph.strips_seen == []
