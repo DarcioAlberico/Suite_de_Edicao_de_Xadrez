@@ -18,14 +18,20 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from caissa.core.model import (
+    Alignment,
     Diagram,
     Document,
     DocumentMetadata,
     Footnote,
     Heading,
+    ImageBlock,
+    ImageInline,
+    Measure,
     NoteRef,
     Paragraph,
     ParagraphProps,
+    Resource,
+    ResourceKind,
     RunProps,
     TableOfContents,
     Text,
@@ -515,6 +521,124 @@ def test_a_drop_cap_is_a_frame_and_comes_back_as_one(tmp_path: Path) -> None:
     DocxExporter().export(document, package)
     assert 'w:dropCap="drop"' in _part(package, "word/document.xml")
     assert _only_paragraph(read_docx(package)).drop_cap == 4
+
+
+def _png(width: int, height: int) -> bytes:
+    """A flat PNG of the given size, for a resource with real bytes."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    row = bytes([0]) + bytes([40, 120, 200]) * width
+    return (
+        bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(row * height))
+        + chunk(b"IEND", b"")
+    )
+
+
+def test_an_image_travels_as_a_picture_and_comes_back_as_a_node(tmp_path: Path) -> None:
+    """The picture's own fields carry the node: key in ``wp:docPr/@name``,
+    alternative text in ``@descr``, title in ``@title``, crop in ``a:srcRect``,
+    size in ``wp:extent`` -- so ``read_docx`` rebuilds an ``ImageBlock`` and an
+    ``ImageInline`` from ``word/document.xml`` alone, and a diagram's picture
+    is left alone as before."""
+    figure = tmp_path / "figura.png"
+    figure.write_bytes(_png(120, 60))
+    document = Document(
+        metadata=DocumentMetadata(title="Ilustrado"),
+        resources=(
+            Resource(
+                key="fig-1", kind=ResourceKind.IMAGE, path=str(figure), media_type="image/png"
+            ),
+        ),
+        body=(
+            ImageBlock(
+                resource="fig-1",
+                alt_text="Uma figura de prova",
+                title="Prova",
+                width=Measure.points(90.0),
+                height=Measure.points(45.0),
+                alignment=Alignment.RIGHT,
+                crop=(0.0, 0.1, 1.0, 0.9),
+            ),
+            Paragraph(
+                content=(
+                    Text(content="Antes "),
+                    ImageInline(resource="fig-1", alt_text="em linha", width=Measure.points(12.0)),
+                    Text(content=" depois"),
+                )
+            ),
+            Diagram(fen=STARTING),
+        ),
+    )
+    package = tmp_path / "ilustrado.docx"
+    DocxExporter().export(document, package)
+    main = _part(package, "word/document.xml")
+    assert main.count("<w:drawing>") == 3
+    assert 'name="fig-1"' in main
+    assert 'descr="Uma figura de prova"' in main
+    assert 'title="Prova"' in main
+    assert '<a:srcRect l="0" t="10000" r="0" b="10000"/>' in main
+    assert "[fig-1]" not in main
+
+    read = read_docx(package)
+    block = read.body[0]
+    assert isinstance(block, ImageBlock)
+    assert block.resource == "fig-1"
+    assert block.alt_text == "Uma figura de prova"
+    assert block.title == "Prova"
+    assert block.alignment is Alignment.RIGHT
+    assert block.crop == (0.0, 0.1, 1.0, 0.9)
+    assert block.width is not None
+    assert abs(block.width.to_points() - 90.0) < 0.01
+    assert block.height is not None
+    assert abs(block.height.to_points() - 45.0) < 0.01
+    paragraph = read.body[1]
+    assert isinstance(paragraph, Paragraph)
+    inline = paragraph.content[1]
+    assert isinstance(inline, ImageInline)
+    assert inline.resource == "fig-1"
+    assert inline.alt_text == "em linha"
+    assert inline.width is not None
+    assert abs(inline.width.to_points() - 12.0) < 0.01
+    # the diagram's EMF picture is not mistaken for an image node
+    assert not isinstance(read.body[2], (ImageBlock, ImageInline))
+
+
+def test_an_image_without_its_file_keeps_its_place_as_a_placeholder(tmp_path: Path) -> None:
+    """No bytes to embed: a grey placeholder picture of the asked size stands
+    in, the key still names it, and the report says so -- the DOCX
+    counterpart of the ``image-missing`` box the XHTML writes."""
+    document = Document(
+        metadata=DocumentMetadata(title="Sem arquivo"),
+        resources=(
+            Resource(key="capa", kind=ResourceKind.IMAGE, path="assets/nao-existe.png"),
+        ),
+        body=(ImageBlock(resource="capa", alt_text="A capa", width=Measure.points(50.0)),),
+    )
+    package = tmp_path / "sem-arquivo.docx"
+    result = DocxExporter().export(document, package)
+    main = _part(package, "word/document.xml")
+    assert "<w:drawing>" in main
+    assert 'name="capa"' in main
+    with zipfile.ZipFile(package) as archive:
+        assert archive.read("word/media/imagem1.png")[:4] == bytes([0x89]) + b"PNG"
+    assert any(warning.property == "images" for warning in result.degradation.warnings)
+    block = read_docx(package).body[0]
+    assert isinstance(block, ImageBlock)
+    assert block.resource == "capa"
+    assert block.alt_text == "A capa"
+    assert block.width is not None
+    assert abs(block.width.to_points() - 50.0) < 0.01
 
 
 def test_a_note_comes_back_where_it_stood_in_the_story(tmp_path: Path) -> None:

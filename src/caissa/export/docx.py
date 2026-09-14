@@ -54,7 +54,7 @@ from __future__ import annotations
 import re
 import zipfile
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, ClassVar
@@ -1611,60 +1611,66 @@ class _Body:
         return "".join(parts)
 
     def _block_image_block(self, node: ImageBlock) -> str:
-        picture = self._raster_picture(node)
-        if picture is None:
-            return self._paragraph(
-                _with_style(ParagraphProps(alignment=Alignment.CENTER), "Diagram"),
-                _run(f"[{node.resource}]", RunProps(), self.context),
-            )
-        props = ParagraphProps(alignment=node.alignment or Alignment.CENTER)
-        return self._paragraph(_with_style(props, "Diagram"), picture)
+        # The alignment is written only when the author set one: the Diagram
+        # style already centres, and a ``w:jc`` the node never asked for would
+        # come back as an alignment the node never had.
+        props = ParagraphProps(alignment=node.alignment)
+        return self._paragraph(_with_style(props, "Diagram"), self._raster_picture(node))
 
-    def _raster_picture(self, node: ImageBlock | ImageInline) -> str | None:
-        """Embed the raster image a node refers to, or ``None`` when it cannot be.
+    def _raster_picture(self, node: ImageBlock | ImageInline) -> str:
+        """Embed the raster image a node refers to as a ``w:drawing``.
 
         A scanned page, a figure the text placed, an OCR region the reader
         abstained on: each is an image resource with bytes on disk after an
         import, and a Word file that shows ``[figura-p12-0003]`` where the
         page was is a Word file with the book missing. The bytes go in as an
         image part (PNG, JPEG and GIF as they are; SVG rasterised at the
-        diagram DPI; anything else re-encoded as PNG) and the node becomes a
-        ``w:drawing``, the same picture the diagrams use. The size is what
-        the node asked for; failing that, the pixels at the resource's
-        resolution (96 dpi when unstated); either way capped at the text
-        width so a full-page scan fits the page. Only a resource whose file
-        is not there stays a marker, and the report says so through the
-        ``images`` feature.
+        diagram DPI; anything else re-encoded as PNG) and the node becomes the
+        same picture the diagrams use. The size is what the node asked for;
+        failing that, the pixels at the resource's resolution (96 dpi when
+        unstated); either way capped at the text width so a full-page scan
+        fits the page.
+
+        **The node travels in the picture's own fields**, so :func:`read_docx`
+        can rebuild it from ``word/document.xml`` alone: the resource key in
+        ``wp:docPr/@name``, the alternative text in ``@descr``, the title in
+        ``@title``, the crop in ``a:srcRect``. A resource whose file is not
+        there gets a grey placeholder picture -- the counterpart of the
+        ``image-missing`` box the XHTML writes -- with the key still in the
+        name, and the report says so through the ``images`` feature.
         """
         resource = self.context.document.resource(node.resource)
         path = Path(resource.path) if resource is not None and resource.path else None
-        if resource is None or path is None or not path.is_file():
-            self.context.audit_feature("images", node=node, original=node.resource)
-            return None
-        suffix = path.suffix.lower().lstrip(".")
-        if suffix == "jpeg":
-            suffix = "jpg"
-        try:
-            if suffix == "svg":
-                data = svg_to_png(
-                    path.read_text(encoding="utf-8"), dpi=self.context.options.diagram_dpi
+        data: bytes | None = None
+        suffix = "png"
+        if path is not None and path.is_file():
+            suffix = path.suffix.lower().lstrip(".")
+            if suffix == "jpeg":
+                suffix = "jpg"
+            try:
+                if suffix == "svg":
+                    data = svg_to_png(
+                        path.read_text(encoding="utf-8"), dpi=self.context.options.diagram_dpi
+                    )
+                    suffix = "png"
+                elif suffix in ("png", "jpg", "gif"):
+                    data = path.read_bytes()
+                else:
+                    data = _to_png(path)
+                    suffix = "png"
+            except Exception as error:  # noqa: BLE001 - an unreadable file is a placeholder
+                self.context.recorder.substituted(
+                    prop="images",
+                    node=node,
+                    path=self.context.path,
+                    original=node.resource,
+                    detail=f"A imagem {path.name} nao pode ser lida ({error}).",
+                    replacement="quadro de reserva",
                 )
-                suffix = "png"
-            elif suffix in ("png", "jpg", "gif"):
-                data = path.read_bytes()
-            else:
-                data = _to_png(path)
-                suffix = "png"
-        except Exception as error:  # noqa: BLE001 - an unreadable file is a marker, not a crash
-            self.context.recorder.substituted(
-                prop="images",
-                node=node,
-                path=self.context.path,
-                original=node.resource,
-                detail=f"A imagem {path.name} nao pode ser lida ({error}); ficou o marcador.",
-                replacement="texto",
-            )
-            return None
+        else:
+            self.context.audit_feature("images", node=node, original=node.resource)
+        if data is None:
+            data, suffix = _placeholder_png(), "png"
         width_mm, height_mm = self._image_size_mm(node, resource, data, suffix)
         name = f"imagem{len(self.media) + 1}.{suffix}"
         self.media.append((name, data, suffix))
@@ -1672,27 +1678,39 @@ class _Body:
         self.relationships.append((relationship, f"{R}/image", f"media/{name}"))
         self._drawing_id += 1
         self.context.count("images")
-        alt = node.alt_text or getattr(node, "title", None) or resource.description or node.resource
         return _drawing(
             relationship,
             self._drawing_id,
             round(width_mm * EMU_PER_MM),
             round(height_mm * EMU_PER_MM),
-            alt,
+            node.alt_text or "",
+            name=node.resource,
+            title=getattr(node, "title", None),
+            crop=tuple(getattr(node, "crop", ()) or ()),
         )
 
     def _image_size_mm(
-        self, node: ImageBlock | ImageInline, resource: Resource, data: bytes, suffix: str
+        self,
+        node: ImageBlock | ImageInline,
+        resource: Resource | None,
+        data: bytes,
+        suffix: str,
     ) -> tuple[float, float]:
         """The picture's size on the page, in millimetres, capped at the text width."""
         options = self.context.options
         page_width = float(getattr(options, "page_width_mm", 148.0))
         text_width = page_width - 2 * float(getattr(options, "margin_mm", 18.0))
         pixels = _raster_pixels(data, suffix)
-        if pixels is None and resource.width and resource.height:
+        if pixels is None and resource is not None and resource.width and resource.height:
             pixels = (int(resource.width), int(resource.height))
-        dpi = float(resource.dpi or 96.0)
+        dpi = float((resource.dpi if resource is not None else None) or 96.0)
         ratio = (pixels[1] / pixels[0]) if pixels and pixels[0] else 1.0
+        crop = tuple(getattr(node, "crop", ()) or ())
+        if len(crop) == _CROP_EDGES:
+            # The picture shows the cropped part, so the shape to keep is the crop's.
+            visible_width = max(1e-6, crop[2] - crop[0])
+            visible_height = max(1e-6, crop[3] - crop[1])
+            ratio = ratio * visible_height / visible_width
         asked_width = _mm(node.width)
         asked_height = _mm(node.height)
         if asked_width is not None:
@@ -2170,10 +2188,7 @@ class _Body:
         )
 
     def _inline_image_inline(self, node: ImageInline, inherited: RunProps | None = None) -> str:
-        picture = self._raster_picture(node)
-        if picture is None:
-            return _run(f"[{node.resource}]", _merge(inherited, RunProps()), self.context)
-        return picture
+        return self._raster_picture(node)
 
     def _inline_anchor(self, node: Any, inherited: RunProps | None = None) -> str:
         self._bookmark_id += 1
@@ -2444,6 +2459,37 @@ def _raster_pixels(data: bytes, suffix: str) -> tuple[int, int] | None:
         return None
 
 
+_PLACEHOLDER_SIDE = 64
+
+
+def _placeholder_png(side: int = _PLACEHOLDER_SIDE, grey: int = 0xD9) -> bytes:
+    """A flat grey square, written with the standard library alone.
+
+    It stands where an image whose file the package could not find would be,
+    so the document keeps the node's place, size and name; the report is what
+    says the picture is not the author's.
+    """
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(body))
+            + kind
+            + body
+            + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        )
+
+    row = b"\x00" + bytes([grey]) * (side * 3)
+    header = struct.pack(">IIBBBBB", side, side, 8, 2, 0, 0, 0)
+    return (
+        _PNG_SIGNATURE
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(row * side, 9))
+        + chunk(b"IEND", b"")
+    )
+
+
 def _to_png(path: Path) -> bytes:
     """Re-encode an image Word does not take as it is (WebP, BMP, TIFF) as PNG."""
     import io
@@ -2457,7 +2503,38 @@ def _to_png(path: Path) -> bytes:
         return buffer.getvalue()
 
 
-def _drawing(relationship: str, identifier: int, width: int, height: int, alt: str) -> str:
+_CROP_UNIT = 100_000  # ``a:srcRect`` insets are in thousandths of a percent
+_CROP_EDGES = 4
+
+
+def _src_rect(crop: tuple[float, ...]) -> str:
+    """Render the IR's fractional crop as ``a:srcRect``, or nothing for no crop.
+
+    The IR keeps ``(left, top, right, bottom)`` as fractions of the source
+    that stay visible; DrawingML keeps the four *insets*, so the right and
+    bottom edges are complemented.
+    """
+    if len(crop) != _CROP_EDGES:
+        return ""
+    left, top, right, bottom = crop
+    insets = (left, top, 1.0 - right, 1.0 - bottom)
+    if all(abs(value) < 1e-9 for value in insets):
+        return ""
+    edges = [round(max(0.0, min(1.0, value)) * _CROP_UNIT) for value in insets]
+    return f'<a:srcRect l="{edges[0]}" t="{edges[1]}" r="{edges[2]}" b="{edges[3]}"/>'
+
+
+def _drawing(
+    relationship: str,
+    identifier: int,
+    width: int,
+    height: int,
+    alt: str,
+    *,
+    name: str | None = None,
+    title: str | None = None,
+    crop: tuple[float, ...] = (),
+) -> str:
     """Render an inline ``w:drawing`` for one embedded picture.
 
     Args:
@@ -2466,24 +2543,30 @@ def _drawing(relationship: str, identifier: int, width: int, height: int, alt: s
         width: Width in EMU.
         height: Height in EMU.
         alt: Accessible description.
+        name: The picture's name -- the resource key of an image, so it comes
+            back; ``Diagrama N`` for a diagram.
+        title: The picture's title, when the node has one.
+        crop: The IR's fractional crop, written as ``a:srcRect``.
 
     Returns:
         The run containing the drawing.
     """
     safe = xml_attr(alt)[:400]
+    label = xml_attr(name if name is not None else f"Diagrama {identifier}")
+    titled = f' title="{xml_attr(title)}"' if title else ""
     return (
         "<w:r><w:drawing>"
         f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
         f'<wp:extent cx="{width}" cy="{height}"/>'
         '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
-        f'<wp:docPr id="{identifier}" name="Diagrama {identifier}" descr="{safe}"/>'
+        f'<wp:docPr id="{identifier}" name="{label}" descr="{safe}"{titled}/>'
         "<wp:cNvGraphicFramePr/>"
         f'<a:graphic xmlns:a="{A}">'
         f'<a:graphicData uri="{PIC}">'
         f'<pic:pic xmlns:pic="{PIC}">'
-        f'<pic:nvPicPr><pic:cNvPr id="{identifier}" name="Diagrama {identifier}" '
+        f'<pic:nvPicPr><pic:cNvPr id="{identifier}" name="{label}" '
         f'descr="{safe}"/><pic:cNvPicPr/></pic:nvPicPr>'
-        f'<pic:blipFill><a:blip r:embed="{relationship}"/>'
+        f'<pic:blipFill><a:blip r:embed="{relationship}"/>{_src_rect(crop)}'
         "<a:stretch><a:fillRect/></a:stretch></pic:blipFill>"
         "<pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/>"
         f'<a:ext cx="{width}" cy="{height}"/></a:xfrm>'
@@ -3009,6 +3092,9 @@ class _ReadState:
 
     numbering: Mapping[int, str]
     starts: Mapping[int, int]
+    targets: Mapping[str, str] = field(default_factory=dict)
+    """``r:id`` to the part it points at, from ``word/_rels/document.xml.rels``:
+    what tells a picture of a diagram (``media/diagramaN.emf``) from an image."""
 
 
 def read_docx(path: Path | str) -> Document:
@@ -3044,11 +3130,14 @@ def read_docx(path: Path | str) -> Document:
             numbering_part = part("word/numbering.xml")
             footnotes_part = part("word/footnotes.xml")
             endnotes_part = part("word/endnotes.xml")
+            rels_part = part("word/_rels/document.xml.rels")
     except (KeyError, zipfile.BadZipFile) as error:
         raise ValueError(f"Nao e um DOCX legivel: {error}") from error
 
     numbering_names, numbering_starts = _read_numbering(numbering_part)
-    state = _ReadState(numbering=numbering_names, starts=numbering_starts)
+    state = _ReadState(
+        numbering=numbering_names, starts=numbering_starts, targets=_read_targets(rels_part)
+    )
     root = ET.fromstring(main)
     body = root.find(f"{{{W}}}body")
     read: list[Any] = []
@@ -3084,6 +3173,21 @@ def _read_document_id(part: str) -> str:
         if variable.get(f"{{{W}}}name") == DOCUMENT_ID_VAR:
             return variable.get(f"{{{W}}}val") or ""
     return ""
+
+
+def _read_targets(part: str) -> Mapping[str, str]:
+    """Read ``r:id`` to target out of the main part's relationships."""
+    if not part:
+        return {}
+    namespace = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+    try:
+        root = ET.fromstring(part)
+    except ET.ParseError:
+        return {}
+    return {
+        element.get("Id") or "": element.get("Target") or ""
+        for element in root.iter(f"{namespace}Relationship")
+    }
 
 
 def _read_numbering(part: str) -> tuple[Mapping[int, str], Mapping[int, int]]:
@@ -3334,7 +3438,10 @@ def _read_paragraph(element: ET.Element, state: _ReadState) -> Block | None:
     if style == "GameScore":
         return _read_game(element)
     props = _read_paragraph_props(properties, style, state)
-    content = _read_runs(element)
+    picture = _lone_picture(element, state)
+    if picture is not None:
+        return _image_block(picture, props.alignment)
+    content = _read_runs(element, state)
     match = re.fullmatch(r"Heading([1-9])", style)
     if match:
         from caissa.core.model import Heading as HeadingNode
@@ -3507,11 +3614,97 @@ def _read_numbering_ref(element: ET.Element, state: _ReadState) -> Any:
     )
 
 
-def _read_runs(element: ET.Element) -> tuple[Inline, ...]:
+@dataclass(frozen=True, slots=True)
+class _Picture:
+    """What one ``w:drawing`` says about the node it stands for."""
+
+    resource: str
+    alt_text: str | None
+    title: str | None
+    width: Measure
+    height: Measure
+    crop: tuple[float, ...]
+
+
+def _read_picture(drawing: ET.Element, state: _ReadState | None) -> _Picture | None:
+    """Read an image ``w:drawing`` back; ``None`` for a diagram's picture.
+
+    A diagram is an EMF (or PNG fallback) part named ``media/diagramaN``; it
+    stands for a :class:`Diagram` node this reader does not rebuild, so it is
+    left alone as it always was. Everything else is an image node, whose key,
+    text, title, size and crop the writer put in the picture's own fields.
+    """
+    extent = drawing.find(f".//{{{WP}}}extent")
+    properties = drawing.find(f".//{{{WP}}}docPr")
+    blip = drawing.find(f".//{{{A}}}blip")
+    if extent is None or properties is None:
+        return None
+    if blip is not None and state is not None:
+        target = state.targets.get(blip.get(f"{{{R}}}embed") or "", "")
+        if target.rsplit("/", 1)[-1].startswith("diagrama"):
+            return None
+    elif (properties.get("name") or "").startswith("Diagrama "):
+        return None
+    source = drawing.find(f".//{{{A}}}srcRect")
+    crop: tuple[float, ...] = ()
+    if source is not None:
+        insets = [int(source.get(edge) or 0) / _CROP_UNIT for edge in ("l", "t", "r", "b")]
+        crop = (insets[0], insets[1], 1.0 - insets[2], 1.0 - insets[3])
+    return _Picture(
+        resource=properties.get("name") or "",
+        alt_text=properties.get("descr") or None,
+        title=properties.get("title") or None,
+        width=_measure_from_emu(extent.get("cx")),
+        height=_measure_from_emu(extent.get("cy")),
+        crop=crop,
+    )
+
+
+def _measure_from_emu(raw: str | None) -> Measure:
+    return Measure(value=round(int(raw or 0) / _EMU_PER_POINT, 2), unit=LengthUnit.PT)
+
+
+_EMU_PER_POINT = 12700
+
+
+def _lone_picture(element: ET.Element, state: _ReadState) -> _Picture | None:
+    """The image a paragraph consists of, when it consists of nothing else.
+
+    That is how the writer lays an :class:`ImageBlock` down: one run, one
+    drawing, no text -- in the Diagram style, which the paragraph keeps as its
+    only other content.
+    """
+    runs = [child for child in element if child.tag == f"{{{W}}}r"]
+    if len(runs) != 1:
+        return None
+    run = runs[0]
+    if run.find(f"{{{W}}}t") is not None:
+        return None
+    drawing = run.find(f"{{{W}}}drawing")
+    if drawing is None:
+        return None
+    return _read_picture(drawing, state)
+
+
+def _image_block(picture: _Picture, alignment: Alignment | None) -> ImageBlock:
+    return ImageBlock(
+        resource=picture.resource,
+        alt_text=picture.alt_text,
+        width=picture.width,
+        height=picture.height,
+        alignment=alignment,
+        title=picture.title,
+        crop=picture.crop,
+    )
+
+
+def _read_runs(element: ET.Element, state: _ReadState | None = None) -> tuple[Inline, ...]:
     """Rebuild the inline content of a paragraph.
 
     Args:
         element: The ``w:p`` or ``w:hyperlink``.
+        state: The reader state, for the picture targets; ``None`` reads any
+            drawing as an image.
 
     Returns:
         The inlines.
@@ -3525,27 +3718,40 @@ def _read_runs(element: ET.Element) -> tuple[Inline, ...]:
             if name.startswith(BOOKMARK_PREFIX):
                 pending.append(name[len(BOOKMARK_PREFIX) :])
         elif tag == "hyperlink":
-            content.extend(_read_runs(child))
+            content.extend(_read_runs(child, state))
         elif tag == "r":
-            node = _read_run(child)
+            node = _read_run(child, state)
             if node is not None:
                 content.append(_apply_identity(node, pending))
                 pending = []
     return tuple(content)
 
 
-def _read_run(element: ET.Element) -> Inline | None:
+def _read_run(element: ET.Element, state: _ReadState | None = None) -> Inline | None:
     """Rebuild one ``w:r``.
 
     Args:
         element: The run element.
+        state: The reader state, for the picture targets.
 
     Returns:
-        A :class:`~caissa.core.model.inline.Text`, or ``None`` when the run
-        carries no text.
+        A :class:`~caissa.core.model.inline.Text`, an
+        :class:`~caissa.core.model.inline.ImageInline` for a run that carries
+        an image, or ``None`` when the run carries no text.
     """
     if element.find(f"{{{W}}}br") is not None and element.find(f"{{{W}}}t") is None:
         return LineBreak()
+    drawing = element.find(f"{{{W}}}drawing")
+    if drawing is not None and element.find(f"{{{W}}}t") is None:
+        picture = _read_picture(drawing, state)
+        if picture is None:
+            return None
+        return ImageInline(
+            resource=picture.resource,
+            alt_text=picture.alt_text,
+            width=picture.width,
+            height=picture.height,
+        )
     pieces = [node.text or "" for node in element.findall(f"{{{W}}}t")]
     if not pieces:
         return None

@@ -533,6 +533,25 @@ Bundle reconstruído e o item *DOCX…* dirigido no `Caissa.exe` como o *EPUB…
 *«DOCX gravado em caissa_pagina_de_prova.docx: 1 página(s) (livro completo); … 6 imagens …»*,
 seis partes em `word/media/` e seis `w:drawing` no corpo.
 
+**E o nó volta do `document.xml` (2026-09-14, terceira passada).** A figura carrega o nó nos
+seus próprios campos: a chave do recurso em `wp:docPr/@name`, o texto alternativo em `@descr`, o
+título em `@title`, o corte em `a:srcRect` (milésimos de porcento, bordas complementadas), o
+tamanho em `wp:extent`. `read_docx` reconstrói `ImageBlock` (parágrafo de um só `w:drawing`,
+alinhamento do `w:jc`) e `ImageInline` (o desenho dentro de uma execução), e deixa em paz o
+desenho de um diagrama — ele é o EMF `media/diagramaN`, que o leitor distingue pelas relações do
+documento. Um recurso sem arquivo deixou de virar marcador: vira um **quadro de reserva** cinza
+do tamanho pedido (PNG gerado só com `zlib`), o equivalente do `image-missing` do XHTML, com a
+chave no nome — o nó volta igual, e o relatório diz que a figura não é do autor (feature
+`images`). O perfil passou a declarar `image_block`/`image_inline` como *full*, com os campos
+que o OOXML só aproxima escritos por nome: largura/altura (EMU inteiros e absolutos — uma medida
+em % ou negativa vira o tamanho intrínseco), corte (milésimos), `baseline_shift` em linha (o
+`wp:inline` não tem). Conferido no Writer: figura com corte e alinhada à direita, figura em
+linha no meio do texto, quadro de reserva; e `read_docx` sobre o DOCX da página de prova devolve
+os seis `ImageBlock` com chave, alt e 31,68 pt. Testes:
+`test_an_image_travels_as_a_picture_and_comes_back_as_a_node`,
+`test_an_image_without_its_file_keeps_its_place_as_a_placeholder`; fidelidade do corpus acima
+do portão, sem perda declarada que não chegue ao relatório.
+
 ### 7d. O que não é
 
 - Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,

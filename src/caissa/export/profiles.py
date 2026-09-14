@@ -278,16 +278,8 @@ _DOCX_NODES: Mapping[str, PropertySupport] = {
         "O tabulador virou w:tab, que o Word posiciona pela regua do paragrafo.",
         "w:tab",
     ),
-    "image_inline": substitute(
-        "A imagem em linha virou uma figura embutida (w:drawing) na execucao; o no ImageInline "
-        "(chave do recurso, corte) nao volta do DOCX.",
-        "w:drawing",
-    ),
-    "image_block": substitute(
-        "A imagem virou uma figura embutida (w:drawing) num paragrafo centrado; o no ImageBlock "
-        "(chave do recurso, corte, titulo) nao volta do DOCX.",
-        "w:drawing",
-    ),
+    "image_inline": full(),
+    "image_block": full(),
     "code_block": substitute(
         "O bloco de codigo virou paragrafos no estilo Code, um paragrafo por linha.",
         "estilo Code",
@@ -616,9 +608,9 @@ _DOCX_PARAGRAPH: Mapping[str, PropertySupport] = {
 _DOCX_FEATURES: Mapping[str, PropertySupport] = {
     "vector_diagram": full(),
     "images": substitute(
-        "A imagem cujo arquivo nao esta ao alcance virou um marcador textual com a chave do "
-        "recurso; com o arquivo, ela e embutida como figura.",
-        "texto",
+        "A imagem cujo arquivo nao esta ao alcance virou um quadro de reserva cinza do tamanho "
+        "pedido, com a chave do recurso no nome da figura; com o arquivo, ela e embutida.",
+        "quadro de reserva",
     ),
     "named_styles": full(),
     "footnotes": full(),
@@ -664,6 +656,34 @@ _DOCX_FEATURES: Mapping[str, PropertySupport] = {
 # alignment. Each entry names the element it is talking about so that a reviewer
 # can check it against the schema rather than against us.
 _DOCX_NODE_FIELDS: Mapping[str, PropertySupport] = {
+    "image_block.width": approximate(
+        "wp:extent guarda a largura da figura em EMU inteiros e absolutos; uma medida "
+        "relativa (%, em) ou negativa vira o tamanho intrinseco da imagem.",
+        "EMU",
+    ),
+    "image_block.height": approximate(
+        "wp:extent guarda a altura da figura em EMU inteiros e absolutos; uma medida "
+        "relativa (%, em) ou negativa vira o tamanho intrinseco da imagem.",
+        "EMU",
+    ),
+    "image_block.crop": approximate(
+        "a:srcRect guarda o corte em milesimos de porcento de cada borda.",
+        "a:srcRect",
+    ),
+    "image_inline.width": approximate(
+        "wp:extent guarda a largura da figura em EMU inteiros e absolutos; uma medida "
+        "relativa (%, em) ou negativa vira o tamanho intrinseco da imagem.",
+        "EMU",
+    ),
+    "image_inline.height": approximate(
+        "wp:extent guarda a altura da figura em EMU inteiros e absolutos; uma medida "
+        "relativa (%, em) ou negativa vira o tamanho intrinseco da imagem.",
+        "EMU",
+    ),
+    "image_inline.baseline_shift": unsupported(
+        "wp:inline ancora a figura na linha de base e nao tem deslocamento vertical; "
+        "so wp:anchor teria, e ele tira a figura do fluxo do texto."
+    ),
     "document.metadata": approximate(
         "docProps/core.xml carrega o Dublin Core que o Word mostra: titulo, "
         "assunto, descricao, idioma, autores, palavras-chave, identificador e "
