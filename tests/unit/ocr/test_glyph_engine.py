@@ -347,3 +347,26 @@ def test_no_figurine_model_directory_means_no_candidate(tmp_path, monkeypatch):
     # whatever this machine holds, an empty explicit directory must not raise.
     recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
     assert recognition.regions
+
+
+def test_fine_tuned_model_may_not_replace_a_printed_piece_letter():
+    """A book that prints ``Nf3`` keeps ``Nf3``: the fine-tuned model's ♘ is
+    letter-guarded, the glyph classifier's is not (it reads letters as letters)."""
+    tess = _words("22 Nf3 Hea!", [0.95, 0.9, 0.6], engine="tesseract", variant="original")
+    model = _words("22 ♘f3 ♖e8!", [1.0, 0.99, 0.99], engine="tesseract_figurine", variant="figurine")
+    fused = fuse_candidates([(tess, 0.80, _decision()), (model, 0.85, _decision())], lang="eng",
+                            never_anchor=frozenset({"tesseract_figurine"}))
+    assert fused is not None
+    assert fused.result.text == "22 Nf3 ♖e8!", "the letter stays, the look-alike is fixed"
+    glyph = _words("22 ♘f3 ♖e8!", [1.0, 0.99, 0.99], engine="glyph", variant="glyph")
+    fused = fuse_candidates([(tess, 0.80, _decision()), (glyph, 0.85, _decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text == "22 ♘f3 ♖e8!", "the glyph classifier is trusted on letters"
+    # In a German book ``De2`` is a piece letter; in an English one it is a misread ♘.
+    tess = _words("41 De2", [0.95, 0.8], engine="tesseract", variant="original")
+    model = _words("41 ♘e2", [1.0, 0.99], engine="tesseract_figurine", variant="figurine")
+    for lang, expected in (("eng", "41 ♘e2"), ("deu", "41 De2")):
+        fused = fuse_candidates([(tess, 0.80, _decision()), (model, 0.85, _decision())], lang=lang,
+                                never_anchor=frozenset({"tesseract_figurine"}))
+        assert fused is not None and fused.result.text == expected, lang

@@ -75,6 +75,13 @@ __all__ = ["FusedRegion", "FusedToken", "FusionConfig", "fuse_candidates"]
 _TRUSTED_ENGINES = frozenset({"pdf_text_layer"})
 _FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
 _MARKS = ".,;:!?+#"
+#: Engines whose figurine readings are letter-guarded (see ``fuse_candidates``).
+_LETTER_GUARDED = frozenset({"tesseract_figurine"})
+#: Piece letters per Tesseract language, as the books of that language print them.
+_PIECE_LETTERS = {"eng": "KQRBN", "por": "RDTBC", "spa": "RDTAC", "deu": "KDTLS",
+                  "fra": "RDTFC", "ita": "RDTAC", "nld": "KDTLP", "ron": "RDTNC"}
+
+
 #: A move number glued to a move: digits then dots or a space.  A bare
 #: digit before a square (``2d5``) is not a number — it is what a line engine
 #: makes of ♗.
@@ -223,12 +230,16 @@ def _pair_words(anchor: OcrLine, other: OcrLine, cfg: FusionConfig) -> dict[int,
 def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]], *,
                     lang: str = "", image: NDArray[np.uint8] | None = None,
                     config: FusionConfig | None = None,
-                    never_anchor: frozenset[str] = frozenset()) -> FusedRegion | None:
+                    never_anchor: frozenset[str] = frozenset(),
+                    letter_guarded: frozenset[str] = _LETTER_GUARDED) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
     ``never_anchor`` names engines that only ever supply alternatives — the
     figurine reader, whose prose is worse than the line engines' and whose
-    value is the tokens the anchor could not read.
+    value is the tokens the anchor could not read.  ``letter_guarded`` names
+    the secondary engines whose figurine may not replace a **piece letter of
+    the book's language**: a model fine-tuned on figurines reads a printed
+    ``N`` as ♘, and on a book that prints letters that is an invention.
     """
     cfg = config or FusionConfig()
     usable = [(r, s, d) for r, s, d in candidates if r.lines and r.text.strip()]
@@ -268,6 +279,8 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
                     Reading(name, other_word.text, other_word.confidence, other_word.box))
 
     secondary = frozenset(_source_of(r) for r, _, _ in usable if r.engine in never_anchor)
+    guarded = frozenset(_source_of(r) for r, _, _ in usable if r.engine in letter_guarded)
+    piece_letters = _PIECE_LETTERS.get(langs[0] if langs else "", "")
     tokens: list[FusedToken] = []
     changed = 0
     disputed = 0
@@ -276,7 +289,7 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
         at_line_end = word is line.words[-1]
         chosen, alternative, is_disputed = _choose(
             readings, cfg, source_scores, langs, diacritic_lang, at_line_end, trusted,
-            secondary=secondary)
+            secondary=secondary, guarded=guarded, piece_letters=piece_letters)
         agreeing = [r for r in readings if _fold(r.text) == _fold(chosen.text)]
         confidence = max(r.confidence for r in agreeing)
         if len(agreeing) > 1:
@@ -327,6 +340,14 @@ def _supported(text: str, langs: tuple[str, ...]) -> bool:
     return bool(judged) and hit > 0
 
 
+def _piece_letter_start(anchor: str, piece_letters: str) -> bool:
+    """The anchor is a move that starts with a piece letter of the language
+    (a glued move number allowed): ``Nf3``, ``22...Bf8`` in an English book."""
+    prefix = _NUMBER_PREFIX.match(anchor)
+    core = anchor[prefix.end():] if prefix else anchor
+    return bool(core) and core[0] in piece_letters
+
+
 def _figurine_fix(anchor: str, other: str) -> bool:
     """``other`` is ``anchor`` with a figurine where a Latin look-alike was.
 
@@ -361,7 +382,8 @@ def _figurine_fix(anchor: str, other: str) -> bool:
 
 def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[str, float],
             langs: tuple[str, ...], diacritic_lang: bool, at_line_end: bool,
-            trusted: bool, *, secondary: frozenset[str] = frozenset()
+            trusted: bool, *, secondary: frozenset[str] = frozenset(),
+            guarded: frozenset[str] = frozenset(), piece_letters: str = ""
             ) -> tuple[Reading, str, bool]:
     anchor = readings[0]
     if trusted or len(readings) == 1:
@@ -371,7 +393,9 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
     # one replacement a secondary source may make on its own evidence.
     for reading in readings[1:]:
         if (reading.source in secondary and reading.confidence >= cfg.figurine_min_confidence
-                and _figurine_fix(anchor.text, reading.text)):
+                and _figurine_fix(anchor.text, reading.text)
+                and not (reading.source in guarded
+                         and _piece_letter_start(anchor.text, piece_letters))):
             return reading, anchor.text, False
 
     primary = [r for r in readings if r.source not in secondary]
