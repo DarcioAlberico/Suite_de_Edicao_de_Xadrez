@@ -2,11 +2,12 @@
 
 > **Data:** 2026-09-13, modelo por livro em 2026-09-14 · Sol §SOL-0 (corpus), §SOL-11
 > (revisão), §SOL-12 (hashes e versões).
-> Ferramentas do pacote: `caissa-rotular` (janela Tk, `caissa.ocr.labeling.app`) e
-> `caissa-treinar` (terminal, `caissa.ocr.training.cli`); `tools/rotular.py` e
-> `tools/treinar_tesseract.py` são atalhos para rodar sem instalar. Pacotes
-> `caissa.ocr.labeling` e `caissa.ocr.training`. O ciclo por livro — abrir um PDF,
-> rotular, treinar, importar melhor — está no §7.
+> Ferramentas do pacote: a aba **Rotulagem** da janela do produto (`caissa.ui.views.rotulagem`,
+> PyQt6, montada pelo tronco em `qt/painel_de_rotulagem.py` — está no `Caissa.exe`),
+> `caissa-rotular` (a mesma bancada em Tk, `caissa.ocr.labeling.app`) e `caissa-treinar`
+> (terminal, `caissa.ocr.training.cli`); `tools/rotular.py` e `tools/treinar_tesseract.py` são
+> atalhos para rodar sem instalar. Pacotes `caissa.ocr.labeling` e `caissa.ocr.training`. O ciclo
+> por livro — abrir um PDF, rotular, treinar, importar melhor — está no §7; a aba, no §7e.
 
 `SOL_REPORT.md` §2 diz o que falta ao corpus dourado: **verdade escrita por gente sobre
 scans reais**. Os portões de CER e de lances hoje medem tipografia sintética e regiões
@@ -417,6 +418,28 @@ veredito **mantém** a 0,55 apesar de 43 % dos lances mangled (`'i'd6+`, `l:th`)
 o importador não chama o OCR, e o modelo do livro só entra quando a camada é rejeitada ou não
 existe. Fazer o OCR concorrer com a camada danificada (F5 §4.1 já baixa a confiança para isso)
 é a próxima peça; não é deste §7.
+
+### 7e. A aba Rotulagem da janela do produto (2026-09-14)
+
+O mesmo ciclo dentro do `Caissa.exe`: `caissa.ui.views.rotulagem.PainelDeRotulagem` é a bancada
+em PyQt6 — página com regiões e linhas coloridas pelo estado (cena em pontos da página, zoom
+pela vista), recorte, leitura com palavras fracas, alternativas, verdade com paleta de figurinas,
+região desenhada (D), tipo/FEN inicial/rejeitar/remover no botão direito, Exportar, **Treinar…**
+(modelo deste livro, registrado) e **Medir no livro…**. Nada é decidido no widget: são os mesmos
+módulos da bancada Tk, e o que as duas janelas partilham (`letters_to_figurines`, `fen_problem`,
+cores por estado, o projeto padrão) mora em `caissa.ocr.labeling.helpers`.
+
+O tronco a monta como **sétima aba** (`ChessVisionOFF_Puro/qt/painel_de_rotulagem.py`, `abas.ROTULAGEM`
+no acervo): num checkout do tronco sem a suíte ao alcance (o `.venv` de lá é Python 3.10) a
+janela sobe com as seis de antes e o motivo vai para o log; no bundle os dois pacotes moram no
+mesmo arquivo e a aba existe sempre. No bundle o projeto de rotulagem fica em `rotulagem/` ao
+lado do executável e os modelos em `models/tessdata/` (`livros/<livro>/`, `livros.json`) — as
+pastas graváveis do `Caissa.exe`. O treino exige o Tesseract instalado na máquina
+(`lstmtraining`, `combine_tessdata`…): o bundle não o leva, e o diálogo diz o que falta.
+
+Testes: `tests/unit/ui/test_rotulagem_view.py` (pulam sem PyQt6; rodam no `.venv-pack`) e, no
+tronco, `test_qt_janela.test_as_seis_abas_estao_na_ordem_da_spec` (sete quando a suíte está ao
+alcance) e a catraca de `qt/janela.py` (1883 → 1887, as quatro linhas da montagem).
 
 ### 7d. O que não é
 
