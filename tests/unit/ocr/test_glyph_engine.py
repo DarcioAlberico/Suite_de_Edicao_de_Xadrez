@@ -402,3 +402,21 @@ def test_service_skips_the_glyph_reader_on_languages_it_does_not_serve():
                          lang="rus+eng", glyph_engine=glyph)
     service.recognize_image(inked_page(), dpi=300.0, lang="rus+eng")
     assert glyph.strips_seen == []
+
+
+def test_a_move_with_glued_number_or_evaluation_mark_keeps_its_support():
+    from caissa.ocr.fusion import _keep_number_prefix, _supported
+
+    assert _supported("8.Kc2!", ("eng",))
+    assert _supported("Bg6—+", ("eng",))
+    assert not _supported("2.25", ("eng",))
+    assert _keep_number_prefix("2.25", "2g5") == "2.g5"
+    assert _keep_number_prefix("2...25", "2g5") == "2...g5"
+    assert _keep_number_prefix("Hea!", "♖e8!") == "♖e8!"
+    assert _keep_number_prefix("22...28,", "22...♗f8,") == "22...♗f8,"
+    tess = _words("8.Kc2! Bg6—+ 2.25", [0.7, 0.7, 0.5], engine="tesseract", variant="original")
+    other = _words("Kc2! Bg6+ 2g5", [0.99, 0.99, 0.99], engine="glyph", variant="glyph")
+    fused = fuse_candidates([(tess, 0.8, _decision()), (other, 0.85, _decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text == "8.Kc2! Bg6—+ 2.g5"

@@ -291,7 +291,10 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
         chosen, alternative, is_disputed = _choose(
             readings, cfg, source_scores, langs, diacritic_lang, at_line_end, trusted,
             secondary=secondary, guarded=guarded, piece_letters=piece_letters)
-        agreeing = [r for r in readings if _fold(r.text) == _fold(chosen.text)]
+        # A restyled reading (``2g5`` → ``2.g5``) matches its source by text
+        # without the formatting; the source itself still counts as agreeing.
+        agreeing = [r for r in readings if _fold(r.text) == _fold(chosen.text)
+                    or r.source == chosen.source]
         confidence = max(r.confidence for r in agreeing)
         if len(agreeing) > 1:
             # Independent agreement is evidence; it lifts, it does not certify.
@@ -331,11 +334,17 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
 
 
 def _supported(text: str, langs: tuple[str, ...]) -> bool:
-    """A reading with lexical support: a move token or a dictionary word."""
-    core = text.strip(".,;:!?()\"'")
+    """A reading with lexical support: a move token or a dictionary word.
+
+    A move keeps its support with a glued move number (``8.Kc2!``) and with
+    an evaluation mark after it (``Bg6—+``): both are the printed form, and
+    a candidate that lost the number or the dash must not outrank them.
+    """
+    core = text.strip(".,;:!?()\"'—–-+#")
     if not core:
         return False
-    if is_move_token(core):
+    prefix = _NUMBER_PREFIX.match(core)
+    if is_move_token(core) or (prefix and is_move_token(core[prefix.end():].strip(".,;:!?—–-+#"))):
         return True
     hit, judged = dictionary_hit_rate(core, langs)
     return bool(judged) and hit > 0
@@ -347,6 +356,23 @@ def _piece_letter_start(anchor: str, piece_letters: str) -> bool:
     prefix = _NUMBER_PREFIX.match(anchor)
     core = anchor[prefix.end():] if prefix else anchor
     return bool(core) and core[0] in piece_letters
+
+
+def _keep_number_prefix(anchor: str, other: str) -> str:
+    """``2.25`` replaced by ``2g5`` becomes ``2.g5``: the anchor's move-number
+    formatting survives when the replacement carries the same digits bare."""
+    prefix = _NUMBER_PREFIX.match(anchor)
+    if not prefix or not prefix.group(0).rstrip(" ").endswith("."):
+        return other
+    digits = prefix.group(1)
+    if other.startswith(digits) and len(other) > len(digits) and other[len(digits)] not in ". ":
+        return prefix.group(0).rstrip(" ") + other[len(digits):]
+    return other
+
+
+def _restyled(anchor: "Reading", chosen: "Reading") -> "Reading":
+    text = _keep_number_prefix(anchor.text, chosen.text)
+    return chosen if text == chosen.text else Reading(chosen.source, text, chosen.confidence, chosen.box)
 
 
 def _figurine_fix(anchor: str, other: str) -> bool:
@@ -397,7 +423,7 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
                 and _figurine_fix(anchor.text, reading.text)
                 and not (reading.source in guarded
                          and _piece_letter_start(anchor.text, piece_letters))):
-            return reading, anchor.text, False
+            return _restyled(anchor, reading), anchor.text, False
 
     primary = [r for r in readings if r.source not in secondary]
     distinct: dict[str, list[Reading]] = {}
@@ -413,7 +439,7 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
             return anchor, "", False
         for reading in extra:
             if _supported(reading.text, langs) and reading.confidence >= anchor.confidence - 0.10:
-                return reading, anchor.text, False
+                return _restyled(anchor, reading), anchor.text, False
         return anchor, extra[0].text, True
 
     def score_of(text: str, group: list[Reading]) -> float:
@@ -463,7 +489,7 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
     best_score, best_text, best_reading = candidates[0]
     if best_score - anchor_score < cfg.dispute_margin:
         return anchor, best_text, True
-    return best_reading, anchor.text, False
+    return _restyled(anchor, best_reading), anchor.text, False
 
 
 def _rebuild(anchor: OcrResult, tokens: Sequence[FusedToken],
