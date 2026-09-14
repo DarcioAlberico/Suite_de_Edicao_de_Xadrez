@@ -135,6 +135,9 @@ def _piece_letters(notation_lang: str) -> frozenset[str]:
 #: move would be a lie that spreads, and the whole point is that the caller
 #: must see the ambiguity.
 CIPHER_SLOT = "?"
+#: Longest prefix the decoder rewrites — the look-alike clusters of a damaged
+#: text layer run to five characters (``ll:'i`` for ♕).
+_MAX_PREFIX = 5
 
 #: Every dash a PDF emits where notation means "moves to".  Long-form notation
 #: writes ``Кра8—b7``, and a body that only accepts the ASCII hyphen reads that
@@ -150,6 +153,7 @@ _MOVE_BODY = re.compile(
 
 #: A move number glued to the move: ``4.Kd3``, ``1...Nf6``.
 _MOVE_NUMBER = re.compile(r"^\d{1,3}\.{1,3}")
+_BARE_RANK_BODY = re.compile(r"^[1-8][a-h][1-8]")
 
 #: Trailing punctuation a sentence leaves on a move.
 _TRIM = "(),;:."
@@ -221,6 +225,11 @@ class CipherReport:
         return "\n".join(lines)
 
 
+def _is_cluster(prefix: str) -> bool:
+    """A damaged layer's multi-character look-alike: short, not all alphanumeric."""
+    return 1 < len(prefix) <= _MAX_PREFIX and not all(ch.isalnum() for ch in prefix)
+
+
 def _split(token: str) -> tuple[str, str, str] | None:
     """``(prefix, body, promotion)`` for a token that ends in a move body."""
     trimmed = token.strip(_TRIM)
@@ -228,7 +237,13 @@ def _split(token: str) -> tuple[str, str, str] | None:
     if match is None or match.start() == len(trimmed):
         return None
     prefix = _MOVE_NUMBER.sub("", trimmed[:match.start()])
-    return prefix, match.group(0), match.group("promo") or ""
+    body = match.group(0)
+    if not prefix and _BARE_RANK_BODY.match(body):
+        # ``2g5``: a rank disambiguator needs a piece letter before it, so a
+        # bare digit in front of a square is a look-alike (Tesseract reads ♗
+        # as ``2`` on the Gaprindashvili), not part of the move.
+        prefix, body = body[0], body[1:]
+    return prefix, body, match.group("promo") or ""
 
 
 def infer_cipher(text: str, *, notation_lang: str = "",
@@ -270,12 +285,16 @@ def infer_cipher(text: str, *, notation_lang: str = "",
         if prefix in native:
             clean += 1
             continue
-        if len(prefix) == 1:
+        if len(prefix) == 1 or _is_cluster(prefix):
+            # One character: an OCR engine's look-alike.  A short cluster with
+            # a non-alphanumeric character in it: a damaged text layer's
+            # look-alike (``'it>`` for ♔, ``l:t`` for ♖ — OCR_UI_ROADMAP passo 3,
+            # consistent per figurine on the Gaprindashvili).  Both are symbols.
             symbols[prefix] += 1
             ciphered += 1
         else:
-            # Multi-character junk: the glyph did not survive as one symbol, so
-            # there is no cipher to invert here.  Counted, never decoded.
+            # A plain run of letters glued to a square: the glyph did not
+            # survive as one symbol, or it is a word.  Counted, never decoded.
             ciphered += 1
 
     notes: list[str] = []
@@ -309,7 +328,7 @@ def infer_cipher(text: str, *, notation_lang: str = "",
 
 
 def decode(text: str, report: CipherReport, *,
-           assignment: Mapping[str, str] | None = None) -> str:
+           assignment: Mapping[str, str] | None = None, force: bool = False) -> str:
     """Rewrite ``text`` with the cipher inverted as far as it is known.
 
     A symbol the report resolved becomes its English piece letter.  A symbol in
@@ -321,8 +340,13 @@ def decode(text: str, report: CipherReport, *,
     ``assignment`` overrides the report — that is how a caller feeds back a
     reading that :mod:`caissa.notation.legality_repair` settled against a real
     position, and re-decodes the page with the holes filled.
+
+    ``force`` skips the page-level guard below.  It is for a caller holding
+    evidence of a wider scope than one page — the book's proven table
+    (:mod:`caissa.ocr.notation.book_cipher`) — on a region too short for the
+    guard's twelve moves; the caller still has to show a ciphered majority.
     """
-    if not report.is_ciphered:
+    if not report.is_ciphered and not force:
         # Refusing here is the whole safety property: a page whose notation was
         # never broken must come back byte for byte, or the decoder is a new
         # way to break books.  ``is_ciphered`` needs a majority of the piece
@@ -353,13 +377,15 @@ def decode(text: str, report: CipherReport, *,
             if index >= 0:
                 token = token[:index + 1] + replacement + token[index + 2:]
 
-        if len(prefix) == 1 and prefix in known:
+        # One character (Tesseract's look-alike) or a short cluster (a damaged
+        # layer's: ``'it>`` for ♔) — the alphabet decides what counts.
+        if prefix in known and 0 < len(prefix) <= _MAX_PREFIX:
             replacement = table.get(prefix, CIPHER_SLOT)
             # Rebuild from the original token so that trimmed punctuation and
             # the move number survive untouched.
             index = token.find(prefix)
             if index >= 0:
-                token = token[:index] + replacement + token[index + 1:]
+                token = token[:index] + replacement + token[index + len(prefix):]
 
         out.append(token)
     return " ".join(out)

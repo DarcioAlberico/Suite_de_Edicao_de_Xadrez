@@ -409,6 +409,12 @@ class OcrService:
         self.last: PageRecognition | None = None
         #: Set by the importer before each page: diagrams and notation locale.
         self.page_context: PageContext | None = None
+        #: OCR_UI_ROADMAP passo 3: the book's figurine cipher, proved by
+        #: legality across its blocks (:mod:`caissa.ocr.notation.book_cipher`).
+        #: Set by the importer for the PDF at hand; the service feeds it every
+        #: proof a complete replay yields and hands its proven rows to the
+        #: validator of every notation region.
+        self.book_cipher: Any = None
 
     # -- engines ----------------------------------------------------------- #
 
@@ -961,25 +967,36 @@ class OcrService:
                     never_anchor=frozenset(never_anchor))
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
+                    if self.book_cipher is not None:
+                        self._observe_glyph_swaps(fused, task.page_index, task.lang)
             except ImportError:
                 pass
         region = region_outcome.region
         box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
         legality: dict[str, Any] = {}
-        movetext = (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result))
+        # A region whose moves came out as cipher (``Hd2``, ``'i'd6+``) does not
+        # *look* like movetext yet — no token is a move — but it carries the
+        # notation the validator and the book cipher exist for (passo 3).
+        movetext = (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
+                    or _carries_notation(result))
         if cfg.validate_notation and movetext and not result.is_empty:
             from caissa.ocr.notation.validate import validate_region
 
             diagram = self._diagram_for(box_px, task)
             context = self.page_context
+            book = self.book_cipher
             validated = validate_region(
                 result, decision, lang=task.lang,
                 start_fen=diagram.fen if diagram else None,
                 fen_trusted=bool(diagram and diagram.trusted),
                 side_to_move=diagram.side_to_move if diagram else None,
                 notation_locale=context.notation_locale if context else None,
-                image=task.image if task.pdf_page is None else None)
+                image=task.image if task.pdf_page is None else None,
+                book_cipher=book.proven() if book is not None else None)
             result, decision, legality = validated.result, validated.decision, validated.as_dict()
+            if book is not None:
+                for symbol, piece, raw, san in validated.proven_pieces:
+                    book.observe(symbol, piece, page=task.page_index, raw=raw, san=san)
             if diagram is not None:
                 legality["diagram"] = list(diagram.box)
         return RegionRecognition(
@@ -990,6 +1007,45 @@ class OcrService:
             legality=legality, fusion=fusion,
         )
 
+
+    def _observe_glyph_swaps(self, fused: Any, page_index: int, lang: str) -> None:
+        """Feed the book cipher the look-alike → figurine swaps the fusion made.
+
+        Each swap (``Hea!`` → ``♖e8!``) is the glyph reader's visual proof, at
+        ≥ 0,70, that this book's ``H`` is the rook.  It is the second source of
+        evidence of :mod:`caissa.ocr.notation.book_cipher`, tagged ``glyph`` so
+        the table can demand more of them than of a legal replay.  A piece
+        letter of the book's own language is never recorded as a symbol
+        (SPEC R2.3): a table row ``R → B`` would rewrite a printed rook.
+        """
+        from caissa.ocr.fusion import _FIGURINES, _NUMBER_PREFIX, _figurine_cut
+        from caissa.ocr.notation.cipher import ENGLISH_PIECES, _piece_letters
+
+        letters = dict(zip("♔♕♖♗♘♙♚♛♜♝♞♟", "KQRBNPKQRBNP", strict=True))
+        first = (lang or "").split("+")[0]
+        guarded = _piece_letters(first) | frozenset(ENGLISH_PIECES)
+        for token in fused.tokens:
+            if token.chosen_from == fused.anchor or not token.readings:
+                continue
+            anchor = token.readings[0].text
+            chosen = token.text
+            cut = _figurine_cut(anchor, chosen)
+            if cut is None:
+                continue
+            core_a = _NUMBER_PREFIX.sub("", anchor)
+            core_c = _NUMBER_PREFIX.sub("", chosen)
+            if not core_c or core_c[0] not in _FIGURINES:
+                continue
+            symbol = core_a[:cut]
+            # The symbol is the whole look-alike: one character, or a short
+            # cluster with a non-alphanumeric character in it (a word never
+            # has one); it is never a piece letter of the book's language.
+            if (not symbol or len(symbol) > 5 or symbol in guarded or symbol[0] in "abcdefgh"
+                    or any(ch in _FIGURINES for ch in symbol)
+                    or (len(symbol) > 1 and all(ch.isalnum() for ch in symbol))):
+                continue
+            self.book_cipher.observe(symbol, letters[core_c[0]], page=page_index,
+                                     raw=anchor, san=chosen, source="glyph")
 
     def _diagram_for(self, box_px: BBox, task: PageTask) -> DiagramRef | None:
         """The diagram a movetext region most plausibly continues from.

@@ -39,14 +39,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 import chess
 
 from ..decision import Decision, RegionDecision, decide
 from ..lexicon import is_move_token, normalise_lang, tokenize
 from ..types import OcrLine, OcrResult, OcrWord
-from .cipher import _fold_homoglyphs, decode, infer_cipher
+from .cipher import (ENGLISH_PIECES, _fold_homoglyphs, _piece_letters, _split, decode,
+                     infer_cipher)
 
 __all__ = ["ValidationOutcome", "validate_region"]
 
@@ -58,6 +59,7 @@ _WHITE_START = re.compile(r"^\s*(\d+)\.(?!\.)")
 _COMMENT = re.compile(r"\{[^}]*\}")
 _GLUED = re.compile(r"^([KQRBNDTCSAFL]?[a-h]?[1-8]?x?[a-h][1-8][+#]?)([KQRBNDTCSAFL]?[a-h]?[1-8]?x?[a-h][1-8][+#]?)$")
 _REPEAT_LIMIT = 3
+_MOVE_NUMBER_PREFIX = re.compile(r"^\d{1,3}\.{1,3}")
 _NUMBER_PREFIX = re.compile(r"^(\d+\.{1,3})(.+)$")
 #: Glyph pairs an engine actually confuses.  A repair that changes one of
 #: these is *supported by the image*; a repair that turns a confident ``B``
@@ -100,6 +102,10 @@ class ValidationOutcome:
     variations_ok: int = 0
     reasons_pt: tuple[str, ...] = ()
     cipher: dict[str, Any] = field(default_factory=dict)
+    #: OCR_UI_ROADMAP passo 3: ``(symbol, piece, raw token, legal SAN)`` for every
+    #: cipher symbol this block's *complete* legal replay proved — the
+    #: evidence :class:`~caissa.ocr.notation.book_cipher.BookCipher` collects.
+    proven_pieces: tuple[tuple[str, str, str, str], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -252,21 +258,55 @@ def _apply_corrections(result: OcrResult, corrections: dict[str, str]) -> OcrRes
 def validate_region(result: OcrResult, decision: RegionDecision, *, lang: str = "",
                     start_fen: str | None = None, fen_trusted: bool = False,
                     side_to_move: str | None = None, notation_locale: str | None = None,
-                    image: Any = None) -> ValidationOutcome:
-    """Replay the region's moves and decide what the legality evidence allows."""
+                    image: Any = None,
+                    book_cipher: Mapping[str, str] | None = None) -> ValidationOutcome:
+    """Replay the region's moves and decide what the legality evidence allows.
+
+    ``book_cipher`` (OCR_UI_ROADMAP passo 3) is the ``symbol → piece`` table the
+    book's earlier blocks proved by legality.  It fills the holes the page's
+    own cipher report leaves, under the decoder's own guard (the page must be
+    ciphered), and a token it turns into a move is applied to the reading —
+    the token was not a word and not a move before, and the table is evidence
+    from this book, not a guess.
+    """
     text = _fold_homoglyphs(result.text)
+    original_text = text
     langs = normalise_lang(lang)
     reasons: list[str] = []
     cipher_info: dict[str, Any] = {}
+    decoded_by_table: dict[str, str] = {}
 
     # 2. Cipher
-    report = infer_cipher(text, notation_lang=_TO_LOCALE.get(langs[0], "") if langs else "")
-    if report.is_ciphered and report.assignment:
-        decoded = decode(text, report)
-        cipher_info = {"symbols": dict(report.assignment), "judged": report.judged}
+    report = infer_cipher(text, notation_lang=_TO_LOCALE.get(langs[0], "") if langs else "",
+                          # A symbol the book proved is not a smudge even when
+                          # this region shows it once.
+                          min_support=1 if book_cipher else 2)
+    page_alphabet = {s.symbol for s in report.symbols}
+    table = {s: p for s, p in (book_cipher or {}).items() if s in page_alphabet}
+    # The page's own resolution outranks the book's on a symbol both settled.
+    table.update(report.assignment)
+    # The page-level guard (12 judged moves, a ciphered majority) is the
+    # decoder's safety property against text that was never broken.  A book
+    # table is evidence that *this* book's font is broken, so with one at
+    # hand a region needs a ciphered majority and two ciphered moves, not
+    # twelve: the analysis blocks of a problem book are short.
+    book_symbols = [s for s in table if s not in report.assignment]
+    ciphered = report.is_ciphered or (
+        bool(book_symbols) and report.ciphered_moves >= 2
+        and report.ciphered_moves > 0.5 * report.judged)
+    if ciphered and table:
+        decoded = decode(text, report, assignment=table, force=not report.is_ciphered)
+        cipher_info = {"symbols": dict(table), "judged": report.judged,
+                       "from_book": sorted(s for s in table if s not in report.assignment)}
         if decoded != text:
-            reasons.append("cifra de figurinos inferida e decodificada: "
-                           + ", ".join(f"{k}→{v}" for k, v in sorted(report.assignment.items())))
+            if report.assignment:
+                reasons.append("cifra de figurinos inferida e decodificada: "
+                               + ", ".join(f"{k}→{v}"
+                                           for k, v in sorted(report.assignment.items())))
+            if cipher_info["from_book"]:
+                reasons.append("cifra do livro aplicada: "
+                               + ", ".join(f"{k}→{table[k]}" for k in cipher_info["from_book"]))
+            decoded_by_table = _decoded_tokens(text, decoded, set(table))
             text = decoded
 
     tokens = tokenize(text)
@@ -297,39 +337,64 @@ def validate_region(result: OcrResult, decision: RegionDecision, *, lang: str = 
             fen = _with_side(fen, side)
     elif _FIRST_MOVE.match(text):
         fen, side = chess.STARTING_FEN, "w"
+    elif (start := _game_start(text)) is not None:
+        # OCR_UI_ROADMAP passo 3: a whole game printed after its header
+        # ("Smith – Jones, London 1990") starts at move one a few tokens in;
+        # the header is prose and the replay begins where the game does.
+        fen, side = chess.STARTING_FEN, "w"
+        text = text[start:]
+        original_text = original_text[_game_start(original_text) or 0:]
+        reasons.append("bloco reproduzido a partir do lance 1 depois do cabeçalho.")
     elif start_fen and not fen_trusted:
         reasons.append("diagrama próximo sem proveniência confiável da FEN: replay não tentado.")
 
     if fen is None or move_count == 0:
         if fen is None and move_count:
             reasons.append("posição inicial desconhecida: a legalidade não foi testada.")
-        return ValidationOutcome(result, decision, attempted=False, moves_seen=move_count,
-                                 repeated=repeated, reasons_pt=tuple(reasons),
-                                 cipher=cipher_info,
+        # No replay, but the book's proven table still applies (that is what
+        # it is for: the 98 % of blocks without a position).
+        new_result = _apply_corrections(result, decoded_by_table) if decoded_by_table else result
+        if decoded_by_table:
+            new_result = new_result.with_meta(book_cipher_applied=dict(decoded_by_table))
+            reasons.append(f"{len(decoded_by_table)} lance(s) reescritos pela cifra do livro.")
+        new_decision = decision if not reasons else RegionDecision(
+            decision.decision, decision.score, decision.accept_threshold,
+            decision.review_threshold, decision.reasons_pt + tuple(reasons),
+            decision.evidence, decision.flagged_words, decision.demoted, decision.legality)
+        return ValidationOutcome(new_result, new_decision, attempted=False,
+                                 moves_seen=move_count, repeated=repeated,
+                                 reasons_pt=tuple(reasons), cipher=cipher_info,
                                  side_to_move=side)
 
     # 5. Replay: the original reading, then the separator candidates.
-    from caissa.notation.legality_repair import repair_movetext
-
     locale = notation_locale or None
-    main_text = _COMMENT.sub(" ", text)
-    variations = re.findall(r"\(([^()]*)\)", main_text)
-    main_line = re.sub(r"\([^()]*\)", " ", main_text)
-    readings = [main_line, *_separator_candidates(main_line)]
-    best_report = None
-    best_text = main_line
-    for candidate in readings:
-        candidate_report = repair_movetext(candidate, language=locale, start_fen=fen)
-        if best_report is None or (
-                len(candidate_report.moves), candidate_report.replayed_to_end,
-                -len(candidate_report.unresolved)) > (
-                len(best_report.moves), best_report.replayed_to_end,
-                -len(best_report.unresolved)):
-            best_report, best_text = candidate_report, candidate
-    assert best_report is not None
+
+    # 5a. OCR_UI_ROADMAP passo 3: the cipher symbols the page (and the book)
+    # could not settle are a *hypothesis space*, like a locale — ``W``/``H``/
+    # ``S`` is to English what ``D``/``T``/``K`` is to German — and a replay
+    # decides between assignments the way it decides between locales.  Each
+    # assignment decodes the block and replays it; the one that replays
+    # furthest, alone, wins, and the symbols it used in legal moves are the
+    # evidence the book table collects.  A tie is left as it was found.
+    free = [s.symbol for s in report.symbols if s.symbol not in table]
+    if ciphered and free:
+        hypothesis = _best_assignment(original_text, report, table, free, locale, fen)
+        if hypothesis is not None:
+            table = dict(hypothesis)
+            decoded = decode(original_text, report, assignment=table, force=True)
+            decoded_by_table = _decoded_tokens(original_text, decoded, set(table))
+            text = decoded
+            cipher_info = {**cipher_info, "symbols": dict(table),
+                           "by_replay": sorted(set(free) & set(table))}
+            reasons.append("cifra resolvida pela reprodução legal do bloco: "
+                           + ", ".join(f"{k}→{table[k]}" for k in sorted(set(free) & set(table))))
+
+    main_line, variations, best_report, best_text = _replay_block(text, locale, fen)
     if best_text != main_line:
         reasons.append("leitura alternativa (separador ou acento lido como dígito) adotada "
                        "porque reproduz legalmente melhor que a original.")
+
+    from caissa.notation.legality_repair import repair_movetext
 
     variations_ok = 0
     for variation in variations:
@@ -360,6 +425,8 @@ def validate_region(result: OcrResult, decision: RegionDecision, *, lang: str = 
                 corrections[before] = after
     unique = (best_report.replayed_to_end and not best_report.unresolved
               and not best_report.reading_disputed)
+    proven = (_proven_pieces(best_report.moves, original_text, text,
+                             language=best_report.language) if unique else ())
     unresolved = tuple((u.raw, tuple(u.near_misses)) for u in best_report.unresolved)
     confidences = {w.text.strip(): w.confidence for w in result.words}
     applied: dict[str, str] = {}
@@ -390,9 +457,21 @@ def validate_region(result: OcrResult, decision: RegionDecision, *, lang: str = 
                        + ", ".join(f"{raw} (próximos: {', '.join(near) or '—'})"
                                    for raw, near in unresolved[:4]))
 
+    if decoded_by_table:
+        # The cipher's rewrites are applied on their own evidence — the book's
+        # proven table, or the assignment this very block replayed under —
+        # not on the visual-support rule of a one-glyph confusion; and they
+        # stand even when the block did not replay to the end, because a hole
+        # elsewhere in the block does not un-prove them.
+        for raw, new in decoded_by_table.items():
+            applied.setdefault(raw, new)
+        reasons.append(f"{len(decoded_by_table)} lance(s) reescritos pela cifra "
+                       f"({'do livro' if cipher_info.get('from_book') else 'do bloco'}).")
     new_result = _apply_corrections(result, applied) if applied else result
     if applied:
         new_result = new_result.with_meta(legality_corrections=applied)
+    if decoded_by_table:
+        new_result = new_result.with_meta(book_cipher_applied=dict(decoded_by_table))
     legality = {
         "replayed_to_end": best_report.replayed_to_end,
         "unresolved": len(unresolved),
@@ -424,7 +503,140 @@ def validate_region(result: OcrResult, decision: RegionDecision, *, lang: str = 
         start_fen=fen, side_to_move=side, moves_seen=move_count,
         moves_replayed=len(best_report.moves), corrected=tuple(sorted(applied.items())),
         unresolved=unresolved, repeated=repeated, variations=len(variations),
-        variations_ok=variations_ok, reasons_pt=tuple(reasons), cipher=cipher_info)
+        variations_ok=variations_ok, reasons_pt=tuple(reasons), cipher=cipher_info,
+        proven_pieces=proven)
+
+
+#: Ceiling on the assignment hypotheses replayed for one block: the three
+#: most frequent free symbols over five pieces give 60 permutations; a block
+#: with more symbols keeps the rest as slots and the table fills them later.
+_MAX_FREE_SYMBOLS = 3
+
+
+def _replay_block(text: str, locale: str | None, fen: str) -> tuple[str, list[str], Any, str]:
+    """``(main line, variations, best repair report, best reading)`` of one block."""
+    from caissa.notation.legality_repair import repair_movetext
+
+    main_text = _COMMENT.sub(" ", text)
+    variations = re.findall(r"\(([^()]*)\)", main_text)
+    main_line = re.sub(r"\([^()]*\)", " ", main_text)
+    best_report = None
+    best_text = main_line
+    for candidate in [main_line, *_separator_candidates(main_line)]:
+        candidate_report = repair_movetext(candidate, language=locale, start_fen=fen)
+        if best_report is None or _replay_key(candidate_report) > _replay_key(best_report):
+            best_report, best_text = candidate_report, candidate
+    assert best_report is not None
+    return main_line, variations, best_report, best_text
+
+
+def _replay_key(report: Any) -> tuple[int, bool, int]:
+    return (len(report.moves), bool(report.replayed_to_end), -len(report.unresolved))
+
+
+def _best_assignment(text: str, report: Any, fixed: Mapping[str, str], free: Sequence[str],
+                     locale: str | None, fen: str) -> dict[str, str] | None:
+    """The one symbol assignment under which the block replays best, or ``None``.
+
+    ``None`` when no hypothesis beats decoding nothing, or when two of them
+    tie for the best replay — a tie means the page does not say which piece
+    the symbol is, and guessing would be inventing.
+    """
+    from itertools import permutations
+
+    support = {s.symbol: s.support for s in report.symbols}
+    free = sorted(free, key=lambda sym: -support.get(sym, 0))[:_MAX_FREE_SYMBOLS]
+    remaining = [p for p in ENGLISH_PIECES if p not in fixed.values()]
+    if not free or len(remaining) < len(free):
+        return None
+    baseline = _replay_key(_replay_block(
+        decode(text, report, assignment=dict(fixed), force=True), locale, fen)[2])
+    scored: list[tuple[tuple[int, bool, int], dict[str, str]]] = []
+    for combination in permutations(remaining, len(free)):
+        assignment = dict(fixed)
+        assignment.update(dict(zip(free, combination, strict=True)))
+        decoded = decode(text, report, assignment=assignment, force=True)
+        scored.append((_replay_key(_replay_block(decoded, locale, fen)[2]), assignment))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    best_key, best = scored[0]
+    if best_key <= baseline:
+        return None
+    if len(scored) > 1 and scored[1][0] == best_key:
+        return None
+    return best
+
+
+_FIRST_MOVE_ANYWHERE = re.compile(r"(?:^|\s)(1\.(?!\.)\s*[a-hKQRBN♔♕♖♗♘♙O0])")
+
+
+def _game_start(text: str) -> int | None:
+    """Offset of a ``1.`` that opens a game after prose, or ``None``.
+
+    Only when nothing move-shaped precedes it: a ``1.`` inside a block that
+    already carried moves is a variation, not a game start.
+    """
+    match = _FIRST_MOVE_ANYWHERE.search(text)
+    if match is None:
+        return None
+    head = text[:match.start(1)]
+    if any(is_move_token(t) for t in tokenize(head)):
+        return None
+    return match.start(1)
+
+
+def _decoded_tokens(before: str, after: str, symbols: set[str]) -> dict[str, str]:
+    """``original token → decoded token`` for the tokens the cipher turned into a move.
+
+    A token qualifies when its piece slot held one of the resolved ``symbols``
+    and the decoded form is a move; ``is_move_token`` is *not* asked about the
+    original, because it answers for every locale at once — ``Wd5`` is a
+    Polish rook move — and what settled ``W`` here is this book's own legality
+    evidence, not a table of alphabets.  A token still holding a ``?`` slot is
+    not a reading anyone should be handed and stays out.
+    """
+    def core(token: str) -> str:
+        return _MOVE_NUMBER_PREFIX.sub("", token.strip("(),;:."))
+
+    out: dict[str, str] = {}
+    for old, new in zip(before.split(), after.split(), strict=False):
+        if old == new or not is_move_token(core(new)):
+            continue
+        parts = _split(old)
+        if parts is not None and (parts[0] in symbols or parts[2] in symbols):
+            out[old] = new
+    return out
+
+
+def _proven_pieces(moves: Sequence[Any], before: str, after: str, *,
+                   language: str | None) -> tuple[tuple[str, str, str, str], ...]:
+    """The cipher symbols a complete legal replay settled.
+
+    A move whose original token carried a one-character prefix that is **not
+    a piece letter of the block's own notation language** (the symbol) and
+    whose legal SAN names a piece proves ``symbol → piece``.  The language
+    guard is what keeps a Portuguese ``Txb7`` from being recorded as a cipher
+    ``T`` → ``R``: the book prints letters, and letters are not a cipher.  The
+    decoded text is mapped back to the original token by position, so a
+    symbol the table already rewrote still counts — the replay confirmed it.
+    """
+    letters = _piece_letters(language or "") | frozenset(ENGLISH_PIECES)
+    original_of: dict[str, str] = {}
+    for old, new in zip(before.split(), after.split(), strict=False):
+        original_of.setdefault(new, old)
+    out: list[tuple[str, str, str, str]] = []
+    for move in moves:
+        raw = str(getattr(move, "raw", "") or "")
+        san = str(getattr(move, "san", "") or "")
+        if not raw or not san or san[0] not in ENGLISH_PIECES:
+            continue
+        original = original_of.get(raw, raw)
+        parts = _split(original)
+        if parts is None:
+            continue
+        prefix = parts[0]
+        if len(prefix) == 1 and prefix not in letters and not prefix.isdigit():
+            out.append((prefix, san[0], original, san))
+    return tuple(out)
 
 
 def _render(san: str, language: str | None) -> str:

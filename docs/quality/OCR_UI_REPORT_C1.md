@@ -350,3 +350,108 @@ Chess Training, Burgess, Nunn ×2), `ocr` 127, `image-only` 27, `rejected` 8. Bl
 destruída passa a ser reconhecida como lances. Tempo 64 s → 1.569 s: a rodada de 2026-09-11 era
 sem OCR algum (o serviço ainda não estava costurado); os 127 `ocr` de páginas só de imagem
 pesam mais que os 64 contestados (~3 s cada). Diagramas 74/74, como antes.
+
+---
+
+## §3 — Passo 3: a cifra por livro
+
+### 3.0 Em uma tela
+
+`caissa.ocr.notation.book_cipher.BookCipher`: a tabela **símbolo → peça** de um livro, com a
+evidência de cada linha (apoio, contradições, exemplos, fonte da prova), guardada ao lado dos
+outros artefatos do livro (`models/tessdata/livros/<slug>/cipher.json`, chaveada pelo hash do
+PDF). O importador a carrega, o serviço a alimenta a cada prova e a aplica a cada região com
+notação; `PdfImportOptions.book_cipher=False` não lê nem grava.
+
+Medido pela mesma bancada do passo 2 (`notation_integrity.py --what contest`), com as tabelas
+aprendidas em **24 páginas disjuntas** de cada livro (metade final do livro, sem as páginas de
+teste) e depois aplicadas às páginas de teste:
+
+| livro | peça certa, passo 2 → passo 3 | de | tabela (linhas provadas) | lances perdidos | CER prosa |
+|---|---|---|---|---|---|
+| Gaprindashvili E8 | 791 → **891** | 973 | 23 (1.884 observações) | 0 | 0,088 (=) |
+| Aagaard E1 | 133 → **140** | 198 | 7 (412) | 0 | 0,012 (=) |
+| Nunn E2 (Pawnless) | 320 → **346** | 472 | 12 (973) | 0 | 0,014 (=) |
+| Dvoretsky, Boleslávski (controles) | inalterado | — | — | 0 | 0 caracteres alterados ✓ |
+
+Somando os três passos no Gaprindashvili: **265 → 891** lances com a peça certa nas mesmas oito
+páginas — de 30 % a 92 % dos lances com peça.
+
+```
+# aprender (24 páginas por livro, disjuntas das de teste) e depois medir
+.venv\Scripts\python.exe benchmarks\notation_integrity.py --what contest --json benchmarks\reports\ni_c3_contest_cipher.json
+```
+
+### 3.1 O que a medição mudou no desenho — duas vezes
+
+**A tarefa 0 do passo ("contar primeiro") deu zero.** A evidência prevista era a reprodução
+legal: um bloco com posição de partida reproduzido até o fim prova cada símbolo que usou. A
+máquina existe e funciona (`test_a_complete_replay_proves_the_assignment_and_rewrites_the_block`:
+a partida da Ópera com ♗→`&`, ♕→`W`, ♖→`H` reproduz 33 lances, prova os três símbolos e é
+reescrita) — mas no acervo rendeu **0 observações** em 40 páginas do Gaprindashvili com 119
+diagramas lidos, e 0 no Burgess, Euwe e Yusupov. O motivo é estrutural: os livros de notação
+danificada são **livros de exercícios**, e as páginas danificadas são as de **soluções** — a
+posição de cada solução é um diagrama numerado noutra página (`473 L.Seres-P.Kiss, Eger 1990`
+refere-se ao diagrama 473, dezenas de páginas antes), e os diagramas dessas páginas saem sem
+número (`Diagram.number` vazio: a camada em volta está danificada também). Sem a associação
+número → diagrama não há posição, e sem posição não há prova legal. Essa associação é o
+"o tronco começa no diagrama" do **passo 11**; fica registrada como pré-requisito dele.
+
+Antes disso a reprodução tinha um defeito próprio: `?xf3` (o *slot* que o decodificador
+escreve para "uma peça, não sei qual") **não era um lance** para o reparador — era pulado como
+prosa e a reprodução seguia desincronizada em silêncio. Agora `?` é um coringa sobre as cinco
+peças, resolvido **só quando uma** o torna legal; com duas legais o token fica sem leitura e
+as duas aparecem para o revisor (`test_the_repairer_resolves_a_piece_slot_only_when_one_piece_
+is_legal`). E `validate_region` passou a tratar as atribuições de símbolos como hipóteses de
+reprodução — como já faz com os idiomas — escolhendo a única que reproduz mais longe
+(`_best_assignment`, ≤ 3 símbolos livres, empate = nada).
+
+**A segunda fonte de prova é visual.** O leitor de glifos já faz, na fusão, a troca sósia →
+figurina com confiança ≥ 0,70 (SOL-6). Cada troca é uma observação `símbolo → peça` marcada
+`glyph`; a tabela exige **10** delas (contra 5 provas legais) e tolera contradições até **2 %**
+do apoio — metade da taxa de erro medida do classificador (99,1 %) — porque um desacordo em
+cinquenta é o erro dele, não um segundo sentido do símbolo (`test_a_visual_row_tolerates_the_
+classifier_error_rate_and_no_more`). Uma letra de peça do idioma do livro **nunca** vira
+símbolo (SPEC R2.3): no Nunn a camada usa `R` onde havia ♗, e a tabela recusou a linha
+`R → B` — o custo é declarado, o risco de reescrever uma torre impressa não.
+
+### 3.2 O símbolo é do tamanho que o dano deixou
+
+O corretor de cifra tratava só símbolos de **um** caractere (o sósia do Tesseract: `H`, `W`).
+A camada de texto danificada, que desde o passo 2 é a âncora, deixa **aglomerados**:
+`'it>d1` para ♔d1, `ll:'ixe5` para ♕xe5, `l:tb1` para ♖b1 — consistentes por figurina, e
+15 % dos lances com peça do Gaprindashvili depois de todo símbolo de um caractere resolvido.
+Três lugares aprenderam o aglomerado, com a mesma regra — curto (≤ 5), com ao menos um
+caractere não alfanumérico (uma palavra nunca tem), deixando o mesmo corpo de lance:
+`fusion._figurine_cut` (a troca sósia → figurina), `cipher.infer_cipher`/`decode` (o
+alfabeto e a reescrita) e a evidência do serviço. Um dígito solto antes de uma casa (`2g5`)
+também passou a ser símbolo: um desambiguador de fileira exige letra de peça antes, e o
+Tesseract lê ♗ como `2` neste livro.
+
+### 3.3 O que resta
+
+- **Provas legais no acervo**: dependem do índice número → diagrama (passo 11).
+- **Símbolos abaixo do piso**: linhas com 5–9 observações ficam "em evidência" e a tabela
+  cresce a cada importação do mesmo livro (é o ciclo do FineReader: a segunda leitura sabe
+  mais que a primeira).
+- **Sósias do Tesseract em páginas sem camada** (scan puro): a tabela aprende com as trocas
+  do leitor de glifos da mesma forma; não medido neste passo (as páginas de teste têm camada).
+
+### 3.4 Testes
+
+`tests/unit/ocr/test_book_cipher.py` (9): pisos e contradições, tolerância visual, ida e
+volta com impressão digital, reescrita sem posição, notação correta intacta, prosa com um
+símbolo intacta, aglomerados, prova por reprodução, empate prova nada, coringa do reparador.
+`test_glyph_engine.py`: as trocas alimentam a tabela e `N` impresso não é símbolo.
+`test_importer.py`: a tabela é lida e gravada junto dos modelos do livro, `book_cipher=False`
+não toca no disco.
+
+**Sabotagem**: a tabela com uma contradição não se aplica (`test_a_row_is_proven_by_five_
+legal_proofs_...`); a página correta não muda com tabela nenhuma (`test_the_table_leaves_
+correct_notation_and_prose_alone`); os dois controles saem do instrumento com 0 caracteres
+alterados.
+
+```
+.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py
+3601 passed, 6 skipped, 3 warnings in 867.53s (0:14:27)
+```

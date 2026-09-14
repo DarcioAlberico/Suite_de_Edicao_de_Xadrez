@@ -236,6 +236,14 @@ class PdfImportOptions:
     #: called on exactly the books it was built for (16 of the 33 with a
     #: layer; ROTULAGEM.md §7c).  ``False`` copies the layer as before.
     ocr_contests_text_layer: bool = True
+    #: OCR_UI_ROADMAP passo 3: keep the book's figurine cipher — the Latin
+    #: symbols the OCR uses for the figurines, proved piece by piece by the
+    #: legality replay of the blocks that have a position — and apply the
+    #: proven rows to the blocks that have none (98 % of them).  The table is
+    #: stored with the book's other models, keyed by the PDF's content hash
+    #: (:mod:`caissa.ocr.notation.book_cipher`).  ``False`` neither reads nor
+    #: writes it.
+    book_cipher: bool = True
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -490,6 +498,7 @@ class PdfImporter:
         self.report.figurines_mapped = self._mapper.count
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))
         document = self._to_ir(entries)
+        self._save_book_cipher()
         self.report.duration_s = time.perf_counter() - started
         if self.options.asset_dir is not None and self.report.ocr_traces:
             import json
@@ -729,6 +738,7 @@ class PdfImporter:
             from caissa.ingest.pdf.ocr_service import OcrService
 
             service = OcrService(lang=self._lang, config=self._book_ocr_config())
+            service.book_cipher = self._load_book_cipher()
             if not service.available:
                 self._ocr_unavailable = True
                 self.report.notes.append(
@@ -737,6 +747,47 @@ class PdfImporter:
                 return None
             self._ocr_service = service
         return self._ocr_service
+
+    def _load_book_cipher(self) -> Any:
+        """The book's cipher table, from disk or fresh; ``None`` when off."""
+        if not self.options.book_cipher:
+            return None
+        from caissa.ocr.notation.book_cipher import BookCipher
+
+        path = self._book_cipher_path()
+        fingerprint = self.document.content_hash if self.document.path is not None else None
+        table = BookCipher.load(path, fingerprint=fingerprint) if path is not None else None
+        if table is None:
+            table = BookCipher(fingerprint=fingerprint or "",
+                               document=self.document.path.stem if self.document.path else "")
+        elif table.entries:
+            self.report.notes.append(table.describe_pt() + f" (lida de {path})")
+        return table
+
+    def _book_cipher_path(self) -> Path | None:
+        if self.document.path is None:
+            return None
+        from caissa.ocr.notation.book_cipher import CIPHER_FILE
+        from caissa.ocr.training.books import book_dir, models_root
+
+        return book_dir(models_root(), self.document.path.stem) / CIPHER_FILE
+
+    def _save_book_cipher(self) -> None:
+        service = self._ocr_service
+        table = getattr(service, "book_cipher", None) if service is not None else None
+        if table is None or not table.dirty:
+            return
+        path = self._book_cipher_path()
+        if path is None:
+            return
+        try:
+            table.save(path)
+        except OSError as exc:
+            self.report.notes.append(f"cifra do livro não gravada: {exc}")
+            return
+        self.report.notes.append(table.describe_pt() + f" (gravada em {path})")
+        self.report.counters["cipher_observations"] = table.observations
+        self.report.counters["cipher_proven"] = len(table.proven())
 
     def _book_ocr_config(self) -> Any:
         """The service config, pointed at this book's fine-tune when it has one."""

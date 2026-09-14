@@ -283,6 +283,9 @@ lances em inglês: 0 tokens reescritos. *Sabotagem:* injetar numa página-contro
 inventados tem de acusar a reescrita; com `N=5` o mesmo token fica intacto.
 
 **Saída.** `OCR_UI_REPORT_C1.md` §3. **Desfazer:** `book_cipher=False`.
+**Estado (2026-09-14): executado.** O portão foi medido pela bancada `--what contest` (peça
+certa por página), não pelo `--what decode`, porque a âncora das páginas é a camada desde o
+passo 2 e a cifra que importa é a dela (aglomerados), não a do Tesseract.
 
 ---
 
@@ -904,6 +907,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 3 | **executado** — `docs/quality/OCR_UI_REPORT_C1.md` §3 | tarefa 0 deu **zero** provas legais no acervo (soluções de exercícios sem a posição na página); a tabela aprende também das trocas do leitor de glifos (10 provas visuais, ≤ 2 % contradições) e de aglomerados da camada danificada. Peça certa no Gaprindashvili 791 → 891 (de 973), Nunn 320 → 346, Aagaard 133 → 140; controles intactos. Pré-requisito do passo 11 registrado: índice número → diagrama | construtor |
 | 2026-09-14 | 2 | **executado** — `docs/quality/OCR_UI_REPORT_C1.md` §2 | a página mantida com notação danificada vai ao OCR; a camada ancora e os motores entram por token (medido: melhor que o vencedor na âncora nos dois eixos). Peça certa: Gaprindashvili 265 → 791, Aagaard 0 → 133, Nunn 0 → 320; 0 lances perdidos; controles com 0 caracteres alterados. Novo instrumento `notation_integrity.py --what contest` | construtor |
 | 2026-09-14 | 1 | **executado** — `docs/quality/OCR_UI_REPORT_C1.md` §1 | RapidOCR 3.x (Apache-2.0) roteado às páginas degradadas: lances 0,819 → 0,893, inventados 291 → 169, nenhuma regressão fora do IC; o portão de CER fecha só no fax (os outros dois degradados caem dentro do IC); ✗ residual: inserções no estrato de sombra (verso espelhado). Quatro defeitos de fusão/âncora expostos e corrigidos. Surya não medido (Q1) | construtor |
 

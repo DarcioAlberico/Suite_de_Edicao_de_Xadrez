@@ -335,9 +335,17 @@ _RESULTS: Final[frozenset[str]] = frozenset(
 #: rank digit** -- because that single requirement is what keeps ``Cada``,
 #: ``chances`` and ``brancas`` from ever reaching the board.
 _MOVE_SHAPE: Final[re.Pattern[str]] = re.compile(
-    r"^[\w♔-♟][\w♔-♟.\-+#=!?:×∞±∓⧱⧲□]{1,9}$",
+    r"^[\w♔-♟?][\w♔-♟.\-+#=!?:×∞±∓⧱⧲□]{1,9}$",
     re.UNICODE,
 )
+
+#: The piece slot :mod:`caissa.ocr.notation.cipher` writes where an OCR
+#: engine's figurine stand-in is known to be *a* piece but not which: ``?xf3``.
+#: Here it is a wildcard over the five pieces, resolved only when legality
+#: leaves exactly one of them (OCR_UI_ROADMAP passo 3): a slot with two legal
+#: readings is reported as ambiguous and never "repaired" to the first.
+PIECE_SLOT: Final[str] = "?"
+_SLOT_PIECES: Final[tuple[str, ...]] = ("K", "Q", "R", "B", "N")
 
 
 def _is_move_like(token: str) -> bool:
@@ -554,13 +562,16 @@ class LegalityRepairer:
 
             resolved = self._resolve(token, board, locale)
             if resolved is None:
+                slot_readings = self._slot_readings(token, board)
                 attempt.unresolved.append(
                     Unresolved(
                         raw=token,
                         ply=ply,
                         fen_before=board.fen(),
-                        reason="no legal move matches this token",
-                        near_misses=tuple(self._near_misses(token, board)),
+                        reason=("cipher slot: more than one piece is legal here"
+                                if len(slot_readings) > 1
+                                else "no legal move matches this token"),
+                        near_misses=tuple(slot_readings or self._near_misses(token, board)),
                     )
                 )
                 break
@@ -599,6 +610,9 @@ class LegalityRepairer:
         one wins -- not the closest.  Reading the token as written is always
         tried first, because a correct token must never be "improved".
         """
+        core = self._core(token)
+        if core.startswith(PIECE_SLOT) and len(core) > 1:
+            return self._resolve_slot(core, board)
         for text, confidence, notes in self._hypotheses(token, locale):
             move = self._parse(text, board)
             if move is not None:
@@ -628,6 +642,27 @@ class LegalityRepairer:
                     ),
                 )
         return None
+
+    def _resolve_slot(
+        self, core: str, board: chess.Board
+    ) -> tuple[str, float, tuple[str, ...]] | None:
+        """``?xf3``: the one piece that makes it legal here, or nothing.
+
+        Two legal pieces is a genuine ambiguity of the page — the replay
+        cannot know whether the bishop or the queen took on f3 — so the token
+        is left unresolved rather than guessed, and the near misses carry
+        both readings for the reviewer.
+        """
+        legal: list[tuple[str, str]] = []
+        for piece in _SLOT_PIECES:
+            text = piece + core[1:]
+            move = self._parse(text, board)
+            if move is not None:
+                legal.append((piece, board.san(move)))
+        if len(legal) != 1:
+            return None
+        piece, san = legal[0]
+        return (san, 0.90, (f"cipher slot resolved by legality: {core} -> {san}",))
 
     @staticmethod
     def _parse(text: str, board: chess.Board) -> chess.Move | None:
@@ -799,6 +834,18 @@ class LegalityRepairer:
             # produces a legal-but-wrong move, the worst outcome available.
             return None
         return (best_san, best_distance)
+
+    def _slot_readings(self, token: str, board: chess.Board) -> list[str]:
+        """Every legal piece for a ``?`` slot — the ambiguity, spelled out."""
+        core = self._core(token)
+        if not core.startswith(PIECE_SLOT):
+            return []
+        out = []
+        for piece in _SLOT_PIECES:
+            move = self._parse(piece + core[1:], board)
+            if move is not None:
+                out.append(board.san(move))
+        return out
 
     def _near_misses(self, token: str, board: chess.Board, limit: int = 3) -> list[str]:
         core = self._core(token).rstrip("+#")

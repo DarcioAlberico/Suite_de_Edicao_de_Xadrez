@@ -74,6 +74,8 @@ __all__ = ["FusedRegion", "FusedToken", "FusionConfig", "fuse_candidates"]
 
 _TRUSTED_ENGINES = frozenset({"pdf_text_layer"})
 _FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
+#: Longest look-alike cluster a damaged layer leaves for one figurine.
+_MAX_CLUSTER = 5
 _MARKS = ".,;:!?+#"
 #: Engines whose figurine readings are letter-guarded (see ``fuse_candidates``).
 _LETTER_GUARDED = frozenset({"tesseract_figurine"})
@@ -396,7 +398,12 @@ def _restyled(anchor: "Reading", chosen: "Reading") -> "Reading":
 
 
 def _figurine_fix(anchor: str, other: str) -> bool:
-    """``other`` is ``anchor`` with a figurine where a Latin look-alike was.
+    """``other`` is ``anchor`` with a figurine where a Latin look-alike was."""
+    return _figurine_cut(anchor, other) is not None
+
+
+def _figurine_cut(anchor: str, other: str) -> int | None:
+    """Length of the look-alike in ``anchor`` when ``other`` is its figurine form.
 
     The cipher shape: same move after the first character (one misread
     digit or letter tolerated, ``Hea!`` → ``♖e8!``), the alternative a move
@@ -407,24 +414,38 @@ def _figurine_fix(anchor: str, other: str) -> bool:
     prefix_a = _NUMBER_PREFIX.match(anchor)
     prefix_b = _NUMBER_PREFIX.match(other)
     if (prefix_a is None) != (prefix_b is None):
-        return False
+        return None
     if prefix_a is not None and prefix_b is not None:
         if prefix_a.group(1) != prefix_b.group(1):
-            return False
+            return None
         anchor, other = anchor[prefix_a.end():], other[prefix_b.end():]
     if not other or other[0] not in _FIGURINES or not anchor or anchor[0] in _FIGURINES:
-        return False
+        return None
     if anchor[0] in "abcdefgh":
         # A pawn move (``e4``) is not a cipher: the look-alikes of figurines
         # are capitals, symbols and digits, never a file letter.
-        return False
+        return None
     if not is_move_token(other.strip(_MARKS)) or len(anchor) < 2:
-        return False
-    tail_a = anchor[1:].rstrip(_MARKS)
+        return None
     tail_b = other[1:].rstrip(_MARKS)
-    if not tail_b or abs(len(tail_a) - len(tail_b)) > 1:
-        return False
-    return levenshtein(tail_a, tail_b) <= 1
+    if not tail_b:
+        return None
+    # The look-alike is normally one character (Tesseract: ``H`` for ♖).  A
+    # damaged text layer leaves a *cluster* instead — ``'it>d1`` for ♔d1,
+    # ``ll:'ixe5`` for ♕xe5 — consistent per figurine but several characters
+    # long (OCR_UI_ROADMAP passo 3: 15 % of the Gaprindashvili's moves after
+    # every one-character symbol was resolved).  Such a prefix qualifies when
+    # it is short, carries a non-alphanumeric character (a word never does)
+    # and leaves the same move body behind; a plain run of letters does not,
+    # so a real word glued to a square stays out.
+    for cut in range(1, min(len(anchor) - 1, _MAX_CLUSTER) + 1):
+        prefix = anchor[:cut]
+        if cut > 1 and all(ch.isalnum() for ch in prefix):
+            continue
+        tail_a = anchor[cut:].rstrip(_MARKS)
+        if tail_a and abs(len(tail_a) - len(tail_b)) <= 1 and levenshtein(tail_a, tail_b) <= 1:
+            return cut
+    return None
 
 
 def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[str, float],

@@ -422,3 +422,52 @@ def test_the_contest_is_off_by_option_and_absent_on_a_healthy_layer(pdf_file, mo
     path, fake_ocr, calls = _contest_fixture(pdf_file, monkeypatch, healthy)
     result = import_pdf(path, PdfImportOptions(ocr=fake_ocr, detect_diagrams=False))
     assert calls == [] and result.report.pages[0].source == "text-layer"
+
+
+def test_the_importer_keeps_the_book_cipher_next_to_the_books_models(pdf_file, monkeypatch,
+                                                                     tmp_path):
+    """OCR_UI_ROADMAP passo 3: the table is read from and written to
+    ``models/tessdata/livros/<slug>/cipher.json`` under the PDF's fingerprint."""
+    from caissa.ocr.notation.book_cipher import BookCipher
+    from caissa.ocr.training.books import book_dir
+
+    monkeypatch.setenv("CAISSA_FIGURINE_TESSDATA", str(tmp_path))
+    path, fake_ocr, _ = _contest_fixture(pdf_file, monkeypatch, _damaged_verdict())
+    cipher_path = book_dir(tmp_path, path.stem) / "cipher.json"
+
+    class Provider:
+        """A provider that behaves like the service: it carries the table and
+        observes on it."""
+
+        book_cipher = None
+
+        def __call__(self, page, frame, verdict):
+            for _ in range(5):
+                self.book_cipher.observe("W", "Q", page=frame.index, raw="Wd5", san="Qd5")
+            return fake_ocr(page, frame, verdict)
+
+    from caissa.ingest.pdf import importer as importer_module
+
+    provider = Provider()
+    original = importer_module.PdfImporter._ocr_provider
+
+    def with_table(self):
+        if provider.book_cipher is None:
+            provider.book_cipher = self._load_book_cipher()
+            self._ocr_service = provider
+        return provider
+
+    monkeypatch.setattr(importer_module.PdfImporter, "_ocr_provider", with_table)
+    result = import_pdf(path, PdfImportOptions(detect_diagrams=False))
+    assert cipher_path.is_file(), "the table was saved with the book's models"
+    assert result.report.counters["cipher_proven"] == 1
+    saved = BookCipher.load(cipher_path)
+    assert saved is not None and saved.proven() == {"W": "Q"}
+    assert any("cifra do livro" in n and "gravada" in n for n in result.report.notes)
+
+    # Off: neither read nor written.
+    cipher_path.unlink()
+    provider.book_cipher = None
+    result = import_pdf(path, PdfImportOptions(detect_diagrams=False, book_cipher=False))
+    assert not cipher_path.exists()
+    monkeypatch.setattr(importer_module.PdfImporter, "_ocr_provider", original)

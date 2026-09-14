@@ -472,3 +472,25 @@ def test_a_secondary_engine_may_anchor_prose_without_figurines():
     region = recognition.regions[0]
     assert region.engine == "rapidocr"
     assert region.text == "White has excellent prospects on the kingside"
+
+
+def test_the_glyph_swaps_feed_the_book_cipher_as_visual_evidence():
+    """OCR_UI_ROADMAP passo 3: every look-alike → figurine swap the fusion makes
+    is one visual observation for the book's table, tagged ``glyph``; a piece
+    letter of the book's language is never a symbol."""
+    from caissa.ocr.notation.book_cipher import BookCipher
+
+    text = "36... Hea! 37 Exd5 Hb6 38 2g5 Nf3 White has excellent prospects"
+    answers = {"36...": "36...", "Hea!": "♖e8!", "37": "37", "Exd5": "♖xd5", "Hb6": "♖b6",
+               "38": "38", "2g5": "♗g5", "Nf3": "♘f3", "White": "White", "has": "has",
+               "excellent": "excellent", "prospects": "prospects"}
+    service = OcrService([MockRaster(text=text, confidence=0.75)],
+                         OcrServiceConfig(use_portfolio=False, movetext_candidates=False),
+                         lang="eng", glyph_engine=FakeGlyph(answers))
+    table = BookCipher(fingerprint="x")
+    service.book_cipher = table
+    service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    observed = {(s, e.piece, e.by_source.get("glyph", 0)) for s, e in table.entries.items()}
+    assert ("H", "R", 2) in observed and ("E", "R", 1) in observed and ("2", "B", 1) in observed
+    assert "N" not in table.entries, "a printed N is a letter, not a symbol"
+    assert table.proven() == {}, "two swaps are far from the ten a visual row needs"
