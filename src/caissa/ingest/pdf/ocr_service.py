@@ -37,7 +37,6 @@ provider so the importer keeps the page image (``keep_scanned_pages``).
 from __future__ import annotations
 
 import logging
-import os
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -120,6 +119,8 @@ class OcrServiceConfig:
     figurine_candidates: bool = True
     #: Directory of ``caissa_<lang>.traineddata`` files.  ``None`` looks at
     #: ``$CAISSA_FIGURINE_TESSDATA`` and then ``<repo>/models/tessdata``.
+    #: The importer sets it to the book's own directory when the PDF has a
+    #: registered fine-tune (:mod:`caissa.ocr.training.books`).
     figurine_tessdata: str | None = None
     #: The fine-tuned models are named ``<prefix>_<lang>``.
     figurine_prefix: str = "caissa"
@@ -706,9 +707,10 @@ class OcrService:
         return self._figurine_engine
 
     def _figurine_directory(self) -> Path | None:
+        from caissa.ocr.training.books import models_root
+
         cfg = self.config
-        candidates = [cfg.figurine_tessdata, os.environ.get("CAISSA_FIGURINE_TESSDATA"),
-                      str(Path(__file__).resolve().parents[4] / "models" / "tessdata")]
+        candidates = [cfg.figurine_tessdata, str(models_root())]
         for candidate in candidates:
             if candidate and any(Path(candidate).glob(f"{cfg.figurine_prefix}_*.traineddata")):
                 return Path(candidate)
@@ -718,11 +720,18 @@ class OcrService:
         """``eng`` → ``caissa_eng`` for every part that has a model; ``None``
         when no part has one (the base languages are not re-run)."""
         directory = self._figurine_dir
-        if directory is None:
+        parts = [part for part in lang.split("+") if part]
+        if directory is None or not parts:
             return None
-        tuned = [f"{self.config.figurine_prefix}_{part}" for part in lang.split("+")
-                 if part and (directory / f"{self.config.figurine_prefix}_{part}.traineddata").is_file()]
-        return "+".join(tuned) if tuned else None
+        prefix = self.config.figurine_prefix
+        # The book's own language (the first part) must have a model: a
+        # Russian page is not read with the English figurine model just
+        # because ``eng`` travels along for the Latin squares.
+        if not (directory / f"{prefix}_{parts[0]}.traineddata").is_file():
+            return None
+        tuned = [f"{prefix}_{part}" for part in parts
+                 if (directory / f"{prefix}_{part}.traineddata").is_file()]
+        return "+".join(tuned)
 
     def _figurine_candidates(self, recognizer: PageRecognizer, region_outcome: RegionOutcome,
                              task: PageTask) -> list[Candidate]:

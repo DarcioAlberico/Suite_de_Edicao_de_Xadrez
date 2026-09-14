@@ -79,7 +79,8 @@ _MARKS = ".,;:!?+#"
 _LETTER_GUARDED = frozenset({"tesseract_figurine"})
 #: Piece letters per Tesseract language, as the books of that language print them.
 _PIECE_LETTERS = {"eng": "KQRBN", "por": "RDTBC", "spa": "RDTAC", "deu": "KDTLS",
-                  "fra": "RDTFC", "ita": "RDTAC", "nld": "KDTLP", "ron": "RDTNC"}
+                  "fra": "RDTFC", "ita": "RDTAC", "nld": "KDTLP", "ron": "RDTNC",
+                  "rus": "КФЛСКП"}
 
 
 #: A move number glued to a move: digits then dots or a space.  A bare

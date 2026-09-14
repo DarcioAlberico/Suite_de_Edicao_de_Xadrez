@@ -370,3 +370,24 @@ def test_fine_tuned_model_may_not_replace_a_printed_piece_letter():
         fused = fuse_candidates([(tess, 0.80, _decision()), (model, 0.85, _decision())], lang=lang,
                                 never_anchor=frozenset({"tesseract_figurine"}))
         assert fused is not None and fused.result.text == expected, lang
+
+
+def test_cyrillic_pages_get_neither_figurine_reader():
+    from caissa.ocr.engines.glyph import GlyphEngine
+
+    engine = GlyphEngine()
+    engine._available, engine._languages = True, {"eng", "por"}
+    assert engine.supports_language("eng") and engine.supports_language("por+eng")
+    assert not engine.supports_language("rus+eng")
+
+    service = OcrService([MockRaster("x")], OcrServiceConfig(), lang="rus+eng")
+    service._figurine_probed, service._figurine_engine = True, MockRaster("y")
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "caissa_eng.traineddata").write_bytes(b"m")
+        service._figurine_dir = Path(tmp)
+        assert service._figurine_lang("rus+eng") is None
+        assert service._figurine_lang("eng") == "caissa_eng"
+        assert service._figurine_lang("eng+rus") == "caissa_eng"

@@ -194,8 +194,9 @@ class GlyphEngine(OcrEngineBase):
         # classes serve any Latin-script book.  Cyrillic prose is not its job.
         return {"eng", "por", "deu", "spa", "fra", "ita", "nld", "ron"}
 
-    def supports_language(self, lang: str) -> bool:  # noqa: ARG002 - figurines have no language
-        return True
+    # ``supports_language`` is the base class's: every part of ``rus+eng`` must
+    # be a language the classifier serves, and Cyrillic is not — on a Russian
+    # page its Latin classes read Ф as a figurine and invent moves.
 
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
