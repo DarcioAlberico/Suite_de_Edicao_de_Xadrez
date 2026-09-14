@@ -437,6 +437,17 @@ lado do executável e os modelos em `models/tessdata/` (`livros/<livro>/`, `livr
 pastas graváveis do `Caissa.exe`. O treino exige o Tesseract instalado na máquina
 (`lstmtraining`, `combine_tessdata`…): o bundle não o leva, e o diálogo diz o que falta.
 
+**Verificado no `Caissa.exe` (build de 2026-09-14, 296,4 MB, `packaging/bundle.json`):** a
+sétima aba existe e abre o projeto de rotulagem do Dvoretsky com as 87 linhas da p9. A captura é
+do buffer da própria janela (`PrintWindow`), como no `F12_REPORT.md` §5.2:
+
+![A aba Rotulagem no Caissa.exe, com a p9 do Dvoretsky rotulada](ROTULAGEM_aba_no_bundle.png)
+
+Para rodar o `.exe` sem baixar 2,6 GB: `CaissaPrimeiraExecucao.exe --de-pasta <tronco> --sem-torch`
+instala os pesos, e a pasta `runtime/` recebe a mesma lista de pacotes do `torch_manifesto.json`
+copiada do `.venv` (versões idênticas). O `Caissa.exe` sem torch **abre o assistente e começa o
+download por conta própria** — vale saber antes de clicar.
+
 Testes: `tests/unit/ui/test_rotulagem_view.py` (pulam sem PyQt6; rodam no `.venv-pack`) e, no
 tronco, `test_qt_janela.test_as_seis_abas_estao_na_ordem_da_spec` (sete quando a suíte está ao
 alcance) e a catraca de `qt/janela.py` (1883 → 1887, as quatro linhas da montagem).

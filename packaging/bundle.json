@@ -1,7 +1,7 @@
 {
   "variante": "padrao",
   "nome": "Caissa",
-  "mb": 295.3,
+  "mb": 296.4,
   "arquivos": 1307,
   "maiores": [
     {
@@ -66,15 +66,12 @@
     }
   ],
   "instalador": {
-    "tipo": "proxy-lzma2",
-    "ok": true,
-    "arquivo": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez\\dist\\caissa-0.1.0-padrao-proxy.7z",
-    "mb": 79.4,
-    "nota": "PROXY MEDIDO, nao o instalador. O Inno Setup nao esta nesta maquina. A compressao e a mesma que installer.iss pede (lzma2/max, solido); o setup.exe real acrescenta o stub do Inno (~1,2 MB) e os arquivos de idioma."
+    "tipo": "nao-pedido",
+    "ok": false
   },
   "teto_do_instalador_mb": 150.0,
-  "disco_livre_gb_antes": 33.94,
-  "disco_livre_gb_depois": 33.92,
-  "data": "2026-09-09",
+  "disco_livre_gb_antes": 33.13,
+  "disco_livre_gb_depois": 37.43,
+  "data": "2026-09-14",
   "interpretador": "3.11.9"
 }
