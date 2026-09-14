@@ -19,9 +19,15 @@ sai dela.
 ## 1. O que a bancada faz
 
 ```
-caissa-rotular labeling --pdf "C:\...\PDF\Koblenz - El dominio del arte de la combinacion (1978).pdf" --reviewer ana
+uv run --no-sync caissa-rotular labeling --pdf "C:\...\PDF\Koblenz - El dominio del arte de la combinacion (1978).pdf" --reviewer ana
 python tools/rotular.py labeling --pdf … --reviewer ana      # sem instalar o pacote
 ```
+
+O `--no-sync` é obrigatório neste checkout: o `.venv` tem o PyTorch cu128 instalado por
+fora do `pyproject` (ADR-0003), e um `uv run` sem ele sincroniza o ambiente com o `uv.lock`
+e **desinstala** o torch, o torchvision, o ruff e o pytest. O pacote está instalado em modo
+editável (`pip install -e .`), então cada mudança em `src/caissa` já vale na próxima
+execução; só uma mudança nos entry points do `pyproject` exige reinstalar.
 
 | Tela | O que é |
 |---|---|
