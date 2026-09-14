@@ -31,6 +31,7 @@ import hashlib
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,6 +70,10 @@ def models_root(explicit: str | os.PathLike[str] | None = None) -> Path:
     env = os.environ.get(ROOT_ENV)
     if env:
         return Path(env)
+    if getattr(sys, "frozen", False):
+        # The bundle keeps its writable folders next to the executable
+        # (``packaging/build_windows.py``: ``models/``, ``runtime/``).
+        return Path(sys.executable).resolve().parent / "models" / "tessdata"
     return Path(__file__).resolve().parents[4] / "models" / "tessdata"
 
 

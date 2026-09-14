@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import json
 import queue
-import re
 import sys
 import threading
 import time
@@ -55,6 +54,14 @@ from caissa.ocr.labeling.export import (
     merge_into_manifest,
     withheld_lines,
     write_ground_truth,
+)
+from caissa.ocr.labeling.helpers import (
+    FIGURINE_KEYS,
+    STATUS_COLOR,
+    default_project_dir,
+    fen_problem,
+    letters_to_figurines,
+    status_pt,
 )
 from caissa.ocr.labeling.measure import BookMeasure, measure_book
 from caissa.ocr.labeling.recognise import (
@@ -82,17 +89,11 @@ from caissa.ocr.training import (
 __all__ = ["LabelWindow", "MeasureDialog", "TrainingDialog", "main"]
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_PROJECT = REPO_ROOT / "labeling"
+DEFAULT_PROJECT = default_project_dir()
 DEFAULT_MANIFEST = REPO_ROOT / "benchmarks" / "corpus" / "golden" / "manifest.private.json"
 DEFAULT_MODELS = models_root()
 DEFAULT_BEST = DEFAULT_MODELS.parent / "tessdata_best"
 
-STATUS_COLOR = {
-    LineStatus.PENDING: "#d97706",  # amber: still to look at
-    LineStatus.ACCEPTED: "#16a34a",  # green
-    LineStatus.EDITED: "#2563eb",  # blue
-    LineStatus.REJECTED: "#9ca3af",  # grey: kept as image
-}
 REGION_COLOR = "#7c3aed"
 SELECTED_COLOR = "#dc2626"
 CLICK_SLOP_PX = 4
@@ -100,7 +101,6 @@ CROP_HEIGHT_PX = 90  # the line strip on the right, before it is scaled down
 CROP_MAX_ZOOM = 3.0
 WEAK_WORDS_SHOWN = 6
 PAGE_CACHE_SIZE = 6  # rendered pages kept in memory, by (document, page, dpi)
-FEN_RANKS = 8
 
 
 class Worker:
@@ -797,7 +797,7 @@ class LabelWindow:
             return
         fen = fen.strip()
         if fen:
-            problem = _fen_problem(fen)
+            problem = fen_problem(fen)
             if problem:
                 messagebox.showerror("FEN", problem)
                 return
@@ -855,7 +855,7 @@ class LabelWindow:
                 values=(
                     line.index,
                     region.index,
-                    _status_pt(line.status),
+                    status_pt(line.status),
                     f"{line.confidence:.2f}",
                     text.replace("\n", " "),
                 ),
@@ -978,7 +978,7 @@ class LabelWindow:
         ]
         if line.done:
             parts.append(
-                f"{_status_pt(line.status)} por {line.reviewer or '?'} em {line.seconds:.0f}s"
+                f"{status_pt(line.status)} por {line.reviewer or '?'} em {line.seconds:.0f}s"
             )
         self.context_label.configure(text=" · ".join(p for p in parts if p))
         reasons = []
@@ -1301,48 +1301,6 @@ class LabelWindow:
     def close(self) -> None:
         self.save()
         self.root.destroy()
-
-
-#: Alt+key → figurine, in the truth field and on the palette.
-FIGURINE_KEYS = {"k": "♔", "q": "♕", "r": "♖", "b": "♗", "n": "♘", "p": "♙"}
-_LETTER_TO_FIGURINE = {"K": "♔", "Q": "♕", "R": "♖", "B": "♗", "N": "♘"}
-#: A piece letter that starts a move: optional glued move number before it,
-#: a square (with optional disambiguation and capture) after it.
-_PIECE_MOVE = re.compile(
-    r"(?<![A-Za-z♔-♙])(?P<number>\d{1,3}\.{0,3})?(?P<piece>[KQRBN])"
-    r"(?=[a-h]?[1-8]?x?[a-h][1-8])"
-)
-
-
-def letters_to_figurines(text: str) -> str:
-    """``Nf3`` → ``♘f3`` for every English piece letter that starts a move."""
-    return _PIECE_MOVE.sub(
-        lambda m: (m.group("number") or "") + _LETTER_TO_FIGURINE[m.group("piece")], text
-    )
-
-
-def _fen_problem(fen: str) -> str:
-    """Why ``fen`` is not a position, or an empty string when it is."""
-    try:
-        import chess
-    except ImportError:
-        ranks = fen.split()[0].count("/") + 1
-        shaped = len(fen.split()) in (4, 5, 6) and ranks == FEN_RANKS
-        return "" if shaped else "FEN com formato inválido."
-    try:
-        chess.Board(fen)
-    except ValueError as exc:
-        return f"FEN inválida: {exc}"
-    return ""
-
-
-def _status_pt(status: LineStatus) -> str:
-    return {
-        LineStatus.PENDING: "pendente",
-        LineStatus.ACCEPTED: "aceita",
-        LineStatus.EDITED: "editada",
-        LineStatus.REJECTED: "rejeitada",
-    }[status]
 
 
 # --------------------------------------------------------------------------- #
