@@ -401,34 +401,69 @@ class PainelDeRotulagem(QWidget):
     def _montar(self) -> None:  # noqa: PLR0915 - one widget tree, top to bottom
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(4, 4, 4, 4)
+        # Two rows: the pane the trunk gives a tab is ~800 px wide, and one
+        # row of everything was measured truncating every button label.
+        linha1 = QHBoxLayout()
+        raiz.addLayout(linha1)
         barra = QHBoxLayout()
         raiz.addLayout(barra)
 
-        def botao(texto: str, acao: Callable[[], Any], *, dica: str = "") -> QPushButton:
+        def botao(
+            texto: str, acao: Callable[[], Any], *, dica: str = "", em: QHBoxLayout | None = None
+        ) -> QPushButton:
             b = QPushButton(texto, self)
             b.clicked.connect(lambda _c=False: acao())
             if dica:
                 b.setToolTip(dica)
-            barra.addWidget(b)
+            (em if em is not None else barra).addWidget(b)
             return b
 
-        botao("Adicionar PDF…", self.add_pdf)
-        barra.addWidget(QLabel("documento:", self))
+        botao("Adicionar PDF…", self.add_pdf, em=linha1)
         self.doc_box = QComboBox(self)
-        self.doc_box.setMinimumWidth(320)
+        self.doc_box.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.doc_box.setMinimumContentsLength(24)
         self.doc_box.addItems(sorted(self.project.documents))
         self.doc_box.setAccessibleName("Documento aberto")
         self.doc_box.activated.connect(lambda _i: self._select_document(self.doc_box.currentText()))
-        barra.addWidget(self.doc_box)
-        botao("◀", lambda: self.go_page(self.page_index - 1), dica="Página anterior (PageUp)")
+        linha1.addWidget(self.doc_box, 1)
+        b = botao(
+            "◀",
+            lambda: self.go_page(self.page_index - 1),
+            dica="Página anterior (PageUp)",
+            em=linha1,
+        )
+        b.setFixedWidth(28)
         self.page_spin = QSpinBox(self)
         self.page_spin.setAccessibleName("Página")
         self.page_spin.setRange(0, 0)
         self.page_spin.editingFinished.connect(lambda: self.go_page(self.page_spin.value()))
-        barra.addWidget(self.page_spin)
+        linha1.addWidget(self.page_spin)
         self.page_total = QLabel("/ 0", self)
-        barra.addWidget(self.page_total)
-        botao("▶", lambda: self.go_page(self.page_index + 1), dica="Próxima página (PageDown)")
+        linha1.addWidget(self.page_total)
+        b = botao(
+            "▶",
+            lambda: self.go_page(self.page_index + 1),
+            dica="Próxima página (PageDown)",
+            em=linha1,
+        )
+        b.setFixedWidth(28)
+        botao("Salvar", self.save, dica="Ctrl+S", em=linha1)
+        exportar = QToolButton(self)
+        exportar.setText("Exportar")
+        exportar.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(exportar)
+        menu.addAction("Verdade para treino (ground_truth/)", self.export_ground_truth)
+        menu.addAction("Fundir no manifesto dourado…", self.export_manifest)
+        menu.addAction("Correções e pares de calibração", self.export_corrections)
+        menu.addSeparator()
+        menu.addAction("Idioma do documento = caixa «idioma»", self.apply_language)
+        menu.addAction("Resumo do projeto", self.show_summary)
+        exportar.setMenu(menu)
+        linha1.addWidget(exportar)
+        botao("Medir no livro…", self.open_measure, em=linha1)
+        botao("Treinar…", self.open_training, em=linha1)
         barra.addWidget(QLabel("DPI", self))
         self.dpi_spin = QSpinBox(self)
         self.dpi_spin.setAccessibleName("Resolução do reconhecimento")
@@ -442,30 +477,25 @@ class PainelDeRotulagem(QWidget):
         self.lang_box.addItems(LANGS)
         self.lang_box.setAccessibleName("Idioma do reconhecimento")
         barra.addWidget(self.lang_box)
-        botao("Reconhecer página (F5)", self.recognise_page)
+        botao(
+            "Reconhecer (F5)",
+            self.recognise_page,
+            dica="Reconhecer a página com o serviço do produto",
+        )
         self.draw_button = botao("Desenhar região (D)", self.toggle_drawing)
         self.only_doubtful = QCheckBox("só duvidosas", self)
         self.only_doubtful.toggled.connect(lambda _v: self._fill_table())
         barra.addWidget(self.only_doubtful)
-        botao("Aceitar confiáveis da página", lambda: self.accept_confident())
+        botao(
+            "Aceitar confiáveis",
+            lambda: self.accept_confident(),
+            dica="Aceita toda linha da página sem palavra fraca nem candidato discordante",
+        )
         barra.addStretch(1)
-        botao("Salvar (Ctrl+S)", self.save)
-        exportar = QToolButton(self)
-        exportar.setText("Exportar")
-        exportar.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        menu = QMenu(exportar)
-        menu.addAction("Verdade para treino (ground_truth/)", self.export_ground_truth)
-        menu.addAction("Fundir no manifesto dourado…", self.export_manifest)
-        menu.addAction("Correções e pares de calibração", self.export_corrections)
-        menu.addSeparator()
-        menu.addAction("Idioma do documento = caixa «idioma»", self.apply_language)
-        menu.addAction("Resumo do projeto", self.show_summary)
-        exportar.setMenu(menu)
-        barra.addWidget(exportar)
-        botao("Medir no livro…", self.open_measure)
-        botao("Treinar…", self.open_training)
 
-        corpo = QSplitter(Qt.Orientation.Horizontal, self)
+        # Page above, line below: the pane is narrow and tall, so a side-by-side
+        # split left the page 180 px wide.
+        corpo = QSplitter(Qt.Orientation.Vertical, self)
         raiz.addWidget(corpo, 1)
         esquerda = QWidget(corpo)
         esq = QVBoxLayout(esquerda)
@@ -498,6 +528,7 @@ class PainelDeRotulagem(QWidget):
         self.crop_label = QLabel("Reconheça a página (F5) ou desenhe uma região (D).", direita)
         self.crop_label.setStyleSheet("background:#e5e7eb; padding:2px;")
         self.crop_label.setMinimumHeight(CROP_HEIGHT_PX + 8)
+        self.crop_label.setMaximumHeight(CROP_HEIGHT_PX + 8)
         self.crop_label.setAccessibleName("Recorte da linha atual")
         dir_.addWidget(self.crop_label)
         self.context_label = QLabel("", direita)
@@ -506,11 +537,11 @@ class PainelDeRotulagem(QWidget):
         dir_.addWidget(QLabel("Leitura do motor (palavras fracas em destaque):", direita))
         self.reading = QTextEdit(direita)
         self.reading.setReadOnly(True)
-        self.reading.setMaximumHeight(56)
+        self.reading.setMaximumHeight(48)
         self.reading.setAccessibleName("Leitura do motor")
         dir_.addWidget(self.reading)
         self.alternatives = QListWidget(direita)
-        self.alternatives.setMaximumHeight(64)
+        self.alternatives.setMaximumHeight(52)
         self.alternatives.setAccessibleName("Leituras alternativas")
         self.alternatives.itemDoubleClicked.connect(lambda _i: self._use_alternative())
         dir_.addWidget(self.alternatives)
@@ -520,20 +551,21 @@ class PainelDeRotulagem(QWidget):
         dir_.addWidget(self.reason_label)
         dir_.addWidget(
             QLabel(
-                "Verdade (Enter aceita a leitura · Ctrl+Enter grava o que você "
-                "digitou · Ctrl+R rejeita):",
+                "Verdade (Enter aceita · Ctrl+Enter grava a edição · Ctrl+R rejeita):",
                 direita,
             )
         )
         self.truth = QPlainTextEdit(direita)
-        self.truth.setMaximumHeight(72)
+        self.truth.setMaximumHeight(60)
         self.truth.setAccessibleName("Verdade da linha")
         self.truth.installEventFilter(self)
         dir_.addWidget(self.truth)
         paleta = QHBoxLayout()
         paleta.addWidget(QLabel("Figurinas:", direita))
         for key, glyph in FIGURINE_KEYS.items():
-            b = QPushButton(f"{glyph} (Alt+{key.upper()})", direita)
+            b = QPushButton(glyph, direita)
+            b.setToolTip(f"Alt+{key.upper()}")
+            b.setFixedWidth(34)
             b.clicked.connect(lambda _c=False, g=glyph: self.insert_figurine(g))
             paleta.addWidget(b)
         conv = QPushButton("Letras → figurinas", direita)
@@ -570,6 +602,7 @@ class PainelDeRotulagem(QWidget):
         corpo.addWidget(direita)
         corpo.setStretchFactor(0, 3)
         corpo.setStretchFactor(1, 2)
+        corpo.setSizes([560, 440])
 
         self.status = QLabel("", self)
         self.status.setStyleSheet("padding:3px 6px; border-top:1px solid #d1d5db;")
