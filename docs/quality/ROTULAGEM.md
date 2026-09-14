@@ -209,6 +209,27 @@ diretório temporário do motor; a pasta do modelo precisa de `configs/` (o trei
 e um motor "disponível" que falha em toda região abstinha em silêncio — agora se declara
 indisponível com a frase que diz o que copiar.
 
+**`caissa_eng` (2026-09-13, noite)** — mesma receita a partir do `eng` float
+(tessdata_best), 744 linhas (482 treino, 262 avaliação; ♘×110 ♖×109 ♕×68 ♗×66 ♔×40), páginas
+re-marcadas como `eng`; aplicado só aos itens `en`, o `por` intocado. Sem → com, mesmo corpus
+(hash `43ac7c57017324d8`):
+
+| grupo | lances | inventados | abstenções | CER pond. |
+|---|---:|---:|---:|---:|
+| `pdf-scan/en` (199, o livro treinado) | 291 → **550** / 586 | 37 → **23** | 67 → **45** | 1,14 → 2,09 % |
+| `pdf-native/en` (28) | 82 → 85 / 96 | 4 → 7 | 0 | 1,87 → **1,24 %** |
+| `synth/en/fax_dither` (24) | 224 → 264 / 490 | 46 → **165** | 0 | 8,1 → 8,5 % |
+| `synth/en/scan_clean_300` (39) | 986 → 968 / 1045 | 20 → 47 | 0 | 5,0 → 5,9 % |
+| controle `photo` (ruído sem texto) | — | — | — | **produziu `♖ … ♘♔R♗!`** |
+
+O modelo aprendeu as figurinas do livro (94 % dos lances) e **aprendeu também a ver figurinas
+no ruído**: inventa lances em páginas tipografadas degradadas e falha o controle negativo
+(portão SOL-2). Não é um `eng` melhor; é um leitor do Dvoretsky. Duas saídas, ambas por
+fazer: (a) usá-lo como **candidato secundário** da fusão (como o leitor de glifos: nunca
+âncora, só a troca sósia→figurina, que não inventa nada); (b) treinar com amostras de ruído e
+de tipografia sem figurina para que o modelo aprenda a *não* emitir. O `caissa_por` de antes
+ficou em `models/tessdata/caissa_por.traineddata.regrediu-em-por`.
+
 ---
 
 ## 4b. Figurinas: o leitor de glifos como segunda opinião
