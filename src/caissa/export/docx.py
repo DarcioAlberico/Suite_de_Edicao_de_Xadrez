@@ -104,6 +104,7 @@ from caissa.core.model import (
     Quote,
     RawInline,
     RawPassthrough,
+    Resource,
     RunProps,
     SectionBreak,
     SmallCaps,
@@ -1610,11 +1611,103 @@ class _Body:
         return "".join(parts)
 
     def _block_image_block(self, node: ImageBlock) -> str:
-        self.context.audit_feature("images", node=node, original=node.resource)
-        return self._paragraph(
-            _with_style(ParagraphProps(alignment=Alignment.CENTER), "Diagram"),
-            _run(f"[{node.resource}]", RunProps(), self.context),
+        picture = self._raster_picture(node)
+        if picture is None:
+            return self._paragraph(
+                _with_style(ParagraphProps(alignment=Alignment.CENTER), "Diagram"),
+                _run(f"[{node.resource}]", RunProps(), self.context),
+            )
+        props = ParagraphProps(alignment=node.alignment or Alignment.CENTER)
+        return self._paragraph(_with_style(props, "Diagram"), picture)
+
+    def _raster_picture(self, node: ImageBlock | ImageInline) -> str | None:
+        """Embed the raster image a node refers to, or ``None`` when it cannot be.
+
+        A scanned page, a figure the text placed, an OCR region the reader
+        abstained on: each is an image resource with bytes on disk after an
+        import, and a Word file that shows ``[figura-p12-0003]`` where the
+        page was is a Word file with the book missing. The bytes go in as an
+        image part (PNG, JPEG and GIF as they are; SVG rasterised at the
+        diagram DPI; anything else re-encoded as PNG) and the node becomes a
+        ``w:drawing``, the same picture the diagrams use. The size is what
+        the node asked for; failing that, the pixels at the resource's
+        resolution (96 dpi when unstated); either way capped at the text
+        width so a full-page scan fits the page. Only a resource whose file
+        is not there stays a marker, and the report says so through the
+        ``images`` feature.
+        """
+        resource = self.context.document.resource(node.resource)
+        path = Path(resource.path) if resource is not None and resource.path else None
+        if resource is None or path is None or not path.is_file():
+            self.context.audit_feature("images", node=node, original=node.resource)
+            return None
+        suffix = path.suffix.lower().lstrip(".")
+        if suffix == "jpeg":
+            suffix = "jpg"
+        try:
+            if suffix == "svg":
+                data = svg_to_png(
+                    path.read_text(encoding="utf-8"), dpi=self.context.options.diagram_dpi
+                )
+                suffix = "png"
+            elif suffix in ("png", "jpg", "gif"):
+                data = path.read_bytes()
+            else:
+                data = _to_png(path)
+                suffix = "png"
+        except Exception as error:  # noqa: BLE001 - an unreadable file is a marker, not a crash
+            self.context.recorder.substituted(
+                prop="images",
+                node=node,
+                path=self.context.path,
+                original=node.resource,
+                detail=f"A imagem {path.name} nao pode ser lida ({error}); ficou o marcador.",
+                replacement="texto",
+            )
+            return None
+        width_mm, height_mm = self._image_size_mm(node, resource, data, suffix)
+        name = f"imagem{len(self.media) + 1}.{suffix}"
+        self.media.append((name, data, suffix))
+        relationship = f"rIdImg{len(self.media)}"
+        self.relationships.append((relationship, f"{R}/image", f"media/{name}"))
+        self._drawing_id += 1
+        self.context.count("images")
+        alt = node.alt_text or getattr(node, "title", None) or resource.description or node.resource
+        return _drawing(
+            relationship,
+            self._drawing_id,
+            round(width_mm * EMU_PER_MM),
+            round(height_mm * EMU_PER_MM),
+            alt,
         )
+
+    def _image_size_mm(
+        self, node: ImageBlock | ImageInline, resource: Resource, data: bytes, suffix: str
+    ) -> tuple[float, float]:
+        """The picture's size on the page, in millimetres, capped at the text width."""
+        options = self.context.options
+        page_width = float(getattr(options, "page_width_mm", 148.0))
+        text_width = page_width - 2 * float(getattr(options, "margin_mm", 18.0))
+        pixels = _raster_pixels(data, suffix)
+        if pixels is None and resource.width and resource.height:
+            pixels = (int(resource.width), int(resource.height))
+        dpi = float(resource.dpi or 96.0)
+        ratio = (pixels[1] / pixels[0]) if pixels and pixels[0] else 1.0
+        asked_width = _mm(node.width)
+        asked_height = _mm(node.height)
+        if asked_width is not None:
+            width = asked_width
+            height = asked_height if asked_height is not None else width * ratio
+        elif asked_height is not None:
+            height = asked_height
+            width = height / ratio if ratio else height
+        else:
+            width = (pixels[0] / dpi * 25.4) if pixels else text_width
+            height = width * ratio
+        if width > text_width:
+            height = height * text_width / width
+            width = text_width
+        return max(1.0, width), max(1.0, height)
 
     def _block_game_score(self, node: GameScore) -> str:
         """The movetext as one run per token, each move bookmarked.
@@ -2077,8 +2170,10 @@ class _Body:
         )
 
     def _inline_image_inline(self, node: ImageInline, inherited: RunProps | None = None) -> str:
-        self.context.audit_feature("images", node=node, original=node.resource)
-        return _run(f"[{node.resource}]", _merge(inherited, RunProps()), self.context)
+        picture = self._raster_picture(node)
+        if picture is None:
+            return _run(f"[{node.resource}]", _merge(inherited, RunProps()), self.context)
+        return picture
 
     def _inline_anchor(self, node: Any, inherited: RunProps | None = None) -> str:
         self._bookmark_id += 1
@@ -2314,6 +2409,52 @@ def _force_style(rendered: str, style: str) -> str:
     reference = f'<w:pStyle w:val="{style}"/>'
     rendered = rendered.replace("<w:p><w:pPr>", f"<w:p><w:pPr>{reference}")
     return re.sub(r"<w:p>(?!<w:pPr)", f"<w:p><w:pPr>{reference}</w:pPr>", rendered)
+
+
+def _mm(measure: Measure | None) -> float | None:
+    """A length in millimetres, or ``None`` when unset or relative."""
+    if measure is None or not measure.is_absolute:
+        return None
+    return measure.to_points() * 25.4 / 72.0
+
+
+_PNG_SIGNATURE = bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+_PNG_IHDR_END = 24  # signature (8) + IHDR length and type (8) + width and height (8)
+_GIF_HEADER_END = 10  # "GIF89a" (6) + logical screen width and height (4)
+
+
+def _raster_pixels(data: bytes, suffix: str) -> tuple[int, int] | None:
+    """Width and height in pixels read from the file header, for PNG and GIF.
+
+    JPEG needs a marker walk; Pillow answers it when present, and the
+    resource's own ``width``/``height`` answer otherwise.
+    """
+    if suffix == "png" and data[:8] == _PNG_SIGNATURE and len(data) >= _PNG_IHDR_END:
+        return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    if suffix == "gif" and data[:6] in (b"GIF87a", b"GIF89a") and len(data) >= _GIF_HEADER_END:
+        return int.from_bytes(data[6:8], "little"), int.from_bytes(data[8:10], "little")
+    try:
+        import io
+
+        from PIL import Image
+
+        with Image.open(io.BytesIO(data)) as image:
+            return int(image.width), int(image.height)
+    except Exception:  # noqa: BLE001 - no Pillow, or not an image it knows
+        return None
+
+
+def _to_png(path: Path) -> bytes:
+    """Re-encode an image Word does not take as it is (WebP, BMP, TIFF) as PNG."""
+    import io
+
+    from PIL import Image
+
+    with Image.open(path) as image:
+        buffer = io.BytesIO()
+        mode = "RGBA" if image.mode in ("RGBA", "LA", "P") else "RGB"
+        image.convert(mode).save(buffer, format="PNG")
+        return buffer.getvalue()
 
 
 def _drawing(relationship: str, identifier: int, width: int, height: int, alt: str) -> str:
@@ -2695,6 +2836,7 @@ def _content_types(media: Sequence[tuple[str, bytes, str]]) -> str:
             "emf": "image/x-emf",
             "png": "image/png",
             "jpg": "image/jpeg",
+            "gif": "image/gif",
         }.get(suffix, "application/octet-stream")
     defaults = "".join(
         f'<Default Extension="{name}" ContentType="{value}"/>'

@@ -279,12 +279,14 @@ _DOCX_NODES: Mapping[str, PropertySupport] = {
         "w:tab",
     ),
     "image_inline": substitute(
-        "A imagem em linha virou um marcador textual com a chave do recurso.",
-        "texto",
+        "A imagem em linha virou uma figura embutida (w:drawing) na execucao; o no ImageInline "
+        "(chave do recurso, corte) nao volta do DOCX.",
+        "w:drawing",
     ),
     "image_block": substitute(
-        "A imagem virou um marcador textual com a chave do recurso.",
-        "texto",
+        "A imagem virou uma figura embutida (w:drawing) num paragrafo centrado; o no ImageBlock "
+        "(chave do recurso, corte, titulo) nao volta do DOCX.",
+        "w:drawing",
     ),
     "code_block": substitute(
         "O bloco de codigo virou paragrafos no estilo Code, um paragrafo por linha.",
@@ -613,6 +615,11 @@ _DOCX_PARAGRAPH: Mapping[str, PropertySupport] = {
 
 _DOCX_FEATURES: Mapping[str, PropertySupport] = {
     "vector_diagram": full(),
+    "images": substitute(
+        "A imagem cujo arquivo nao esta ao alcance virou um marcador textual com a chave do "
+        "recurso; com o arquivo, ela e embutida como figura.",
+        "texto",
+    ),
     "named_styles": full(),
     "footnotes": full(),
     "endnotes": full(),

@@ -30,6 +30,8 @@ from caissa.export import (  # noqa: E402
 from caissa.export.book import format_for_path  # noqa: E402
 from caissa.export.cli import main  # noqa: E402
 from caissa.ingest.pdf import ImportCanceled  # noqa: E402
+
+PNG_HEAD = bytes([0x89]) + b"PNG"
 from conftest import PageSpec, build_pdf, requires_pymupdf  # noqa: E402
 
 # --------------------------------------------------------------------------- #
@@ -190,13 +192,40 @@ def test_the_images_of_the_pages_travel_inside_the_epub(tmp_path: Path):
         assert images, names
         page = archive.read("OEBPS/Text/s000.xhtml").decode("utf-8")
         opf = archive.read("OEBPS/content.opf").decode("utf-8")
-        assert archive.read(images[0])[:4] == b"\x89PNG"
+        assert archive.read(images[0])[:4] == PNG_HEAD  # b"\x89PNG"
     assert 'src="../Images/' in page
     assert "image-missing" not in page
     assert str(tmp_path) not in page, "no path of this machine inside the book"
     assert f'href="Images/{images[0].rsplit("/", 1)[1]}"' in opf
     # the scratch folder is gone with the export
     assert not [p for p in tmp_path.iterdir() if p.name.startswith("caissa-export-")]
+
+
+@requires_pymupdf
+def test_the_images_of_the_pages_are_embedded_in_the_docx(tmp_path: Path):
+    """The same page in Word: the figure is an image part under ``word/media``
+    and a ``w:drawing`` in the body -- not a ``[figura-p1-0001]`` marker."""
+    spec = PageSpec(images=[(72.0, 72.0, 272.0, 272.0, 120, 120)]).text(
+        "Uma figura acima e este parágrafo abaixo dela.", 72, 320
+    )
+    pdf = tmp_path / "Ilustrado.pdf"
+    pdf.write_bytes(build_pdf([spec]))
+    result = export_book(pdf, None, "docx", enable_ocr=False)
+    assert result.export_result.stats.get("images", 0) >= 1
+    with zipfile.ZipFile(result.path) as archive:
+        media = [n for n in archive.namelist() if n.startswith("word/media/imagem")]
+        assert media, archive.namelist()
+        assert archive.read(media[0])[:4] == PNG_HEAD
+        body = archive.read("word/document.xml").decode("utf-8")
+        rels = archive.read("word/_rels/document.xml.rels").decode("utf-8")
+        types = archive.read("[Content_Types].xml").decode("utf-8")
+    assert "<w:drawing>" in body
+    assert "[figura-p1-0001]" not in body
+    assert 'Target="media/imagem1.png"' in rels
+    assert 'Extension="png"' in types
+    assert not any(
+        warning.property == "images" for warning in result.export_result.degradation.warnings
+    ), "with the file on disk no image falls back to the marker"
 
 
 @requires_pymupdf

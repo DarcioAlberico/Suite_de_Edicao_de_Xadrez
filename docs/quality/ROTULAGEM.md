@@ -519,11 +519,16 @@ página em `OEBPS/Images/`.
    `test_the_images_of_the_pages_travel_inside_the_epub` cobra os três pontos. Para um livro
    digitalizado sem OCR é a diferença entre um EPUB vazio e um EPUB com as páginas.
 
-**O que continua declarado, e não corrigido:** o DOCX escreve toda imagem rasterizada como
-marcador `[chave]` — é o que `caissa.export.profiles` declara para `image_block`
-(*substitute*), o leitor `read_docx` conta com isso, e mudar exige mexer nos dois lados e na
-fidelidade. Um livro digitalizado exportado para DOCX hoje sai como texto (o que o OCR leu)
-mais marcadores; os diagramas reconhecidos saem em EMF vetorial como sempre.
+**E o DOCX embute as imagens (2026-09-14, mesmo dia).** Antes toda imagem rasterizada virava
+o marcador `[chave]`, declarado em `caissa.export.profiles`. Agora `ImageBlock` e `ImageInline`
+viram `w:drawing` com a parte em `word/media/imagemN.png` — a mesma figura que os diagramas EMF
+usam —, PNG/JPEG/GIF como estão, SVG rasterizado no DPI do diagrama, o resto reencodado em PNG;
+tamanho pelo nó ou pelos pixels na resolução do recurso, limitado à mancha. O perfil passou a
+declarar isso (`image_block`/`image_inline` → `w:drawing`; o nó não volta do `document.xml`,
+como o `diagram`), e o marcador ficou só para arquivo ausente, pela feature `images`.
+Conferido abrindo o DOCX da página de prova no LibreOffice Writer (`--convert-to pdf`): as seis
+figuras sobrevivem. `test_the_images_of_the_pages_are_embedded_in_the_docx` cobra a parte de
+mídia, a relação e o `[Content_Types]`; a fidelidade do corpus continua acima do portão.
 
 ### 7d. O que não é
 
