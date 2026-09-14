@@ -235,11 +235,30 @@ re-marcadas como `eng`; aplicado só aos itens `en`, o `por` intocado. Sem → c
 
 O modelo aprendeu as figurinas do livro (94 % dos lances) e **aprendeu também a ver figurinas
 no ruído**: inventa lances em páginas tipografadas degradadas e falha o controle negativo
-(portão SOL-2). Não é um `eng` melhor; é um leitor do Dvoretsky. Duas saídas, ambas por
-fazer: (a) usá-lo como **candidato secundário** da fusão (como o leitor de glifos: nunca
-âncora, só a troca sósia→figurina, que não inventa nada); (b) treinar com amostras de ruído e
-de tipografia sem figurina para que o modelo aprenda a *não* emitir. O `caissa_por` de antes
-ficou em `models/tessdata/caissa_por.traineddata.regrediu-em-por`.
+(portão SOL-2). Não é um `eng` melhor; é um leitor do Dvoretsky. A saída escolhida foi (a): **o modelo é candidato secundário da fusão** (`figurine_candidates`,
+padrão ligado; pasta `models/tessdata` ou `$CAISSA_FIGURINE_TESSDATA`; só o idioma do livro
+que tem `caissa_<lang>`), com três guardas descobertas medindo: a figurina dele não substitui
+uma **letra de peça impressa** do idioma (`Nf3` fica `Nf3`; o leitor de glifos, que lê letras
+como letras, não é barrado); nenhum dos dois leitores entra em **página cirílica**; e a fusão
+ganhou duas correções gerais que os candidatos novos expuseram — lance com número colado ou
+marca de avaliação (`8.Kc2!`, `Bg6—+`) conta como apoiado, e a leitura escolhida herda o
+prefixo numérico do âncora (`2.25` + `2g5` → `2.g5`).
+
+**Caminho de produto medido em 2026-09-14** (Tesseract âncora + leitor de glifos + `caissa_eng`
+secundário), sem → com, mesmo corpus (hash `43ac7c57017324d8`, 747 linhas):
+
+| | lances certos | inventados | abstenções | CER pond. |
+|---|---:|---:|---:|---:|
+| `pdf-scan` (199, os livros rotulados) | 130 → **395** / 460 | 159 → **34** | 57 → 55 | 2,34 → **1,08 %** |
+| `pdf-native` (152) | 751 → 754 / 792 | 12 → 14 | 0 | 1,21 → 1,22 % |
+| `synth` (387) | 4 437 → **4 629** / 5 782 | 241 → 269 | 5 → 5 | 5,90 → 5,81 % |
+| **geral** | 75,7 → **82,1 %** | 412 → **317** | 62 → 60 | CER média 4,61 → **4,01 %** |
+
+Controles negativos: 0 → 0. Custo: 1,99 → 2,37 s/Mpx. O único número que piora são +28
+inventados no `synth`, concentrados nos estratos mais ruidosos (`fax_dither` +15, `photo` +6):
+tokens ilegíveis do âncora trocados por lances plausíveis de outro candidato — a regra geral
+da fusão, não as figurinas. Os quatro portões absolutos continuam vermelhos (as metas de Sol são
+0,5 % / 2 % / 99,8 % / 0); o que mudou é a direção.
 
 ---
 
