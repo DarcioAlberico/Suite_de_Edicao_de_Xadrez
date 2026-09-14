@@ -150,6 +150,85 @@ class _Section:
 
 
 @dataclass(frozen=True, slots=True)
+class _ImageFile:
+    """One raster image resource, as it is packaged under ``OEBPS/Images/``.
+
+    Attributes:
+        key: The resource key the nodes refer to.
+        source: The absolute path the builder wrote into ``src`` -- what
+            :func:`_relink_images` replaces.
+        name: The file name inside the package.
+        data: The bytes.
+        media_type: IANA media type.
+    """
+
+    key: str
+    source: str
+    name: str
+    data: bytes
+    media_type: str
+
+
+_IMAGE_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+
+
+def _image_files(document: Document) -> list[_ImageFile]:
+    """The image resources whose bytes exist on disk, ready to package.
+
+    An ``<img>`` whose ``src`` is an absolute path on the author's machine is
+    a broken box on every other reader, and an EPUB that refers to a file it
+    does not carry fails validation -- so every image the package can find is
+    copied in and named after its key, and the ones it cannot find stay as
+    the placeholder :class:`~caissa.export.html.XhtmlBuilder` already emits.
+    """
+    files: list[_ImageFile] = []
+    seen: set[str] = set()
+    for resource in document.resources:
+        if resource.kind is not ResourceKind.IMAGE or not resource.path:
+            continue
+        path = Path(resource.path)
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower() or ".png"
+        name = re.sub(r"[^A-Za-z0-9._-]", "_", resource.key) + suffix
+        if name in seen:
+            name = f"{Path(name).stem}-{len(seen)}{suffix}"
+        seen.add(name)
+        files.append(
+            _ImageFile(
+                key=resource.key,
+                source=str(resource.path),
+                name=name,
+                data=path.read_bytes(),
+                media_type=resource.media_type
+                or _IMAGE_MEDIA_TYPES.get(suffix, "application/octet-stream"),
+            )
+        )
+    return files
+
+
+def _relink_images(page: str, images: Sequence[_ImageFile]) -> str:
+    """Point every packaged image's ``src`` at ``../Images/<name>``.
+
+    The XHTML builder writes the resource path as it is, which is right for a
+    site on disk and wrong inside a container; the reader rebuilds the node
+    from ``data-resource``, so the ``src`` is free to be the package's.
+    """
+    for image in images:
+        page = page.replace(
+            f'src="{escape_attr(image.source)}"', f'src="../Images/{escape_attr(image.name)}"'
+        )
+    return page
+
+
+@dataclass(frozen=True, slots=True)
 class _FontFace:
     """One embedded font face.
 
@@ -234,10 +313,20 @@ class EpubExporter(Exporter):
             for section in sections
         ]
 
-        files: list[tuple[str, bytes, int]] = []
-        for section in sections:
-            page = self._page(document, context, section, fixed=fixed, fonts=bool(fonts))
-            files.append((f"OEBPS/Text/{section.name}", page.encode("utf-8"), zipfile.ZIP_DEFLATED))
+        images = _image_files(document)
+        files: list[tuple[str, bytes, int]] = [
+            (
+                f"OEBPS/Text/{section.name}",
+                _relink_images(
+                    self._page(document, context, section, fixed=fixed, fonts=bool(fonts)), images
+                ).encode("utf-8"),
+                zipfile.ZIP_DEFLATED,
+            )
+            for section in sections
+        ]
+        files.extend(
+            (f"OEBPS/Images/{image.name}", image.data, zipfile.ZIP_STORED) for image in images
+        )
 
         stylesheets = {
             "base.css": BASE_CSS,
@@ -283,6 +372,7 @@ class EpubExporter(Exporter):
             include_ncx=getattr(options, "include_ncx", True),
             include_ir=options.embed_ir,
             interactive=options.interactive,
+            images=images,
         )
         files.append(("OEBPS/content.opf", opf.encode("utf-8"), zipfile.ZIP_DEFLATED))
         files.append(
@@ -296,6 +386,7 @@ class EpubExporter(Exporter):
         self._zip(destination, files)
         context.count("sections", len(sections))
         context.count("fonts", len(fonts))
+        context.count("images", len(images))
         context.count("bytes", destination.stat().st_size)
         if fonts:
             context.note(
@@ -633,6 +724,7 @@ def _opf(
     include_ncx: bool,
     include_ir: bool,
     interactive: bool,
+    images: Sequence[_ImageFile] = (),
 ) -> str:
     """Build the package document.
 
@@ -648,6 +740,7 @@ def _opf(
         include_ncx: Whether ``toc.ncx`` is present.
         include_ir: Whether the IR sidecar is present.
         interactive: Whether the replay script is present.
+        images: The raster images packaged under ``Images/``.
 
     Returns:
         The OPF XML.
@@ -756,16 +849,17 @@ def _opf(
         manifest.append(
             '<item id="caissa-ir" href="caissa-ir.json" media-type="application/json"/>'
         )
-    if metadata.cover_resource:
-        resource = document.resource(metadata.cover_resource)
-        # A manifest item for a file the package does not carry is what makes a
-        # reader refuse the book, so the cover is declared only when it is here.
-        if resource is not None and resource.path and Path(resource.path).exists():
-            manifest.append(
-                f'<item id="cover-image" href="{escape_attr(resource.path)}" '
-                f'media-type="{escape_attr(resource.media_type or "image/jpeg")}" '
-                'properties="cover-image"/>'
-            )
+    for index, image in enumerate(images):
+        # The cover is one of the packaged images, with the property that names
+        # it; a manifest item for a file the package does not carry is what
+        # makes a reader refuse the book, so only packaged images are declared.
+        cover = image.key == metadata.cover_resource
+        ident = "cover-image" if cover else f"img{index}"
+        attribute = ' properties="cover-image"' if cover else ""
+        manifest.append(
+            f'<item id="{ident}" href="Images/{escape_attr(image.name)}" '
+            f'media-type="{escape_attr(image.media_type)}"{attribute}/>'
+        )
 
     toc_attr = ' toc="ncx"' if include_ncx else ""
     return (

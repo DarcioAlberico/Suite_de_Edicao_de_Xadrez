@@ -22,6 +22,7 @@ is not a deliverable.
 from __future__ import annotations
 
 import re
+import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -224,7 +225,8 @@ class BookExportResult:
             parts.append(
                 f"{counters.get('paragraphs', 0)} parágrafos, "
                 f"{counters.get('headings', 0)} títulos, "
-                f"{counters.get('diagrams', 0)} diagramas"
+                f"{counters.get('diagrams', 0)} diagramas, "
+                f"{counters.get('figures', 0) + counters.get('scanned_pages', 0)} imagens"
             )
         degraded = self.export_result.degradation
         if not degraded.is_lossless:
@@ -258,7 +260,11 @@ def export_book(
             fast path: such pages import as images.  ``None`` keeps what
             ``import_options`` says (on, by default).
         import_options: Overrides for the import; ``pages``, ``progress`` and
-            ``should_cancel`` are set from the arguments above.
+            ``should_cancel`` are set from the arguments above, and
+            ``asset_dir`` too when it is ``None``: the images of the pages
+            (figures, scanned pages, abstained OCR regions) are extracted to
+            a temporary folder for the exporter to package, and dropped
+            after the write.
         export_options: Overrides for the write.
         progress: ``(phase, done, total)`` as the work advances.
         should_cancel: Polled between pages of the import.
@@ -275,6 +281,34 @@ def export_book(
     """
     _check_format(format_name)
     source = Path(pdf_path)
+    with tempfile.TemporaryDirectory(prefix="caissa-export-") as scratch:
+        return _export_book(
+            source,
+            destination,
+            format_name,
+            pages=pages,
+            enable_ocr=enable_ocr,
+            import_options=import_options,
+            export_options=export_options,
+            progress=progress,
+            should_cancel=should_cancel,
+            scratch=Path(scratch),
+        )
+
+
+def _export_book(
+    source: Path,
+    destination: Path | str | None,
+    format_name: str,
+    *,
+    pages: Sequence[int] | str | None,
+    enable_ocr: bool | None,
+    import_options: PdfImportOptions | None,
+    export_options: ExportOptions | None,
+    progress: ProgressHook | None,
+    should_cancel: Callable[[], bool] | None,
+    scratch: Path,
+) -> BookExportResult:
     with open_pdf(source) as pdf:
         page_count = pdf.page_count
         if isinstance(pages, str):
@@ -303,6 +337,8 @@ def export_book(
         )
         if enable_ocr is not None:
             options.enable_ocr = enable_ocr
+        if options.asset_dir is None:
+            options.asset_dir = scratch / "assets"
         imported = PdfImporter(pdf, options).run()
 
     if should_cancel is not None and should_cancel():

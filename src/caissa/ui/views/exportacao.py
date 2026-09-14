@@ -195,10 +195,12 @@ class DialogoDeExportacao(QDialog):
         self.aviso.setWordWrap(True)
         raiz.addWidget(self.aviso)
 
-        botoes = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, self
-        )
-        botoes.button(QDialogButtonBox.StandardButton.Ok).setText("Exportar")
+        # «Exportar» é botão feito à mão, e não um Ok renomeado: o tronco retraduz todo botão
+        # padrão ao mostrar o diálogo (F9-C14, `qt/acessibilidade.py`) e «Exportar» virava «OK».
+        # O botão à mão sobrevive à varredura -- é o mesmo contrato do «Varrer» de lá.
+        botoes = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
+        self.botao_exportar = botoes.addButton("Exportar", QDialogButtonBox.ButtonRole.AcceptRole)
+        self.botao_exportar.setDefault(True)
         botoes.accepted.connect(self.accept)
         botoes.rejected.connect(self.reject)
         raiz.addWidget(botoes)

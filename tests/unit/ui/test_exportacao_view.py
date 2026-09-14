@@ -51,6 +51,13 @@ def test_the_dialog_starts_on_the_whole_book_and_names_the_file(app, livro: Path
     assert dialogo.ate.value() == 5
     for widget in (dialogo.de, dialogo.ate, dialogo.lista_edit, dialogo.destino, dialogo.ocr):
         assert widget.accessibleName()
+    # Botão feito à mão: o tronco retraduz botões padrão ao mostrar o diálogo (F9-C14) e um
+    # Ok renomeado voltava a dizer «OK» no Caissa.exe.
+    from PyQt6.QtWidgets import QDialogButtonBox
+
+    caixa = dialogo.botao_exportar.parent()
+    assert caixa.standardButton(dialogo.botao_exportar) == QDialogButtonBox.StandardButton.NoButton
+    assert dialogo.botao_exportar.text() == "Exportar"
     dialogo.close()
 
 

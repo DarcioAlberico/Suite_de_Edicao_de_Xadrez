@@ -172,6 +172,34 @@ def test_a_page_range_writes_only_those_pages_and_says_so(tmp_path: Path):
 
 
 @requires_pymupdf
+def test_the_images_of_the_pages_travel_inside_the_epub(tmp_path: Path):
+    """A scanned or illustrated page is worth nothing as a placeholder: the
+    importer extracts the images to a scratch folder, the EPUB packages them
+    under ``Images/`` and points every ``src`` there -- never at a path on the
+    author's disk."""
+    spec = PageSpec(images=[(72.0, 72.0, 272.0, 272.0, 120, 120)]).text(
+        "Uma figura acima e este parágrafo abaixo dela.", 72, 320
+    )
+    pdf = tmp_path / "Ilustrado.pdf"
+    pdf.write_bytes(build_pdf([spec]))
+    result = export_book(pdf, None, "epub", enable_ocr=False)
+    assert result.export_result.stats.get("images", 0) >= 1
+    with zipfile.ZipFile(result.path) as archive:
+        names = archive.namelist()
+        images = [n for n in names if n.startswith("OEBPS/Images/")]
+        assert images, names
+        page = archive.read("OEBPS/Text/s000.xhtml").decode("utf-8")
+        opf = archive.read("OEBPS/content.opf").decode("utf-8")
+        assert archive.read(images[0])[:4] == b"\x89PNG"
+    assert 'src="../Images/' in page
+    assert "image-missing" not in page
+    assert str(tmp_path) not in page, "no path of this machine inside the book"
+    assert f'href="Images/{images[0].rsplit("/", 1)[1]}"' in opf
+    # the scratch folder is gone with the export
+    assert not [p for p in tmp_path.iterdir() if p.name.startswith("caissa-export-")]
+
+
+@requires_pymupdf
 def test_zero_based_indices_and_an_explicit_destination(tmp_path: Path):
     pdf = _book(tmp_path)
     target = tmp_path / "saida" / "cap.docx"

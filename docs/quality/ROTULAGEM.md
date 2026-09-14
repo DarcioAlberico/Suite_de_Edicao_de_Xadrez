@@ -488,6 +488,43 @@ com o motivo na dica (`menu.impedir`); no bundle existem sempre.
 caminhos (rodar com o Python da suíte e o PyQt6 do `.venv-pack` no `PYTHONPATH` para o
 caminho com suíte).
 
+### 7g. Verificado no `Caissa.exe` (build de 2026-09-14, 297,0 MB)
+
+O bundle foi construído com `packaging/build_windows.py` (guardando `runtime/` e `models/`
+de lado: o `--noconfirm` do PyInstaller apaga `dist/Caissa/` inteiro) e o `.exe` aberto com
+`--pdf PDF\caissa_pagina_de_prova.pdf`. O menu *Arquivo* foi aberto por clique real na barra,
+o item alcançado pelo teclado e o diálogo confirmado; as capturas são do buffer de cada
+janela (`PrintWindow` do popup e do diálogo), como no F12 §5.2:
+
+![Arquivo → Exportar o livro para EPUB… no Caissa.exe](ROTULAGEM_exportar_menu_no_bundle.png)
+![O diálogo Exportar livro no Caissa.exe](ROTULAGEM_exportar_dialogo_no_bundle.png)
+
+Rodapé ao fim: *«Exportação concluída. EPUB gravado em caissa_pagina_de_prova.epub: 1 página(s)
+(livro completo); 0 parágrafos, 0 títulos, 0 diagramas, 6 imagens; 13 propriedade(s)
+aproximada(s) no EPUB.»* — o arquivo nasceu ao lado do PDF, 25 KB, com as seis figuras da
+página em `OEBPS/Images/`.
+
+**Dois defeitos que só apareceram porque o `.exe` foi rodado**, e os dois foram corrigidos:
+
+1. **O botão dizia «OK», não «Exportar».** O tronco retraduz todo botão *padrão* de
+   `QDialogButtonBox` ao mostrar o diálogo (F9-C14, `qt/acessibilidade.py`), e um `Ok`
+   renomeado voltava a «OK». Pela regra de lá — botão feito à mão fica como está — «Exportar»
+   passou a ser `addButton("Exportar", AcceptRole)`, como o «Varrer» do tronco.
+2. **As imagens saíam como `image-missing`, e com `asset_dir` saíam como caminho absoluto.**
+   O `export_book` importava sem pasta de ativos (recursos sem bytes); e o exportador EPUB,
+   mesmo com os bytes, escrevia `<img src="C:\…igura.png">` e não empacotava o arquivo —
+   um EPUB inválido em qualquer outra máquina. Agora o `export_book` extrai os ativos numa
+   pasta temporária (descartada ao fim) e o EPUB os leva em `OEBPS/Images/<chave>.png`,
+   declarados no manifesto (a capa inclusive), com o `src` relativo;
+   `test_the_images_of_the_pages_travel_inside_the_epub` cobra os três pontos. Para um livro
+   digitalizado sem OCR é a diferença entre um EPUB vazio e um EPUB com as páginas.
+
+**O que continua declarado, e não corrigido:** o DOCX escreve toda imagem rasterizada como
+marcador `[chave]` — é o que `caissa.export.profiles` declara para `image_block`
+(*substitute*), o leitor `read_docx` conta com isso, e mudar exige mexer nos dois lados e na
+fidelidade. Um livro digitalizado exportado para DOCX hoje sai como texto (o que o OCR leu)
+mais marcadores; os diagramas reconhecidos saem em EMF vetorial como sempre.
+
 ### 7d. O que não é
 
 - Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,
