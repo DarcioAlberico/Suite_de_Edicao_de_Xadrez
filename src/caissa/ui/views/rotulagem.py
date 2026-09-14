@@ -45,6 +45,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QDoubleSpinBox,
     QFileDialog,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
@@ -112,6 +113,7 @@ from caissa.ocr.training import (
     preflight,
     register_training,
 )
+from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
 
 __all__ = [
@@ -1454,9 +1456,9 @@ class PainelDeRotulagem(QWidget):
             self._ranking_cancel.set()
             self._set_status("Cancelando a pontuação… termina na página atual.")
             return
-        if self.ranking is not None and self.ranking.document == self.document:
-            if self._show_ranking():
-                return
+        cached = self.ranking is not None and self.ranking.document == self.document
+        if cached and self._show_ranking():
+            return
         self._score_pages()
 
     def _score_pages(self) -> None:
@@ -1669,11 +1671,39 @@ class DialogoDeTreino(QDialog):
         linha.addWidget(self.extend)
         linha.addStretch(1)
         form.addLayout(linha, 3, 0, 1, 3)
+        # OCR_UI_ROADMAP passo 4: prose lines degraded under the control
+        # textures, and the rare pieces' lines repeated (training/negatives.py).
+        linha2 = QHBoxLayout()
+        linha2.addWidget(QLabel("negativos (prosa degradada)", self))
+        self.negatives = QSpinBox(self)
+        self.negatives.setRange(0, 5000)
+        self.negatives.setSingleStep(20)
+        self.negatives.setValue(RECOMMENDED_NEGATIVES)
+        self.negatives.setAccessibleName("Negativos")
+        self.negatives.setToolTip(
+            "Linhas de prosa do livro re-renderizadas sob foto, ruído, manchas e fax, "
+            "com a mesma verdade — para o modelo não ver figurinas no ruído"
+        )
+        linha2.addWidget(self.negatives)
+        linha2.addWidget(QLabel("peças raras até (× mediana)", self))
+        self.oversample = QDoubleSpinBox(self)
+        self.oversample.setRange(0.0, 5.0)
+        self.oversample.setSingleStep(0.25)
+        self.oversample.setDecimals(2)
+        self.oversample.setValue(RECOMMENDED_OVERSAMPLE)
+        self.oversample.setAccessibleName("Reamostragem das peças raras")
+        self.oversample.setToolTip(
+            "Repete as linhas de cada peça com menos linhas que a mediana até esta fração "
+            "da mediana (1 = até a mediana; 0 = desligado)"
+        )
+        linha2.addWidget(self.oversample)
+        linha2.addStretch(1)
+        form.addLayout(linha2, 4, 0, 1, 3)
         self.for_book = QCheckBox(self._book_label(), self)
         self.for_book.setChecked(document is not None)
         self.for_book.setEnabled(document is not None)
         self.for_book.toggled.connect(lambda _v: self._apply_book_choice())
-        form.addWidget(self.for_book, 4, 0, 1, 3)
+        form.addWidget(self.for_book, 5, 0, 1, 3)
         self._apply_book_choice()
         botoes = QHBoxLayout()
         raiz.addLayout(botoes)
@@ -1754,6 +1784,8 @@ class DialogoDeTreino(QDialog):
             learning_rate=float(self.rate.text() or "0.001"),
             extend_charset=self.extend.isChecked(),
             documents=(self.document,) if for_book and self.document else (),
+            negatives=int(self.negatives.value()),
+            oversample_rare=float(self.oversample.value()),
         )
 
     def _append(self, text: str) -> None:

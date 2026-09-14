@@ -89,9 +89,16 @@ def test_group_counts_cer_moves_figurines_and_unread():
     assert group.moves_invented == 1, "Sf3 is a move the truth does not have"
     assert group.figurines_truth == 3
     assert group.figurines_kept == 2
+    assert group.figurines_invented == 0
+    assert group.by_piece == {"♖": [1, 1], "♗": [1, 1], "♘": [1, 0]}
+    assert group.piece_rate("♘") == 0
+    assert group.piece_rate("♕") == 1.0, "a piece the truth never had is not a miss"
+    assert group.rarest_piece() == "♖", "ties go to the first piece in ♔♕♖♗♘♙ order"
     # The unread line costs every one of its characters.
     assert group.edits == 1 + len("prose line")
     assert group.cer == pytest.approx(group.edits / group.truth_chars)
+    group.add("prose", "♔ prose ♕")
+    assert group.figurines_invented == 2, "figurines the truth does not have are invented"
 
 
 def test_score_lines_matches_by_overlap_and_groups_by_partition():

@@ -77,6 +77,20 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915 - one branch pe
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--learning-rate", type=float, default=0.001)
     parser.add_argument(
+        "--negatives",
+        type=int,
+        default=0,
+        help="linhas de prosa do livro degradadas (foto, ruído, manchas, fax) acrescentadas "
+        "ao treino, para o modelo não ver figurinas no ruído",
+    )
+    parser.add_argument(
+        "--oversample-rare",
+        type=float,
+        default=0.0,
+        help="repetir as linhas das peças raras até esta fração da mediana por peça (1.0 = "
+        "até a mediana; 0 = desligado)",
+    )
+    parser.add_argument(
         "--tesseract", default=None, help="caminho do tesseract.exe, se não for achado"
     )
     parser.add_argument("--preflight", action="store_true", help="só verificar, não treinar")
@@ -135,6 +149,8 @@ def main(argv: list[str] | None = None) -> int:  # noqa: PLR0915 - one branch pe
         learning_rate=args.learning_rate,
         extend_charset=not args.no_extend_charset,
         documents=(args.document,) if args.document else (),
+        negatives=args.negatives,
+        oversample_rare=args.oversample_rare,
     )
     info = preflight(gt_dir, config, tools)
     print(json.dumps(info, ensure_ascii=False, indent=1))

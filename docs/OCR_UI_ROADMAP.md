@@ -75,6 +75,7 @@ FAIXA A — texto e glifos          FAIXA B — diagramas               FAIXA C 
  2 OCR contesta a camada           8 confiança por diagrama ──┐     15 visor por ladrilhos
  3 cifra por livro ──┐             9 rendimento dos barrados ◄─┘     13 editor com recorte ◄── 8
  4 negativos e raras │            10 fallback vetorial               14 revisão de texto  ◄── 8 (fila)
+ 4b modelo na âncora ◄── 4                                            
  5 fila de rotulagem │                                               16 Foco padrão + polimento ◄── 12
  6 léxico ru + lances│                                               17 trilho do livro ◄── 13,14,15,16 (Q4)
                      └──► 11 Paragraph Movetext → GameScore ◄── 0, 7        18 (opcional) cor da peça ◄── 8
@@ -87,7 +88,7 @@ FAIXA A — texto e glifos          FAIXA B — diagramas               FAIXA C 
 | arquivo | passos | ordem |
 |---|---|---|
 | `src/caissa/ingest/pdf/importer.py` | 2, 3, 7, 11 | 2 → 3 → 7 → 11 |
-| `src/caissa/ingest/pdf/ocr_service.py` | 1 (`secondary_engine`), 2 | 1 → 2 |
+| `src/caissa/ingest/pdf/ocr_service.py` | 1 (`secondary_engine`), 2, 4b (`book_model_anchors`) | 1 → 2 → 4b |
 | `src/caissa/ocr/fusion.py` | 2, 3 | 3 → 2 |
 | `src/caissa/core/model/` (`Diagram`) | 7, 8 | 7 → 8 |
 | `src/caissa/ui/views/rotulagem.py` | 4 (`DialogoDeTreino`), 5 (botão) | 4 → 5 |
@@ -329,7 +330,51 @@ PY benchmarks\bench_sol.py --system sol --tessdata-dir models\tessdata\livros\<s
 livro ≥ o "antes" (94 % no §7c). *Sabotagem:* `negatives=0` — o controle `photo` volta a
 emitir figurina e o portão SOL-2 acusa.
 
-**Saída.** `ROTULAGEM.md` §4d e `OCR_UI_REPORT_C1.md` §4. **Desfazer:** as duas opções em 0.
+**Saída.** `ROTULAGEM.md` §4d e `OCR_UI_REPORT_C1.md` §7. **Desfazer:** as duas opções em 0.
+
+**Executado em 2026-09-14** (§4): negativos **com margens só de textura** (sem elas o `photo`
+ainda emitia `De ♕a1`); `photo` sem figurina ✓, cada peça ≥ antes ✓ (modelo sozinho 204/204),
+lances no livro ≥ antes ✓, sabotagem vista ✓; **fax inventados 126 > 76 da base ✗** (era 206) —
+fica vermelho e registrado: o modelo do livro segue candidato secundário fora do seu livro.
+
+---
+
+### Passo 4b — O modelo do livro como âncora dentro do próprio livro
+
+**Objetivo.** Dentro do livro registrado para ele, o modelo por livro ancora; fora, nada muda.
+
+**Briefing (achado do passo 4, `ROTULAGEM.md` §4d).** O modelo do SFC4 sozinho lê **204/204**
+figurinas e 282/288 lances da avaliação `calib`; o caminho do produto no mesmo livro —
+Tesseract `eng` na âncora + leitor de glifos + o modelo como candidato secundário
+(`figurine_candidates`, "never the anchor") — lê 193/204 e 273/288. A fusão perde 11
+figurinas e 10 lances que o modelo já tinha, porque a regra SOL-6 só troca tokens que não são
+palavra nem lance e nunca insere. A regra "nunca âncora" existe porque o modelo inventa em
+ruído (fax 126 vs 76); dentro do livro para o qual foi treinado e registrado por impressão
+digital (`livros.json`), esse risco é o do próprio livro — e é medido pelo `Medir no livro…`.
+
+**Tarefas.**
+1. `OcrServiceConfig.book_model_anchors: bool` (padrão ligado): quando `figurine_tessdata`
+   é a pasta de um livro registrado para o PDF em importação, o `PageRecognizer` do idioma do
+   livro usa `caissa_<lang>` como **modelo do motor âncora** (o `eng` base vira candidato).
+   Fora do livro (sem registro), tudo como hoje.
+2. Guardas que ficam: leitor de glifos e cifra como candidatos; controles nunca veem o modelo
+   (não há registro para eles).
+3. `Medir no livro…` ganha o terceiro lado "modelo na âncora".
+
+**Verificação.**
+```
+PY -m pytest tests\unit\ingest\test_ocr_service.py tests\unit\ocr\test_measure.py -q
+PY benchmarks\bench_sol.py --system sol --label c1_anchor --publish --compare docs\quality\sol\c1_rapidocr.json
+```
+(mais `Medir no livro…` no SFC4 com os três lados.)
+
+**Portão e sabotagem.** No SFC4, `calib`, caminho do produto: figurinas ≥ 200/204 e lances
+≥ 280/288 (hoje 193 e 273); `bench_sol` sem regressão fora do IC em estrato algum e controles
+0 → 0 (o modelo não entra neles). *Sabotagem:* registrar o modelo do SFC4 para **outro** PDF
+(Levenfis) e medir: o portão de controles/inventados tem de acusar — prova que o isolamento
+por livro é o que segura o risco.
+
+**Saída.** `ROTULAGEM.md` §7h; `OCR_UI_REPORT_C1.md` §8. **Desfazer:** `book_model_anchors=False`.
 
 ---
 
@@ -911,6 +956,8 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 4 | **executado, um portão vermelho** — `OCR_UI_REPORT_C1.md` §7 | negativos com margens de textura + sobreamostragem: `photo` 0 figurinas (antes 57 caracteres de ruído; sabotagem `♖.♖♘♘`), fax inventados 206 → 126 mas **> 76 da base** (✗ registrado); no livro D ≥ A em tudo; modelo sozinho já lia 204/204 desde A (o ♔ 0/13 era da rodada `por`). 360 negativos piorou (146; uma semente por configuração). Modelo D registrado para o SFC4 | construtor |
+| 2026-09-14 | 4b | **inserido** | achado: a fusão perde 11 figurinas e 10 lances que o modelo do livro sozinho lê (204/204 vs 193/204 na `calib`) porque ele nunca ancora; ancorar com ele **dentro do livro registrado** é a alavanca seguinte, com sabotagem de registro cruzado | construtor |
 | 2026-09-14 | 5 | **executado** — `OCR_UI_REPORT_C1.md` §6 | «Próxima que vale» (Qt, Tk, `--sugerir`), `ocr/labeling/queue.py`; fila = ordem do oráculo nos 3 scans (captura 1,00), sabotagem 0,47–0,60. Limite registrado: nos scans antigos toda linha é `REVIEW`, a fila separa por volume; sem `MOVETEXT` na amostra | construtor |
 | 2026-09-14 | 5 | **portão reescrito** | "top-5 ≥ 2× a mediana" executado como escrito: REPROVOU na rodada real (1,27/1,22/1,08) **e** na sabotagem (0,60/0,72/0,63) — o teto da razão (a do oráculo) é 1,1–1,3 nestes livros. Portão novo: captura do oráculo ≥ 0,90; a razão e o teto ficam impressos | construtor |
 | 2026-09-14 | 6 | **executado** — `OCR_UI_REPORT_C1.md` §5 | `ru_RU` (BSD-3-Clause, Lebedev) no léxico: acerto de dicionário no Boleslávski 13–25 % → 48–73 %; um lance danificado deixa de contar como "impronunciável" — Yusupov p. 700–701 e Gaprindashvili p158 passam de rejeitadas a contestadas; vereditos dos 16 acusados e dos controles inalterados | construtor |

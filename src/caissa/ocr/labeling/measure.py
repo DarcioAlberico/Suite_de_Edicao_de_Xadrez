@@ -70,6 +70,12 @@ class MeasureGroup:
     moves_invented: int = 0
     figurines_truth: int = 0
     figurines_kept: int = 0
+    #: Figurines the hypothesis has beyond the truth's (the "figurine in
+    #: the noise" of ROTULAGEM.md §4c, counted where it happens).
+    figurines_invented: int = 0
+    #: Per piece: ``{"♔": [truth, kept]}`` — the scoreboard §4c published
+    #: once by hand (♔ 0/13) and OCR_UI_ROADMAP passo 4 gates on.
+    by_piece: dict[str, list[int]] = field(default_factory=dict)
 
     def add(self, truth: str, hypothesis: str | None) -> None:
         t = normalise(truth)
@@ -79,6 +85,8 @@ class MeasureGroup:
         self.moves_truth += moves.truth
         figs = _figurines(t)
         self.figurines_truth += sum(figs.values())
+        for piece, n in figs.items():
+            self.by_piece.setdefault(piece, [0, 0])[0] += n
         if hypothesis is None:
             self.unread += 1
             self.edits += len(t)
@@ -88,7 +96,21 @@ class MeasureGroup:
         self.exact += int(h == t)
         self.moves_kept += moves.kept
         self.moves_invented += moves.invented
-        self.figurines_kept += sum((figs & _figurines(h)).values())
+        got = _figurines(h)
+        kept = figs & got
+        self.figurines_kept += sum(kept.values())
+        self.figurines_invented += sum((got - figs).values())
+        for piece, n in kept.items():
+            self.by_piece[piece][1] += n
+
+    def piece_rate(self, piece: str) -> float:
+        truth, kept = self.by_piece.get(piece, [0, 0])
+        return kept / truth if truth else 1.0
+
+    def rarest_piece(self) -> str:
+        """The piece with fewest truth occurrences (ties: the first in order)."""
+        pieces = [p for p in FIGURINES if p in self.by_piece]
+        return min(pieces, key=lambda p: self.by_piece[p][0]) if pieces else ""
 
     @property
     def cer(self) -> float:
@@ -111,6 +133,8 @@ class MeasureGroup:
             "moves_invented": self.moves_invented,
             "figurines_truth": self.figurines_truth,
             "figurines_kept": self.figurines_kept,
+            "figurines_invented": self.figurines_invented,
+            "by_piece": {p: list(v) for p, v in self.by_piece.items()},
         }
 
 
@@ -191,6 +215,14 @@ class BookMeasure:
             if any(g.figurines_truth for g in groups):
                 figurines = [f"{g.figurines_kept} / {g.figurines_truth}" for g in groups]
                 rows.append(("figurinas certas", figurines))
+                rows.append(("figurinas inventadas", [str(g.figurines_invented) for g in groups]))
+                pieces = [p for p in FIGURINES if any(p in g.by_piece for g in groups)]
+                for piece in pieces:
+                    cells = []
+                    for g in groups:
+                        truth, kept = g.by_piece.get(piece, [0, 0])
+                        cells.append(f"{kept} / {truth}" if truth else "—")
+                    rows.append((f"{piece} certas", cells))
             for m, (metric, values) in enumerate(rows):
                 label = f"{names[key]} ({n})" if m == 0 else ""
                 out.append(f"| {label} | {metric} | {' | '.join(values)} |")

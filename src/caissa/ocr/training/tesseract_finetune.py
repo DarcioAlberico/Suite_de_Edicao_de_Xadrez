@@ -306,6 +306,15 @@ class FineTuneConfig:
     #: trains a book on its own lines and registers the result for that
     #: PDF (:mod:`.books`).  Empty trains on everything exported.
     documents: tuple[str, ...] = ()
+    #: Negative samples added to the training list: prose lines of the
+    #: book without figurines, re-rendered under the control textures
+    #: (:mod:`.negatives`).  Measured need: the book model of ROTULAGEM.md
+    #: §4c wrote ``♖ … ♘♔R♗!`` on the ``photo`` control.
+    negatives: int = 0
+    #: Rare-piece oversampling as a share of the median piece's line count
+    #: (``1.0`` repeats the lines of a rare piece until it has as many as
+    #: the median piece; ``0`` off).  §4c: ♔ with 29 lines came out 0/13.
+    oversample_rare: float = 0.0
     workers: int = max(1, min(4, (os.cpu_count() or 2) - 1))
     copy_langs: tuple[str, ...] = COPY_LANGS
     train_timeout_s: float = 6 * 3600.0
@@ -327,6 +336,8 @@ class FineTuneConfig:
             "workers": self.workers,
             "extend_charset": self.extend_charset,
             "documents": list(self.documents),
+            "negatives": self.negatives,
+            "oversample_rare": self.oversample_rare,
         }
 
 
@@ -345,6 +356,10 @@ class FineTuneReport:
     lines_train: int = 0
     lines_eval: int = 0
     lines_unencodable: int = 0
+    #: Negative lines written and trained on; extra copies per rare piece.
+    lines_negative: int = 0
+    oversampled: dict[str, int] = field(default_factory=dict)
+    piece_lines: dict[str, int] = field(default_factory=dict)
     unknown_chars: dict[str, int] = field(default_factory=dict)
     #: True when the alphabet was extended with ``unknown_chars``.
     charset_extended: bool = False
@@ -386,6 +401,10 @@ class FineTuneReport:
             f"{self.lines_eval} avaliação · {self.lines_unencodable} fora do unicharset · "
             f"{self.lstmf_failed} falhas de lstmf",
             f"- Iterações: {self.iterations} · melhor erro de treino: {pct(self.best_train_error)}",
+            f"- Negativos: {self.lines_negative} · linhas por peça: "
+            + (", ".join(f"{p} {n}" for p, n in self.piece_lines.items()) or "—")
+            + " · cópias extras: "
+            + (", ".join(f"{p} +{n}" for p, n in self.oversampled.items()) or "nenhuma"),
             "",
             "| | CER | WER |",
             "|---|---:|---:|",
@@ -739,7 +758,9 @@ class TesseractFineTuner:
             )
         return train, evaluate
 
-    def make_lstmf(self, names: Sequence[str], traineddata: Path) -> list[str]:
+    def make_lstmf(
+        self, names: Sequence[str], traineddata: Path, *, source_dir: Path | None = None
+    ) -> list[str]:
         """``tesseract <png> <base> --psm 13 lstm.train`` per line, in parallel.
 
         ``lstm.train`` reads the truth from a ``.box`` file **next to the
@@ -752,6 +773,7 @@ class TesseractFineTuner:
         lstmf_dir.mkdir(exist_ok=True)
         tessdata = str(traineddata.parent)
         lang = self.config.base_lang
+        source = source_dir or self.gt_dir
 
         def one(name: str) -> str | None:
             if self.cancelled:
@@ -760,8 +782,8 @@ class TesseractFineTuner:
             if target.is_file():
                 return str(target)
             image = lstmf_dir / f"{name}.png"
-            shutil.copy2(self.gt_dir / f"{name}.png", image)
-            text = (self.gt_dir / f"{name}.gt.txt").read_text("utf-8").strip("\r\n")
+            shutil.copy2(source / f"{name}.png", image)
+            text = (source / f"{name}.gt.txt").read_text("utf-8").strip("\r\n")
             (lstmf_dir / f"{name}.gt.txt").write_text(text + "\n", encoding="utf-8")
             (lstmf_dir / f"{name}.box").write_text(wordstr_box(text, image), encoding="utf-8")
             cmd = [
@@ -792,6 +814,46 @@ class TesseractFineTuner:
                     self.log(f"lstmf: {n}/{len(names)}")
                     self._progress({"lstmf": n, "lstmf_total": len(names)})
         return done
+
+    def negative_files(self, train_names: Sequence[str], traineddata: Path) -> list[str]:
+        """The ``.lstmf`` of the negatives (:mod:`.negatives`), when asked for."""
+        from .negatives import make_negatives
+
+        count = int(self.config.negatives)
+        if count <= 0:
+            return []
+        negatives_dir = self.work / "negatives"
+        names = make_negatives(self.gt_dir, train_names, negatives_dir, count=count)
+        if not names:
+            self.log("negativos: nenhuma linha de prosa sem figurina para degradar")
+            return []
+        files = self.make_lstmf(names, traineddata, source_dir=negatives_dir)
+        self.report.lines_negative = len(files)
+        self.log(f"negativos: {len(files)} linhas de prosa degradadas entram no treino")
+        return files
+
+    def oversampled_files(
+        self, train_names: Sequence[str], train_files: Sequence[str]
+    ) -> list[str]:
+        """Extra copies of the rare pieces' ``.lstmf`` paths (:func:`negatives.oversample`)."""
+        from .negatives import oversample, piece_counts
+
+        texts = {
+            n: (self.gt_dir / f"{n}.gt.txt").read_text("utf-8").strip("\r\n") for n in train_names
+        }
+        self.report.piece_lines = dict(sorted(piece_counts(texts).items()))
+        if self.config.oversample_rare <= 0:
+            return []
+        by_name = {Path(f).stem: f for f in train_files}
+        extras, added = oversample(texts, share=self.config.oversample_rare)
+        files = [by_name[n] for n in extras if n in by_name]
+        self.report.oversampled = added
+        if added:
+            self.log(
+                "cópias extras das peças raras: "
+                + ", ".join(f"{p} +{n}" for p, n in added.items())
+            )
+        return files
 
     def extend_unicharset(self, base_unicharset: Path, names: Sequence[str]) -> Path:
         """A starter ``.traineddata`` with the base's alphabet plus the truth's.
@@ -1048,6 +1110,8 @@ class TesseractFineTuner:
             self.report.lines_train, self.report.lines_eval = len(train_files), len(eval_files)
             if not train_files:
                 raise RuntimeError("nenhum .lstmf gerado; veja o log")
+            train_files += self.negative_files(train_names, traineddata)
+            train_files += self.oversampled_files(train_names, train_files)
             train_list = self.work / "list.train"
             eval_list = self.work / "list.eval"
             # Bytes: a Windows text write would end each path in "\r", and

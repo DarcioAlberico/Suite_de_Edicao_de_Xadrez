@@ -86,6 +86,7 @@ from caissa.ocr.training import (
     preflight,
     register_training,
 )
+from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 
 __all__ = ["LabelWindow", "MeasureDialog", "TrainingDialog", "main"]
 
@@ -1479,6 +1480,8 @@ class TrainingDialog:
         self.iterations = tk.IntVar(value=2000)
         self.rate = tk.StringVar(value="0.001")
         self.extend = tk.BooleanVar(value=True)
+        self.negatives = tk.IntVar(value=RECOMMENDED_NEGATIVES)
+        self.oversample = tk.StringVar(value=str(RECOMMENDED_OVERSAMPLE))
         self.for_book = tk.BooleanVar(value=document is not None)
         rows = [
             ("Verdade (ground_truth/)", self.gt_var, self._pick_dir),
@@ -1511,8 +1514,18 @@ class TrainingDialog:
         ttk.Checkbutton(line, text="estender alfabeto (figurinas)", variable=self.extend).pack(
             side=tk.LEFT, padx=(8, 0)
         )
+        # OCR_UI_ROADMAP passo 4: prose lines degraded under the control
+        # textures, and the rare pieces' lines repeated (training/negatives.py).
+        line2 = ttk.Frame(form)
+        line2.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(4, 0))
+        ttk.Label(line2, text="negativos (prosa degradada)").pack(side=tk.LEFT)
+        ttk.Spinbox(
+            line2, from_=0, to=5000, increment=20, textvariable=self.negatives, width=6
+        ).pack(side=tk.LEFT, padx=4)
+        ttk.Label(line2, text="  peças raras até (× mediana)").pack(side=tk.LEFT)
+        ttk.Entry(line2, textvariable=self.oversample, width=6).pack(side=tk.LEFT, padx=4)
         book_row = ttk.Frame(form)
-        book_row.grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(4, 0))
+        book_row.grid(row=5, column=0, columnspan=3, sticky=tk.W, pady=(4, 0))
         self.book_check = ttk.Checkbutton(
             book_row,
             text=self._book_label(),
@@ -1599,6 +1612,8 @@ class TrainingDialog:
             learning_rate=float(self.rate.get() or "0.001"),
             extend_charset=bool(self.extend.get()),
             documents=(self.document,) if for_book and self.document else (),
+            negatives=int(self.negatives.get() or 0),
+            oversample_rare=float(self.oversample.get() or "0"),
         )
 
     def _append(self, text: str) -> None:

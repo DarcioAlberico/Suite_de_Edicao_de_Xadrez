@@ -21,6 +21,7 @@ from caissa.ocr.labeling.helpers import (
     letters_to_figurines,
     status_pt,
 )
+from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES
 
 # --------------------------------------------------------------------------- #
 # Shared, toolkit-free
@@ -110,6 +111,10 @@ def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     assert dialogo.out_edit.text().endswith(os.path.join("livros", "livro_x"))
     assert dialogo.base_lang.currentText() == "eng"
     assert dialogo._config().documents == ("Livro X",)
+    assert dialogo.negatives.value() == RECOMMENDED_NEGATIVES
+    dialogo.negatives.setValue(40)
+    dialogo.oversample.setValue(1.5)
+    assert (dialogo._config().negatives, dialogo._config().oversample_rare) == (40, 1.5)
     dialogo.for_book.setChecked(False)
     assert not dialogo.out_edit.text().endswith("livro_x")
     dialogo.close()

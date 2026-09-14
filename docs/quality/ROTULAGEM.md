@@ -289,6 +289,74 @@ Isso **não treina** nada: o rótulo humano continua sendo a verdade, mas a hip�
 revisor vê já vem com ♖e8!, e é isso que entra no `.gt.txt` quando ele aceita — o que, por
 sua vez, alimenta a rota B (§4c).
 
+### 4d. Negativos e peças raras no ajuste fino (2026-09-14, `OCR_UI_ROADMAP` passo 4)
+
+O §4c terminou com o modelo do livro vendo figurinas no ruído (`♖ … ♘♔R♗!` no controle
+`photo`, +15 inventados no fax) e com uma peça rara muda (♔ 0/13 na rodada `por`). Duas
+caixas novas no diálogo *Treinar…* (Qt e Tk) e no `caissa-treinar` (`--negatives`,
+`--oversample-rare`), implementadas em `caissa/ocr/training/negatives.py`:
+
+- **Negativos** — linhas de prosa do próprio livro cuja verdade **não tem figurina**,
+  re-renderizadas sob as texturas dos controles e dos estratos degradados (vinheta do `photo`,
+  ruído, manchas, *dither* de fax), **com margens só de textura dos dois lados** (30–80 % da
+  largura cada) e a verdade inalterada. O `lstmtraining` pula amostra de verdade vazia
+  (`Empty truth string`), então "textura pura → nada" não se ensina com uma tira de textura;
+  ensina-se pelas margens, que a CTC tem de mapear a nada. Medido: sem as margens (primeira
+  tentativa, 120 negativos) o controle `photo` ainda saía `De ♕a1`.
+- **Peças raras** — a peça com menos linhas que a mediana das peças tem as linhas repetidas
+  na `list.train` até uma fração da mediana (1,0 = até a mediana). No SFC4: ♔ 23 linhas de
+  treino contra mediana 42 → ♔ +19 cópias (e ♕ +2).
+
+**Placar por peça** — `Medir no livro…` passou a publicar figurinas inventadas e o placar por
+peça (`MeasureGroup.by_piece`), que o §4c só tinha à mão.
+
+**Medido no SFC4** (13 páginas, 458 linhas de treino, 261 de avaliação; base `eng` float,
+12 000 iterações, lr 1e-3; ~16 min por treino):
+
+| modelo | negativos | raras | lstmeval CER | controle `photo` (modelo sozinho) | `synth/fax_dither` inventados (modelo sozinho) |
+|---|---:|---:|---:|---|---:|
+| base `eng` | — | — | 2,14 % | abstém | 76 |
+| A — o de 2026-09-14 (§7c) | 0 | 0 | 1,36 % | responde, 57 caracteres, 0 figurinas no trecho | **206** |
+| B | 120 sem margens | 1,0 | 1,81 % | responde, `De ♕a1` | 133 |
+| C — sabotagem | 0 | 1,0 | 1,48 % | responde, **`♖.♖♘♘`** | 184 |
+| **D** | **120 com margens** | **1,0** | 1,43 % | responde, 49 caracteres, **0 figurinas** | **126** |
+| D2 | 360 com margens | 1,0 | 1,60 % | responde, **`♔.♔4u♔♔`** (5 figurinas) | 146 |
+
+"Modelo sozinho" = `bench_sol.py --tessdata-dir <modelo> --model-prefix caissa` com
+`SOL_CONFIG='{"glyph_candidates": false, "figurine_candidates": false, "secondary_engines": []}'`
+— o Tesseract ajustado como âncora, sem leitor de glifos nem segundo motor. Os controles são
+9 itens; o `photo:1` é o único que qualquer modelo ajustado responde (o `eng` base abstém).
+
+**No livro** (`Medir no livro…`, avaliação `calib`, 261 linhas fora do treino):
+
+| | sem modelo | A (antes) | D | modelo sozinho: `eng` base → A / D |
+|---|---:|---:|---:|---:|
+| lances certos / 288 | 265 | 271 | **273** | 82 → 282 / **283** |
+| lances inventados | 12 | 10 | **9** | 99 → 5 / 5 |
+| figurinas certas / 204 | 185 | 191 | **193** | 0 → **204 / 204** |
+| ♔ ♕ ♖ ♗ ♘ certas | 15/17 36/41 50/53 26/27 58/66 | 15/17 39/41 51/53 26/27 61/66 | 15/17 39/41 51/53 26/27 **62**/66 | A e D: 17/17 41/41 53/53 27/27 66/66 |
+| linhas exatas / 261 | 235 | 238 | **241** | 160 → 241 / **245** |
+
+**O que os números dizem.**
+
+1. Os negativos com margens tiram a figurina do ruído (`photo`: 0 figurinas; fax: 206 → 126
+   inventados, −39 %) sem custo no livro (D ≥ A em todas as linhas da avaliação). A sabotagem
+   (C, negativos = 0) devolve `♖.♖♘♘` ao controle e 184 inventados ao fax — o portão vê.
+2. **O fax continua acima da base** (126 > 76): o modelo do livro, sozinho, ainda inventa
+   mais que o `eng` em página tipografada degradada. É por isso que ele continua candidato
+   secundário fora do seu livro — e o produto, que só o usa assim, não muda nos controles.
+3. A peça rara já não era o problema: desde o retreino sobre o `eng` (A), o modelo sozinho lê
+   **204/204** figurinas da avaliação, ♔ 17/17 inclusive. O ♔ 0/13 do §4c era da rodada
+   `por` com 367 linhas.
+4. **O achado que vale mais que o passo**: o modelo sozinho lê 204/204 figurinas e 282/288
+   lances da avaliação; o caminho do produto (Tesseract `eng` na âncora + leitor de glifos +
+   o modelo como candidato), no mesmo livro, lê 191–193/204 e 271–273/288. A fusão *perde*
+   11 figurinas e 10 lances que o modelo do livro já tinha — porque ele nunca ancora
+   (`figurine_candidates`, "never the anchor"). Dentro do livro registrado para ele — e só aí —
+   ancorar com o modelo do livro é a alavanca seguinte (`OCR_UI_ROADMAP` passo 4b, inserido).
+
+Comandos: `OCR_UI_REPORT_C1.md` §7.
+
 ## 5. O que foi verificado em 2026-09-13
 
 - Três páginas de *Koblenz — El dominio del arte de la combinación (1978)* (scan, espanhol):

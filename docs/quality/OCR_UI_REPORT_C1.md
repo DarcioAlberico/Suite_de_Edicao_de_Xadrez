@@ -638,3 +638,73 @@ pontua em thread, vira «Cancelar fila» enquanto roda, abre a lista com a melho
 set PYTHONPATH=.venv-pack\Lib\site-packages && .venv\Scripts\python.exe -m pytest tests\unit\ui\test_rotulagem_view.py -q   # 6 passed
 .venv\Scripts\python.exe -m pytest tests\unit\ocr tests\unit\ingest -q                                # 731 passed, 2 skipped
 ```
+
+---
+
+## §7 — Passo 4: negativos e peças raras no ajuste fino
+
+### 7.0 Em uma tela
+
+- `caissa/ocr/training/negatives.py`: **negativos** = linhas de prosa do livro sem figurina,
+  re-renderizadas sob vinheta de foto, ruído, manchas e fax **com margens só de textura** dos
+  dois lados (a verdade fica; o `lstmtraining` pula verdade vazia, então "textura → nada" só
+  se ensina pelas margens); **peças raras** = linhas da peça abaixo da mediana repetidas na
+  `list.train`. `FineTuneConfig.negatives` / `.oversample_rare`, `caissa-treinar --negatives
+  --oversample-rare`, duas caixas no *Treinar…* (Qt e Tk); o relatório do treino diz quantos
+  negativos entraram e as cópias por peça. `Medir no livro…` publica figurinas inventadas e o
+  placar por peça (`MeasureGroup.by_piece`, `figurines_invented`).
+- **Modelo sozinho** (Tesseract ajustado como âncora, sem leitor de glifos nem segundo motor):
+  controle `photo` com A (o modelo de 2026-09-14): responde 57 caracteres; com D (120
+  negativos com margens): **0 figurinas**; `synth/fax_dither` inventados 206 → **126** (base
+  `eng` 76). Sabotagem C (negativos = 0, raras 1,0): `♖.♖♘♘` no `photo`, 184 no fax. D2 (360
+  negativos): pior — `♔.♔4u♔♔` no `photo`, 146 no fax: mais negativos não é monotônico, e um treino por configuração (uma semente) não separa 126 de 146.
+- **No livro** (avaliação `calib`, 261 linhas, caminho do produto): D ≥ A em tudo — lances
+  273 vs 271, figurinas 193 vs 191, ♘ 62 vs 61, inventados 9 vs 10, exatas 241 vs 238; peça
+  mais rara ♔ 15/17 (88 %). Modelo sozinho: **204/204** figurinas, ♔ 17/17 — desde A.
+- **Portão**: `photo` sem figurina ✓ (mas responde — o `eng` base abstém: FP de SOL-2 para o
+  modelo sozinho, não para o produto, que só o usa como candidato); fax inventados ≤ base
+  **✗** (126 > 76; −39 % sobre A); cada peça ≥ antes e a rara ≥ 75 % ✓; lances no livro ≥ antes
+  ✓. Sabotagem executada e vista ✓.
+- **Achado**: a fusão perde 11 figurinas e 10 lances que o modelo do livro já lê (204/204,
+  282/288 sozinho vs 193/204, 273/288 no produto) porque ele nunca ancora. Passo 4b inserido.
+
+```
+# antes (A = models\tessdata\livros\dvoretsky_mark_yusupov_artur_sfc4_secret)
+.venv\Scripts\python.exe -m caissa.ocr.training.cli --project labeling --document "<SFC4>" --base-lang eng ^
+  --base-model models\tessdata_best\eng.traineddata --iterations 12000 --negatives 120 --oversample-rare 1.0 --out <D>
+.venv\Scripts\python.exe -m caissa.ocr.training.cli ... --negatives 0 --oversample-rare 1.0 --out <C>     # sabotagem
+.venv\Scripts\python.exe -m caissa.ocr.training.cli ... --negatives 360 --oversample-rare 1.0 --out <D2>
+set SOL_CONFIG={"glyph_candidates": false, "figurine_candidates": false, "secondary_engines": []}
+.venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --filter control --tessdata-dir <modelo> --model-prefix caissa
+.venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata fax_dither --tessdata-dir <modelo> --model-prefix caissa
+#   base: photo abstém, fax inventados 76 · A: 206 · B (120 sem margens): `De ♕a1`, 133 · C: `♖.♖♘♘`, 184 · D: 0 fig., 126
+#   (scratchpad: bench_model.sh, summ_bench.py; medidas no livro: measure_sfc4.py, measure_alone.py)
+```
+
+### 7.1 O que a medição mudou no desenho
+
+- **Margens de textura.** A primeira versão dos negativos (linha degradada, sem margens) não
+  tirou a figurina do controle (`De ♕a1`). A supervisão que faltava é "textura → nada", que o
+  Tesseract só aceita como margem de uma linha com verdade. Com as margens, 0 figurinas.
+- **O portão do fax fica vermelho**, e fica registrado assim: o modelo do livro sozinho
+  inventa mais que o `eng` em tipografia degradada (126 vs 76) mesmo com negativos. É a razão
+  de ele seguir candidato secundário fora do seu livro; o produto não muda nos controles
+  (0 → 0, como no §4c). Não vale gastar mais treinos aqui: o número que importa ao produto é
+  o do livro, e esse está fechado.
+- **Peça rara**: já resolvida pelo retreino sobre `eng` de A (♔ 17/17 sozinho). A caixa de
+  sobreamostragem fica (custo zero; +19 cópias de ♔) mas não foi ela que mudou o placar.
+
+### 7.2 O que fica
+
+- Modelo do livro registrado para o SFC4 = **D (120 negativos com margens, raras 1,0; sha256 `57df721f0bf25e21…`, `lstmeval` 1,43 %)** (`models/tessdata/livros/…`,
+  `livros.json`); o de 2026-09-14 (A) guardado fora do git.
+- Padrões do diálogo: `RECOMMENDED_NEGATIVES = 120`, `RECOMMENDED_OVERSAMPLE = 1.0`.
+- Testes: `test_training.py` (+4: degradações com margens, determinismo, só prosa como fonte,
+  sobreamostragem até a fração da mediana, o treinador põe negativos e cópias na lista e a
+  sabotagem os tira), `test_measure.py` (placar por peça e figurinas inventadas),
+  `test_rotulagem_view.py` (as duas caixas chegam ao `FineTuneConfig`).
+
+```
+.venv\Scripts\python.exe -m pytest tests\unit\ocr\test_training.py tests\unit\ocr\test_measure.py -q      # 18 passed
+set PYTHONPATH=.venv-pack\Lib\site-packages && .venv\Scripts\python.exe -m pytest tests\unit\ui\test_rotulagem_view.py -q   # 6 passed
+```

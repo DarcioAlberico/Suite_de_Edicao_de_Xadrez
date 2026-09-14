@@ -349,3 +349,136 @@ def test_find_training_tools_explains_what_is_missing(monkeypatch, tmp_path: Pat
     monkeypatch.setattr(module.shutil, "which", lambda name: None)
     with pytest.raises(TrainingToolsError, match="lstmtraining"):
         find_training_tools()
+
+
+# --------------------------------------------------------------------------- #
+# Negatives and rare-piece oversampling (OCR_UI_ROADMAP passo 4)
+# --------------------------------------------------------------------------- #
+
+
+def _strip(seed: int = 0):
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    strip = np.full((40, 300), 245, dtype=np.uint8)
+    for x in range(20, 280, 12):  # "letters": dark boxes on paper
+        strip[12:30, x : x + 6] = int(rng.integers(0, 40))
+    return strip
+
+
+def test_every_degradation_pads_with_texture_and_changes_the_strip_deterministically():
+    import numpy as np
+
+    from caissa.ocr.training.negatives import NEGATIVE_KINDS, degrade
+
+    strip = _strip()
+    for kind in NEGATIVE_KINDS:
+        once = degrade(strip, kind, seed=3)
+        again = degrade(strip, kind, seed=3)
+        assert once.shape[0] == strip.shape[0]
+        assert strip.shape[1] * 1.6 <= once.shape[1] <= strip.shape[1] * 2.6, (
+            "texture-only margins on both sides, 30–80 % of the width each"
+        )
+        assert once.dtype == np.uint8
+        assert np.array_equal(once, again), kind
+        assert not np.array_equal(once, strip), kind
+        assert not np.array_equal(once, degrade(strip, kind, seed=4)), kind
+    dithered = degrade(strip, "dither", seed=1)
+    assert set(np.unique(dithered)) <= {0, 255}, "fax is one bit per pixel"
+    with pytest.raises(ValueError, match="cinza"):
+        degrade(np.zeros((4, 4, 3), dtype=np.uint8), "noise")
+
+
+def _real_gt(tmp_path: Path) -> Path:
+    from PIL import Image
+
+    gt = tmp_path / "gt"
+    gt.mkdir()
+    rows = [
+        ("p1", "prose one", "dev"),
+        ("p2", "prose two", "dev"),
+        ("k1", "1.♔e2 ♘f3", "dev"),
+        ("q1", "2.♕d1", "dev"),
+        ("q2", "3.♕h5", "dev"),
+        ("n1", "4.♘c3", "dev"),
+        ("n2", "5.♘g1", "dev"),
+        ("n3", "6.♘e5", "dev"),
+        ("c1", "7.♕xf7", "calib"),
+    ]
+    with (gt / "index.jsonl").open("w", encoding="utf-8") as handle:
+        for n, (name, text, partition) in enumerate(rows):
+            Image.fromarray(_strip(n)).save(gt / f"{name}.png")
+            (gt / f"{name}.gt.txt").write_text(text + "\n", encoding="utf-8")
+            handle.write(json.dumps({"name": name, "partition": partition}) + "\n")
+    return gt
+
+
+def test_negatives_come_from_prose_lines_only_and_cycle_the_kinds(tmp_path: Path):
+    from caissa.ocr.training.negatives import make_negatives
+
+    gt = _real_gt(tmp_path)
+    index = (gt / "index.jsonl").read_text("utf-8").splitlines()
+    names = [json.loads(row)["name"] for row in index]
+    made = make_negatives(gt, names, tmp_path / "neg", count=6)
+    assert len(made) == 6
+    kinds = [n.split("_")[1] for n in made]
+    assert kinds == ["photo", "noise", "stains", "dither", "photo", "noise"]
+    assert all(n.endswith(("_p1", "_p2")) for n in made), "only lines without figurines"
+    for name in made:
+        assert (tmp_path / "neg" / f"{name}.png").is_file()
+        truth = (tmp_path / "neg" / f"{name}.gt.txt").read_text("utf-8")
+        assert truth.startswith("prose")
+    assert make_negatives(gt, ["k1", "q1"], tmp_path / "neg2", count=3) == []
+    assert make_negatives(gt, names, tmp_path / "neg3", count=0) == []
+
+
+def test_oversample_repeats_the_rare_piece_up_to_the_share_of_the_median():
+    from caissa.ocr.training.negatives import oversample, piece_counts
+
+    texts = {
+        "k1": "1.♔e2 ♘f3", "q1": "2.♕d1", "q2": "3.♕h5",
+        "n1": "4.♘c3", "n2": "5.♘g1", "n3": "6.♘e5", "p1": "prose",
+    }
+    assert piece_counts(texts) == {"♔": 1, "♘": 4, "♕": 2}
+    extras, added = oversample(texts, share=1.0)  # median = 2
+    assert extras == ["k1"]
+    assert added == {"♔": 1}
+    extras, added = oversample(texts, share=2.0)  # target 4: ♔ +3 (each copy also carries ♘), ♕ +2
+    assert extras == ["k1", "k1", "k1", "q1", "q2"]
+    assert added == {"♔": 3, "♕": 2}
+    assert oversample(texts, share=0) == ([], {})
+    assert oversample({"p1": "prose"}, share=1.0) == ([], {})
+
+
+def test_the_tuner_adds_negatives_and_extra_copies_to_the_training_list(tmp_path: Path):
+    fake = FakeTools()
+    tuner = TesseractFineTuner(
+        _real_gt(tmp_path),
+        tmp_path / "out",
+        FineTuneConfig(max_iterations=100, negatives=4, oversample_rare=1.0),
+        tools=_tools(tmp_path, charset_tools=True),
+        runner=fake,
+    )
+    report = tuner.run()
+    assert report.status == "trained", report.failure
+    assert report.lines_train == 8
+    assert report.lines_negative == 4
+    assert report.piece_lines == {"♔": 1, "♕": 2, "♘": 4}
+    assert report.oversampled == {"♔": 1}
+    listed = (tmp_path / "out" / "work" / "list.train").read_text("utf-8").split()
+    lists = [Path(p).stem for p in listed]
+    assert len(lists) == 8 + 4 + 1
+    assert sum(1 for n in lists if n.startswith("neg_")) == 4
+    assert lists.count("k1") == 2, "the rare piece's line is listed twice"
+    assert (tmp_path / "out" / "work" / "negatives").is_dir()
+    assert report.config["negatives"] == 4
+    assert "Negativos: 4" in (tmp_path / "out" / "report.md").read_text("utf-8")
+    # Sabotage of the roadmap: negatives=0 leaves the list as it was.
+    (tmp_path / "b").mkdir()
+    plain = TesseractFineTuner(
+        _real_gt(tmp_path / "b"), tmp_path / "out2", FineTuneConfig(max_iterations=100),
+        tools=_tools(tmp_path / "b", charset_tools=True), runner=FakeTools(),
+    ).run()
+    assert plain.lines_negative == 0
+    assert plain.oversampled == {}
+    assert len((tmp_path / "out2" / "work" / "list.train").read_text("utf-8").split()) == 8
