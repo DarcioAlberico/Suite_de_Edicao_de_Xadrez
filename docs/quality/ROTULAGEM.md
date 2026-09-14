@@ -479,10 +479,14 @@ caissa-exportar Livro.pdf --saida "Capítulo 3.epub" --paginas "40-, 7" --sem-oc
 Testes: `tests/unit/export/test_book.py` (intervalos, livro completo, faixa, cancelamento,
 CLI; rodam no `.venv`) e `tests/unit/ui/test_exportacao_view.py` (o diálogo e o controlador;
 pulam sem PyQt6 — `$env:PYTHONPATH = ".venv-pack\Lib\site-packages"` empresta o do bundle).
-O tronco ainda não tem o item em *Arquivo* ao lado de *Exportar o livro para PGN…*: o
-`ExportadorDeLivro` tem o mesmo desenho do `Exportador` de lá (`estado`, `controles`,
-`cancelar`) justamente para essa montagem ser quatro linhas quando o catálogo de comandos
-o receber.
+No tronco os mesmos dois itens estão em *Arquivo*, ao lado de *Exportar o livro para PGN…*
+(commit `e98b738`: `exportar_epub`/`exportar_docx` no catálogo e no menu,
+`qt/exportador_de_livro.py` monta o `ExportadorDeLivro` ligado ao rodapé e à tranca da
+janela). Sem a suíte ao alcance — o `.venv` do tronco é Python 3.10 — os itens ficam cinza
+com o motivo na dica (`menu.impedir`); no bundle existem sempre.
+`test_qt_janela.test_exportar_epub_e_docx_so_prometem_o_que_a_suite_entrega` cobre os dois
+caminhos (rodar com o Python da suíte e o PyQt6 do `.venv-pack` no `PYTHONPATH` para o
+caminho com suíte).
 
 ### 7d. O que não é
 
