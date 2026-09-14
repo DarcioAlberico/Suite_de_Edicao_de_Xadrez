@@ -620,7 +620,14 @@ diagramas lidos > 0 com confiança ≤ 0,85; nos livros catalogados, **nada muda
 mesma via). *Sabotagem:* remover `Merida` do catálogo — o DEM tem de cair para
 `VECTOR_INFERRED` e o teste que fixa a via `VECTOR` a 1,0 tem de reprovar.
 
-**Saída.** `OCR_UI_REPORT_C1.md` §10. **Desfazer:** o fallback atrás de opção desligada.
+**Saída.** `OCR_UI_REPORT_C1.md` §9. **Desfazer:** o fallback atrás de opção desligada.
+
+**Executado em 2026-09-14** (§4): população zero no acervo (survey: 0/46 com fonte fora do
+catálogo); tarefa 1 construída e medida pela sabotagem (Merida/SkakNew escondidas: 35/35 e
+114/114 iguais à leitura do produto, ≤ 0,85); tarefas 2 e 3 sem população. Achado: a via
+exata publicava 61/114 posições erradas do Polgar (torres em casa escura omitidas pelo
+extrator, tomadas por vazias) — corrigido: casa ausente ⇒ ≤ 0,60 e `holes`; o classificador
+completa (`fill_holes`, `VECTOR_INFERRED`).
 
 ---
 
@@ -959,6 +966,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 10 | **executado, tarefas 2–3 sem população** — `OCR_UI_REPORT_C1.md` §9 | `detect_unknown_font_lattices` + `inferred_font_finder` (`VECTOR_INFERRED`, ≤ 0,85); survey: 0/46 livros com fonte fora do catálogo, medido pela sabotagem (famílias escondidas): DEM 35/35, Polgar 114/114. **Achado**: a via exata tomava casa ausente por vazia — Polgar 61/114 posições erradas (torres em casa escura omitidas pelo extrator); agora ≤ 0,60 + `holes`, e o `combined_finder` completa com o classificador | construtor |
 | 2026-09-14 | 4b | **executado** — `OCR_UI_REPORT_C1.md` §8 | `TunedTesseractEngine` na âncora dentro do livro registrado: SFC4 `calib` figurinas 193 → 204/204, lances 273 → 281/288, inventados 9 → 5; sabotagem (modelo do SFC4 ancorando um livro de letras): 519 figurinas inventadas; `bench_sol` idêntica (o âncora não entra sem registro) | construtor |
 | 2026-09-14 | 4 | **executado, um portão vermelho** — `OCR_UI_REPORT_C1.md` §7 | negativos com margens de textura + sobreamostragem: `photo` 0 figurinas (antes 57 caracteres de ruído; sabotagem `♖.♖♘♘`), fax inventados 206 → 126 mas **> 76 da base** (✗ registrado); no livro D ≥ A em tudo; modelo sozinho já lia 204/204 desde A (o ♔ 0/13 era da rodada `por`). 360 negativos piorou (146; uma semente por configuração). Modelo D registrado para o SFC4 | construtor |
 | 2026-09-14 | 4b | **inserido** | achado: a fusão perde 11 figurinas e 10 lances que o modelo do livro sozinho lê (204/204 vs 193/204 na `calib`) porque ele nunca ancora; ancorar com ele **dentro do livro registrado** é a alavanca seguinte, com sabotagem de registro cruzado | construtor |

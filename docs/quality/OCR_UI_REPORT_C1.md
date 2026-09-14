@@ -742,3 +742,72 @@ set PYTHONPATH=.venv-pack\Lib\site-packages && .venv\Scripts\python.exe -m pytes
 livro e só no idioma que tem modelo — a pasta global e `book_model_anchors=False` mantêm o
 candidato; `TunedTesseractEngine` mapeia `por+eng → por+caissa_eng` e devolve o idioma pedido
 com `meta["model"]`), o teste do importador atualizado (`book_model_anchors` ligado).
+
+---
+
+## §9 — Passo 10: fallback para glifo vetorial fora do catálogo — e o buraco que ele achou
+
+### 9.0 Em uma tela
+
+- **População zero.** `vector_survey.py --sample 24` (46 livros): **nenhum** livro do acervo
+  tem fonte de xadrez fora do catálogo (`unknown_chess_fonts` vazio em 46/46); os dois
+  livros "fonte" são o DEM (Chess Merida, verificada) e o Polgar 5334 (SkakNew, `inferred`).
+  As fontes de figurina inline (SemFig, SkakNew-Figurine) também estão catalogadas. A tarefa 2
+  (figurina inline em fonte desconhecida) fica **sem população** e não foi construída; a
+  tarefa 3 (segundo livro SkakNew) idem — o survey diz que não há.
+- **Construído (tarefa 1)**: `detect_unknown_font_lattices` (`vision/detect/vector_detect.py`,
+  sem torch): o reticulado 8×8 de glifos de uma fonte de xadrez que o catálogo não conhece —
+  a geometria é exata mesmo quando o mapa glifo → peça não é; devolve o retângulo das casas
+  (união das caixas dos 64 glifos). `inferred_font_finder` (`ingest/pdf/finders.py`): renderiza
+  esse retângulo a 300 DPI e o classificador de casas lê; `RecognitionPath.VECTOR_INFERRED`,
+  confiança **≤ 0,85**, `method` com o nome da fonte; entra no `combined_finder` entre a via
+  vetorial e a raster. Sem catálogo escondido, não faz nada (0 inferidos nos dois livros).
+- **Medido pela sabotagem do roadmap** (Merida e SkakNew escondidas do catálogo, 24 páginas
+  por livro): DEM 35/35 reticulados lidos, **35/35** iguais à leitura exata; Polgar 114/114
+  lidos, **114/114** iguais à leitura do produto; confiança máx. 0,85. Sabotagem da bancada
+  (`--sabotar cobertura`, leitura espelhada) reprova.
+- **O achado**: na primeira medição o Polgar concordava em **46 %** — e o erro era da via
+  **exata**. O extrator omite todo glifo de **torre em casa escura** da SkakNew (sem mapa
+  Unicode); a via exata tomava a casa ausente por vazia ("provavelmente vazia no xadrezado")
+  e publicava a posição errada a 0,79–0,82: **61 de 114 diagramas** do Polgar. Correção:
+  uma casa ausente deixa de ser exata (`HOLE_CONFIDENCE_CAP` 0,60, detalhe no laudo,
+  `DiagramHit.holes`, não confiável para o serviço de OCR); o `combined_finder` completa as
+  casas ausentes com o classificador **só onde a fonte se calou** (`fill_holes`: toda casa que a
+  fonte deu tem de coincidir) e marca `VECTOR_INFERRED`. Polgar: 61/61 completados.
+
+```
+.venv\Scripts\python.exe benchmarks\vector_survey.py --sample 24            # 46 livros, unknown_chess_fonts = 0
+.venv\Scripts\python.exe benchmarks\vector_inferred_gate.py --sample 24    # PASSOU (vector_inferred_20260914_211441.json)
+.venv\Scripts\python.exe benchmarks\vector_inferred_gate.py --sample 24 --sabotar cobertura   # REPROVOU
+#   DEM: exatos 35, com casas ausentes 0 | família oculta: 35 lidos, 35 concordam, conf. máx 0,85
+#   Polgar: exatos 114, com casas ausentes 61 → 61 completados | família oculta: 114 lidos, 114 concordam
+```
+
+### 9.1 O que a medição disse, com as ressalvas
+
+- A concordância de 100 % nas 88 tábuas **sem** casas ausentes (35 DEM + 53 Polgar) é
+  classificador contra fonte, independentes: é a medida do fallback. Nas 61 com casas
+  ausentes, as casas presentes são verificadas pela fonte e as ausentes são classificador
+  contra classificador (mesmo modelo, mesmo recorte) — ali a concordância não é prova; a prova
+  é a inspeção (Polgar p. 91: a torre em a5 está impressa e a via exata a omitia) e o fato de
+  as 61 diferenças serem **todas** torres em casa escura.
+- Onde o produto usa só a via vetorial (a exportação da aba, sem torch), o Polgar sai agora
+  com as 61 posições a 0,60 e o aviso — incompleto e dito; com o classificador
+  (`combined_finder`, `bench_ingest --raster`) sai completo a ≤ 0,85. A leitura exata dos
+  livros sem casas ausentes (DEM 23/24 páginas exatas) não muda: mesma FEN, mesma via
+  (`inferidos com catálogo = 0`).
+- O que este passo não fez: figurina inline em fonte desconhecida (sem população) e subir a
+  SkakNew a `verified` (sem segundo livro; e o que faltava nela não era o mapa, era o extrator).
+
+### 9.2 Testes
+
+`tests/unit/detect/test_inferred_font.py` (6): o reticulado com a família escondida é o
+retângulo das casas (Merida sintética); o `inferred_font_finder` lê pelo classificador com a
+confiança limitada, não toca livro catalogado e sem pesos localiza sem ler; a ordem do
+`combined_finder`; `fill_holes` só onde a fonte se calou, com o tabuleiro virado; uma casa
+ausente derruba a confiança e sai em `holes`. `test_importer.py` intacto (`trusted` exige
+via `VECTOR` **sem** buracos).
+
+```
+.venv\Scripts\python.exe -m pytest tests\unit\detect tests\unit\ingest -q     # 235 passed
+```

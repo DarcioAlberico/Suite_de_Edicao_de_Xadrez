@@ -42,8 +42,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Final, Iterable, Iterator, Literal, Mapping, Sequence, cast
+from typing import Any, Final, Literal, cast
 
 try:  # PyMuPDF renamed itself; both spellings are in the wild.
     import pymupdf  # type: ignore[import-untyped]
@@ -54,8 +55,8 @@ from .font_catalog import (
     ChessFontFamily,
     GlyphRole,
     family_by_key,
-    lookup_family,
     looks_like_chess_font,
+    lookup_family,
     normalize_char,
 )
 from .orientation import (
@@ -71,15 +72,15 @@ from .piece_shapes import mask_from_samples, match_mask
 __all__ = [
     "DetectionMethod",
     "Evidence",
-    "VectorBoard",
     "SignatureIndex",
-    "detect_vector_boards",
-    "detect_glyph_boards",
+    "VectorBoard",
     "detect_drawing_boards",
-    "learn_from_board",
-    "write_space_cropbox",
-    "to_write_space",
+    "detect_glyph_boards",
+    "detect_vector_boards",
     "from_write_space",
+    "learn_from_board",
+    "to_write_space",
+    "write_space_cropbox",
 ]
 
 Rect = tuple[float, float, float, float]
@@ -116,6 +117,14 @@ _UNRESOLVED_ROLE: Final = GlyphRole("empty")
 #: The checkerboard test needs this many cells whose square colour was actually
 #: read before it is allowed to conclude anything.
 MIN_COLOURED_CELLS: Final = 16
+
+#: OCR_UI_ROADMAP passo 10: a board whose text layer lacked cells is not an
+#: exact read.  The old rule took a missing cell for an empty square; on the
+#: Polgar (SkakNew) the extractor drops every rook on a dark square, and 61
+#: of 114 boards came out wrong at 0,79–0,82.  With holes the read is capped
+#: here, the holes are reported, and the combined finder asks the square
+#: classifier to fill them (``caissa.ingest.pdf.finders.fill_holes``).
+HOLE_CONFIDENCE_CAP: Final = 0.60
 
 
 # --------------------------------------------------------------------------
@@ -193,6 +202,10 @@ class Evidence:
     inferred_cells: int = 0
     #: Cells whose printed square colour disagreed with the checkerboard.
     checkerboard_faults: int = 0
+    #: The 8x8 area itself (``page.rect`` space), the union of the cells' own
+    #: boxes — ``rect_pdf`` is the origin-based rectangle kept for the crop
+    #: and sits half a cell to the left of it.  What a classifier must see.
+    cells_rect_pdf: tuple[float, float, float, float] | None = None
     #: For the drawing path: signature -> piece letter, as decided.
     clusters: Mapping[str, str] = field(default_factory=dict)
     #: For the drawing path: ``"row,col"`` -> signature of the drawing there.
@@ -212,6 +225,7 @@ class Evidence:
             "raw_rows": list(self.raw_rows),
             "inferred_cells": self.inferred_cells,
             "checkerboard_faults": self.checkerboard_faults,
+            "cells_rect_pdf": list(self.cells_rect_pdf) if self.cells_rect_pdf else None,
             "clusters": dict(self.clusters),
             "cell_signatures": dict(self.cell_signatures),
             "details": list(self.details),
@@ -610,7 +624,7 @@ def detect_glyph_boards(
             for _ in range(8):  # a page rarely holds more than a handful of boards
                 rows = _group_rows(remaining, tol=max(0.4, size * 0.4))
                 found: _Lattice | None = None
-                for start in range(0, max(0, len(rows) - 7)):
+                for start in range(max(0, len(rows) - 7)):
                     lattice = _extract_lattice(rows[start : start + 8])
                     if lattice is not None:
                         found = lattice
@@ -674,8 +688,13 @@ def _board_from_lattice(
         confidence -= 0.15
         details.append(f"família {family.display_name} catalogada como '{family.confidence}'")
     if lattice.inferred:
-        confidence -= min(0.35, 0.03 * lattice.inferred)
-        details.append(f"{lattice.inferred} casa(s) ausentes na camada de texto, deduzidas do xadrezado")
+        confidence = min(confidence - 0.03 * lattice.inferred, HOLE_CONFIDENCE_CAP)
+        details.append(
+            f"{lattice.inferred} casa(s) ausentes na camada de texto, tomadas como vazias: a "
+            f"posição pode estar incompleta (o extrator omite glifos sem mapa Unicode — na "
+            f"SkakNew, toda torre em casa escura); o classificador de casas as completa quando "
+            f"está disponível"
+        )
     if faults:
         confidence -= 0.10 * faults
         details.append(f"{faults} casa(s) com cor discordante do xadrezado")
@@ -696,6 +715,10 @@ def _board_from_lattice(
         f"({font_name or 'sem nome'}, {size:.1f} pt): 8x8 glifos com passo de "
         f"{lattice.pitch_x:.2f} pt e xadrezado consistente."
     )
+    present = [g for row in lattice.cells for g in row if g is not None]
+    cells_rect = from_write_space(page, (
+        min(g.bbox[0] for g in present), min(g.bbox[1] for g in present),
+        max(g.bbox[2] for g in present), max(g.bbox[3] for g in present)))
     evidence = Evidence(
         summary=summary,
         method="font-glyph-lattice",
@@ -707,6 +730,7 @@ def _board_from_lattice(
         raw_rows=_raw_rows(lattice),
         inferred_cells=lattice.inferred,
         checkerboard_faults=faults,
+        cells_rect_pdf=tuple(float(v) for v in cells_rect),
         details=tuple(details),
     )
     return VectorBoard(
@@ -767,7 +791,7 @@ class SignatureIndex:
         return json.dumps(self._table, sort_keys=True)
 
     @classmethod
-    def from_json(cls, text: str) -> "SignatureIndex":
+    def from_json(cls, text: str) -> SignatureIndex:
         data = json.loads(text)
         if not isinstance(data, dict):
             raise ValueError("índice de assinaturas inválido")
@@ -1151,3 +1175,127 @@ def learn_from_board(index: SignatureIndex, board: VectorBoard, piece_placement:
             index.learn(signature, truth)
             learned += 1
     return learned
+
+
+# --------------------------------------------------------------------------
+# Unknown chess fonts: the lattice without the reading (OCR_UI_ROADMAP passo 10)
+# --------------------------------------------------------------------------
+#
+# A diagram set in a chess font the catalog does not know still *is* an 8x8
+# lattice of glyphs of one font at one size: the geometry is exact even when
+# the glyph→piece map is not.  This finds that lattice and hands back the
+# rectangle, so the board can be rendered and read by the square classifier
+# (``caissa.ingest.pdf.finders.inferred_font_finder``), with provenance
+# ``VECTOR_INFERRED`` and a confidence ceiling — the read is inferred from
+# pixels, not decoded from the font.  Nothing is inferred here: no piece, no
+# colour, no orientation.
+
+
+@dataclass(frozen=True)
+class UnknownFontLattice:
+    """An 8x8 grid of glyphs of a chess font outside the catalog."""
+
+    rect_pdf: Rect
+    rect_write: Rect
+    page: int
+    font_name: str
+    font_size: float
+    cell_pitch_pt: float
+    #: Cells the text layer did not carry (the lattice is still whole).
+    missing_cells: int
+    #: The raw characters, row by row, for whoever wants to learn the font.
+    raw_rows: tuple[str, ...]
+
+
+def _collect_unknown_glyphs(page: Any, lookup: Any = lookup_family) -> list[_Glyph]:
+    """Every glyph of a span in a chess-looking font that ``lookup`` does not know.
+
+    ``lookup`` is swapped by the sabotage that hides a catalogued family.
+    """
+    glyphs: list[_Glyph] = []
+    for _line, span in _iter_spans(page):
+        font_name = cast(str, span.get("font", ""))
+        if not font_name or not looks_like_chess_font(font_name) or lookup(font_name) is not None:
+            continue
+        size = float(span.get("size", 0.0) or 0.0)
+        for char in span.get("chars", ()):
+            # A space is kept: in Merida and its kin the empty light square
+            # *is* the space glyph, and a lattice with holes is no lattice.
+            text = cast(str, char.get("c", ""))
+            origin = char.get("origin", (0.0, 0.0))
+            bbox = char.get("bbox", (0.0, 0.0, 0.0, 0.0))
+            glyphs.append(
+                _Glyph(
+                    char=text,
+                    role=_UNRESOLVED_ROLE,
+                    ox=float(origin[0]),
+                    oy=float(origin[1]),
+                    bbox=(float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])),
+                    size=size,
+                    font=font_name,
+                    family_key="unknown",
+                )
+            )
+    return glyphs
+
+
+def detect_unknown_font_lattices(
+    page: Any,
+    *,
+    lookup: Any = lookup_family,
+    min_side_pt: float = MIN_BOARD_SIDE_PT,
+) -> list[UnknownFontLattice]:
+    """8x8 lattices of glyphs of chess fonts the catalog does not know.
+
+    Same lattice fit as :func:`detect_glyph_boards`, no checkerboard test
+    (an unknown font tells nothing about square colours) — so a paragraph of
+    figurine notation in an unknown font could in principle fit; it does not
+    in practice, because a paragraph's glyphs are not eight equally spaced
+    rows of eight equally spaced columns.
+    """
+    glyphs = _collect_unknown_glyphs(page, lookup)
+    boards: list[UnknownFontLattice] = []
+    for (_family_key, font_name, size), bucket in _bucket(glyphs).items():
+        tol = max(0.2, size * 0.2)
+        cells = _merge_overprints(bucket, tol)
+        for cluster in _split_by_x(cells, gap=max(size, 1.0) * _X_CLUSTER_GAP_CELLS):
+            remaining = list(cluster)
+            for _ in range(8):
+                rows = _group_rows(remaining, tol=max(0.4, size * 0.4))
+                found: _Lattice | None = None
+                for start in range(max(0, len(rows) - 7)):
+                    lattice = _extract_lattice(rows[start : start + 8])
+                    if lattice is not None:
+                        found = lattice
+                        break
+                if found is None:
+                    break
+                used = {id(g) for row in found.cells for g in row if g is not None}
+                remaining = [g for g in remaining if id(g) not in used]
+                # The board is the union of the cells' own boxes — what the
+                # classifier needs is the 8x8 area exactly, not the
+                # origin-based rectangle the exact path keeps for its crop
+                # (half a cell to the left, measured on the DEM).
+                present = [g for row in found.cells for g in row if g is not None]
+                write_rect: Rect = (
+                    min(g.bbox[0] for g in present),
+                    min(g.bbox[1] for g in present),
+                    max(g.bbox[2] for g in present),
+                    max(g.bbox[3] for g in present),
+                )
+                if write_rect[2] - write_rect[0] < min_side_pt:
+                    continue
+                boards.append(
+                    UnknownFontLattice(
+                        rect_pdf=from_write_space(page, write_rect),
+                        rect_write=write_rect,
+                        page=int(page.number),
+                        font_name=font_name,
+                        font_size=size,
+                        cell_pitch_pt=found.pitch_x,
+                        missing_cells=found.inferred,
+                        raw_rows=_raw_rows(found),
+                    )
+                )
+    boards.sort(key=lambda b: (b.rect_pdf[1], b.rect_pdf[0]))
+    return boards

@@ -60,6 +60,11 @@ class RecognitionPath(StrEnum):
     """Which detection route produced a reading (SPEC 6.1, ADR-0006)."""
 
     VECTOR = "vector"
+    #: OCR_UI_ROADMAP passo 10: an 8x8 lattice of glyphs in a chess font the
+    #: catalog does not know — the rectangle is exact (vector), the position
+    #: was read from the rendered cells by the square classifier (inferred),
+    #: so the confidence is capped below an exact vector read.
+    VECTOR_INFERRED = "vector-inferred"
     GEOMETRIC = "geometric"
     NEURAL = "neural"
     HYBRID = "hybrid"

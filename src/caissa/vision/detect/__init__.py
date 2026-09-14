@@ -54,9 +54,11 @@ from .vector_detect import (
     DetectionMethod,
     Evidence,
     SignatureIndex,
+    UnknownFontLattice,
     VectorBoard,
     detect_drawing_boards,
     detect_glyph_boards,
+    detect_unknown_font_lattices,
     detect_vector_boards,
     from_write_space,
     learn_from_board,
@@ -98,6 +100,8 @@ __all__ = [
     # the two paths on their own
     "detect_glyph_boards",
     "detect_drawing_boards",
+    "detect_unknown_font_lattices",
+    "UnknownFontLattice",
     "SignatureIndex",
     "learn_from_board",
     # font catalog

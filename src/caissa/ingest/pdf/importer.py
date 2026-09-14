@@ -177,6 +177,14 @@ class DiagramHit:
     path: RecognitionPath = RecognitionPath.VECTOR
     method: str = ""
     orientation_white: bool = True
+    #: OCR_UI_ROADMAP passo 10: an exact vector read whose text layer lacked
+    #: some cells — ``(row, col)`` in lattice order, top row first — and the
+    #: 8x8 area to render if a classifier is to fill them.  The exact path
+    #: assumes a missing cell empty; on the Polgar (SkakNew) that assumption
+    #: was wrong in 61 of 114 boards (every dark-square rook is dropped by
+    #: the extractor), so the combined finder asks the classifier.
+    holes: tuple[tuple[int, int], ...] = ()
+    cells_box: RectT | None = None
 
 
 #: ``(raw page, frame, page text) -> hits``.  Called with the document lock held.
@@ -198,6 +206,14 @@ def vector_diagram_finder(page: Any, frame: PageFrame, _text: PageText) -> list[
         return hits
     for board in boards:
         x0, y0, x1, y1 = board.rect_pdf
+        evidence = board.evidence
+        holes = tuple(
+            (r, c)
+            for r, row in enumerate(getattr(evidence, "raw_rows", ()) or ())
+            for c, ch in enumerate(row)
+            if ch == "~"
+        )
+        cells = getattr(evidence, "cells_rect_pdf", None)
         hits.append(
             DiagramHit(
                 box=(float(x0), float(y0), float(x1), float(y1)),
@@ -206,6 +222,8 @@ def vector_diagram_finder(page: Any, frame: PageFrame, _text: PageText) -> list[
                 path=RecognitionPath.VECTOR,
                 method=str(board.method),
                 orientation_white=bool(getattr(board.orientation, "white_at_bottom", True)),
+                holes=holes,
+                cells_box=tuple(float(v) for v in cells) if cells else None,
             )
         )
     return hits
@@ -487,6 +505,13 @@ class PdfImporter:
             1
             for e in entries
             if isinstance(e, _DiagramEntry) and e.context.side_to_move is not None
+        )
+        # OCR_UI_ROADMAP passo 10: boards in a chess font outside the catalog,
+        # read from pixels with a capped confidence — counted apart so the
+        # report says how many positions are inferred rather than decoded.
+        counters["diagrams_vector_inferred"] = sum(
+            1 for e in entries
+            if isinstance(e, _DiagramEntry) and e.hit.path is RecognitionPath.VECTOR_INFERRED
         )
         counters["figures"] = sum(1 for e in entries if isinstance(e, _FigureEntry))
         counters["scanned_pages"] = sum(1 for e in entries if isinstance(e, _ScanEntry))
@@ -846,7 +871,8 @@ class PdfImporter:
         refs = []
         for hit, context in zip(hits, contexts, strict=False):
             trusted = hit.fen is not None and (
-                hit.path is RecognitionPath.VECTOR or hit.confidence >= _CONFIDENT)
+                (hit.path is RecognitionPath.VECTOR and not hit.holes)
+                or hit.confidence >= _CONFIDENT)
             side = None
             if context is not None and context.side_to_move is not None:
                 side = "w" if context.side_to_move else "b"
@@ -856,7 +882,8 @@ class PdfImporter:
 
     def _adapt_language(self, result: PageText) -> None:
         """A scanned book has no layer to survey: learn the language from the
-        first pages the OCR reads and hand it to the service for the rest."""
+        first pages the OCR reads and hand it to the service for the rest.
+        """
         if self.options.lang or self.report.prose_lang:
             return
         from caissa.ocr.language import detect_prose_language
