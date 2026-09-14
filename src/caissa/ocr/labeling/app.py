@@ -1359,7 +1359,7 @@ class TrainingDialog:
     that book and on no other (ROTULAGEM.md §4c: a fine-tune is per book).
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0915 - one form, laid out row by row
         self,
         parent: tk.Tk,
         project: LabelProject,

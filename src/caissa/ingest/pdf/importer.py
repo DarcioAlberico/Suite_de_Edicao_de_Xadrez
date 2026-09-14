@@ -235,6 +235,12 @@ class PdfImportOptions:
     #: :class:`~caissa.ingest.pdf.ocr_service.OcrService` lazily, on the
     #: first page that needs it.
     ocr: OcrProvider | None = None
+    #: Use the Tesseract model fine-tuned for *this* book, when the labelling
+    #: window trained and registered one for the PDF's content hash
+    #: (:mod:`caissa.ocr.training.books`).  The model is a second opinion
+    #: on notation regions, never the anchor; the report notes which one
+    #: was used.  Off, or with no entry, the default service reads as always.
+    book_models: bool = True
     #: Keep an image of every OCR region that was abstained, placed where the
     #: region was, so the reader sees what the text could not say.
     keep_abstained_regions: bool = True
@@ -706,7 +712,7 @@ class PdfImporter:
         if self._ocr_service is None:
             from caissa.ingest.pdf.ocr_service import OcrService
 
-            service = OcrService(lang=self._lang)
+            service = OcrService(lang=self._lang, config=self._book_ocr_config())
             if not service.available:
                 self._ocr_unavailable = True
                 self.report.notes.append(
@@ -715,6 +721,27 @@ class PdfImporter:
                 return None
             self._ocr_service = service
         return self._ocr_service
+
+    def _book_ocr_config(self) -> Any:
+        """The service config, pointed at this book's fine-tune when it has one."""
+        from caissa.ingest.pdf.ocr_service import OcrServiceConfig
+
+        config = OcrServiceConfig()
+        if not self.options.book_models or self.document.path is None:
+            return config
+        try:
+            from caissa.ocr.training.books import BookRegistry
+
+            registry = BookRegistry.default()
+            # Hashing the file costs ~0,3 s per 100 MB; skip it with no entries.
+            book = registry.lookup(self.document.content_hash) if registry.books else None
+        except Exception as exc:  # noqa: BLE001 - a broken registry must not stop an import
+            self.report.notes.append(f"registro de modelos por livro ilegível: {exc}")
+            return config
+        if book is not None:
+            config.figurine_tessdata = book.tessdata_dir
+            self.report.notes.append(book.describe())
+        return config
 
     def _try_ocr(
         self, page: Any, frame: PageFrame, verdict: TextLayerVerdict | None

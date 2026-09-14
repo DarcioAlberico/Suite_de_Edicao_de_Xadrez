@@ -300,6 +300,12 @@ class FineTuneConfig:
     #: Characters the base cannot encode extend its alphabet (figurines);
     #: off, lines carrying them are excluded and listed.
     extend_charset: bool = True
+    #: Train on these books only (``index.jsonl`` ``document`` values).  A
+    #: fine-tune is per book (ROTULAGEM.md §4c: the model that reads one
+    #: book's figurines invents them on another's noise), so the window
+    #: trains a book on its own lines and registers the result for that
+    #: PDF (:mod:`.books`).  Empty trains on everything exported.
+    documents: tuple[str, ...] = ()
     workers: int = max(1, min(4, (os.cpu_count() or 2) - 1))
     copy_langs: tuple[str, ...] = COPY_LANGS
     train_timeout_s: float = 6 * 3600.0
@@ -320,6 +326,7 @@ class FineTuneConfig:
             "eval_share": self.eval_share,
             "workers": self.workers,
             "extend_charset": self.extend_charset,
+            "documents": list(self.documents),
         }
 
 
@@ -413,7 +420,11 @@ class FineTuneReport:
 # --------------------------------------------------------------------------- #
 
 
-def _index_rows(gt_dir: Path) -> list[dict[str, Any]]:
+def _index_rows(gt_dir: Path, documents: Sequence[str] = ()) -> list[dict[str, Any]]:
+    """The usable lines of the ground-truth directory.
+
+    Restricted to ``documents`` (``index.jsonl`` ``document`` values) when given.
+    """
     index = gt_dir / "index.jsonl"
     rows: list[dict[str, Any]] = []
     if index.is_file():
@@ -423,6 +434,9 @@ def _index_rows(gt_dir: Path) -> list[dict[str, Any]]:
         for gt in sorted(gt_dir.glob("*.gt.txt")):
             name = gt.name[: -len(".gt.txt")]
             rows.append({"name": name, "partition": "dev"})
+    if documents:
+        wanted = set(documents)
+        rows = [r for r in rows if str(r.get("document", "")) in wanted]
     return [
         r
         for r in rows
@@ -452,10 +466,11 @@ def preflight(
     """
     gt_dir = Path(gt_dir)
     tools = tools or find_training_tools()
-    rows = _index_rows(gt_dir)
+    rows = _index_rows(gt_dir, config.documents)
     base = config.base_model or Path(tools.tessdata_dir) / f"{config.base_lang}.traineddata"
     out: dict[str, Any] = {
         "lines": len(rows),
+        "documents": list(config.documents),
         "by_partition": {},
         "base_model": str(base),
         "base_exists": base.is_file(),
@@ -682,7 +697,9 @@ class TesseractFineTuner:
 
     def select_lines(self, unicharset: Path) -> tuple[list[str], list[str]]:
         """Names to train on and to evaluate on, after the unicharset check."""
-        rows = _index_rows(self.gt_dir)
+        rows = _index_rows(self.gt_dir, self.config.documents)
+        if self.config.documents:
+            self.log(f"linhas do(s) livro(s) {', '.join(self.config.documents)}: {len(rows)}")
         self.report.lines_total = len(rows)
         charset = read_unicharset(unicharset)
         counts: dict[str, int] = {}

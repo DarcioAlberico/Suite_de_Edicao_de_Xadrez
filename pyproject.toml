@@ -140,6 +140,12 @@ all = [
     "caissa[dev]",
 ]
 
+[project.scripts]
+# Ferramentas de bancada do OCR (Tk, sem Qt): rotular um PDF, treinar o modelo
+# do livro e medir o ganho -- docs/quality/ROTULAGEM.md.
+caissa-rotular = "caissa.ocr.labeling.app:main"
+caissa-treinar = "caissa.ocr.training.cli:main"
+
 [project.urls]
 Documentation = "https://github.com/caissa-studio/caissa/tree/main/docs"
 

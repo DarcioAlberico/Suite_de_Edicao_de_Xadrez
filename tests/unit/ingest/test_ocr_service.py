@@ -290,3 +290,52 @@ def test_review_regions_are_listed_with_their_rectangles(pdf_file, monkeypatch):
     assert paragraph.provenance is not None
     assert paragraph.provenance.band in (ConfidenceBand.DOUBTFUL, ConfidenceBand.UNRELIABLE)
     assert "revisão" in (paragraph.provenance.note or "")
+
+
+# --------------------------------------------------------------------------- #
+# The book's own model (caissa.ocr.training.books)
+# --------------------------------------------------------------------------- #
+
+
+def test_the_importer_points_the_service_at_the_books_model(pdf_file, monkeypatch, tmp_path):
+    from caissa.ingest.pdf.document import open_pdf
+    from caissa.ingest.pdf.importer import PdfImporter
+    from caissa.ocr.training import BookRegistry, FineTuneReport, register_training
+
+    path = pdf_file([PageSpec()])
+    root = tmp_path / "tessdata"
+    monkeypatch.setenv("CAISSA_FIGURINE_TESSDATA", str(root))
+    with open_pdf(path) as document:
+        importer = PdfImporter(document, PdfImportOptions(lang="eng"))
+        assert importer._book_ocr_config().figurine_tessdata is None
+        assert importer.report.notes == [], "an unregistered book gets no note"
+
+    out = root / "livros" / "livro"
+    out.mkdir(parents=True)
+    (out / "caissa_eng.traineddata").write_bytes(b"model")
+    register_training(
+        BookRegistry.default(),
+        path,
+        "livro",
+        FineTuneReport(model_name="caissa_eng", out_dir=out, model_path=str(out / "caissa_eng.traineddata"),
+                       finished_at="2026-09-14T00:00:00+00:00", lines_train=10, status="trained"),
+    )
+    with open_pdf(path) as document:
+        importer = PdfImporter(document, PdfImportOptions(lang="eng"))
+        config = importer._book_ocr_config()
+        assert config.figurine_tessdata == str(out.resolve())
+        assert config.figurine_candidates, "still a secondary candidate, never the anchor"
+        assert importer.report.notes == [
+            "modelo ajustado para este livro: caissa_eng · treinado em 2026-09-14 · 10 linhas de treino"
+        ]
+        # The service built from it reads the book's directory.
+        service = OcrService(lang="eng", config=config)
+        assert service._figurine_directory() == out.resolve()
+        # Switched off, the default service is used and nothing is noted.
+        importer = PdfImporter(document, PdfImportOptions(lang="eng", book_models=False))
+        assert importer._book_ocr_config().figurine_tessdata is None
+        assert importer.report.notes == []
+    # Another book with the same name is not the same book.
+    other = pdf_file([PageSpec(), PageSpec()], name="livro.pdf")
+    with open_pdf(other) as document:
+        assert PdfImporter(document)._book_ocr_config().figurine_tessdata is None
