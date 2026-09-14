@@ -303,3 +303,47 @@ def test_a_page_where_every_region_failed_in_the_engine_says_so():
     fault = [n for n in recognition.notes if "falharam" in n]
     assert fault and "Error opening data file" in fault[0]
     assert "falharam" in " ".join(recognition.trace()["notes"])
+
+
+def test_fine_tuned_figurine_model_is_a_secondary_candidate_too():
+    text = "36... Hea! 37 Exd5 Hb6 38 2g5 White has excellent prospects"
+    answers = {"36...": "36...", "Hea!": "♖e8!", "37": "37", "Exd5": "♖xd5", "Hb6": "♖b6",
+               "38": "38", "2g5": "♗g5", "White": "Whlte", "has": "has",
+               "excellent": "excellent", "prospects": "prospects"}
+
+    class FakeFigurineModel(MockRaster):
+        name = "tesseract"      # a real one is a Tesseract over models/tessdata
+        langs_seen: list[str] = []
+
+        def recognize(self, image, *, lang: str, psm_hint: RegionKind) -> OcrResult:
+            self.langs_seen.append(lang)
+            return MockRaster(" ".join(answers.values()), 0.97).recognize(
+                image, lang=lang, psm_hint=psm_hint)
+
+    model = FakeFigurineModel("unused")
+    service = OcrService([MockRaster(text=text, confidence=0.75)],
+                         OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                                          glyph_candidates=False),
+                         lang="eng", figurine_engine=model)
+    service._figurine_dir = None   # injected engine: the language map is bypassed below
+    service._figurine_lang = lambda lang: "caissa_eng"  # type: ignore[method-assign]
+    recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    region = recognition.regions[0]
+    assert model.langs_seen == ["caissa_eng"]
+    assert region.text == "36... ♖e8! 37 ♖xd5 ♖b6 38 ♗g5 White has excellent prospects"
+    assert region.engine == "mock_raster", "the fine-tuned model never anchors"
+    assert [c.variant for c in region.candidates] == ["original", "figurine"]
+    assert region.candidates[1].engine == "tesseract_figurine"
+    assert region.candidates[1].secondary
+
+
+def test_no_figurine_model_directory_means_no_candidate(tmp_path, monkeypatch):
+    monkeypatch.delenv("CAISSA_FIGURINE_TESSDATA", raising=False)
+    service = OcrService([MockRaster("36... Hea! 37 Exd5 Hb6 38 2g5", 0.75)],
+                         OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                                          glyph_candidates=False,
+                                          figurine_tessdata=str(tmp_path)), lang="eng")
+    # tmp_path has no caissa_*.traineddata and the repo default is only used when it has one;
+    # whatever this machine holds, an empty explicit directory must not raise.
+    recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    assert recognition.regions

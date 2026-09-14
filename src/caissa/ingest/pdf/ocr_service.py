@@ -37,9 +37,11 @@ provider so the importer keeps the page image (``keep_scanned_pages``).
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -68,6 +70,8 @@ __all__ = [
 LOGGER = logging.getLogger("caissa.ingest.pdf.ocr_service")
 
 _DECISION_RANK = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 0}
+#: Engine name the fine-tuned figurine model's readings carry in the fusion.
+FIGURINE_ENGINE = "tesseract_figurine"
 
 
 # --------------------------------------------------------------------------- #
@@ -107,6 +111,18 @@ class OcrServiceConfig:
     #: (``♖e8!``) where a line engine returns Latin look-alikes (``Hea!``),
     #: and the fusion swaps only the tokens that were not words or moves.
     glyph_candidates: bool = True
+    #: A Tesseract model fine-tuned on labelled figurine pages
+    #: (``tools/treinar_tesseract.py``: ``caissa_<lang>.traineddata``) as a
+    #: second opinion, under the same rules as the glyph reader — never the
+    #: anchor, only the look-alike → figurine swap.  Measured on its own the
+    #: model invents moves on noise (ROTULAGEM.md §4c); as a secondary
+    #: candidate it cannot, because the fusion never inserts a token.
+    figurine_candidates: bool = True
+    #: Directory of ``caissa_<lang>.traineddata`` files.  ``None`` looks at
+    #: ``$CAISSA_FIGURINE_TESSDATA`` and then ``<repo>/models/tessdata``.
+    figurine_tessdata: str | None = None
+    #: The fine-tuned models are named ``<prefix>_<lang>``.
+    figurine_prefix: str = "caissa"
     page: PageConfig = field(default_factory=PageConfig)
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
@@ -349,7 +365,8 @@ class OcrService:
                  config: OcrServiceConfig | None = None, *,
                  lang: str = "",
                  logger: logging.Logger | None = None,
-                 glyph_engine: OcrEngine | None = None) -> None:
+                 glyph_engine: OcrEngine | None = None,
+                 figurine_engine: OcrEngine | None = None) -> None:
         self.config = config or OcrServiceConfig()
         self.log = logger or LOGGER
         self.lang = lang or self.config.default_lang
@@ -357,6 +374,10 @@ class OcrService:
         #: The figurine reader; built on first use unless injected (tests).
         self._glyph_engine: OcrEngine | None = glyph_engine
         self._glyph_probed = glyph_engine is not None
+        #: The fine-tuned figurine model, likewise.
+        self._figurine_engine: OcrEngine | None = figurine_engine
+        self._figurine_probed = figurine_engine is not None
+        self._figurine_dir: Path | None = None
         self._recognizers: dict[str, PageRecognizer] = {}
         self.last: PageRecognition | None = None
         #: Set by the importer before each page: diagrams and notation locale.
@@ -489,6 +510,8 @@ class OcrService:
                 candidates.extend(self._profile_candidates(recognizer, region_outcome, task))
             if cfg.glyph_candidates:
                 candidates.extend(self._glyph_candidates(recognizer, region_outcome, task))
+            if cfg.figurine_candidates:
+                candidates.extend(self._figurine_candidates(recognizer, region_outcome, task))
             if self._wants_variants(region_outcome):
                 if portfolio is None:
                     portfolio = self._portfolio(image, int(task.dpi), notes)
@@ -663,6 +686,91 @@ class OcrService:
             else:
                 self.log.info("leitor de figurinas indisponível: %s", engine.unavailable_reason())
         return self._glyph_engine
+
+    def figurine_engine(self) -> OcrEngine | None:
+        """A Tesseract over the fine-tuned models' directory, when one exists."""
+        if not self._figurine_probed:
+            self._figurine_probed = True
+            directory = self._figurine_directory()
+            if directory is not None:
+                from caissa.ocr.engines.tesseract import TesseractConfig, TesseractEngine
+
+                engine = TesseractEngine(TesseractConfig(tessdata_dir=str(directory),
+                                                         use_profiles=False))
+                if engine.available():
+                    self._figurine_engine = engine
+                    self._figurine_dir = directory
+                else:
+                    self.log.info("modelo de figurinas indisponível: %s",
+                                  engine.unavailable_reason())
+        return self._figurine_engine
+
+    def _figurine_directory(self) -> Path | None:
+        cfg = self.config
+        candidates = [cfg.figurine_tessdata, os.environ.get("CAISSA_FIGURINE_TESSDATA"),
+                      str(Path(__file__).resolve().parents[4] / "models" / "tessdata")]
+        for candidate in candidates:
+            if candidate and any(Path(candidate).glob(f"{cfg.figurine_prefix}_*.traineddata")):
+                return Path(candidate)
+        return None
+
+    def _figurine_lang(self, lang: str) -> str | None:
+        """``eng`` → ``caissa_eng`` for every part that has a model; ``None``
+        when no part has one (the base languages are not re-run)."""
+        directory = self._figurine_dir
+        if directory is None:
+            return None
+        tuned = [f"{self.config.figurine_prefix}_{part}" for part in lang.split("+")
+                 if part and (directory / f"{self.config.figurine_prefix}_{part}.traineddata").is_file()]
+        return "+".join(tuned) if tuned else None
+
+    def _figurine_candidates(self, recognizer: PageRecognizer, region_outcome: RegionOutcome,
+                             task: PageTask) -> list[Candidate]:
+        """The fine-tuned model's reading of a notation region as a secondary
+        candidate: the fusion takes its figurines, never its inventions."""
+        from dataclasses import replace
+
+        from caissa.ocr.decision import decide
+        from caissa.ocr.lexicon import normalise_lang
+
+        arbitration = region_outcome.outcome
+        result = arbitration.result
+        region = region_outcome.region
+        if result.is_empty or task.image is None:
+            return []
+        if not (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
+                or _carries_notation(result)):
+            return []
+        engine = self.figurine_engine()
+        lang = self._figurine_lang(task.lang) if engine is not None else None
+        if engine is None or lang is None:
+            return []
+        box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        h, w = task.image.shape[:2]
+        x, y, cw, ch = box_px.clipped_to(BBox(0.0, 0.0, float(w), float(h))).to_int_tuple()
+        if cw <= 0 or ch <= 0:
+            return []
+        crop = task.image[y:y + ch, x:x + cw]
+        try:
+            reading = engine.recognize(crop, lang=lang, psm_hint=RegionKind.MOVETEXT)
+        except Exception as exc:  # noqa: BLE001 - an extra candidate must never fail the page
+            self.log.debug("modelo de figurinas falhou: %s", exc)
+            return []
+        if reading.is_empty:
+            return []
+        # Its own engine name, so the fusion can keep it off the anchor seat.
+        reading = replace(_translate(reading, float(x), float(y)), engine=FIGURINE_ENGINE)
+        reading = reading.with_meta(variant="figurine", model=lang)
+        threshold = float(result.meta.get("arbiter_threshold", 0.78))
+        score = recognizer.arbiter.score(
+            reading, level=1, lang=task.lang,
+            task=RegionTask(image=crop, region_kind=RegionKind.MOVETEXT, lang=task.lang,
+                            scale=task.scale)).total
+        decision = decide(reading, score, policy=recognizer.config.arbiter.policy,
+                          image=task.image, langs=normalise_lang(task.lang),
+                          region_kind=RegionKind.MOVETEXT, accept_threshold=threshold)
+        return [Candidate(variant="figurine", engine=FIGURINE_ENGINE, result=reading,
+                          decision=decision, score=score, outcome=arbitration, secondary=True)]
 
     def _glyph_candidates(self, recognizer: PageRecognizer,  # noqa: PLR0911 - each return is a reason not to run
                           region_outcome: RegionOutcome, task: PageTask) -> list[Candidate]:
