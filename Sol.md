@@ -441,7 +441,7 @@ Substituir a decisão binária página inteira por uma máscara de confiança:
 
 ### Entregáveis
 
-- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão. *(modelo `ReviewQueue` pronto; janela do produto depende do shell F9. A bancada Tk de rotulagem — `tools/rotular.py`, `docs/quality/ROTULAGEM.md` — já faz o que os cinco itens abaixo pedem, por linha, e é onde o rótulo humano é produzido; os itens ficam abertos até a janela do shell existir)*
+- [ ] Mostrar apenas regiões `REVIEW` e `ABSTAINED` por padrão. *(modelo `ReviewQueue` pronto; janela do produto depende do shell F9. A bancada Tk de rotulagem — `caissa-rotular`, `docs/quality/ROTULAGEM.md` — já faz o que os cinco itens abaixo pedem, por linha, e é onde o rótulo humano é produzido; desde 2026-09-14 ela treina o modelo do livro e a importação desse PDF o usa (§7); os itens ficam abertos até a janela do shell existir)*
 - [ ] Exibir recorte da imagem e texto lado a lado. *(bancada: sim)*
 - [ ] Destacar palavras de baixa confiança. *(bancada: sim, por limiar)*
 - [ ] Mostrar candidatos alternativos e motor de origem. *(bancada: sim, variante × motor)*

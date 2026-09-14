@@ -20,8 +20,10 @@ Three consumers, three exports (:mod:`.export`):
 
 The blind partition rule of the manifest applies here unchanged: a region
 whose item id hashes to the blind partition never leaves the project as
-training or calibration data.  The window (``tools/rotular.py``) is Tk and lives
-outside this package; everything it needs is here and testable.
+training or calibration data.  The window is :mod:`.app` (``caissa-rotular``,
+Tk, no Qt); everything it needs is in the other modules and testable, and
+:mod:`.measure` scores a book's labelled pages before and after its own
+fine-tune (:mod:`caissa.ocr.training.books`).
 """
 
 from __future__ import annotations

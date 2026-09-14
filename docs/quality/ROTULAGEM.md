@@ -1,8 +1,12 @@
 # Rotulagem humana e treino do Tesseract
 
-> **Data:** 2026-09-13 · Sol §SOL-0 (corpus), §SOL-11 (revisão), §SOL-12 (hashes e versões).
-> Ferramentas: `tools/rotular.py` (janela Tk), `tools/treinar_tesseract.py` (terminal),
-> pacotes `caissa.ocr.labeling` e `caissa.ocr.training`.
+> **Data:** 2026-09-13, modelo por livro em 2026-09-14 · Sol §SOL-0 (corpus), §SOL-11
+> (revisão), §SOL-12 (hashes e versões).
+> Ferramentas do pacote: `caissa-rotular` (janela Tk, `caissa.ocr.labeling.app`) e
+> `caissa-treinar` (terminal, `caissa.ocr.training.cli`); `tools/rotular.py` e
+> `tools/treinar_tesseract.py` são atalhos para rodar sem instalar. Pacotes
+> `caissa.ocr.labeling` e `caissa.ocr.training`. O ciclo por livro — abrir um PDF,
+> rotular, treinar, importar melhor — está no §7.
 
 `SOL_REPORT.md` §2 diz o que falta ao corpus dourado: **verdade escrita por gente sobre
 scans reais**. Os portões de CER e de lances hoje medem tipografia sintética e regiões
@@ -15,7 +19,8 @@ sai dela.
 ## 1. O que a bancada faz
 
 ```
-python tools/rotular.py labeling --pdf "C:\...\PDF\Koblenz - El dominio del arte de la combinacion (1978).pdf" --reviewer ana
+caissa-rotular labeling --pdf "C:\...\PDF\Koblenz - El dominio del arte de la combinacion (1978).pdf" --reviewer ana
+python tools/rotular.py labeling --pdf … --reviewer ana      # sem instalar o pacote
 ```
 
 | Tela | O que é |
@@ -276,7 +281,123 @@ sua vez, alimenta a rota B (§4c).
 
 1. Rotular de verdade: ≥ 20 páginas para a revisão cega de `SOL_REPORT.md` §5, 200 para a
    meta de Sol — trabalho humano, com a bancada pronta.
-2. Baixar um `tessdata_best` e rodar o primeiro ajuste fino de ponta a ponta; medir com
-   `--tessdata-dir` e publicar.
+2. ~~Baixar um `tessdata_best` e rodar o primeiro ajuste fino de ponta a ponta~~ — feito
+   (§4c); o que falta é o modelo aprender a *não* emitir figurina no ruído (amostras
+   negativas no treino).
 3. A janela de revisão do shell F9 continua pendente: esta é uma bancada Tk de rotulagem,
    não a interface do produto.
+
+---
+
+## 7. Modelo por livro — o ciclo do FineReader dentro do caissa
+
+> 2026-09-14. `caissa.ocr.training.books`, `caissa.ocr.labeling.measure`, botões
+> **Treinar…** (com «modelo deste livro») e **Medir no livro…** da janela,
+> `caissa-treinar --document … --book`, `PdfImportOptions.book_models`.
+
+O §4c mediu o que o treino de padrões do FineReader já sabe: **o modelo é do livro**.
+O `caissa_eng` treinado no Dvoretsky lê 94 % dos lances do Dvoretsky e inventa figurinas
+no ruído de qualquer outro scan. Um modelo global «melhor que o `eng`» não sai de 700
+linhas; um leitor de *um* livro sai. Então o ciclo do produto é por PDF:
+
+```
+abrir o PDF na janela ──► rotular algumas páginas ──► Treinar… (modelo deste livro)
+        ▲                                                         │
+        │                                                         ▼
+importar o PDF com o modelo ◄── livros.json registra: hash do PDF → pasta do modelo
+        │
+        ▼
+Medir no livro…: as páginas rotuladas relidas sem e com o modelo, por partição
+```
+
+### 7a. O registro
+
+`models/tessdata/livros.json` liga o **hash de conteúdo** do PDF (o mesmo SHA-256 de
+`PdfDocument.content_hash`) ao diretório do modelo: `models/tessdata/livros/<livro>/`,
+que o treinador deixa utilizável sozinho como `--tessdata-dir` (modelo novo, idiomas base
+copiados, `configs/`, `weights.json`, `report.md`, `log.txt`). Hash, e não caminho: uma
+cópia do livro com outro nome acha o modelo; outro livro com o mesmo nome de arquivo não.
+Um modelo cujo arquivo sumiu deixa de ser oferecido (`BookModel.available`).
+
+O registro entra por dois caminhos, com o mesmo resultado:
+
+| onde | como |
+|---|---|
+| janela | **Treinar…** com «modelo deste livro» (ligado por padrão quando há um PDF aberto): só as linhas do livro treinam (`FineTuneConfig.documents`), a pasta de saída é a do livro, a base sugerida é o idioma do livro (`eng` para um livro `eng`) e o float já baixado em `models/tessdata_best/`; ao terminar, registra e a janela passa a reconhecer com o modelo (F5) |
+| terminal | `caissa-treinar --project labeling --document "<livro>" --book --base-lang eng --base-model models/tessdata_best/eng.traineddata --iterations 12000` |
+
+### 7b. A importação usa o modelo — só nesse livro
+
+`PdfImporter` consulta o registro **antes** de construir o `OcrService` (só quando alguma
+página precisa de OCR; com o registro vazio, nada é lido nem hasheado). Com entrada, o
+serviço nasce com `figurine_tessdata` apontando para a pasta do livro e o relatório da
+importação ganha a nota `modelo ajustado para este livro: caissa_eng · treinado em … · N
+linhas de treino · CER avaliação a → b %`. O papel do modelo não muda: **candidato
+secundário** nas regiões com notação (§4c), a fusão toma dele a troca sósia→figurina e
+nunca o deixa ancorar — as invenções que ele faz sozinho não têm por onde entrar.
+`PdfImportOptions(book_models=False)` desliga.
+
+Um PDF sem entrada continua como antes: o `OcrService` procura `caissa_<idioma>` em
+`models/tessdata/` (ou `$CAISSA_FIGURINE_TESSDATA`). Esse é o `caissa_eng` global do §4c,
+aplicado a todo livro `eng` — a medição do caminho de produto com ele (sem → com, mesmo
+corpus) é da sessão que o treinou; o §7 não muda esse comportamento, só permite que um
+livro tenha o seu.
+
+### 7c. Medir no livro
+
+**Medir no livro…** relê cada página rotulada do livro duas vezes com o serviço do produto
+(`OcrServiceConfig` sem candidato ajustado e com a pasta do livro), casa cada linha
+rotulada (aceita ou editada, fora da partição cega) com a faixa reconhecida por
+sobreposição (IoU ≥ 0,5) e pontua com as métricas do benchmark (`caissa.ocr.metrics`):
+CER ponderado por comprimento, linhas exatas, lances certos e inventados, figurinas
+emitidas. Duas regras: as linhas ficam **por partição** — `dev` treinou o modelo e o
+lisonjeia, `calib` ficou de fora e é o número a citar — e uma linha que a releitura não
+achou conta como **não lida** (custa todos os seus caracteres), não como certa. Sai em
+`<projeto>/medidas/<livro>.md` e `.json`.
+
+**Medido em 2026-09-14** — ciclo completo pelo caminho novo, no Dvoretsky SFC4 (scan, `eng`):
+`caissa-treinar --document … --book --base-lang eng --base-model models/tessdata_best/eng.traineddata
+--iterations 12000`: 719 linhas do livro (458 treino, 261 avaliação; 197 cegas retidas), 963 s,
+alfabeto 109 → 115 (♘×110 ♖×109 ♕×68 ♗×66 ♔×40 –×1), `lstmeval` na avaliação CER 2,14 → 1,36 %,
+WER 5,97 → 2,94 %. Registrado em `livros.json` (hash `698e2153…`, pasta
+`livros/dvoretsky_mark_yusupov_artur_sfc4_secret/`). Depois, **Medir no livro** (13 páginas,
+97 s; «sem modelo» = serviço do produto com o leitor de glifos ligado e sem modelo ajustado):
+
+| linhas | métrica | sem modelo | com modelo do livro |
+|---|---|---:|---:|
+| avaliação (`calib`, fora do treino) (261) | CER ponderado | 0,6 % | 0,6 % |
+|  | linhas exatas | 235 / 261 | **238 / 261** |
+|  | lances certos | 264 / 288 | **271 / 288** |
+|  | lances inventados | 12 | **10** |
+|  | figurinas certas | 184 / 204 | **191 / 204** |
+| treino (`dev`) (458) | CER ponderado | 0,6 % | 0,4 % |
+|  | lances certos | 338 / 365 | 349 / 365 |
+|  | lances inventados | 16 | 10 |
+|  | figurinas certas | 243 / 268 | 251 / 268 |
+| todas (719) | não lidas | 0 | 0 |
+
+Leitura: o ganho do modelo do livro **em cima do leitor de glifos** é pequeno e todo na
+direção certa (nas linhas que ele não viu: +7 lances, −2 inventados, +7 figurinas, CER igual)
+— o grosso das figurinas já vinha do leitor de glifos (§4b); o modelo fecha o que sobra e não
+piora a prosa, que continua a do âncora. Sem o leitor de glifos (não medido aqui) a diferença
+seria a do §4c.
+
+Importação real da p21 do mesmo PDF com a camada de texto forçada à rejeição: nota
+`modelo ajustado para este livro: caissa_eng · treinado em 2026-09-14 · 458 linhas de treino ·
+CER avaliação 2.1 → 1.4 %`, `source=ocr`, lances certos no IR (`14 Bg5!!`, `18 Rhe1`; a camada
+de notação canoniza figurina → letra). Com `book_models=False`, sem nota e sem o candidato.
+
+**Ressalva que vale para este PDF:** o Dvoretsky tem uma camada de texto (OCR de origem) que o
+veredito **mantém** a 0,55 apesar de 43 % dos lances mangled (`'i'd6+`, `l:th`) — nessas páginas
+o importador não chama o OCR, e o modelo do livro só entra quando a camada é rejeitada ou não
+existe. Fazer o OCR concorrer com a camada danificada (F5 §4.1 já baixa a confiança para isso)
+é a próxima peça; não é deste §7.
+
+### 7d. O que não é
+
+- Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,
+  com as regras do §4.
+- Não é a janela de revisão do produto (SOL-11 continua atrelado ao shell F9): é a bancada
+  Tk, agora dentro do pacote e com o registro que a importação lê.
+- Não corrige o defeito medido no §4c (figurinas no ruído): o modelo continua sendo segunda
+  opinião por isso mesmo. Amostras negativas no treino são o próximo passo.
