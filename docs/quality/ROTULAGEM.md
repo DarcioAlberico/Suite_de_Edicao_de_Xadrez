@@ -584,3 +584,49 @@ inalterados (o 0,9952 do EPUB é `document.metadata`, pré-existente). Testes:
   Tk, agora dentro do pacote e com o registro que a importação lê.
 - Não corrige o defeito medido no §4c (figurinas no ruído): o modelo continua sendo segunda
   opinião por isso mesmo. Amostras negativas no treino são o próximo passo.
+
+## 8. «Próxima que vale» — a fila por valor de rótulo (2026-09-14)
+
+Treze páginas rotuladas de duzentas, e a única cronometrada levou 07:58: o rótulo humano é
+o recurso caro deste ciclo, e até aqui o revisor escolhia a página a olho. A aba Rotulagem
+(Qt) e a bancada Tk ganharam o botão **«Próxima que vale»** (`caissa.ocr.labeling.queue`,
+`OCR_UI_ROADMAP.md` passo 5), e o `caissa-rotular --sugerir` imprime a mesma fila sem janela.
+
+**O que a fila conta.** Uma amostra espaçada das páginas do livro (`sample_indices`, a mesma do
+`bench_ingest --sample`; 12 por padrão), fora as já rotuladas, passa pelo serviço do produto — o
+mesmo `label_page` do F5 — e cada página recebe uma pontuação pelo que um rótulo ali **mudaria**:
+
+| sinal | peso | por quê |
+|---|---|---|
+| linhas em regiões `REVIEW`/`ABSTAINED` | 1 por linha | cada uma é uma correção que o ajuste fino aprende e um par de calibração que as tabelas não têm |
+| linhas duvidosas em regiões aceitas (palavra fraca, leitura vazia, candidato discordante) | 0,5 por linha | o revisor vai olhar; o serviço teria entregue |
+| blocos `movetext` sem `start_fen` | 3 por bloco | a FEN destrava a repetição de legalidade de todos os lances abaixo (98 % do corpus não a tem) |
+| item do livro sem idioma/estrato no manifesto privado | +2 | um rótulo preenche a faceta pela qual a bancada não consegue agrupar |
+| livro sem rótulo e sem item no manifesto | ×1,5 | a primeira página de um livro novo vale mais que outra de um livro que o modelo já viu |
+| linhas em regiões que caem na **partição cega** | **0** | `partition_for` é função do id do item, então a fila sabe antes de rotular; entram no manifesto, não treinam nada — gastar rótulo ali é gastar na prova |
+
+A pontuação corre em thread e é **cancelável entre páginas** (segundo clique no botão; R3.5);
+a barra de estado diz em que página está. Ao fim, uma lista com o porquê de cada página e
+«Abrir página»; cliques seguintes reabrem a lista sem pontuar de novo, menos as páginas
+rotuladas entretanto, até «Recalcular».
+
+**Medido** (`benchmarks/labeling_queue.py`, três livros digitalizados sem camada de texto
+utilizável, 12 páginas cada, 300 DPI, projeto vazio): a ordem da fila é a do oráculo — as
+páginas ordenadas pelas linhas em revisão de fato — nos três livros (captura do oráculo no top-5
+1,00 / 1,00 / 1,00); com a sabotagem (`--sabotar constante`: pontuação igual para todas, ordem
+sequencial) cai para 0,47 / 0,60 / 0,58 e o portão reprova. O achado que limita o resultado:
+nesses scans **toda** linha fora da cega sai `REVIEW` (280/280, 310/310, 287/287 no top-5), então
+a fila separa por volume de linhas, não por "onde o serviço erra"; em livro de impressão limpa,
+em que páginas inteiras são aceitas em bloco, a separação é outra e não foi medida aqui.
+Números e comandos em `OCR_UI_REPORT_C1.md` §6.
+
+```
+.venv\Scripts\python.exe benchmarks\labeling_queue.py --pdfs 3
+.venv\Scripts\python.exe benchmarks\labeling_queue.py --pdfs 3 --sabotar constante   # tem de reprovar
+.venv\Scripts\python.exe -m caissa.ocr.labeling.app labeling --pdf <livro.pdf> --sugerir --amostra 12
+```
+
+**O que não é.** Não é aprendizado ativo por incerteza do modelo: é a decisão de revisão do
+serviço (`decision.py`) contada por linha, mais o que o manifesto sabe. Não escolhe páginas
+para a partição cega — e por isso mesmo a revisão cega continua sendo amostrada pelo id, não
+pelo revisor.

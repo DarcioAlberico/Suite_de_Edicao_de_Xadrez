@@ -64,6 +64,7 @@ from caissa.ocr.labeling.helpers import (
     status_pt,
 )
 from caissa.ocr.labeling.measure import BookMeasure, measure_book
+from caissa.ocr.labeling.queue import PageValue, Ranking, default_manifest_path, rank_pages
 from caissa.ocr.labeling.recognise import (
     kinds_for_menu,
     label_page,
@@ -110,12 +111,19 @@ class Worker:
         self.root = root
         self.queue: queue.Queue[tuple[Any, Any]] = queue.Queue()
         self.busy = False
+        self._progress: Any = None
         self.root.after(60, self._poll)
 
-    def run(self, fn: Any, done: Any) -> bool:
+    def run(self, fn: Any, done: Any, *, progress: Any = None) -> bool:
+        """Run ``fn`` off the GUI thread; ``done(kind, payload)`` on it.
+
+        ``progress`` gets, on the GUI thread, every text the worker hands to
+        :meth:`report` (the queue by value says which page it is on).
+        """
         if self.busy:
             return False
         self.busy = True
+        self._progress = progress
 
         def target() -> None:
             try:
@@ -127,11 +135,20 @@ class Worker:
         threading.Thread(target=target, daemon=True).start()
         return True
 
+    def report(self, text: str) -> None:
+        """From the worker thread: a line of progress for the GUI thread."""
+        self.queue.put((None, ("progress", text)))
+
     def _poll(self) -> None:
         try:
             while True:
                 done, payload = self.queue.get_nowait()
+                if payload[0] == "progress":
+                    if self._progress is not None:
+                        self._progress(payload[1])
+                    continue
                 self.busy = False
+                self._progress = None
                 done(*payload)
         except queue.Empty:
             pass
@@ -143,6 +160,10 @@ class LabelWindow:
         self.root = root
         self.project = project
         self.worker = Worker(root)
+        #: The queue by value of the open book (OCR_UI_ROADMAP passo 5) and
+        #: the event that stops its scoring between pages.
+        self.ranking: Ranking | None = None
+        self._ranking_cancel: threading.Event | None = None
         self.service: Any = None
         #: The current book's registered fine-tune, if any (``livros.json``).
         self.book: BookModel | None = None
@@ -232,6 +253,8 @@ class LabelWindow:
             side=tk.LEFT, padx=(8, 0)
         )
         ttk.Button(bar, text="Treinar…", command=self.open_training).pack(side=tk.RIGHT)
+        self.queue_button = ttk.Button(bar, text="Próxima que vale", command=self.next_valuable)
+        self.queue_button.pack(side=tk.RIGHT, padx=(0, 6))
         ttk.Button(bar, text="Medir no livro…", command=self.open_measure).pack(
             side=tk.RIGHT, padx=(0, 6)
         )
@@ -1274,6 +1297,71 @@ class LabelWindow:
                 parent=self.root,
             )
 
+    def next_valuable(self) -> None:
+        """«Próxima que vale»: the queue by value of the open book.
+
+        Scores a spaced sample of the unlabelled pages (in a thread; clicking
+        again cancels) and lists them, best first.
+        """
+        if self.document is None:
+            messagebox.showinfo("Rotulagem", "Adicione um PDF primeiro.")
+            return
+        if self._ranking_cancel is not None:
+            self._ranking_cancel.set()
+            self._set_status("Cancelando a pontuação… termina na página atual.")
+            return
+        cached = self.ranking is not None and self.ranking.document == self.document
+        if cached and self._show_ranking():
+            return
+        self._score_pages()
+
+    def _score_pages(self) -> None:
+        if self.document is None:
+            return
+        project, document = self.project, self.document
+        dpi, lang = int(self.dpi_var.get()), self.lang_var.get()
+        service = self._service()
+        cancel = threading.Event()
+        self._ranking_cancel = cancel
+        self.queue_button.configure(text="Cancelar fila")
+        self._set_status("Pontuando uma amostra do livro…")
+
+        def work() -> Ranking:
+            return rank_pages(
+                service, project, document, dpi=dpi, lang=lang,
+                manifest=default_manifest_path(), cancel=cancel, progress=self.worker.report,
+            )
+
+        def done(kind: str, payload: Any) -> None:
+            self._ranking_cancel = None
+            self.queue_button.configure(text="Próxima que vale")
+            if kind == "error":
+                messagebox.showerror("Próxima que vale", str(payload))
+                self._refresh_status()
+                return
+            self.ranking = payload
+            if not self._show_ranking():
+                self._set_status(self.ranking.describe_pt())
+
+        if not self.worker.run(work, done, progress=self._set_status):
+            self._ranking_cancel = None
+            self.queue_button.configure(text="Próxima que vale")
+            self._set_status("Aguarde: há uma tarefa em andamento.")
+
+    def _unlabelled_ranking(self) -> list[PageValue]:
+        if self.ranking is None or self.document is None:
+            return []
+        return [
+            v for v in self.ranking.values if self.project.page(self.document, v.page_index) is None
+        ]
+
+    def _show_ranking(self) -> bool:
+        values = self._unlabelled_ranking()
+        if not values or self.ranking is None:
+            return False
+        QueueDialog(self, self.ranking, values)
+        return True
+
     def open_measure(self) -> None:
         if self.document is None:
             messagebox.showinfo("Medir no livro", "Adicione um PDF primeiro.")
@@ -1301,6 +1389,53 @@ class LabelWindow:
     def close(self) -> None:
         self.save()
         self.root.destroy()
+
+
+# --------------------------------------------------------------------------- #
+# The queue by value
+# --------------------------------------------------------------------------- #
+
+
+class QueueDialog:
+    """«Próxima que vale»: the sampled pages, best first, with why."""
+
+    def __init__(self, window: LabelWindow, ranking: Ranking, values: list[PageValue]) -> None:
+        self.window = window
+        self.values = values
+        top = self.top = tk.Toplevel(window.root)
+        top.title("Próxima que vale")
+        top.transient(window.root)
+        ttk.Label(top, text=ranking.heading_pt(), padding=6).pack(fill=tk.X)
+        self.lista = tk.Listbox(top, width=90, height=min(12, max(4, len(values))))
+        for value in values:
+            self.lista.insert(tk.END, value.describe_pt())
+        self.lista.selection_set(0)
+        self.lista.bind("<Double-Button-1>", lambda _e: self.abrir())
+        self.lista.pack(fill=tk.BOTH, expand=True, padx=6)
+        botoes = ttk.Frame(top, padding=6)
+        botoes.pack(fill=tk.X)
+        ttk.Button(botoes, text="Abrir página", command=self.abrir).pack(side=tk.LEFT)
+        ttk.Button(botoes, text="Recalcular", command=self.recalcular).pack(side=tk.LEFT, padx=6)
+        ttk.Button(botoes, text="Fechar", command=top.destroy).pack(side=tk.RIGHT)
+
+    def selecionada(self) -> PageValue | None:
+        selected = self.lista.curselection()
+        if not selected:
+            return None
+        return self.values[int(selected[0])]
+
+    def abrir(self) -> None:
+        value = self.selecionada()
+        if value is None:
+            return
+        self.window.go_page(value.page_index)
+        self.window._set_status(f"Fila: {value.describe_pt()}")
+        self.top.destroy()
+
+    def recalcular(self) -> None:
+        self.window.ranking = None
+        self.top.destroy()
+        self.window._score_pages()
 
 
 # --------------------------------------------------------------------------- #
@@ -1682,6 +1817,47 @@ class MeasureDialog:
 # --------------------------------------------------------------------------- #
 
 
+def suggest(
+    project: LabelProject,
+    document: str | None,
+    *,
+    sample: int = 12,
+    dpi: int = 300,
+    out: Path | None = None,
+) -> int:
+    """``caissa-rotular --sugerir``: the queue by value, printed."""
+    from caissa.ingest.pdf.ocr_service import OcrService, OcrServiceConfig
+    from caissa.ocr.training import BookRegistry
+
+    if document is None:
+        if len(project.documents) != 1:
+            print("diga qual livro com --pdf: o projeto tem "
+                  f"{len(project.documents)} documento(s)", file=sys.stderr)
+            return 2
+        document = next(iter(project.documents))
+    lang = project.languages.get(document, "por+eng")
+    config = OcrServiceConfig()
+    try:
+        book = BookRegistry.default().for_pdf(project.pdf_for(document))
+    except Exception:  # noqa: BLE001 - no registry, no book model: the plain service
+        book = None
+    if book is not None:
+        config.figurine_tessdata = book.tessdata_dir
+    service = OcrService(lang=lang, config=config)
+    ranking = rank_pages(
+        service, project, document, sample=sample, dpi=dpi, lang=lang,
+        manifest=default_manifest_path(), progress=lambda text: print(text, file=sys.stderr),
+    )
+    print(ranking.describe_pt(n=len(ranking.values)))
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(ranking.as_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+        print(f"fila gravada em {out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
@@ -1693,11 +1869,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--pdf", type=Path, default=None, help="PDF a adicionar ao abrir")
     parser.add_argument("--reviewer", default="", help="nome gravado em cada decisão")
+    parser.add_argument(
+        "--sugerir",
+        action="store_true",
+        help="sem janela: pontua uma amostra do livro (--pdf, ou o único do projeto) e lista "
+        "as páginas que mais valem um rótulo",
+    )
+    parser.add_argument("--amostra", type=int, default=12, help="páginas amostradas (--sugerir)")
+    parser.add_argument(
+        "--dpi", type=int, default=300, help="resolução do reconhecimento (--sugerir)"
+    )
+    parser.add_argument("--json", type=Path, default=None, help="grava a fila (--sugerir)")
     args = parser.parse_args(argv)
     project = LabelProject.open_or_create(args.project, reviewer=args.reviewer)
     if args.pdf is not None:
         project.add_document(args.pdf)
         project.save()
+    if args.sugerir:
+        return suggest(project, args.pdf.stem if args.pdf else None, sample=args.amostra,
+                       dpi=args.dpi, out=args.json)
     root = tk.Tk()
     if not project.reviewer:
         name = simpledialog.askstring(

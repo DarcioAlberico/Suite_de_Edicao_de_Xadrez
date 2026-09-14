@@ -23,7 +23,8 @@ whose item id hashes to the blind partition never leaves the project as
 training or calibration data.  The window is :mod:`.app` (``caissa-rotular``,
 Tk, no Qt); everything it needs is in the other modules and testable, and
 :mod:`.measure` scores a book's labelled pages before and after its own
-fine-tune (:mod:`caissa.ocr.training.books`).
+fine-tune (:mod:`caissa.ocr.training.books`); :mod:`.queue` says which page
+to label next («Próxima que vale», ``caissa-rotular --sugerir``).
 """
 
 from __future__ import annotations

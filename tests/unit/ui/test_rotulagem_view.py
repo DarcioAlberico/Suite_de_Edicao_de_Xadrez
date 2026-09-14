@@ -114,3 +114,89 @@ def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     assert not dialogo.out_edit.text().endswith("livro_x")
     dialogo.close()
     painel.close()
+
+
+class _QueueFakeService:
+    """A service whose every region is ``REVIEW`` with one weak word — enough
+    for the queue to have something to rank — and page 2 clean."""
+
+    lang = "eng"
+
+    def __init__(self) -> None:
+        self.seen: list[int] = []
+
+    def recognize_image(self, image, *, dpi, lang="", page_index=0):
+        from types import SimpleNamespace
+
+        from caissa.ocr.types import BBox
+
+        self.seen.append(page_index)
+        clean = page_index == 2
+        scale = dpi / 72.0
+        words = (
+            SimpleNamespace(text="Olá", confidence=0.98,
+                            box=BBox(50 * scale, 100 * scale, 30 * scale, 10 * scale)),
+            SimpleNamespace(text="mundo", confidence=0.99 if clean else 0.4,
+                            box=BBox(85 * scale, 100 * scale, 40 * scale, 10 * scale)),
+        )
+        line = SimpleNamespace(words=words, text="Olá mundo",
+                               confidence=min(w.confidence for w in words),
+                               box=BBox(50 * scale, 100 * scale, 75 * scale, 10 * scale),
+                               block_index=0, paragraph_index=0)
+        result = SimpleNamespace(lines=(line,))
+        decision = SimpleNamespace(decision="accepted" if clean else "review", reasons_pt=())
+        region = SimpleNamespace(reading_order=0, kind="paragraph",
+                                 box_px=BBox(0, 0, 400 * scale, 600 * scale), result=result,
+                                 decision=decision, engine="tesseract", variant="original",
+                                 score=0.9 if clean else 0.5,
+                                 candidates=(SimpleNamespace(variant="original", engine="tesseract",
+                                                             result=result),))
+        return SimpleNamespace(dpi=dpi, regions=[region], engines={"tesseract": "5.5"}, notes=[])
+
+
+def test_the_queue_button_scores_the_book_in_a_thread_and_opens_the_best_page(app, tmp_path: Path):
+    pymupdf = pytest.importorskip("pymupdf")
+    from caissa.ui.views.rotulagem import DialogoDaFila, PainelDeRotulagem, abrir_projeto
+
+    pdf = tmp_path / "Livro Q.pdf"
+    doc = pymupdf.open()
+    for _ in range(6):
+        doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    project = abrir_projeto(tmp_path / "proj", revisor="ana")
+    project.languages["Livro Q"] = "eng"
+    painel = PainelDeRotulagem(projeto=project, pdf_inicial=pdf)
+    painel.show()
+    app.processEvents()
+    painel.service = _QueueFakeService()
+    painel.dpi_spin.setValue(150)
+    assert painel.queue_button.text() == "Próxima que vale"
+    painel.next_valuable()
+    assert painel.queue_button.text() == "Cancelar fila", "a click during scoring cancels"
+    import time
+
+    deadline = time.monotonic() + 30
+    while painel.fila.busy and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.02)
+    app.processEvents()
+    assert painel.ranking is not None
+    assert not painel.ranking.cancelled
+    assert painel.queue_button.text() == "Próxima que vale"
+    # A six-page book sampled at twelve: every page but the labelled ones; page 2 is clean.
+    assert painel.ranking.values[-1].page_index == 2
+    dialogo = next(d for d in painel.findChildren(DialogoDaFila))
+    assert dialogo.lista.count() == len(painel.ranking.values)
+    assert dialogo.lista.currentRow() == 0
+    dialogo.abrir()
+    assert painel.page_index == painel.ranking.values[0].page_index
+    assert "Fila: p." in painel.status.text()
+    # The second click reopens the list without scoring again.
+    seen = list(painel.service.seen)
+    painel.next_valuable()
+    app.processEvents()
+    assert painel.service.seen == seen
+    for d in painel.findChildren(DialogoDaFila):
+        d.close()
+    painel.close()

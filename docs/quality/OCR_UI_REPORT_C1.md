@@ -489,51 +489,6 @@ continua com `min_confidence`, dizendo-o.
 `OCR_UI_ANALISE.md` §2.2 lia a tabela do `F4_FIELD_REPORT.md` §2.1 (`scan-hachurado`: 21
 casados, 10 `exported_comparable`; `scan-puro`: 44 casados, 35) como "20 diagramas certos
 barrados pelo portão". Errado: `exported_comparable` exige FEN anotada, e **19 dos diagramas
-anotados não a têm** (9 hachurados, 10 scan-puro). Os barrados de verdade são **2**, os dois
-do Levenfis p150 (hachurado): um **exato** com `min_confidence` 0,30 depois de 1 reparo — o
-caso aritmético do `decode.py`, 1 em 96 —, e um errado com 0,07 e 2 reparos, que o portão
-barra bem. O portão de exportação, no conjunto de campo, perde **um** diagrama certo. A
-linha 6 da tabela da análise e o passo 9 do roadmap ficam corrigidos: a alavanca ali é
-**anotar** (os 19 sem FEN e mais livros), não mexer no piso.
-
-```
-.venv\Scripts\python.exe - <<EOF
-# anotados por estrato / sem FEN anotada — chess_diagram_ocr.field_eval.load_field_set
-# {'scan-puro': 45, 'scan-hachurado': 21, 'vetorial': 31, 'fonte': 18} / {'scan-hachurado': 9, 'scan-puro': 10}
-
----
-
-## §4 — Passo 8: a confiança por diagrama — instrumento construído, portão bloqueado pela população
-
-### 4.0 Em uma tela
-
-Existe agora `caissa.vision.classify.confidence` (os sinais de um tabuleiro reconhecido —
-`min_confidence`, média, casas abaixo de 0,90 e de 0,70, menor margem top-1/top-2, casas
-reparadas pelo decodificador, fatal, troca de lado, orientação ambígua, via vetorial — e uma
-regressão logística L2 sobre eles, só numpy, com AUROC, ECE, Brier e risco × cobertura) e
-`benchmarks/diagram_confidence_gate.py`, que corre o conjunto de campo pelo reconhecedor de
-produção (3 execuções idênticas, ou reprova), rotula cada diagrama casado contra a anotação com
-as duas réguas, ajusta por *leave-one-book-out* e compara com o preditor constante; `--sabotar
-ruido` troca os sinais por ruído.
-
-**O que a medição disse: não há o que ajustar.** Dos 114 diagramas casados, **96 têm FEN
-anotada**, e desses **94 são exatos** (régua corrigida) — **2 negativos**. Nenhum modelo se
-ajusta com dois negativos, nenhum portão de discriminação se julga (AUROC fora da dobra 0,02
-com os sinais reais, 0,12 com ruído — indistinguíveis; `min_confidence` sozinho dá 0,88 sobre
-os mesmos dois), e o gate reprova nas duas rodadas **por falta de população, não por falta de
-sinal**. Nenhum peso foi empacotado; `default_confidence()` devolve `None` e quem chama
-continua com `min_confidence`, dizendo-o.
-
-```
-.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3                   # REPROVOU: negativos 2
-.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3 --sabotar ruido   # REPROVOU: indistinguível
-```
-
-### 4.1 O que a extração corrigiu na análise (D1)
-
-`OCR_UI_ANALISE.md` §2.2 lia a tabela do `F4_FIELD_REPORT.md` §2.1 (`scan-hachurado`: 21
-casados, 10 `exported_comparable`; `scan-puro`: 44 casados, 35) como "20 diagramas certos
-barrados pelo portão". Errado: `exported_comparable` exige FEN anotada, e **19 dos diagramas
 anotados não a têm** (9 hachurados, 10 scan-puro — contados com
 `chess_diagram_ocr.field_eval.load_field_set`). Os barrados de verdade são **2**, os dois do
 Levenfis p150 (hachurado): um **exato** com `min_confidence` 0,30 depois de 1 reparo — o caso
@@ -606,3 +561,80 @@ Tesseract.
 `test_lexicon_package.py::test_the_russian_hunspell_dictionary_answers_prose_and_refuses_garbage`
 (o pacote tem o dicionário e o aviso; prosa russa ≥ 0,9; espelhado 0/3); os dois testes de corpus
 acima. Suíte `tests/unit/ocr` + `tests/unit/ingest` verde.
+
+---
+
+## §6 — Passo 5: a fila de rotulagem por valor de rótulo
+
+### 6.0 Em uma tela
+
+- **«Próxima que vale»** na aba Rotulagem (Qt) e na bancada Tk, e `caissa-rotular --sugerir`
+  sem janela (`caissa.ocr.labeling.queue`; `ROTULAGEM.md` §8 tem a tabela de pesos). Pontua
+  uma amostra espaçada das páginas não rotuladas pelo que um rótulo mudaria: linhas em regiões
+  `REVIEW`/`ABSTAINED` (1), linhas duvidosas em regiões aceitas (0,5), blocos `movetext` sem
+  `start_fen` (3), item do livro sem idioma/estrato no manifesto privado (+2), livro sem rótulo
+  (×1,5); **linhas na partição cega valem 0** — a partição é função do id, a fila sabe antes.
+  Em thread, cancelável entre páginas pelo segundo clique (R3.5), progresso na barra de estado,
+  lista com o porquê e «Abrir página»; a lista fica em cache até «Recalcular».
+- **Medido em três scans sem camada de texto** (Koblenz 1978 `spa`, Levenfis 1962 `ron`, Estrin
+  1980 `deu`; 12 páginas cada a 300 DPI, projeto vazio): a ordem da fila **é** a ordem do
+  oráculo (páginas ordenadas pelas linhas em revisão de fato) nos três livros — captura do
+  oráculo no top-5 = **1,00 / 1,00 / 1,00**; com a sabotagem (pontuação constante → ordem
+  sequencial) cai para **0,47 / 0,60 / 0,58** e o portão reprova.
+- **O portão do roadmap ("top-5 ≥ 2× a mediana") era inatingível e foi reescrito.** Nestes
+  scans o serviço manda **todas** as linhas fora da cega para revisão (top-5: 280/280,
+  310/310, 287/287 linhas), então a distribuição de linhas `REVIEW` por página é a distribuição
+  de linhas por página, comprimida: a razão do próprio oráculo é **1,27 / 1,22 / 1,08**. Nenhuma
+  ordem clareia 2×. A bancada imprime a razão do roadmap **e o seu teto** (a do oráculo), e o
+  portão passou a ser o que a fila controla — captura do oráculo ≥ 0,90 em cada livro.
+
+```
+.venv\Scripts\python.exe benchmarks\labeling_queue.py --pdfs 3
+#   Koblenz  razão 1.27 (teto 1.27) captura 1.00 ✓ | Levenfis 1.22 (1.22) 1.00 ✓ | Estrin 1.08 (1.08) 1.00 ✓ → PASSOU
+#   relatório: benchmarks\reports\labeling_queue_20260914_182959.json
+.venv\Scripts\python.exe benchmarks\labeling_queue.py --pdfs 3 --sabotar constante
+#   razão 0.60 / 0.72 / 0.63 · captura 0.47 / 0.60 / 0.58 → REPROVOU  (sabotagem: constante)
+#   relatório: benchmarks\reports\labeling_queue_20260914_183438_constante.json
+```
+
+Antes da reescrita, o portão original foi executado tal como o roadmap o escreveu: rodada real
+razão 1,27 / 1,22 / 1,08 → REPROVOU; sabotagem 0,60 / 0,72 / 0,63 → REPROVOU
+(`labeling_queue_20260914_152236.json`, `labeling_queue_20260914_152725_constante.json`). O
+portão via a sabotagem (a razão cai à metade) — a barra é que estava fora do alcance de qualquer
+fila.
+
+### 6.1 O que a medição disse além do portão
+
+- **Em livro digitalizado antigo, a decisão por linha não discrimina: é tudo `REVIEW`.** As 36
+  páginas têm 0 linhas "duvidosas em região aceita" porque não há região aceita. O valor da fila
+  nesses livros é, na prática, *quantas linhas a página tem fora da cega* — útil (a página de
+  índice com 0 linhas vai para o fim; a de 77 vai para o começo), mas não é "onde o serviço
+  erra". Onde a fila deve separar de verdade é em livros de impressão limpa, em que a página
+  aceita em bloco (SFC4: 86 de 87 linhas aceitas) fica atrás da página com dúvida. Isso não foi
+  medido aqui — os três livros da bancada são os scans em que rotular custa mais — e fica
+  registrado como limite do resultado.
+- **Zero blocos `movetext` nos 432 blocos amostrados**: `label_page` divide a região de página
+  inteira pelos parágrafos do motor (`kind="paragraph"`), e o analisador de leiaute não emitiu
+  `MOVETEXT` nesses scans. O peso 3 do `start_fen` existe e está testado, mas não pesou nesta
+  medição.
+- **A partição cega leva 13–24 % das linhas** (41/321, 100/410, 95/382 no top-5): a fila as
+  desconta, e a lista diz quantas ficaram de fora em cada página.
+- Custo: 2,5 s/página (Koblenz, Estrin) a 6,7 s/página (Levenfis, 306 páginas de scan cinzento)
+  a 300 DPI — 12 páginas em 30–80 s. O revisor vê "pontuando página N (k/12)" e pode cancelar.
+- Os dois relatórios da sabotagem repetem, página a página, as contagens da rodada real (a
+  sabotagem pontua de novo as mesmas páginas para saber o que a ordem constante entregou): o
+  reconhecimento é determinístico entre execuções.
+
+### 6.2 Testes
+
+`tests/unit/ocr/test_labeling.py` (+4: os pesos e a partição cega; livro novo e faceta vazia;
+`BookContext` lendo projeto e manifesto; `rank_pages` amostra, pula rotuladas, ordena, cancela e
+aceita a pontuação constante da sabotagem) e `tests/unit/ui/test_rotulagem_view.py` (+1: o botão
+pontua em thread, vira «Cancelar fila» enquanto roda, abre a lista com a melhor página primeiro,
+«Abrir página» navega, o segundo clique reabre sem pontuar de novo).
+
+```
+.venv\Scripts\python.exe -m pytest tests\unit\ocr\test_labeling.py -q                                  # 13 passed
+set PYTHONPATH=.venv-pack\Lib\site-packages && .venv\Scripts\python.exe -m pytest tests\unit\ui\test_rotulagem_view.py -q   # 6 passed
+.venv\Scripts\python.exe -m pytest tests\unit\ocr tests\unit\ingest -q                                # 731 passed, 2 skipped
+```

@@ -363,11 +363,15 @@ PY benchmarks\labeling_queue.py --pdfs 3
 PY benchmarks\labeling_queue.py --pdfs 3 --sabotar constante     # tem de reprovar
 ```
 
-**Portão e sabotagem.** As 5 primeiras da fila têm ≥ 2× as linhas `REVIEW` da mediana em
-cada um dos 3 PDFs. *Sabotagem:* pontuação constante — a ordem vira a sequencial e o portão
-acusa razão ≈ 1.
+**Portão e sabotagem.** ~~As 5 primeiras da fila têm ≥ 2× as linhas `REVIEW` da mediana em
+cada um dos 3 PDFs.~~ **Reescrito na execução** (§4, 2026-09-14): nos scans o serviço manda
+todas as linhas para revisão e a razão do próprio oráculo é 1,1–1,3 — barra inatingível. O
+portão é a **captura do oráculo**: as linhas `REVIEW` do top-5 da fila ≥ 0,90 das do top-5
+ordenado pelas linhas de fato, em cada um dos 3 PDFs; a razão do roadmap continua impressa ao
+lado do seu teto. *Sabotagem:* pontuação constante — a ordem vira a sequencial e a captura cai
+(medido 0,47–0,60).
 
-**Saída.** `ROTULAGEM.md` §8; `OCR_UI_REPORT_C1.md` §5. **Desfazer:** o botão some.
+**Saída.** `ROTULAGEM.md` §8; `OCR_UI_REPORT_C1.md` §6. **Desfazer:** o botão some.
 
 ---
 
@@ -907,6 +911,8 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 5 | **executado** — `OCR_UI_REPORT_C1.md` §6 | «Próxima que vale» (Qt, Tk, `--sugerir`), `ocr/labeling/queue.py`; fila = ordem do oráculo nos 3 scans (captura 1,00), sabotagem 0,47–0,60. Limite registrado: nos scans antigos toda linha é `REVIEW`, a fila separa por volume; sem `MOVETEXT` na amostra | construtor |
+| 2026-09-14 | 5 | **portão reescrito** | "top-5 ≥ 2× a mediana" executado como escrito: REPROVOU na rodada real (1,27/1,22/1,08) **e** na sabotagem (0,60/0,72/0,63) — o teto da razão (a do oráculo) é 1,1–1,3 nestes livros. Portão novo: captura do oráculo ≥ 0,90; a razão e o teto ficam impressos | construtor |
 | 2026-09-14 | 6 | **executado** — `OCR_UI_REPORT_C1.md` §5 | `ru_RU` (BSD-3-Clause, Lebedev) no léxico: acerto de dicionário no Boleslávski 13–25 % → 48–73 %; um lance danificado deixa de contar como "impronunciável" — Yusupov p. 700–701 e Gaprindashvili p158 passam de rejeitadas a contestadas; vereditos dos 16 acusados e dos controles inalterados | construtor |
 | 2026-09-14 | 8 | **bloqueado pela população** — `OCR_UI_REPORT_C1.md` §4 | instrumento e módulo construídos; o conjunto de campo tem 2 negativos em 96 diagramas com FEN — nem ajuste nem portão de discriminação são possíveis; a sabotagem é indistinguível da rodada real. Pesos não empacotados | construtor |
 | 2026-09-14 | 0b | **inserido** (humano) | anotar a FEN dos 19 diagramas do conjunto de campo sem ela e acrescentar ≥ 30 diagramas **errados** (fila da aba Dataset por menor `min_confidence`); os passos 8, 9, 13 (âmbar) e 18 esperam por isto | análise |

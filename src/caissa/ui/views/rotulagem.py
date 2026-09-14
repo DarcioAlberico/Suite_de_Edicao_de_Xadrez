@@ -90,6 +90,7 @@ from caissa.ocr.labeling.helpers import (
     status_pt,
 )
 from caissa.ocr.labeling.measure import BookMeasure, measure_book
+from caissa.ocr.labeling.queue import PageValue, Ranking, default_manifest_path, rank_pages
 from caissa.ocr.labeling.recognise import (
     kinds_for_menu,
     label_page,
@@ -164,16 +165,30 @@ class _Fila(QObject):
     def __init__(self, parent: QObject) -> None:
         super().__init__(parent)
         self.queue: queue.Queue[tuple[Any, tuple[str, Any]]] = queue.Queue()
+        self._progress: Callable[[str], None] | None = None
         self.busy = False
         self.timer = QTimer(self)
         self.timer.setInterval(60)
         self.timer.timeout.connect(self._poll)
         self.timer.start()
 
-    def run(self, fn: Callable[[], Any], done: Callable[[str, Any], None]) -> bool:
+    def run(
+        self,
+        fn: Callable[[], Any],
+        done: Callable[[str, Any], None],
+        *,
+        progress: Callable[[str], None] | None = None,
+    ) -> bool:
+        """Run ``fn`` off the GUI thread; ``done(kind, payload)`` on it.
+
+        ``progress`` is called on the GUI thread with every text the worker
+        hands to :meth:`report` — the queue by value says which page it is
+        on (R3.5: a long task shows where it is and can be cancelled).
+        """
         if self.busy:
             return False
         self.busy = True
+        self._progress = progress
 
         def target() -> None:
             try:
@@ -184,11 +199,20 @@ class _Fila(QObject):
         threading.Thread(target=target, daemon=True).start()
         return True
 
+    def report(self, text: str) -> None:
+        """From the worker thread: a line of progress for the GUI thread."""
+        self.queue.put((None, ("progress", text)))
+
     def _poll(self) -> None:
         try:
             while True:
                 done, payload = self.queue.get_nowait()
+                if payload[0] == "progress":
+                    if self._progress is not None:
+                        self._progress(payload[1])
+                    continue
                 self.busy = False
+                self._progress = None
                 done(*payload)
         except queue.Empty:
             pass
@@ -385,6 +409,10 @@ class PainelDeRotulagem(QWidget):
         self.current: tuple[RegionLabel, LineLabel] | None = None
         self.selected_region: RegionLabel | None = None
         self.opened_at = 0.0
+        #: The queue by value of the open book (OCR_UI_ROADMAP passo 5) and
+        #: the event that stops its scoring between pages.
+        self.ranking: Ranking | None = None
+        self._ranking_cancel: threading.Event | None = None
         self._montar()
         self._atalhos()
         if pdf_inicial is not None:
@@ -473,6 +501,12 @@ class PainelDeRotulagem(QWidget):
         linha1.addWidget(exportar)
         botao("Medir no livro…", self.open_measure, em=linha1)
         botao("Treinar…", self.open_training, em=linha1)
+        self.queue_button = botao(
+            "Próxima que vale",
+            self.next_valuable,
+            dica="Pontua uma amostra do livro pelo que um rótulo mudaria e abre a lista; "
+            "clicar de novo durante a pontuação cancela",
+        )
         barra.addWidget(QLabel("DPI", self))
         self.dpi_spin = QSpinBox(self)
         self.dpi_spin.setAccessibleName("Resolução do reconhecimento")
@@ -1405,6 +1439,81 @@ class PainelDeRotulagem(QWidget):
                 "nas regiões de lances. «Medir no livro…» diz quanto mudou.",
             )
 
+    def next_valuable(self) -> None:
+        """«Próxima que vale»: the queue by value of the open book.
+
+        First click scores a spaced sample of the unlabelled pages with the
+        production service (in a thread, cancellable by clicking again);
+        every click after that reopens the list, minus the pages labelled
+        since, until «Recalcular».
+        """
+        if self.document is None:
+            QMessageBox.information(self, TITULO, "Adicione um PDF primeiro.")
+            return
+        if self._ranking_cancel is not None:
+            self._ranking_cancel.set()
+            self._set_status("Cancelando a pontuação… termina na página atual.")
+            return
+        if self.ranking is not None and self.ranking.document == self.document:
+            if self._show_ranking():
+                return
+        self._score_pages()
+
+    def _score_pages(self) -> None:
+        if self.document is None:
+            return
+        project, document = self.project, self.document
+        dpi, lang = int(self.dpi_spin.value()), self.lang_box.currentText()
+        service = self._service()
+        cancel = threading.Event()
+        self._ranking_cancel = cancel
+        self.queue_button.setText("Cancelar fila")
+        self._set_status("Pontuando uma amostra do livro…")
+
+        def work() -> Ranking:
+            return rank_pages(
+                service,
+                project,
+                document,
+                dpi=dpi,
+                lang=lang,
+                manifest=default_manifest_path(),
+                cancel=cancel,
+                progress=self.fila.report,
+            )
+
+        def done(kind: str, payload: Any) -> None:
+            self._ranking_cancel = None
+            self.queue_button.setText("Próxima que vale")
+            if kind == "error":
+                QMessageBox.critical(self, "Próxima que vale", str(payload))
+                self._refresh_status()
+                return
+            self.ranking = payload
+            if not self._show_ranking():
+                self._set_status(self.ranking.describe_pt())
+
+        if not self.fila.run(work, done, progress=self._set_status):
+            self._ranking_cancel = None
+            self.queue_button.setText("Próxima que vale")
+            self._set_status("Aguarde: há uma tarefa em andamento.")
+
+    def _unlabelled_ranking(self) -> list[PageValue]:
+        if self.ranking is None or self.document is None:
+            return []
+        return [
+            v for v in self.ranking.values if self.project.page(self.document, v.page_index) is None
+        ]
+
+    def _show_ranking(self) -> bool:
+        """Open the list of the ranking; ``False`` when nothing is left in it."""
+        values = self._unlabelled_ranking()
+        if not values or self.ranking is None:
+            return False
+        dialogo = DialogoDaFila(self, self.ranking, values)
+        dialogo.show()
+        return True
+
     def open_measure(self) -> None:
         if self.document is None:
             QMessageBox.information(self, "Medir no livro", "Adicione um PDF primeiro.")
@@ -1434,6 +1543,59 @@ class PainelDeRotulagem(QWidget):
 # --------------------------------------------------------------------------- #
 # Dialogs
 # --------------------------------------------------------------------------- #
+
+
+class DialogoDaFila(QDialog):
+    """The queue by value: the sampled pages, best first, with why."""
+
+    def __init__(
+        self, painel: PainelDeRotulagem, ranking: Ranking, values: list[PageValue]
+    ) -> None:
+        super().__init__(painel)
+        self.painel = painel
+        self.values = values
+        self.setWindowTitle("Próxima que vale")
+        raiz = QVBoxLayout(self)
+        raiz.addWidget(QLabel(ranking.heading_pt(), self))
+        self.lista = QListWidget(self)
+        self.lista.setAccessibleName("Páginas por valor de rótulo")
+        for value in values:
+            self.lista.addItem(value.describe_pt())
+        self.lista.setCurrentRow(0)
+        self.lista.itemDoubleClicked.connect(lambda _i: self.abrir())
+        raiz.addWidget(self.lista, 1)
+        botoes = QHBoxLayout()
+        raiz.addLayout(botoes)
+        abrir = QPushButton("Abrir página", self)
+        abrir.setDefault(True)
+        abrir.clicked.connect(lambda _c=False: self.abrir())
+        botoes.addWidget(abrir)
+        recalcular = QPushButton("Recalcular", self)
+        recalcular.setToolTip("Pontua a amostra de novo com o DPI e o idioma atuais")
+        recalcular.clicked.connect(lambda _c=False: self.recalcular())
+        botoes.addWidget(recalcular)
+        botoes.addStretch(1)
+        fechar = QPushButton("Fechar", self)
+        fechar.clicked.connect(self.close)
+        botoes.addWidget(fechar)
+        self.resize(640, 320)
+
+    def selecionada(self) -> PageValue | None:
+        row = self.lista.currentRow()
+        return self.values[row] if 0 <= row < len(self.values) else None
+
+    def abrir(self) -> None:
+        value = self.selecionada()
+        if value is None:
+            return
+        self.painel.go_page(value.page_index)
+        self.painel._set_status(f"Fila: {value.describe_pt()}")
+        self.close()
+
+    def recalcular(self) -> None:
+        self.painel.ranking = None
+        self.close()
+        self.painel._score_pages()
 
 
 class DialogoDeTreino(QDialog):

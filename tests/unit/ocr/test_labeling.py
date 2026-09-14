@@ -408,3 +408,173 @@ def test_label_page_lays_out_lines_in_points_with_alternatives(tmp_path: Path):
     assert drawn.rect == (100, 200, 200, 300)
     assert drawn.index == 2
     assert drawn.lines[0].box[0] == pytest.approx(150.0), "boxes are offset by the clip origin"
+
+
+# --------------------------------------------------------------------------- #
+# The queue by value (OCR_UI_ROADMAP passo 5)
+# --------------------------------------------------------------------------- #
+
+
+def _valued_page(
+    document: str, page_index: int, *, decision: str, kind: str = "paragraph",
+    lines: int = 3, conf: float = 0.95, rect=(50, 100, 300, 150),
+) -> PageLabels:
+    region = RegionLabel(
+        index=0, rect=rect, kind=kind, reading_order=0, decision=decision,
+        lines=[_line(n, 100 + 12 * n, f"linha {n}", conf) for n in range(lines)],
+    )
+    return PageLabels(
+        document=document, pdf_path="", page_index=page_index, width_pt=400, height_pt=600,
+        dpi=300, lang="eng", regions=[region],
+    )
+
+
+def test_value_counts_review_lines_doubt_fen_and_never_the_blind_partition():
+    from caissa.ocr.labeling.queue import (
+        WEIGHT_DOUBT,
+        WEIGHT_MOVETEXT_FEN,
+        BookContext,
+        value_of,
+    )
+
+    blind, open_ = _blind_page_index("Livro")
+    known = BookContext(labelled_pages=2, manifest_items=4)
+    accepted = value_of(
+        _valued_page("Livro", open_, decision="accepted"), threshold=0.85, book=known
+    )
+    assert accepted.score == 0 and accepted.review_lines == 0
+    assert accepted.reasons == ("nada a corrigir: a página já sai aceita",)
+
+    review = value_of(_valued_page("Livro", open_, decision="review"), threshold=0.85, book=known)
+    assert review.review_lines == 3 and review.score == 3
+
+    doubtful = value_of(
+        _valued_page("Livro", open_, decision="accepted", conf=0.5), threshold=0.85, book=known
+    )
+    assert doubtful.doubtful_lines == 3 and doubtful.score == pytest.approx(3 * WEIGHT_DOUBT)
+
+    moves = value_of(
+        _valued_page("Livro", open_, decision="review", kind="movetext"), threshold=0.85, book=known
+    )
+    assert moves.movetext_without_fen == 1
+    assert moves.score == pytest.approx(3 + WEIGHT_MOVETEXT_FEN)
+    assert any("sem FEN inicial" in r for r in moves.reasons)
+
+    hidden = value_of(_valued_page("Livro", blind, decision="review"), threshold=0.85, book=known)
+    assert hidden.score == 0 and hidden.blind_lines == 3, "blind regions train nothing"
+    assert any("partição cega" in r for r in hidden.reasons)
+
+
+def test_value_rewards_a_new_book_and_a_manifest_facet_gap():
+    from caissa.ocr.labeling.queue import (
+        FACET_GAP_BONUS,
+        NEW_BOOK_FACTOR,
+        BookContext,
+        value_of,
+    )
+
+    _blind, open_ = _blind_page_index("Novo")
+    page = _valued_page("Novo", open_, decision="review", lines=4)
+    fresh = value_of(page, threshold=0.85, book=BookContext())
+    assert fresh.score == pytest.approx(4 * NEW_BOOK_FACTOR)
+    assert "livro sem rótulo" in fresh.reasons
+    gappy = value_of(page, threshold=0.85, book=BookContext(manifest_items=3, facet_gaps=3))
+    assert gappy.score == pytest.approx(4 + FACET_GAP_BONUS)
+    assert any("sem idioma/estrato" in r for r in gappy.reasons)
+
+
+def test_book_context_reads_the_project_and_the_manifest(tmp_path: Path):
+    from caissa.ocr.golden import GoldenItem, GoldenManifest, Source
+    from caissa.ocr.labeling.queue import BookContext
+
+    project = LabelProject(root=tmp_path, reviewer="ana")
+    project.put_page(_page("Livro", 3))
+    manifest = GoldenManifest(items=[
+        GoldenItem(id="a", source=Source.PDF_SCAN, book="Livro", page_index=3, prose_lang="pt",
+                   notation_lang="pt"),
+        GoldenItem(id="b", source=Source.PDF_SCAN, book="Livro", page_index=4, prose_lang="",
+                   notation_lang=""),
+        GoldenItem(id="c", source=Source.PDF_SCAN, book="Outro", page_index=1, strata=()),
+    ])
+    livro = BookContext.of(project, "Livro", manifest)
+    assert (livro.labelled_pages, livro.manifest_items, livro.facet_gaps) == (1, 2, 1)
+    assert not livro.is_new
+    outro = BookContext.of(project, "Outro", manifest)
+    assert (outro.manifest_items, outro.facet_gaps) == (1, 1)
+    assert BookContext.of(project, "Ninguém", manifest).is_new
+    assert BookContext.of(project, "Ninguém", None).is_new
+
+
+class _PagedFakeService(_FakeService):
+    """The fake service, but page 2 of the book comes out clean and accepted."""
+
+    def __init__(self) -> None:
+        self.seen: list[int] = []
+
+    def recognize_image(self, image, *, dpi, lang="", page_index=0):
+        self.seen.append(page_index)
+        recognition = super().recognize_image(image, dpi=dpi, lang=lang, page_index=page_index)
+        if page_index == 2:
+            for region in recognition.regions:
+                region.decision = SimpleNamespace(decision="accepted", reasons_pt=())
+                for line in region.result.lines:
+                    for word in line.words:
+                        word.confidence = 0.99
+                region.candidates = region.candidates[:1]
+        return recognition
+
+
+def test_rank_pages_samples_skips_labelled_orders_by_value_and_cancels(tmp_path: Path):
+    pymupdf = pytest.importorskip("pymupdf")
+    import threading
+
+    from caissa.ocr.labeling.queue import rank_pages
+
+    pdf = tmp_path / "Livro.pdf"
+    doc = pymupdf.open()
+    for _ in range(6):
+        doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    project = LabelProject(root=tmp_path / "proj", reviewer="ana")
+    project.add_document(pdf)
+    project.languages["Livro"] = "eng"
+    project.put_page(_page("Livro", 1, pdf_path=str(pdf)))
+
+    service = _PagedFakeService()
+    ranking = rank_pages(service, project, "Livro", indices=[1, 2, 3, 4], dpi=150)
+    assert ranking.skipped_labelled == [1]
+    assert ranking.sampled == [2, 3, 4]
+    assert service.seen == [2, 3, 4]
+    assert ranking.lang == "eng"
+    assert ranking.book.is_new is False
+    assert [v.page_index for v in ranking.values] == [3, 4, 2], "the clean page goes last"
+    assert ranking.values[0].score > 0
+    assert ranking.values[-1].score == 0
+    assert ranking.median_review_lines() >= 0
+    assert "página(s) pontuada(s)" in ranking.describe_pt()
+    assert ranking.as_dict()["values"][0]["page_index"] == 3
+
+    # The spaced sample of a six-page book skips both covers.
+    seen_before = list(service.seen)
+    spaced = rank_pages(service, project, "Livro", sample=2, dpi=150)
+    assert spaced.sampled == [2, 4]
+    assert service.seen[len(seen_before):] == [2, 4]
+
+    # Cancelled before the first page: nothing recognised, flag set.
+    stop = threading.Event()
+    stop.set()
+    told: list[str] = []
+    halted = rank_pages(service, project, "Livro", indices=[2, 3], dpi=150, cancel=stop,
+                        progress=told.append)
+    assert halted.cancelled
+    assert halted.values == []
+    assert told == []
+    assert "cancelado" in halted.describe_pt()
+
+    # A constant score keeps the sampled order (the benchmark's sabotage).
+    from caissa.ocr.labeling.queue import PageValue
+
+    flat = rank_pages(service, project, "Livro", indices=[4, 3, 2], dpi=150,
+                      score=lambda p: PageValue(p.document, p.page_index, score=1.0))
+    assert [v.page_index for v in flat.values] == [2, 3, 4]
