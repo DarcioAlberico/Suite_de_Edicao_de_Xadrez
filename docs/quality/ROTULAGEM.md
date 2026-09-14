@@ -452,6 +452,38 @@ Testes: `tests/unit/ui/test_rotulagem_view.py` (pulam sem PyQt6; rodam no `.venv
 tronco, `test_qt_janela.test_as_seis_abas_estao_na_ordem_da_spec` (sete quando a suíte está ao
 alcance) e a catraca de `qt/janela.py` (1883 → 1887, as quatro linhas da montagem).
 
+### 7f. Exportar o livro para EPUB e DOCX — inteiro ou por intervalo de páginas (2026-09-14)
+
+O fim do ciclo — rotular, treinar, **importar melhor** — sai da própria aba: o menu *Exportar*
+ganhou **Livro para EPUB…** e **Livro para DOCX…**. O diálogo (`caissa.ui.views.exportacao`)
+pergunta o formato, o alcance — *livro completo*, *intervalo de X até Y* (o *de* já vem com a
+página na tela) ou uma *lista* como `1-3, 7, 40-` — e o destino, que por padrão nasce ao lado do
+PDF com o mesmo nome e, quando é parcial, com as páginas no nome (`Livro (p. 10-25).epub`) para
+duas exportações não se sobrescreverem. Uma caixa *OCR* desliga o reconhecimento das páginas sem
+camada de texto (elas entram como imagem: o caminho rápido). A exportação roda numa thread,
+o progresso e o fim vão para a linha de status da aba; só a falha abre caixa.
+
+O que é regra mora em `caissa.export.book`, sem toolkit, e é o mesmo que a linha de comando usa:
+`parse_page_range` (páginas contadas **de 1** no que a pessoa escreve, zero-based no que o
+código passa ao importador), `default_output_path`, `export_book` — a composição
+`caissa.ingest.pdf.import_pdf` (F2, com o modelo do livro do §7b quando há) → exportador de
+`caissa.export`. Um livro parcial guarda no arquivo quais páginas é (`caissa:pages` nos
+metadados e uma linha na descrição, «Páginas 10-25 de 402 do original»); o inteiro sai limpo.
+
+```
+caissa-exportar Livro.pdf --epub
+caissa-exportar Livro.pdf --docx --paginas 10-25
+caissa-exportar Livro.pdf --saida "Capítulo 3.epub" --paginas "40-, 7" --sem-ocr
+```
+
+Testes: `tests/unit/export/test_book.py` (intervalos, livro completo, faixa, cancelamento,
+CLI; rodam no `.venv`) e `tests/unit/ui/test_exportacao_view.py` (o diálogo e o controlador;
+pulam sem PyQt6 — `$env:PYTHONPATH = ".venv-pack\Lib\site-packages"` empresta o do bundle).
+O tronco ainda não tem o item em *Arquivo* ao lado de *Exportar o livro para PGN…*: o
+`ExportadorDeLivro` tem o mesmo desenho do `Exportador` de lá (`estado`, `controles`,
+`cancelar`) justamente para essa montagem ser quatro linhas quando o catálogo de comandos
+o receber.
+
 ### 7d. O que não é
 
 - Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,

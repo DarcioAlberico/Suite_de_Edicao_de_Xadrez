@@ -111,6 +111,7 @@ from caissa.ocr.training import (
     preflight,
     register_training,
 )
+from caissa.ui.views.exportacao import ExportadorDeLivro
 
 __all__ = [
     "TITULO",
@@ -374,6 +375,8 @@ class PainelDeRotulagem(QWidget):
         if revisor and not self.project.reviewer:
             self.project.reviewer = revisor
         self.fila = _Fila(self)
+        self.exportador_de_livro = ExportadorDeLivro(self)
+        self.exportador_de_livro.estado.connect(self._set_status)
         self.service: Any = None
         self.book: BookModel | None = None
         self.document: str | None = None
@@ -454,6 +457,12 @@ class PainelDeRotulagem(QWidget):
         exportar.setText("Exportar")
         exportar.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(exportar)
+        # O livro aberto como EPUB ou DOCX, inteiro ou por intervalo de páginas
+        # (caissa.ui.views.exportacao): é o fim do ciclo desta aba -- rotular,
+        # treinar, importar melhor -- e sai daqui porque é aqui que o PDF está.
+        menu.addAction("Livro para EPUB…", lambda: self.export_book("epub"))
+        menu.addAction("Livro para DOCX…", lambda: self.export_book("docx"))
+        menu.addSeparator()
         menu.addAction("Verdade para treino (ground_truth/)", self.export_ground_truth)
         menu.addAction("Fundir no manifesto dourado…", self.export_manifest)
         menu.addAction("Correções e pares de calibração", self.export_corrections)
@@ -1257,6 +1266,26 @@ class PainelDeRotulagem(QWidget):
         )
 
     # -- exports ------------------------------------------------------------ #
+
+    def export_book(self, formato: str) -> bool:
+        """*Livro para EPUB…* / *Livro para DOCX…*: o diálogo, depois a thread.
+
+        O progresso e o fim vão para a linha de status; só a falha abre caixa.
+        """
+        if self.document is None:
+            self._set_status("Abra um PDF antes de exportar o livro.")
+            return False
+        pdf = self.project.pdf_for(self.document)
+        try:
+            total = page_count(pdf)
+        except Exception as exc:  # noqa: BLE001 - a missing PDF is a message, not a crash
+            QMessageBox.critical(
+                self, "Exportar livro", f"Não foi possível abrir {pdf}:\n{exc}"
+            )
+            return False
+        return self.exportador_de_livro.comecar(
+            pdf, total, formato=formato, pagina_atual=self.page_index
+        )
 
     def save(self) -> None:
         self._flush_timer()

@@ -145,6 +145,9 @@ all = [
 # do livro e medir o ganho -- docs/quality/ROTULAGEM.md.
 caissa-rotular = "caissa.ocr.labeling.app:main"
 caissa-treinar = "caissa.ocr.training.cli:main"
+# Um PDF vira EPUB ou DOCX, inteiro ou por intervalo de paginas -- o mesmo
+# pipeline do dialogo "Exportar livro..." da janela (caissa.export.book).
+caissa-exportar = "caissa.export.cli:main"
 
 [project.urls]
 Documentation = "https://github.com/caissa-studio/caissa/tree/main/docs"

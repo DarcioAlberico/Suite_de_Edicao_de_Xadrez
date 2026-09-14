@@ -25,6 +25,13 @@ Usage::
 
     result = export(document, Path("livro.epub"), "epub")
     print(result.summary())
+
+From a PDF, whole or by page range (:mod:`caissa.export.book`)::
+
+    from caissa.export import export_book
+
+    result = export_book("Livro.pdf", None, "epub", pages="10-25")
+    print(result.summary())
 """
 
 from __future__ import annotations
@@ -46,6 +53,15 @@ from caissa.export.base import (
     substitute,
     unsupported,
 )
+from caissa.export.book import (
+    BOOK_FORMATS,
+    BookExportResult,
+    PageRangeError,
+    default_output_path,
+    describe_pages,
+    export_book,
+    parse_page_range,
+)
 from caissa.export.diagrams import DiagramRenderer, RenderedDiagram
 from caissa.export.docx import DocxExporter, DocxOptions, read_docx
 from caissa.export.epub import EpubExporter, EpubOptions, read_epub
@@ -56,8 +72,10 @@ from caissa.export.profiles import PROFILES, profile_for
 from caissa.export.text import game_from_pgn, game_to_pgn, render_move
 
 __all__ = [
+    "BOOK_FORMATS",
     "EXPORTERS",
     "PROFILES",
+    "BookExportResult",
     "Capability",
     "DiagramRenderer",
     "DocxExporter",
@@ -74,15 +92,20 @@ __all__ = [
     "HtmlOptions",
     "LatexExporter",
     "LatexOptions",
+    "PageRangeError",
     "PdfExporter",
     "PdfOptions",
     "PropertySupport",
     "RenderedDiagram",
     "approximate",
+    "default_output_path",
+    "describe_pages",
     "export",
+    "export_book",
     "full",
     "game_from_pgn",
     "game_to_pgn",
+    "parse_page_range",
     "profile_for",
     "read_docx",
     "read_epub",
