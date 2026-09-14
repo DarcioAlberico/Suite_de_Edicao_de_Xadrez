@@ -142,6 +142,14 @@ class OcrServiceConfig:
     #: measured on the golden corpus they win the degraded strata and lose on
     #: clean scans and native pages, so they enter where the portfolio enters.
     secondary_only_when_degraded: bool = True
+    #: OCR_UI_ROADMAP passo 2: on a region whose text layer was kept with
+    #: damaged notation (``TextLayerVerdict.notation_damaged``), the layer
+    #: takes the anchor seat regardless of its capped score and the engines
+    #: supply the moves token by token: its prose is the book's own, the
+    #: damage is confined to the move tokens, and a mangled token is a
+    #: non-word the fusion replaces with a supported reading.  ``False``
+    #: lets the arbiter's winner (Tesseract, usually) anchor instead.
+    damaged_layer_anchors: bool = True
     page: PageConfig = field(default_factory=PageConfig)
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
@@ -933,7 +941,15 @@ class OcrService:
                 c.variant == "glyph" and _has_figurines(c.result) for c in candidates):
             never_anchor.update(cfg.secondary_engines)
         anchorable = [c for c in candidates if c.engine not in never_anchor] or candidates
-        best = max(anchorable, key=lambda c: c.rank)
+        damaged_layer = next(
+            (c for c in anchorable if c.engine == "pdf_text_layer"
+             and c.result.meta.get("notation_damaged") and not c.result.is_empty), None)
+        if cfg.damaged_layer_anchors and damaged_layer is not None:
+            best = damaged_layer
+            never_anchor.update(c.engine for c in candidates
+                                if c.engine != "pdf_text_layer" and not c.secondary)
+        else:
+            best = max(anchorable, key=lambda c: c.rank)
         result, decision, fusion = best.result, best.decision, {}
         if cfg.fuse and len(candidates) > 1:
             try:

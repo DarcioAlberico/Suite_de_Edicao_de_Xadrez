@@ -361,3 +361,64 @@ def test_importer_object_exposes_the_report(pdf_file):
         result = importer.run()
     assert result.report is importer.report
     assert "1 página" in result.report.describe_pt()
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP passo 2: a kept layer with damaged notation is contested
+# --------------------------------------------------------------------------- #
+
+
+def _damaged_verdict(confidence: float = 0.55):
+    from caissa.ocr.engines.pdf_text_layer import TextLayerVerdict
+
+    return TextLayerVerdict(
+        True, "a prosa está legível, mas 43% dos 30 lances perderam o glifo da peça",
+        confidence, {"mangled_move_ratio": 0.43, "moves_judged": 30.0}, (), False,
+        notation_damaged=True)
+
+
+def _contest_fixture(pdf_file, monkeypatch, verdict):
+    from caissa.ocr.engines.pdf_text_layer import PdfTextLayerEngine
+
+    spec = PageSpec().text("For the present White cannot play 1 'i'xg7 l:txg7 2 'i'd6+", 72, 100)
+    path = pdf_file([spec])
+    monkeypatch.setattr(PdfTextLayerEngine, "assess", lambda self, page, **kw: verdict)
+    calls: list[tuple[int, bool]] = []
+
+    def fake_ocr(_page, frame, verdict) -> PageText:
+        calls.append((frame.index, verdict.notation_damaged))
+        box = (72.0, 100.0, 300.0, 112.0)
+        return PageText(frame=frame, lines=(TextLine(box=box, spans=(
+            TextSpan(text="1 Bxg7 Kxg7 2 Qd6+", box=box, size=10.0, confidence=0.8),)),),
+            source="tesseract")
+
+    return path, fake_ocr, calls
+
+
+def test_a_kept_layer_with_damaged_notation_goes_to_the_ocr(pdf_file, monkeypatch):
+    path, fake_ocr, calls = _contest_fixture(pdf_file, monkeypatch, _damaged_verdict())
+    result = import_pdf(path, PdfImportOptions(ocr=fake_ocr, detect_diagrams=False))
+    assert calls == [(0, True)], "the OCR ran on the kept page and saw why"
+    page = result.report.pages[0]
+    assert page.source == "text-layer+ocr"
+    assert result.report.counters["contested_pages"] == 1
+    block = result.document.body[0]
+    assert isinstance(block, Paragraph)
+    assert plain_text(block.content) == "1 Bxg7 Kxg7 2 Qd6+"
+    assert block.provenance is not None and block.provenance.kind is SourceKind.OCR
+
+
+def test_the_contest_is_off_by_option_and_absent_on_a_healthy_layer(pdf_file, monkeypatch):
+    from caissa.ocr.engines.pdf_text_layer import TextLayerVerdict
+
+    path, fake_ocr, calls = _contest_fixture(pdf_file, monkeypatch, _damaged_verdict())
+    result = import_pdf(path, PdfImportOptions(ocr=fake_ocr, detect_diagrams=False,
+                                               ocr_contests_text_layer=False))
+    assert calls == [] and result.report.pages[0].source == "text-layer"
+    assert result.report.counters["contested_pages"] == 0
+
+    healthy = TextLayerVerdict(True, "camada aceita", 0.98, {"mangled_move_ratio": 0.0,
+                                                             "moves_judged": 30.0}, (), False)
+    path, fake_ocr, calls = _contest_fixture(pdf_file, monkeypatch, healthy)
+    result = import_pdf(path, PdfImportOptions(ocr=fake_ocr, detect_diagrams=False))
+    assert calls == [] and result.report.pages[0].source == "text-layer"

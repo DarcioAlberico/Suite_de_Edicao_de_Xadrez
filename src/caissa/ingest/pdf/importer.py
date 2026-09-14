@@ -227,6 +227,15 @@ class PdfImportOptions:
     #: Locate (and, when possible, read) chess diagrams.
     detect_diagrams: bool = True
     diagram_finder: DiagramFinder | None = None
+    #: OCR_UI_ROADMAP passo 2: a page whose text layer was *kept* for its
+    #: prose while its notation is mangled (``TextLayerVerdict.notation_damaged``,
+    #: the 0,55 verdict of F5-C2) goes to the OCR service anyway.  There the
+    #: layer is level 0 per region, below the arbiter's bar, and the engines
+    #: compete; the fusion keeps the prose the layer got right and takes the
+    #: moves from whoever read them.  Before this the service was never
+    #: called on exactly the books it was built for (16 of the 33 with a
+    #: layer; ROTULAGEM.md §7c).  ``False`` copies the layer as before.
+    ocr_contests_text_layer: bool = True
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -474,6 +483,9 @@ class PdfImporter:
         counters["figures"] = sum(1 for e in entries if isinstance(e, _FigureEntry))
         counters["scanned_pages"] = sum(1 for e in entries if isinstance(e, _ScanEntry))
         counters["inline_images"] = sum(len(b.inline_images) for b in blocks)
+        # OCR_UI_ROADMAP passo 2: pages whose kept layer was contested by the OCR.
+        counters["contested_pages"] = sum(
+            1 for r in self.report.pages if r.source == "text-layer+ocr")
         self.report.counters = counters
         self.report.figurines_mapped = self._mapper.count
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))
@@ -701,6 +713,10 @@ class PdfImporter:
             if ocr is not None:
                 return "ocr", verdict.reason, ocr[1], ocr[0]
             return "rejected", verdict.describe_pt(), 0.0, text
+        if verdict.notation_damaged and self.options.ocr_contests_text_layer:
+            ocr = self._try_ocr(page, frame, verdict)
+            if ocr is not None:
+                return "text-layer+ocr", verdict.reason, ocr[1], ocr[0]
         return "text-layer", verdict.reason, verdict.confidence, text
 
     def _ocr_provider(self) -> OcrProvider | None:
@@ -1020,7 +1036,7 @@ class PdfImporter:
         report = self._page_reports.get(page)
         kind = (
             SourceKind.OCR
-            if report is not None and report.source == "ocr"
+            if report is not None and report.source in ("ocr", "text-layer+ocr")
             else SourceKind.PDF_TEXT_LAYER
         )
         inlines = self._inlines(draft)

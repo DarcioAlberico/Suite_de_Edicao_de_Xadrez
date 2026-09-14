@@ -565,9 +565,18 @@ class PageRecognizer:
             )
         if verdict.confidence <= page_verdict.confidence:
             return verdict
+        if verdict.signals.get("moves_judged", 0.0) == 0.0:
+            # OCR_UI_ROADMAP passo 2: a region with no move-shaped token at
+            # all — not a good one, not a mangled one — has nothing the broken
+            # figurine font could have damaged.  Its prose is the layer's own,
+            # read at 98,8 % on the controls (HANDOFF §4.1), and capping it
+            # would hand it to the OCR for nothing.  A region with even one
+            # move keeps the cap: that is the one that launders.
+            return verdict
         return replace(
             verdict,
             confidence=page_verdict.confidence,
+            notation_damaged=True,
             reason=(f"{verdict.reason} Confiança limitada à da página inteira "
                     f"({page_verdict.confidence:.2f}): os figurinos desta "
                     f"página estão danificados e a fonte é a mesma em todas as "

@@ -253,7 +253,7 @@ def _params_for(module: Any, script: str, extra: dict[str, Any]) -> dict[str, An
     rest — the onnxruntime combinations the package's model list offers for
     those scripts.  ``extra`` wins on any key.
     """
-    params: dict[str, Any] = {"Global.log_level": "warning"}
+    params: dict[str, Any] = {"Global.log_level": "error"}
     if script in ("cyrillic", "eslav"):
         params.update({
             "Rec.lang_type": (module.LangRec.ESLAV if script == "eslav"

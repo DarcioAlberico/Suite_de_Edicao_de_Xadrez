@@ -28,6 +28,16 @@ Three reports, selected with ``--what``:
     What :meth:`PdfTextLayerEngine.assess` now says about the pages the tests
     pin, so a change of behaviour shows up as a diff rather than as a surprise.
 
+``contest``
+    **OCR_UI_ROADMAP passo 2 — does contesting the kept layer pay?**  The
+    importer is run twice on the same fixed pages, with
+    ``PdfImportOptions.ocr_contests_text_layer`` off and on, and the IR's text
+    is compared: moves with a piece (:func:`piece_prefixes`, figurines
+    counted as correct), moves that appear only on one side (the invention
+    signal), and — on the two clean controls, where the contest must not
+    fire — the number of characters that changed, which has to be zero.
+    Needs Tesseract; ~3 s per page.
+
 ``recovery``
     **Is escalating to Tesseract worth it?**  Flagging a page at 0.55 only
     helps if the engine that then competes reads the notation better, and that
@@ -286,6 +296,10 @@ _MOVE_TAIL = re.compile(
 #: piece glyph, and counting it would penalise both engines for nothing.
 _MOVE_NUMBER = re.compile(r"^\d{1,3}\.{1,3}")
 
+#: The figurines a fused reading may carry instead of the letter (the glyph
+#: reader and the fine-tuned model emit them): the piece survived too.
+_FIGURINES = frozenset("♔♕♖♗♘♙")
+
 #: The piece letters an English-language book actually uses.  The question here
 #: is "did the glyph survive", so the answer has to be checked against real
 #: notation, not against the permissive multilingual set.
@@ -323,7 +337,7 @@ def piece_prefixes(text: str) -> tuple[int, int, int, Counter[str]]:
         prefixes[prefix] += 1
         if len(prefix) == 1:
             single += 1
-        if prefix in _ENGLISH_PIECES:
+        if prefix in _ENGLISH_PIECES or prefix in _FIGURINES:
             correct += 1
     return moves, single, correct, prefixes
 
@@ -383,6 +397,141 @@ def report_recovery() -> dict[str, Any]:
                 "distinct_forms": len(pre),
                 "top": pre.most_common(8),
             }
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP passo 2: the contested layer, end to end through the importer
+# --------------------------------------------------------------------------- #
+
+#: Fixed pages per book for ``--what contest``: the damaged books of
+#: ``RECOVERY_PAGES`` and the two clean controls (the contest must not fire).
+CONTEST_PAGES: list[tuple[str, str, str, list[int], bool]] = [
+    ("Gaprindashvili E8", PINNED["gaprindashvili"][0], "eng",
+     [158, 170, 190, 202, 210, 230, 245, 250], False),
+    ("Aagaard E1", PINNED["aagaard"][0], "eng", [148, 170, 200, 222, 240, 260], False),
+    ("Nunn E2", PINNED["nunn"][0], "eng", [120, 140, 160, 180, 200, 220], False),
+    ("Dvoretsky E1 (CONTROLE)", PINNED["dvoretsky"][0], "eng", [204, 300, 408, 500], True),
+    ("Boleslavsky E6 (CONTROLE)", PINNED["boleslavsky"][0], "rus", [30, 45, 60, 75], True),
+]
+
+_PIECE_MOVE = re.compile(r"^(?:\d{1,3}\.{1,3})?([KQRBNP♔♕♖♗♘♙])([a-h]?[1-8]?[x:×]?[a-h][1-8])"
+                         r"(?:=[A-Za-z])?[+#!?]{0,3}$")
+
+
+def _piece_moves(text: str) -> Counter[str]:
+    """Well-formed piece moves, normalised (figurine → letter), with multiplicity."""
+    figurine_to_letter = dict(zip("♔♕♖♗♘♙", "KQRBNP", strict=True))
+    out: Counter[str] = Counter()
+    for raw in text.split():
+        match = _PIECE_MOVE.match(raw.strip("(),;"))
+        if match:
+            piece = figurine_to_letter.get(match.group(1), match.group(1))
+            out[piece + match.group(2)] += 1
+    return out
+
+
+_MOVEISH_TOKEN = re.compile(r"^[^\s]*[a-h][1-8][+#!?]{0,3}$|^\d{1,3}\.{0,3}$|^[O0]-[O0](?:-[O0])?[+#!?]*$")
+
+
+def _prose_only(text: str) -> str:
+    """The prose words alone: alphabetic tokens of three or more letters.
+
+    Move-shaped tokens go, but so does the *damaged* notation on both sides
+    (``'it?dl``, ``Scl``, ``WIS?!``), which no move pattern matches and which
+    would otherwise be counted as prose the OCR "changed".  What is left is
+    what a reader reads as words, and that is what must survive the contest.
+    """
+    words = []
+    for raw in text.split():
+        token = raw.strip("(),;.:!?\"'—–-")
+        if len(token) >= 3 and token.isalpha() and not _MOVEISH_TOKEN.match(token):
+            words.append(token)
+    return " ".join(words)
+
+
+def _prose_cer(reference: str, hypothesis: str) -> float:
+    """Character error rate of the prose against the layer's own prose."""
+    from caissa.ocr.metrics import normalise, score_text
+
+    ref, hyp = normalise(_prose_only(reference)), normalise(_prose_only(hypothesis))
+    if not ref:
+        return 0.0
+    return float(score_text(ref, hyp).cer)
+
+
+def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool) -> dict[int, str]:
+    from caissa.core.model import Heading, Paragraph, plain_text
+    from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
+
+    options = PdfImportOptions(pages=pages, lang=lang, detect_diagrams=False,
+                               ocr_contests_text_layer=contest)
+    result = import_pdf(path, options)
+    texts: dict[int, list[str]] = {p: [] for p in pages}
+    for block in result.document.body:
+        if not isinstance(block, (Paragraph, Heading)) or block.provenance is None:
+            continue
+        page = block.provenance.page_index
+        if page in texts:
+            texts[page].append(plain_text(block.content))
+    sources = {r.index: r.source for r in result.report.pages}
+    return {p: "\n".join(t) for p, t in texts.items()}, sources
+
+
+def report_contest() -> dict[str, Any]:
+    from caissa.ocr.engines.tesseract import TesseractEngine
+
+    if not TesseractEngine().available():
+        print("Tesseract indisponível")
+        return {}
+    out: dict[str, Any] = {}
+    print(f"{'livro':30s} {'pág.':>5s} {'fonte':16s} {'lances c/ peça':>14s} "
+          f"{'peça certa':>11s} {'só sem':>6s} {'só com':>6s} {'chars Δ':>8s} {'CER prosa':>9s}")
+    for label, name, lang, pages, control in CONTEST_PAGES:
+        path = CORPUS_DIR / name
+        if not path.is_file():
+            print(f"{label:30s}  AUSENTE")
+            continue
+        before, _ = _page_texts(path, pages, lang, contest=False)
+        after, sources = _page_texts(path, pages, lang, contest=True)
+        totals = {"moves_before": 0, "correct_before": 0, "moves_after": 0,
+                  "correct_after": 0, "only_before": 0, "only_after": 0, "chars_changed": 0,
+                  "contested": 0, "prose_cer_sum": 0.0}
+        for page in pages:
+            b, a = before.get(page, ""), after.get(page, "")
+            mb, _, cb, _ = piece_prefixes(b)
+            ma, _, ca, _ = piece_prefixes(a)
+            pb, pa = _piece_moves(b), _piece_moves(a)
+            only_b = sum((pb - pa).values())
+            only_a = sum((pa - pb).values())
+            changed = (0 if b == a else
+                       sum(1 for x, y in zip(b, a, strict=False) if x != y) + abs(len(a) - len(b)))
+            src = sources.get(page, "?")
+            prose_cer = _prose_cer(b, a) if src == "text-layer+ocr" else 0.0
+            totals["moves_before"] += mb
+            totals["correct_before"] += cb
+            totals["moves_after"] += ma
+            totals["correct_after"] += ca
+            totals["only_before"] += only_b
+            totals["only_after"] += only_a
+            totals["chars_changed"] += changed
+            totals["contested"] += int(src == "text-layer+ocr")
+            totals["prose_cer_sum"] += prose_cer
+            print(f"{label:30s} {page:5d} {src:16s} {mb:6d} → {ma:5d} "
+                  f"{(cb / mb if mb else 0):4.0%} → {(ca / ma if ma else 0):4.0%} "
+                  f"{only_b:6d} {only_a:6d} {changed:8d} {prose_cer:8.3f}")
+        verdict = ""
+        if control:
+            intact = totals["chars_changed"] == 0 and totals["contested"] == 0
+            verdict = "  ✓ controle intacto" if intact else "  ✗ CONTROLE ALTERADO"
+        print(f"  {label}: lances c/ peça {totals['moves_before']} → {totals['moves_after']}, "
+              f"peça certa {totals['correct_before']} → {totals['correct_after']}, "
+              f"só sem {totals['only_before']}, só com {totals['only_after']}, "
+              f"páginas contestadas {totals['contested']}/{len(pages)}, "
+              f"CER médio da prosa nas contestadas "
+              f"{(totals['prose_cer_sum'] / totals['contested']) if totals['contested'] else 0.0:.3f}"
+              f"{verdict}")
+        out[label] = totals
     return out
 
 
@@ -497,7 +646,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__ and __doc__.split("\n")[0])
     parser.add_argument(
         "--what",
-        choices=("books", "sweep", "verdicts", "recovery", "decode", "all"),
+        choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "all"),
         default="books")
     parser.add_argument("--cap", type=int, default=60,
                         help="máximo de páginas amostradas por livro")
@@ -533,6 +682,10 @@ def main(argv: Iterable[str] | None = None) -> int:
         if results:
             print()
         results["decode"] = report_decode()
+    if args.what in ("contest", "all"):
+        if results:
+            print()
+        results["contest"] = report_contest()
 
     print(f"\n{time.perf_counter() - started:.1f} s")
     if args.json is not None:

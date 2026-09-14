@@ -247,3 +247,106 @@ dica de instalação), `src/caissa/ingest/pdf/ocr_service.py` (`secondary_engine
 `src/caissa/ocr/data/calibration.json`, `docs/quality/sol/calibration.md`,
 `benchmarks/bench_sol.py` (`sol_config` no relatório), `pyproject.toml` (extra `ocr-rapid`),
 testes citados.
+
+---
+
+## §2 — Passo 2: o OCR contesta a camada de texto danificada
+
+### 2.0 Em uma tela
+
+O importador chamava o OCR só quando o nível 0 **rejeitava** a camada. Uma página mantida a
+0,55 por notação destruída (`mangled_move_ratio > 0,15`, F5-C2) era copiada como estava — e
+eram 16 dos 33 livros com camada. Agora `TextLayerVerdict.notation_damaged` nomeia esse caso,
+`PdfImportOptions.ocr_contests_text_layer=True` manda a página ao `OcrService` mesmo assim, e
+lá a camada é o nível 0 **por região**: abaixo da barra do árbitro, os motores correm; na
+fusão a camada **ancora** (`OcrServiceConfig.damaged_layer_anchors=True`: a prosa é a do livro)
+e os lances vêm dos motores token a token, porque um lance danificado é uma não-palavra que a
+fusão troca por uma leitura apoiada. Uma região **sem lance algum** conserva o próprio veredito
+(nada que a fonte quebrada pudesse ter tocado); uma com um lance que seja continua limitada ao
+da página (portão cego 15).
+
+Medido de ponta a ponta pelo importador, nas páginas fixas de `notation_integrity.py`
+(`--what contest`, novo): sem → com, mesmo código.
+
+| livro | pág. contestadas | lances com peça | **peça certa** | lances perdidos | CER da prosa (palavras) nas contestadas |
+|---|---|---|---|---|---|
+| Gaprindashvili E8 | 6/8 | 882 → 956 | **265 → 791** | 0 | 0,088 |
+| Aagaard E1 | 5/6 | 158 → 195 | **0 → 133** | 0 | 0,012 |
+| Nunn E2 (Pawnless) | 5/6 | 414 → 463 | **0 → 320** | 0 | 0,016 |
+| Dvoretsky E1 (controle) | 0/4 | 172 → 172 | 170 → 170 | 0 | 0 caracteres alterados ✓ |
+| Boleslávski E6 (controle) | 0/4 | 81 → 81 | 10 → 10 | 0 | 0 caracteres alterados ✓ |
+
+"Peça certa" = lance bem formado cujo prefixo é uma letra de peça inglesa **ou uma figurina**
+(a fusão emite ♘, a camada de notação canoniza). "Lances perdidos" = lances bem formados que
+existiam antes e sumiram: **zero** em toda página. As duas páginas de cada livro que **não**
+foram contestadas (Gaprindashvili p158/p190 já eram `ocr` — camada rejeitada; Aagaard p200 e
+Nunn p220 estão abaixo do limiar de dano) não mudaram um caractere.
+
+```
+.venv\Scripts\python.exe benchmarks\notation_integrity.py --what contest --json benchmarks\reports\ni_c2_contest_layer_anchor.json
+```
+
+### 2.1 A âncora: medido dos dois jeitos
+
+A SPEC 1.1 previa a camada acusada "nunca âncora". Medi as duas regras na mesma bancada:
+
+| âncora na região danificada | peça certa (Gap./Aag./Nunn) | CER da prosa (palavras) |
+|---|---|---|
+| o vencedor da arbitragem (Tesseract, em regra) | 720 / 109 / 258 | 0,094 / 0,022 / 0,068 |
+| **a camada, com os motores por token** | **791 / 133 / 320** | **0,088 / 0,012 / 0,016** |
+
+A camada a ancorar ganha nos dois eixos: mais lances recuperados **e** a prosa mais intacta.
+É o contrário do que a SPEC supunha e é o que fica (`damaged_layer_anchors=True`); a SPEC
+S1 foi corrigida. O motivo é o que a F5 mediu: a camada erra como **ruído só nos tokens de
+lance** e acerta a prosa a 98,8 %; com ela na âncora a fusão só toca o que é não-palavra.
+(`benchmarks/reports/ni_c2_contest.json` é a rodada com o vencedor na âncora.)
+
+A "CER da prosa" é aproximada: compara só as palavras alfabéticas de ≥ 3 letras com a própria
+camada como referência, porque a notação danificada dos dois lados não é prosa; o que resta
+de diferença em p202/p230 do Gaprindashvili (0,14) é em parte ordem de leitura entre regiões.
+Lido lado a lado em p170 e p202, a prosa é a mesma.
+
+### 2.2 O que ainda não fecha nas páginas contestadas
+
+- **Cifra residual**: em páginas de análise densa que o leiaute trata como uma região só
+  (Gaprindashvili p230: 1 região, 154 lances), o Tesseract entrega o sósia (`Hd2`, `Sf2`,
+  `2xf6`) e o leitor de glifos abstém sobre a página inteira, então a fusão não tem figurina
+  para trocar — é a cifra por livro do **passo 3** (`H`=torre, `S`=rei, `2`=bispo neste
+  livro), exatamente o caso para que ela existe.
+- **Parágrafos da análise fragmentados** onde o Tesseract ancora (região cuja camada foi
+  *rejeitada* por > 60 % de dano e portanto não é candidata): as linhas do OCR viram
+  parágrafos curtos (Nunn Minor Piece p150, coluna direita). Comportamento pré-existente das
+  páginas `ocr`; agora visível em mais páginas. Fica registrado.
+- Custo: ~3 s por página contestada (Tesseract + RapidOCR onde a página é degradada + glifos).
+
+### 2.3 Testes
+
+`tests/unit/ingest/test_importer.py`: página mantida com notação danificada → OCR chamado e vê
+`notation_damaged`, fonte `text-layer+ocr`, contador `contested_pages`; opção desligada → não
+chamado; camada sã → não chamado. `tests/unit/ocr/test_page.py`: região sem lance conserva o
+veredito, região com poucos lances continua limitada. `tests/unit/ingest/test_corpus.py`
+(Nunn Minor Piece p150, agora contestada): os cinco parágrafos de prosa continuam inteiros e
+a análise volta legível.
+
+```
+.venv\Scripts\python.exe -m pytest tests\unit\ocr tests\unit\ingest tests\unit\notation tests\unit\export -q
+1508 passed, 3 skipped                                      # suíte inteira: 3590 passed, 6 skipped (11:53), + 210 do test_roundtrip_corpus à parte
+```
+
+**Sabotagem do portão**: a rodada "sem" (`ocr_contests_text_layer=False`) **é** a sabotagem
+— 0 % de peça certa em toda página contestada — e os dois controles têm de sair com 0
+caracteres alterados, o que o instrumento verifica e imprime (`✓ controle intacto`).
+
+### 2.4 O acervo inteiro
+
+```
+.venv\Scripts\python.exe benchmarks\bench_ingest.py --sample 12      # benchmarks/reports/ingest_20260914_114656.json
+```
+
+46 livros, 552 páginas, **0 falhas**. Fontes de página: `text-layer` 326, `text-layer+ocr` **64**
+(12 livros: Aagaard ×2, Euwe Band 1-2 e Band 7, Gaprindashvili, Yusupov ×2, Mieses, Secrets of
+Chess Training, Burgess, Nunn ×2), `ocr` 127, `image-only` 27, `rejected` 8. Blocos de lances
+(`movetext`) **715 → 1.269** contra a rodada de 2026-09-11 — a notação que a camada trazia
+destruída passa a ser reconhecida como lances. Tempo 64 s → 1.569 s: a rodada de 2026-09-11 era
+sem OCR algum (o serviço ainda não estava costurado); os 127 `ocr` de páginas só de imagem
+pesam mais que os 64 contestados (~3 s cada). Diagramas 74/74, como antes.

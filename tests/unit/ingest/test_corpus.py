@@ -138,7 +138,12 @@ def test_nunn_ocr_layer_keeps_the_paragraphs_whole():
     path = corpus_file("Nunn J. Secrets of Minor")
     result = import_pdf(open_pdf(path), PdfImportOptions(pages=[150], lang="eng"))
     texts = [t for t in paragraphs_of(result.document) if len(t) > 60]
-    assert [t[:24] for t in texts] == [
+    # OCR_UI_ROADMAP passo 2: this layer is kept with 35 % of its moves mangled,
+    # so the page is now *contested* -- the prose paragraphs stay the layer's
+    # (the layer anchors them) and the analysis, unreadable before, comes back
+    # from the OCR as further paragraphs after them.
+    assert result.report.pages[0].source == "text-layer+ocr"
+    assert [t[:24] for t in texts[:5]] == [
         "(206): White to play win",
         "If Black's king starts o",
         "There are a total of 31 ",
@@ -146,6 +151,8 @@ def test_nunn_ocr_layer_keeps_the_paragraphs_whole():
         "(207): Black is to play.",
     ], [t[:24] for t in texts]
     assert texts[0].endswith("and wins.")
+    analysis = " ".join(texts[5:])
+    assert "Ng5" in analysis and "Nc6" in analysis, "the moves are readable now"
 
 
 def test_chernev_tabular_moves_and_flush_paragraphs():

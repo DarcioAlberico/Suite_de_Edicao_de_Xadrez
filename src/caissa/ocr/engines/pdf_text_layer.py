@@ -370,6 +370,11 @@ class TextLayerVerdict:
     fonts: tuple[FontRecord, ...] = ()
     #: True when the page simply has no text — a scan, not a broken layer.
     is_image_only: bool = False
+    #: True when the layer was *kept* for its prose while its notation is
+    #: mangled (figurines back as Latin letters).  OCR_UI_ROADMAP passo 2: the
+    #: importer sends such a page to the OCR anyway, and the layer competes
+    #: per region instead of being copied as it is.
+    notation_damaged: bool = False
 
     @property
     def broken_fonts(self) -> tuple[FontRecord, ...]:
@@ -608,7 +613,8 @@ class PdfTextLayerEngine(OcrEngineBase):
                 f"padrão 'i'd6+ / l:th7. A camada foi aceita porque o texto "
                 f"corrido é aproveitável; a notação desta página precisa de "
                 f"revisão ou de OCR.",
-                th.damaged_notation_confidence, signals, tuple(fonts), False)
+                th.damaged_notation_confidence, signals, tuple(fonts), False,
+                notation_damaged=True)
 
         # A page the lexical tests could not judge is accepted on its structure
         # alone, and says so.  It is not "confidently fine": nothing here read
@@ -818,6 +824,7 @@ class PdfTextLayerEngine(OcrEngineBase):
         meta: dict[str, object] = {
             "verdict": verdict.reason,
             "accepted": verdict.accepted,
+            "notation_damaged": verdict.notation_damaged,
             "is_image_only": verdict.is_image_only,
             "signals": dict(verdict.signals),
             "fonts": [

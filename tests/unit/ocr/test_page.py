@@ -641,3 +641,23 @@ def test_cutting_a_page_up_must_not_launder_its_verdict(pymupdf, corpus_doc):
     assert all(v.confidence == 0.55 for v in capped)
     # A number with no reason is unfixable in the field.
     assert all("não pode valer mais que a página" in v.reason for v in capped)
+
+
+def test_a_region_without_any_move_keeps_its_own_verdict_under_a_damaged_page():
+    """OCR_UI_ROADMAP passo 2: the cap exists so a region with *few* moves cannot
+    launder the page's damaged notation; a region with *none* has nothing the
+    broken font could have touched, and its prose stays the layer's."""
+    from caissa.ocr.engines.pdf_text_layer import PdfTextLayerEngine, TextLayerVerdict
+    from caissa.ocr.page import PageRecognizer
+
+    engine = PdfTextLayerEngine()
+    page = TextLayerVerdict(True, "notação danificada", 0.55,
+                            {"mangled_move_ratio": 0.4, "moves_judged": 40.0}, (), False,
+                            notation_damaged=True)
+    prose = TextLayerVerdict(True, "prosa", 0.98, {"mangled_move_ratio": 0.0,
+                                                  "moves_judged": 0.0}, (), False)
+    few = TextLayerVerdict(True, "poucos lances", 0.98, {"mangled_move_ratio": 0.0,
+                                                        "moves_judged": 3.0}, (), False)
+    assert PageRecognizer._cap_by_page(prose, page, engine).confidence == 0.98
+    capped = PageRecognizer._cap_by_page(few, page, engine)
+    assert capped.confidence == 0.55 and capped.notation_damaged
