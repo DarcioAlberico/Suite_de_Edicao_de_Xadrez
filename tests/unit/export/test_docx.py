@@ -641,6 +641,89 @@ def test_an_image_without_its_file_keeps_its_place_as_a_placeholder(tmp_path: Pa
     assert abs(block.width.to_points() - 50.0) < 0.01
 
 
+def test_a_diagram_comes_back_from_its_picture(tmp_path: Path) -> None:
+    """The picture's ``a:extLst`` carries the node -- FEN, orientation, number,
+    label, marks, stipulation, anchor, alt text -- and the reader folds the
+    stipulation paragraph before it, the caption after it and the solution's
+    movetext after that back into one ``Diagram``, with the identity the
+    bookmark gave the first of those paragraphs."""
+    from caissa.core.model import GameScore, Mark, MarkKind, MoveNode, Orientation, Strong
+
+    solution = GameScore(
+        children=(MoveNode(san="e4", ply=1), MoveNode(san="e5", ply=2), MoveNode(san="Nf3", ply=3))
+    )
+    diagram = Diagram(
+        fen="8/8/8/8/8/8/8/K6k w - - 0 1",
+        orientation=Orientation.BLACK,
+        number=7,
+        label="Estudo",
+        stipulation="Brancas jogam e ganham",
+        marks=(Mark(kind=MarkKind.CIRCLE, squares=("e4",)),),
+        side_to_move_indicator=True,
+        anchor="d7",
+        alt_text="Reis nos cantos",
+        caption=(Text(content="Depois de "), Strong(content=(Text(content="Rb2"),))),
+        solution=solution,
+    )
+    document = Document(
+        metadata=DocumentMetadata(title="Diagrama"),
+        body=(
+            Paragraph(content=(Text(content="Antes."),)),
+            diagram,
+            Paragraph(content=(Text(content="Depois."),)),
+        ),
+    )
+    package = tmp_path / "diagrama.docx"
+    DocxExporter().export(document, package)
+    main = _part(package, "word/document.xml")
+    assert "<caissa:diagram " in main
+    assert 'fen="8/8/8/8/8/8/8/K6k w - - 0 1"' in main
+    assert 'stipulation="Brancas jogam e ganham"' in main
+
+    read = read_docx(package)
+    assert [type(block).__name__ for block in read.body] == ["Paragraph", "Diagram", "Paragraph"]
+    back = read.body[1]
+    assert isinstance(back, Diagram)
+    assert back.id == diagram.id
+    assert back.fen == diagram.fen
+    assert back.orientation is Orientation.BLACK
+    assert back.number == 7
+    assert back.label == "Estudo"
+    assert back.stipulation == "Brancas jogam e ganham"
+    assert back.marks == diagram.marks
+    assert back.side_to_move_indicator
+    assert back.anchor == "d7"
+    assert back.alt_text == "Reis nos cantos"
+    assert [type(inline).__name__ for inline in back.caption] == ["Text", "Text"]
+    assert back.caption[0].content == "Depois de "
+    assert back.caption[1].content == "Rb2"
+    assert back.caption[1].props.bold is True
+    assert back.solution is not None
+    assert [move.san for move in back.solution.children] == ["e4", "e5", "Nf3"]
+
+
+def test_a_bare_diagram_needs_no_neighbours(tmp_path: Path) -> None:
+    """No stipulation, caption or solution: the picture alone is the node, and
+    the paragraphs around it stay what they are."""
+    diagram = Diagram(fen=STARTING)
+    document = Document(
+        metadata=DocumentMetadata(title="Só a posição"),
+        body=(
+            Paragraph(content=(Text(content="Um."),)),
+            diagram,
+            Paragraph(content=(Text(content="Dois."),)),
+        ),
+    )
+    package = tmp_path / "so.docx"
+    DocxExporter().export(document, package)
+    read = read_docx(package)
+    assert [type(block).__name__ for block in read.body] == ["Paragraph", "Diagram", "Paragraph"]
+    assert read.body[1].id == diagram.id
+    assert read.body[1].fen == STARTING
+    assert read.body[1].caption == ()
+    assert read.body[1].solution is None
+
+
 def test_a_note_comes_back_where_it_stood_in_the_story(tmp_path: Path) -> None:
     """The body of a note lives outside ``w:body``; its place does not.
 

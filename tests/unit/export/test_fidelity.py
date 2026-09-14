@@ -121,6 +121,29 @@ def test_a_dropped_node_is_reported_as_missing(small: Document) -> None:
     assert report.matched < report.node_count
 
 
+def test_a_child_of_a_field_the_format_declared_it_drops_is_a_declared_loss() -> None:
+    """The DOCX profile says the section header is not written; the text
+    inside that header vanishes *because* of that declaration, and the user
+    was told -- so it is not a silent loss. A dropped node whose owning field
+    was declared lossless is still silent, as before."""
+    from dataclasses import replace
+
+    from caissa.core.model import Paragraph, SectionBreak, Text
+
+    section = SectionBreak(header_text=(Text(content="Cabeçalho"),))
+    body = Paragraph(content=(Text(content="Corpo"),))
+    original = Document(body=(section, body))
+    without_header = replace(original, body=(replace(section, header_text=()), body))
+    report = measure(original, without_header, "docx")
+    assert [m.node_type for m in report.missing] == ["text"]
+    assert not report.undeclared_missing
+    assert "header1.xml" in report.missing[0].reason
+
+    without_body_text = replace(original, body=(section, replace(body, content=())))
+    report = measure(original, without_body_text, "docx")
+    assert [m.node_type for m in report.undeclared_missing] == ["text"]
+
+
 def test_a_changed_field_is_attributed_to_the_right_node(small: Document) -> None:
     """A field that changed is reported with its node and its path."""
     from dataclasses import replace

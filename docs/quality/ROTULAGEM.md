@@ -552,6 +552,30 @@ os seis `ImageBlock` com chave, alt e 31,68 pt. Testes:
 `test_an_image_without_its_file_keeps_its_place_as_a_placeholder`; fidelidade do corpus acima
 do portão, sem perda declarada que não chegue ao relatório.
 
+**E o `Diagram` volta (quarta passada).** O desenho EMF do diagrama ganhou o mecanismo de
+extensão do DrawingML — `wp:docPr/a:extLst/a:ext[@uri]/caissa:diagram` — com o que o XHTML põe em
+`data-*`: FEN, orientação, número, rótulo, estipulação, marcas (mesmo codificador do HTML), lado a
+jogar, âncora, alt, contexto do lance, revisão humana; e três flags dizendo que vizinhos o escritor
+deitou em volta (estipulação antes, legenda depois, solução depois dela). O leitor monta o nó a
+partir da extensão e **absorve** os três parágrafos vizinhos — a legenda vem dos inlines depois do
+« — » que segue o campo SEQ, a solução é o `GameScore` já lido com os bookmarks por lance, e a
+identidade volta do parágrafo da estipulação, que foi quem recebeu o bookmark do bloco. Word e
+Writer preservam e ignoram a extensão (conferido no Writer: estipulação, tabuleiro, legenda,
+solução como antes). O perfil declara `diagram` como *full*; o que não volta continua declarado
+por campo (`style`, `source`, `recognition`), e `verified_by_human`/`move_context` passaram a
+*full* no DOCX porque agora vão na extensão.
+
+Duas coisas que a mudança expôs e foram corrigidas junto: (1) um parágrafo `GroupTitle` com uma
+única imagem em linha era lido como `ImageBlock` — só o estilo `Diagram` abriga figura de bloco
+agora; (2) o DOCX declarava `headers_footers: full()` e nunca gravou cabeçalho de seção — passou
+a `unsupported`, com `section_break.header_text`/`footer_text` declarados por campo, e a
+fidelidade aprendeu a creditar a um nó sumido a declaração do **campo do pai** que o continha
+(`_missing_support`; antes só a do próprio nó contava, e o texto de um cabeçalho declarado como
+não gravado era «perda silenciosa»). Medido no corpus: DOCX 0,9904 → **1,0**; HTML/EPUB/LaTeX/PDF
+inalterados (o 0,9952 do EPUB é `document.metadata`, pré-existente). Testes:
+`test_a_diagram_comes_back_from_its_picture`, `test_a_bare_diagram_needs_no_neighbours`,
+`test_a_child_of_a_field_the_format_declared_it_drops_is_a_declared_loss`.
+
 ### 7d. O que não é
 
 - Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,

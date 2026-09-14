@@ -97,6 +97,7 @@ from caissa.core.model import (
     NonBreakingSpace,
     NoteRef,
     NumberingRef,
+    Orientation,
     PageBreak,
     Paragraph,
     ParagraphProps,
@@ -1587,7 +1588,13 @@ class _Body:
 
     def _block_diagram(self, node: Diagram) -> str:
         rendered = self.diagrams.svg(node)
-        picture = self._picture(rendered.svg, rendered.width_mm, rendered.height_mm, node)
+        picture = self._picture(
+            rendered.svg,
+            rendered.width_mm,
+            rendered.height_mm,
+            node,
+            extension=_diagram_extension(node),
+        )
         parts = [
             self._paragraph(
                 _with_style(ParagraphProps(alignment=Alignment.CENTER), "Diagram"), picture
@@ -1964,7 +1971,15 @@ class _Body:
 
     # -- pictures ----------------------------------------------------------
 
-    def _picture(self, svg: str, width_mm: float, height_mm: float, node: Any) -> str:
+    def _picture(
+        self,
+        svg: str,
+        width_mm: float,
+        height_mm: float,
+        node: Any,
+        *,
+        extension: str = "",
+    ) -> str:
         """Embed a diagram, vector first.
 
         Args:
@@ -1972,6 +1987,8 @@ class _Body:
             width_mm: Intrinsic width.
             height_mm: Intrinsic height.
             node: The diagram node, for the degradation report.
+            extension: An ``a:extLst`` for ``wp:docPr`` -- the node's own
+                fields, so the reader can rebuild it (:func:`_diagram_extension`).
 
         Returns:
             The run containing the drawing.
@@ -2026,6 +2043,7 @@ class _Body:
             round(width_mm * EMU_PER_MM),
             round(height_mm * EMU_PER_MM),
             alt,
+            extension=extension,
         )
 
     # -- inlines -----------------------------------------------------------
@@ -2503,6 +2521,52 @@ def _to_png(path: Path) -> bytes:
         return buffer.getvalue()
 
 
+DIAGRAM_EXT_URI = "{7A1C5B3E-2D4F-4C8A-9E6B-CAISSA0D1A6}"
+"""The ``a:ext/@uri`` of the diagram extension. A GUID-shaped token, as the
+schema asks; the letters spell who put it there."""
+
+DIAGRAM_NS = "urn:caissa:ir:diagram"
+
+
+def _diagram_extension(node: Diagram) -> str:
+    """The diagram node's own fields, as an ``a:ext`` for ``wp:docPr``.
+
+    What the XHTML writer puts in ``data-*`` attributes goes here in the one
+    place DrawingML reserves for a producer's extras: FEN, orientation,
+    number, label, stipulation, marks, the side-to-move flag, the anchor, the
+    alternative text and the move context. Three flags say which neighbours
+    the writer laid down around the picture -- the stipulation paragraph
+    before it, the caption after it, the solution's movetext after that --
+    so the reader can fold them back into the node instead of reading them
+    as paragraphs of their own.
+    """
+    from caissa.export.html import _marks_data
+
+    attributes: dict[str, str | None] = {
+        "fen": node.fen,
+        "orientation": node.orientation.value,
+        "number": str(node.number) if node.number is not None else None,
+        "label": node.label,
+        "stipulation": node.stipulation,
+        "marks": _marks_data(node.marks) or None,
+        "side-to-move": "1" if node.side_to_move_indicator else None,
+        "anchor": node.anchor,
+        "alt": node.alt_text,
+        "move-context": node.move_context,
+        "verified": "1" if node.verified_by_human else None,
+        "caption": "1" if (node.caption or node.number is not None) else None,
+        "solution": "1" if node.solution is not None and node.solution.children else None,
+    }
+    rendered = "".join(
+        f' {name}="{xml_attr(value)}"' for name, value in attributes.items() if value is not None
+    )
+    return (
+        f'<a:ext uri="{DIAGRAM_EXT_URI}">'
+        f'<caissa:diagram xmlns:caissa="{DIAGRAM_NS}"{rendered}/>'
+        "</a:ext>"
+    )
+
+
 _CROP_UNIT = 100_000  # ``a:srcRect`` insets are in thousandths of a percent
 _CROP_EDGES = 4
 
@@ -2534,6 +2598,7 @@ def _drawing(
     name: str | None = None,
     title: str | None = None,
     crop: tuple[float, ...] = (),
+    extension: str = "",
 ) -> str:
     """Render an inline ``w:drawing`` for one embedded picture.
 
@@ -2547,6 +2612,8 @@ def _drawing(
             back; ``Diagrama N`` for a diagram.
         title: The picture's title, when the node has one.
         crop: The IR's fractional crop, written as ``a:srcRect``.
+        extension: Children for an ``a:extLst`` inside ``wp:docPr`` -- the
+            OOXML extension mechanism, which Word keeps and ignores.
 
     Returns:
         The run containing the drawing.
@@ -2554,12 +2621,18 @@ def _drawing(
     safe = xml_attr(alt)[:400]
     label = xml_attr(name if name is not None else f"Diagrama {identifier}")
     titled = f' title="{xml_attr(title)}"' if title else ""
+    properties = (
+        f'<wp:docPr id="{identifier}" name="{label}" descr="{safe}"{titled}>'
+        f"<a:extLst>{extension}</a:extLst></wp:docPr>"
+        if extension
+        else f'<wp:docPr id="{identifier}" name="{label}" descr="{safe}"{titled}/>'
+    )
     return (
         "<w:r><w:drawing>"
         f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
         f'<wp:extent cx="{width}" cy="{height}"/>'
         '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
-        f'<wp:docPr id="{identifier}" name="{label}" descr="{safe}"{titled}/>'
+        f"{properties}"
         "<wp:cNvGraphicFramePr/>"
         f'<a:graphic xmlns:a="{A}">'
         f'<a:graphicData uri="{PIC}">'
@@ -3349,6 +3422,7 @@ def _collect(
         elif tag == "tbl":
             blocks.append(_apply_identity(_read_table(child, state), pending))
             pending = []
+    blocks[:] = _assemble_diagrams(blocks)
 
 
 def _hoisted_identity(paragraph: ET.Element) -> list[str]:
@@ -3397,6 +3471,8 @@ def _is_packaging_paragraph(element: ET.Element) -> bool:
 def _apply_identity(node: Any, pending: Sequence[str]) -> Any:
     """Restore a node's identity from the bookmark that wrapped it.
 
+    A :class:`_DiagramDraft` hands the identity to the node it carries.
+
     Args:
         node: The rebuilt node.
         pending: Bookmark names opened just before it.
@@ -3406,6 +3482,9 @@ def _apply_identity(node: Any, pending: Sequence[str]) -> Any:
     """
     from dataclasses import replace
 
+    if isinstance(node, _DiagramDraft):
+        node.node = _apply_identity(node.node, pending)
+        return node
     for raw in reversed(pending):
         try:
             return replace(node, id=ULID.from_string(raw))
@@ -3438,9 +3517,16 @@ def _read_paragraph(element: ET.Element, state: _ReadState) -> Block | None:
     if style == "GameScore":
         return _read_game(element)
     props = _read_paragraph_props(properties, style, state)
-    picture = _lone_picture(element, state)
-    if picture is not None:
-        return _image_block(picture, props.alignment)
+    # Only a Diagram-styled paragraph holds a block picture: a lone inline
+    # image in a title or a caption keeps being the inline it was.
+    drawing = _lone_drawing(element) if style == "Diagram" else None
+    if drawing is not None:
+        draft = _diagram_from_drawing(drawing)
+        if draft is not None:
+            return draft
+        picture = _read_picture(drawing, state)
+        if picture is not None:
+            return _image_block(picture, props.alignment)
     content = _read_runs(element, state)
     match = re.fullmatch(r"Heading([1-9])", style)
     if match:
@@ -3667,12 +3753,12 @@ def _measure_from_emu(raw: str | None) -> Measure:
 _EMU_PER_POINT = 12700
 
 
-def _lone_picture(element: ET.Element, state: _ReadState) -> _Picture | None:
-    """The image a paragraph consists of, when it consists of nothing else.
+def _lone_drawing(element: ET.Element) -> ET.Element | None:
+    """The drawing a paragraph consists of, when it consists of nothing else.
 
-    That is how the writer lays an :class:`ImageBlock` down: one run, one
-    drawing, no text -- in the Diagram style, which the paragraph keeps as its
-    only other content.
+    That is how the writer lays an :class:`ImageBlock` or a :class:`Diagram`
+    down: one run, one drawing, no text -- in the Diagram style, which the
+    paragraph keeps as its only other content.
     """
     runs = [child for child in element if child.tag == f"{{{W}}}r"]
     if len(runs) != 1:
@@ -3680,10 +3766,113 @@ def _lone_picture(element: ET.Element, state: _ReadState) -> _Picture | None:
     run = runs[0]
     if run.find(f"{{{W}}}t") is not None:
         return None
-    drawing = run.find(f"{{{W}}}drawing")
-    if drawing is None:
+    return run.find(f"{{{W}}}drawing")
+
+
+@dataclass(slots=True)
+class _DiagramDraft:
+    """A diagram read from its picture, still waiting for its neighbours.
+
+    The writer lays a diagram down as up to four blocks -- stipulation,
+    picture, caption, solution -- and only the picture carries the node. The
+    draft says which of the other three the writer promised, so
+    :func:`_assemble_diagrams` can fold them in. It never leaves the reader.
+    """
+
+    node: Diagram
+    wants_stipulation: bool
+    wants_caption: bool
+    wants_solution: bool
+
+
+def _diagram_from_drawing(drawing: ET.Element) -> _DiagramDraft | None:
+    """Rebuild a diagram from the extension its picture carries, or ``None``."""
+    from caissa.export.html import _parse_marks
+
+    element = drawing.find(f".//{{{A}}}extLst/{{{A}}}ext/{{{DIAGRAM_NS}}}diagram")
+    if element is None:
         return None
-    return _read_picture(drawing, state)
+    number = element.get("number")
+    marks = element.get("marks")
+    node = Diagram(
+        fen=element.get("fen") or "",
+        orientation=Orientation(element.get("orientation") or "white"),
+        number=int(number) if number else None,
+        label=element.get("label"),
+        marks=_parse_marks(marks) if marks else (),
+        side_to_move_indicator=element.get("side-to-move") == "1",
+        stipulation=element.get("stipulation"),
+        anchor=element.get("anchor"),
+        alt_text=element.get("alt"),
+        move_context=element.get("move-context"),
+        verified_by_human=element.get("verified") == "1",
+    )
+    return _DiagramDraft(
+        node=node,
+        wants_stipulation=bool(node.stipulation),
+        wants_caption=element.get("caption") == "1",
+        wants_solution=element.get("solution") == "1",
+    )
+
+
+_CAPTION_SEPARATOR = " — "
+
+
+def _caption_inlines(paragraph: Paragraph) -> tuple[Inline, ...]:
+    """The caption text after the ``Diagrama N — `` the writer prefixed.
+
+    The runs before the separator are the label, the SEQ field's number and
+    the separator itself; none of them was in the node.
+    """
+    content = list(paragraph.content)
+    for index, inline in enumerate(content):
+        if isinstance(inline, Text) and inline.content == _CAPTION_SEPARATOR:
+            return tuple(content[index + 1 :])
+    return ()
+
+
+def _assemble_diagrams(blocks: list[Any]) -> list[Any]:
+    """Fold each diagram's neighbours back into its node.
+
+    The stipulation paragraph stood *before* the picture, inside the same
+    bookmark, so it is the block that received the node's identity: the
+    diagram takes it back from there. The caption and the solution stood
+    after it, each in its own block.
+    """
+    from dataclasses import replace
+
+    from caissa.core.model import GameScore as GameScoreNode
+
+    out: list[Any] = []
+    index = 0
+    while index < len(blocks):
+        item = blocks[index]
+        if not isinstance(item, _DiagramDraft):
+            out.append(item)
+            index += 1
+            continue
+        node = item.node
+        if item.wants_stipulation and out and isinstance(out[-1], Paragraph):
+            previous = out.pop()
+            node = replace(node, id=previous.id)
+        following = index + 1
+        if (
+            item.wants_caption
+            and following < len(blocks)
+            and isinstance(blocks[following], Paragraph)
+        ):
+            node = replace(node, caption=_caption_inlines(blocks[following]))
+            following += 1
+        if (
+            item.wants_solution
+            and following < len(blocks)
+            and isinstance(blocks[following], GameScoreNode)
+        ):
+            node = replace(node, solution=blocks[following])
+            following += 1
+        out.append(node)
+        index = following
+    return out
 
 
 def _image_block(picture: _Picture, alignment: Alignment | None) -> ImageBlock:

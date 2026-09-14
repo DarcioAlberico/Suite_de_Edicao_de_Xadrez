@@ -187,11 +187,11 @@ _DOCX_NODES: Mapping[str, PropertySupport] = {
         "DOCX.",
         "w:drawing",
     ),
-    "diagram": substitute(
-        "O diagrama virou um desenho EMF com legenda; a posicao continua legivel "
-        "no arquivo, mas o no Diagram (FEN, marcas, proveniencia) nao volta do DOCX.",
-        "w:drawing + legenda",
-    ),
+    # The diagram is a vector EMF picture with a caption, and the node rides
+    # in the picture's own ``a:extLst`` (FEN, orientation, marks, label,
+    # stipulation...), so the reader rebuilds it from ``document.xml``; what
+    # the audit fields declare (style, source, recognition) is what stays out.
+    "diagram": full(),
     "game_score": substitute(
         "A partida virou texto PGN em um paragrafo; a arvore de lances nao volta do DOCX.",
         "texto PGN",
@@ -619,7 +619,10 @@ _DOCX_FEATURES: Mapping[str, PropertySupport] = {
     "toc_field": full(),
     "columns": full(),
     "page_geometry": full(),
-    "headers_footers": full(),
+    "headers_footers": unsupported(
+        "As partes de cabecalho e rodape (header1.xml, footer1.xml) nao sao gravadas por este "
+        "exportador; o texto de cabecalho e rodape da secao fica so no IR."
+    ),
     "drop_cap": substitute(
         "A capitular foi gravada como quadro de texto ancorado (w:framePr).",
         "w:framePr com w:dropCap",
@@ -656,6 +659,17 @@ _DOCX_FEATURES: Mapping[str, PropertySupport] = {
 # alignment. Each entry names the element it is talking about so that a reviewer
 # can check it against the schema rather than against us.
 _DOCX_NODE_FIELDS: Mapping[str, PropertySupport] = {
+    # Two audit fields the DOCX does carry, in the diagram picture's extension.
+    "diagram.verified_by_human": full(),
+    "diagram.move_context": full(),
+    "section_break.header_text": unsupported(
+        "O cabecalho da secao pediria uma parte header1.xml referenciada pelo w:sectPr; "
+        "este exportador nao a grava, e o texto do cabecalho fica so no IR."
+    ),
+    "section_break.footer_text": unsupported(
+        "O rodape da secao pediria uma parte footer1.xml referenciada pelo w:sectPr; "
+        "este exportador nao a grava, e o texto do rodape fica so no IR."
+    ),
     "image_block.width": approximate(
         "wp:extent guarda a largura da figura em EMU inteiros e absolutos; uma medida "
         "relativa (%, em) ou negativa vira o tamanho intrinseco da imagem.",

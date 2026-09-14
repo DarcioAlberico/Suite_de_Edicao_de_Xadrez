@@ -82,6 +82,7 @@ from caissa.core.model import (
     walk,
 )
 from caissa.core.model.diff import DiffReport, semantic_diff
+from caissa.core.model.reflect import child_nodes
 from caissa.export.base import (
     Capability,
     ExportOptions,
@@ -523,13 +524,14 @@ def measure(
     left = {node.id: (str(path), node) for path, node in walk(original)}
     right = {node.id: node for _, node in walk(reimported)}
     flattened = _flattened_contributions(original, profile, right)
+    owners = _owning_fields(original)
 
     losses: list[FieldLoss] = []
     missing: list[MissingNode] = []
     for identity, (path, node) in left.items():
         other = right.get(identity)
         if other is None:
-            support = profile.node_support(tag_of(node))
+            support = _missing_support(node, profile, owners)
             missing.append(
                 MissingNode(
                     node_type=tag_of(node),
@@ -982,6 +984,52 @@ def _reported_index(
         index[(warning.node_id, warning.property)] = True
         index[(None, warning.property)] = True
     return index
+
+
+def _owning_fields(root: IRNode) -> dict[ULID, tuple[str, str]]:
+    """Map every node to ``(parent tag, field)`` -- the field that holds it.
+
+    Args:
+        root: The original document.
+
+    Returns:
+        The owner of each node but the root.
+    """
+    owners: dict[ULID, tuple[str, str]] = {}
+    for _, node in walk(root):
+        for name, _index, child in child_nodes(node):
+            owners[child.id] = (tag_of(node), name)
+    return owners
+
+
+def _missing_support(
+    node: IRNode, profile: FormatProfile, owners: Mapping[ULID, tuple[str, str]]
+) -> PropertySupport:
+    """What the profile said about a node that did not come back.
+
+    The node's own declaration first. When that is lossless, the field that
+    held it answers instead: a format that declared *"o cabecalho de secao
+    nao e gravado"* declared the text inside the header too -- the user was
+    told, which is what separates a declared loss from a silent one. Only
+    the immediate owner is consulted: a declaration two levels up is about
+    a different field.
+
+    Args:
+        node: The node that vanished.
+        profile: The format's profile.
+        owners: Each node's ``(parent tag, field)``.
+
+    Returns:
+        The declaration that covers the loss, lossless when none does.
+    """
+    support = profile.node_support(tag_of(node))
+    if not support.capability.is_lossless:
+        return support
+    owner = owners.get(node.id)
+    if owner is None:
+        return support
+    field_support = profile.node_field_support(*owner)
+    return field_support if not field_support.capability.is_lossless else support
 
 
 def _holds_nodes(value: object) -> bool:
