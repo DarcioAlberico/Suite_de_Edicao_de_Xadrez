@@ -811,3 +811,90 @@ via `VECTOR` **sem** buracos).
 ```
 .venv\Scripts\python.exe -m pytest tests\unit\detect tests\unit\ingest -q     # 235 passed
 ```
+
+---
+
+## §10 — Passo 12: a fita com portões próprios — rótulos, cabeçalhos, ícones
+
+### 10.0 Em uma tela
+
+- **Dois portões novos** em `caissa.ui.audit`: `fita` (todo botão com rótulo **desenhado** — a
+  dica não conta, R3.4; cabeçalho de cada grupo em toda densidade e largura; hit ≥ 40 px nos
+  dois eixos; altura dentro do orçamento) e `icones` (traço ≥ 2 px no tamanho desenhado, caixa
+  menor ≥ 60 % do lado, tinta ≥ 10 % do lado²). Um processo por pele × densidade, larguras
+  1280/1366/1920, JSON + tabela, `--sabotar`. Promovidos dos scripts avulsos de
+  `benchmarks/reports/ui/c12/`, que imprimiam e não julgavam.
+- **A fita mudou no tronco** (quatro arquivos, registrados como pares reaplicáveis em
+  `docs/quality/ui/c17/tronco_passo12.py` — ver §10.2 sobre por que não há commit lá):
+  `Comando.rotulo_na_fita`/`na_fita` (os seis botões de glifo ganham palavra: "Menos zoom",
+  "Mais zoom", "Lance anterior"…; "Apagar a peça" na fita devolve o pleno a 1.920 px); o
+  cabeçalho do grupo desenhado **também no compacto** (orçamento 64 → 72 px, contado na função
+  pura); `desfazer`/`refazer` redesenhados (caixa 20×9 → 20×18 px).
+- **Antes → depois** (mesmos scripts do ciclo 12, mesma janela): botões com rótulo **18/24 →
+  24/24**; cabeçalhos na compacta **0/5 → 5/5** (em 1280, 1366 e 1920, nas duas densidades);
+  hit mínimo 43×49 px ✓; altura compacta 59–62 px (orçamento 72), plena 98 (120). Ícones:
+  96 medidos em 4 arranjos, 0 com defeito, tinta 11,2–51,5 %.
+- **Sabotagens executadas**: `--sabotar rotulo_na_dica` (o texto de um botão vai para a dica)
+  → `fita` acusa 1 por medição, REPROVOU; `--sabotar tinta` (traço a 1 px) → `icones` acusa
+  96/96, tinta 1,1–7,4 %, REPROVOU. `texto_pintado` continua PASSOU nos dois casos — é a régua
+  que não via.
+- **Os outros portões sobre a fita nova**: `texto_pintado` 540 medidos, 0 cobertos, 0
+  cortados; `contraste` 300 pares claro e 300 escuro, 0 reprovados; `teclado` 0/0/0 nas 6 abas ×
+  3 peles + 13 diálogos; `comandos` 385 medidos, 0 soltos, 0 prometem.
+
+```
+set AUDIT=..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m caissa.ui.audit
+set PYTHONPATH=src
+%AUDIT%.fita   --saida benchmarks\reports\ui\c17                              # 144 botões, 0 sem rótulo, 0 cabeçalhos ausentes → PASSOU
+%AUDIT%.fita   --saida benchmarks\reports\ui\c17 --sabotar rotulo_na_dica    # 6 sem rótulo (1 por medição) → REPROVOU
+%AUDIT%.icones --saida benchmarks\reports\ui\c17                              # 96 ícones, 0 com defeito, tinta 11,2–51,5 % → PASSOU
+%AUDIT%.icones --saida benchmarks\reports\ui\c17 --sabotar tinta             # 96/96 com defeito → REPROVOU
+%AUDIT%.texto_pintado --pdf "%PDF%" --saida benchmarks\reports\ui\c17         # PASSOU (540 medidos, 0/0)
+%AUDIT%.contraste --saida benchmarks\reports\ui\c17                           # PASSOU (0 reprovados, claro e escuro)
+%AUDIT%.teclado --pdf "%PDF%" --saida benchmarks\reports\ui\c17               # PASSOU (0/0/0)
+%AUDIT%.comandos --pdf "%PDF%" --saida benchmarks\reports\ui\c17              # PASSOU (385, 0 soltos)
+%AUDIT%.capture --pele fita --marca depois_<densidade> --pdf "%PDF%" --saida benchmarks\reports\ui\c17\capturas
+#   retratos: docs\quality\ui\c17\fita_compacta_1366_depois.png, fita_plena_1920_depois.png
+#   relatórios publicados: docs\quality\ui\c17\fita.json, icones.json
+```
+
+### 10.1 O que a medição mudou no desenho — e um portão reescrito
+
+- **"Tinta ≥ 50 %" era o número errado para ícone de traço.** Um disco cheio tem 78 % de
+  tinta, uma seta cheia 50 %; todo ícone de linha desta fita (traço declarado de 9 % do lado)
+  fica entre 11 e 52 % por construção, e cobrar 50 % seria cobrar silhuetas. O portão de
+  ícones cobra o que mede legibilidade em traço — traço ≥ 2 px no tamanho desenhado, caixa que
+  enche o lado, tinta ≥ 10 % — e a sabotagem (traço a 1 px) prova que ele vê. Registrado no
+  roadmap como portão reescrito.
+- **Rotular os seis empurrou o modo pleno para fora do Full HD** (1.926 px pedidos a 1.920): o
+  compacto assumia a tela mais comum. A resposta foi o texto de fita do botão mais largo
+  ("Apagar a peça da / casa selecionada", 122 px → "Apagar a peça"): o pleno volta a 1.920 com
+  1.874 px. Menu e botão continuam por extenso — o campo `rotulo_na_fita` é novo e é o único
+  que muda.
+- **O compacto com cabeçalho custa 59–62 px**, dentro dos 72 do orçamento novo (e dentro dos
+  64 antigos na fonte do produto; o orçamento subiu para que uma fonte de sistema maior não o
+  estoure por causa da linha auxiliar).
+
+### 10.2 Onde as mudanças do tronco estão
+
+O tronco (`ChessVisionOFF_Puro`) tem sessenta arquivos modificados e catorze novos **não
+commitados** por outra sessão (os ciclos 9–16 da frente F9; `HEAD` é "Corta o tkinter"). Um
+commit por caminho nos quatro arquivos deste passo levaria junto esse trabalho. As mudanças
+ficam na árvore de trabalho do tronco e, aqui, como pares (antes, depois) reaplicáveis:
+`docs/quality/ui/c17/tronco_passo12.py` (`--aplicar`, `--reverter`, sem argumento confere), mais
+o `tests/test_qt_fita.py` resultante (`tronco_test_qt_fita_depois.py`). Quem commitar o tronco
+leva estes quatro junto; até lá, o script diz se a árvore está com eles.
+
+### 10.3 Testes
+
+Tronco: `tests/test_qt_fita.py` (três testes que fixavam a decisão antiga — cabeçalho na dica,
+glifo sem texto, seguidor de estado — reescritos com o motivo), `test_ui_comandos.py`,
+`test_ui_icones.py`: 71 passed, 607 subtests. Suíte:
+`tests/unit/ui/test_audit_fita.py` (4: o que é rótulo e o que é dica, o hit nos dois eixos,
+os três defeitos e o orçamento, o ícone pelo traço/caixa/tinta).
+
+```
+..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests\test_qt_fita.py tests\test_ui_comandos.py tests\test_ui_icones.py -q -p no:randomly   # 71 passed
+.venv\Scripts\python.exe -m pytest tests\unit\ui\test_audit_fita.py -q                                                                # 4 passed
+..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:randomly -p no:cacheprovider                                 # 4487 passed, 3 failed — os 3 são dos módulos novos de outra sessão (biblioteca, substituicao, desenho_de_diagrama, pdf_substituicao: acento, README, lista sem Tk), não deste passo
+```

@@ -722,7 +722,13 @@ PYQ -m pytest tests -q -p no:randomly -p no:cacheprovider     (tronco)
 `--sabotar rotulo_na_dica` move um rótulo para `toolTip()` — `AUDIT.fita` tem de acusar 1
 (o `texto_pintado`, não).
 
-**Saída.** `OCR_UI_REPORT_C2.md` §2. **Desfazer:** os ícones antigos ficam em `git`.
+**Saída.** `OCR_UI_REPORT_C1.md` §10. **Desfazer:** `docs/quality/ui/c17/tronco_passo12.py --reverter`.
+
+**Executado em 2026-09-14** (§4): 24/24 rótulos, 5/5 cabeçalhos nas duas densidades e três
+larguras, hit ≥ 43 px, sabotagens vistas; **"tinta ≥ 50 %" reescrito** (ícone de traço fica em
+11–52 % por construção; o portão cobra traço ≥ 2 px, caixa ≥ 60 % do lado, tinta ≥ 10 %). As
+mudanças do tronco estão na árvore de trabalho dele (sessenta arquivos de outra sessão não
+commitados) e registradas como pares reaplicáveis em `docs/quality/ui/c17/`.
 
 ---
 
@@ -966,6 +972,8 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 12 | **executado** — `OCR_UI_REPORT_C1.md` §10 | `caissa.ui.audit.fita` e `.icones` (novos, com sabotagem); tronco: `rotulo_na_fita` nos seis botões de glifo, cabeçalho desenhado no compacto (orçamento 64 → 72), `desfazer`/`refazer` redesenhados; 18/24 → 24/24 rótulos, 0/5 → 5/5 cabeçalhos; "Apagar a peça" na fita devolve o pleno a 1.920 px (rotular os seis o tinha empurrado a 1.926). Mudanças do tronco não commitadas lá (árvore com 60 arquivos de outra sessão) — pares reaplicáveis em `docs/quality/ui/c17/tronco_passo12.py` | construtor |
+| 2026-09-14 | 12 | **portão reescrito** | "tinta ≥ 50 %" não mede legibilidade de ícone de traço (disco cheio = 78 %; a família toda fica em 11–52 % por construção); o portão cobra traço ≥ 2 px no tamanho desenhado, caixa menor ≥ 60 % do lado, tinta ≥ 10 % — e a sabotagem (traço a 1 px) o derruba | construtor |
 | 2026-09-14 | 10 | **executado, tarefas 2–3 sem população** — `OCR_UI_REPORT_C1.md` §9 | `detect_unknown_font_lattices` + `inferred_font_finder` (`VECTOR_INFERRED`, ≤ 0,85); survey: 0/46 livros com fonte fora do catálogo, medido pela sabotagem (famílias escondidas): DEM 35/35, Polgar 114/114. **Achado**: a via exata tomava casa ausente por vazia — Polgar 61/114 posições erradas (torres em casa escura omitidas pelo extrator); agora ≤ 0,60 + `holes`, e o `combined_finder` completa com o classificador | construtor |
 | 2026-09-14 | 4b | **executado** — `OCR_UI_REPORT_C1.md` §8 | `TunedTesseractEngine` na âncora dentro do livro registrado: SFC4 `calib` figurinas 193 → 204/204, lances 273 → 281/288, inventados 9 → 5; sabotagem (modelo do SFC4 ancorando um livro de letras): 519 figurinas inventadas; `bench_sol` idêntica (o âncora não entra sem registro) | construtor |
 | 2026-09-14 | 4 | **executado, um portão vermelho** — `OCR_UI_REPORT_C1.md` §7 | negativos com margens de textura + sobreamostragem: `photo` 0 figurinas (antes 57 caracteres de ruído; sabotagem `♖.♖♘♘`), fax inventados 206 → 126 mas **> 76 da base** (✗ registrado); no livro D ≥ A em tudo; modelo sozinho já lia 204/204 desde A (o ♔ 0/13 era da rodada `por`). 360 negativos piorou (146; uma semente por configuração). Modelo D registrado para o SFC4 | construtor |

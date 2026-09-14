@@ -1,0 +1,1008 @@
+{
+  "portao": "Icones da fita: traco >= 2 px, caixa menor >= 60 % do lado, tinta >= 10 % do lado², no tamanho em que cada botao desenha.",
+  "quando": "2026-09-14T21:30:48+00:00",
+  "sabotagem": "",
+  "passadas": [
+    {
+      "arranjo": "fita/compacta",
+      "largura": 1280,
+      "modo": "compacto",
+      "sabotagem": "",
+      "icones": [
+        {
+          "acao": "abrir_pdf",
+          "icone": "abrir_pdf",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 14,
+          "tinta": 0.2551,
+          "defeitos": []
+        },
+        {
+          "acao": "exportar_pgn",
+          "icone": "exportar_pgn",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2374,
+          "defeitos": []
+        },
+        {
+          "acao": "aplicar_fen",
+          "icone": "aplicar_fen",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 17,
+          "tinta": 0.1118,
+          "defeitos": []
+        },
+        {
+          "acao": "apagar_casa",
+          "icone": "apagar_casa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4076,
+          "defeitos": []
+        },
+        {
+          "acao": "salvar",
+          "icone": "salvar",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4852,
+          "defeitos": []
+        },
+        {
+          "acao": "diagrama_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_diagrama",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "desfazer",
+          "icone": "desfazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1993,
+          "defeitos": []
+        },
+        {
+          "acao": "refazer",
+          "icone": "refazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1987,
+          "defeitos": []
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "icone": "limpar_tabuleiro",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 16,
+          "tinta": 0.268,
+          "defeitos": []
+        },
+        {
+          "acao": "pagina_anterior",
+          "icone": "pagina_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2452,
+          "defeitos": []
+        },
+        {
+          "acao": "proxima_pagina",
+          "icone": "proxima_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2454,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_largura",
+          "icone": "ajustar_largura",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2506,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_pagina",
+          "icone": "ajustar_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3724,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_menos",
+          "icone": "zoom_menos",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2354,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_mais",
+          "icone": "zoom_mais",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2569,
+          "defeitos": []
+        },
+        {
+          "acao": "tirar_caixa",
+          "icone": "tirar_caixa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1946,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_pagina",
+          "icone": "ler_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3337,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_melhor",
+          "icone": "ler_melhor",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4558,
+          "defeitos": []
+        },
+        {
+          "acao": "selecionar_area",
+          "icone": "selecionar_area",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2811,
+          "defeitos": []
+        },
+        {
+          "acao": "lance_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_lance",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "inicio_da_linha",
+          "icone": "inicio_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        },
+        {
+          "acao": "fim_da_linha",
+          "icone": "fim_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        }
+      ],
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/compacta",
+      "largura": 1920,
+      "modo": "compacto",
+      "sabotagem": "",
+      "icones": [
+        {
+          "acao": "abrir_pdf",
+          "icone": "abrir_pdf",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 14,
+          "tinta": 0.2551,
+          "defeitos": []
+        },
+        {
+          "acao": "exportar_pgn",
+          "icone": "exportar_pgn",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2374,
+          "defeitos": []
+        },
+        {
+          "acao": "aplicar_fen",
+          "icone": "aplicar_fen",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 17,
+          "tinta": 0.1118,
+          "defeitos": []
+        },
+        {
+          "acao": "apagar_casa",
+          "icone": "apagar_casa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4076,
+          "defeitos": []
+        },
+        {
+          "acao": "salvar",
+          "icone": "salvar",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4852,
+          "defeitos": []
+        },
+        {
+          "acao": "diagrama_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_diagrama",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "desfazer",
+          "icone": "desfazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1993,
+          "defeitos": []
+        },
+        {
+          "acao": "refazer",
+          "icone": "refazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1987,
+          "defeitos": []
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "icone": "limpar_tabuleiro",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 16,
+          "tinta": 0.268,
+          "defeitos": []
+        },
+        {
+          "acao": "pagina_anterior",
+          "icone": "pagina_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2452,
+          "defeitos": []
+        },
+        {
+          "acao": "proxima_pagina",
+          "icone": "proxima_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2454,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_largura",
+          "icone": "ajustar_largura",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2506,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_pagina",
+          "icone": "ajustar_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3724,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_menos",
+          "icone": "zoom_menos",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2354,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_mais",
+          "icone": "zoom_mais",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2569,
+          "defeitos": []
+        },
+        {
+          "acao": "tirar_caixa",
+          "icone": "tirar_caixa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1946,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_pagina",
+          "icone": "ler_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3337,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_melhor",
+          "icone": "ler_melhor",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4558,
+          "defeitos": []
+        },
+        {
+          "acao": "selecionar_area",
+          "icone": "selecionar_area",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2811,
+          "defeitos": []
+        },
+        {
+          "acao": "lance_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_lance",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "inicio_da_linha",
+          "icone": "inicio_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        },
+        {
+          "acao": "fim_da_linha",
+          "icone": "fim_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        }
+      ],
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/confortavel",
+      "largura": 1280,
+      "modo": "compacto",
+      "sabotagem": "",
+      "icones": [
+        {
+          "acao": "abrir_pdf",
+          "icone": "abrir_pdf",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 14,
+          "tinta": 0.2551,
+          "defeitos": []
+        },
+        {
+          "acao": "exportar_pgn",
+          "icone": "exportar_pgn",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2374,
+          "defeitos": []
+        },
+        {
+          "acao": "aplicar_fen",
+          "icone": "aplicar_fen",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 17,
+          "tinta": 0.1118,
+          "defeitos": []
+        },
+        {
+          "acao": "apagar_casa",
+          "icone": "apagar_casa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4076,
+          "defeitos": []
+        },
+        {
+          "acao": "salvar",
+          "icone": "salvar",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4852,
+          "defeitos": []
+        },
+        {
+          "acao": "diagrama_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_diagrama",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "desfazer",
+          "icone": "desfazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1993,
+          "defeitos": []
+        },
+        {
+          "acao": "refazer",
+          "icone": "refazer",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 18,
+          "tinta": 0.1987,
+          "defeitos": []
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "icone": "limpar_tabuleiro",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 16,
+          "tinta": 0.268,
+          "defeitos": []
+        },
+        {
+          "acao": "pagina_anterior",
+          "icone": "pagina_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2452,
+          "defeitos": []
+        },
+        {
+          "acao": "proxima_pagina",
+          "icone": "proxima_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2454,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_largura",
+          "icone": "ajustar_largura",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2506,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_pagina",
+          "icone": "ajustar_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3724,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_menos",
+          "icone": "zoom_menos",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2354,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_mais",
+          "icone": "zoom_mais",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2569,
+          "defeitos": []
+        },
+        {
+          "acao": "tirar_caixa",
+          "icone": "tirar_caixa",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1946,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_pagina",
+          "icone": "ler_pagina",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3337,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_melhor",
+          "icone": "ler_melhor",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.4558,
+          "defeitos": []
+        },
+        {
+          "acao": "selecionar_area",
+          "icone": "selecionar_area",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.2811,
+          "defeitos": []
+        },
+        {
+          "acao": "lance_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_lance",
+          "icone": "proximo_diagrama",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.1621,
+          "defeitos": []
+        },
+        {
+          "acao": "inicio_da_linha",
+          "icone": "inicio_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        },
+        {
+          "acao": "fim_da_linha",
+          "icone": "fim_da_linha",
+          "lado": 20,
+          "traco": 2,
+          "caixa_largura": 20,
+          "caixa_altura": 20,
+          "tinta": 0.3046,
+          "defeitos": []
+        }
+      ],
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/confortavel",
+      "largura": 1920,
+      "modo": "pleno",
+      "sabotagem": "",
+      "icones": [
+        {
+          "acao": "abrir_pdf",
+          "icone": "abrir_pdf",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 22,
+          "tinta": 0.2685,
+          "defeitos": []
+        },
+        {
+          "acao": "exportar_pgn",
+          "icone": "exportar_pgn",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 30,
+          "caixa_altura": 32,
+          "tinta": 0.2508,
+          "defeitos": []
+        },
+        {
+          "acao": "aplicar_fen",
+          "icone": "aplicar_fen",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 27,
+          "tinta": 0.1297,
+          "defeitos": []
+        },
+        {
+          "acao": "apagar_casa",
+          "icone": "apagar_casa",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.4407,
+          "defeitos": []
+        },
+        {
+          "acao": "salvar",
+          "icone": "salvar",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.5151,
+          "defeitos": []
+        },
+        {
+          "acao": "diagrama_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 32,
+          "tinta": 0.162,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_diagrama",
+          "icone": "proximo_diagrama",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 32,
+          "tinta": 0.1597,
+          "defeitos": []
+        },
+        {
+          "acao": "desfazer",
+          "icone": "desfazer",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 26,
+          "tinta": 0.2043,
+          "defeitos": []
+        },
+        {
+          "acao": "refazer",
+          "icone": "refazer",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 26,
+          "tinta": 0.2054,
+          "defeitos": []
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "icone": "limpar_tabuleiro",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 24,
+          "tinta": 0.2734,
+          "defeitos": []
+        },
+        {
+          "acao": "pagina_anterior",
+          "icone": "pagina_anterior",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.2484,
+          "defeitos": []
+        },
+        {
+          "acao": "proxima_pagina",
+          "icone": "proxima_pagina",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.2465,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_largura",
+          "icone": "ajustar_largura",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 30,
+          "tinta": 0.2636,
+          "defeitos": []
+        },
+        {
+          "acao": "ajustar_pagina",
+          "icone": "ajustar_pagina",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.397,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_menos",
+          "icone": "zoom_menos",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 31,
+          "tinta": 0.2489,
+          "defeitos": []
+        },
+        {
+          "acao": "zoom_mais",
+          "icone": "zoom_mais",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 31,
+          "tinta": 0.2695,
+          "defeitos": []
+        },
+        {
+          "acao": "tirar_caixa",
+          "icone": "tirar_caixa",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.2304,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_pagina",
+          "icone": "ler_pagina",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 30,
+          "caixa_altura": 32,
+          "tinta": 0.3469,
+          "defeitos": []
+        },
+        {
+          "acao": "ler_melhor",
+          "icone": "ler_melhor",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.4777,
+          "defeitos": []
+        },
+        {
+          "acao": "selecionar_area",
+          "icone": "selecionar_area",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.3017,
+          "defeitos": []
+        },
+        {
+          "acao": "lance_anterior",
+          "icone": "diagrama_anterior",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 32,
+          "tinta": 0.162,
+          "defeitos": []
+        },
+        {
+          "acao": "proximo_lance",
+          "icone": "proximo_diagrama",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 31,
+          "caixa_altura": 32,
+          "tinta": 0.1597,
+          "defeitos": []
+        },
+        {
+          "acao": "inicio_da_linha",
+          "icone": "inicio_da_linha",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.3081,
+          "defeitos": []
+        },
+        {
+          "acao": "fim_da_linha",
+          "icone": "fim_da_linha",
+          "lado": 32,
+          "traco": 3,
+          "caixa_largura": 32,
+          "caixa_altura": 32,
+          "tinta": 0.3081,
+          "defeitos": []
+        }
+      ],
+      "veredito": "PASSOU"
+    }
+  ],
+  "icones": 96,
+  "com_defeito": 0,
+  "tinta_min": 0.1118,
+  "tinta_max": 0.5151,
+  "veredito": "PASSOU"
+}

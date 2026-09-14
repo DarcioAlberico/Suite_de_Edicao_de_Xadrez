@@ -1,0 +1,1361 @@
+{
+  "portao": "Fita: todo botao com rotulo desenhado (a dica nao conta), cabecalho de grupo em toda densidade e largura, hit >= 40 px, altura dentro do orcamento.",
+  "quando": "2026-09-14T21:28:22+00:00",
+  "sabotagem": "",
+  "larguras": [
+    1280,
+    1366,
+    1920
+  ],
+  "medidas": [
+    {
+      "arranjo": "fita/compacta",
+      "largura_da_janela": 1280,
+      "modo": "compacto",
+      "altura_da_fita": 59,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 76,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 111,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 116,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 140,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 90,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 101,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 99,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 96,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 89,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 87,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 93,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 80,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 82,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 114,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 94,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 24,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/compacta",
+      "largura_da_janela": 1366,
+      "modo": "compacto",
+      "altura_da_fita": 59,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 76,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 111,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 116,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 140,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 90,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 101,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 99,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 96,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 89,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 87,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 93,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 80,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 82,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 114,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 94,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 24,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/compacta",
+      "largura_da_janela": 1920,
+      "modo": "compacto",
+      "altura_da_fita": 59,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 76,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 111,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 116,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 140,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 90,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 101,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 99,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 96,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 89,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 87,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 93,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 95,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 80,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 82,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 114,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 105,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 94,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 91,
+          "altura": 43,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 85,
+          "altura": 43,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 24,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/confortavel",
+      "largura_da_janela": 1280,
+      "modo": "compacto",
+      "altura_da_fita": 62,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 82,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 116,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 122,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 146,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 96,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 105,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 104,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 100,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 94,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 92,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 98,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 91,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 84,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 87,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 119,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 99,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 90,
+          "altura": 45,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 0,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/confortavel",
+      "largura_da_janela": 1366,
+      "modo": "compacto",
+      "altura_da_fita": 62,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 82,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 116,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 122,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 146,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 96,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 105,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 104,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 100,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 94,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 92,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 98,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 91,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 84,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 87,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 119,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 99,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 90,
+          "altura": 45,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 0,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    },
+    {
+      "arranjo": "fita/confortavel",
+      "largura_da_janela": 1920,
+      "modo": "compacto",
+      "altura_da_fita": 62,
+      "orcamento": 72,
+      "botoes": [
+        {
+          "acao": "abrir_pdf",
+          "texto": "Abrir\nPDF",
+          "dica": "Abrir PDF…",
+          "largura": 82,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "exportar_pgn",
+          "texto": "Exportar\nPDF → PGN",
+          "dica": "Exportar o livro para PGN…",
+          "largura": 116,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "aplicar_fen",
+          "texto": "Aplicar a\nFEN digitada",
+          "dica": "Aplicar a FEN digitada\nTecla: Ctrl+Enter",
+          "largura": 122,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "apagar_casa",
+          "texto": "Apagar a peça da\ncasa selecionada",
+          "dica": "Apagar a peça da casa selecionada\nTecla: Del",
+          "largura": 146,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "salvar",
+          "texto": "Salvar a\nposição",
+          "dica": "Salvar a posição\nTecla: Ctrl+S",
+          "largura": 96,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "diagrama_anterior",
+          "texto": "Diagrama\nanterior",
+          "dica": "Diagrama anterior\nTecla: ←",
+          "largura": 105,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_diagrama",
+          "texto": "Próximo\ndiagrama",
+          "dica": "Próximo diagrama\nTecla: →",
+          "largura": 104,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "desfazer",
+          "texto": "Desfazer",
+          "dica": "Desfazer a última mudança no tabuleiro\nTecla: Ctrl+Z",
+          "largura": 100,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "refazer",
+          "texto": "Refazer",
+          "dica": "Refazer o que foi desfeito\nTecla: Ctrl+Y",
+          "largura": 94,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "limpar_tabuleiro",
+          "texto": "Limpar",
+          "dica": "Limpar o tabuleiro",
+          "largura": 92,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "pagina_anterior",
+          "texto": "Página\nanterior",
+          "dica": "Página anterior\nTecla: Page Up",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proxima_pagina",
+          "texto": "Próxima\npágina",
+          "dica": "Próxima página\nTecla: Page Down",
+          "largura": 98,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_largura",
+          "texto": "Ajustar à\nlargura",
+          "dica": "Ajustar à largura\nTecla: Ctrl+0",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ajustar_pagina",
+          "texto": "Ajustar à\npágina",
+          "dica": "Ajustar à página\nTecla: Ctrl+9",
+          "largura": 101,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_menos",
+          "texto": "Menos\nzoom",
+          "dica": "Diminuir o zoom da página\nTecla: Ctrl+-",
+          "largura": 91,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "zoom_mais",
+          "texto": "Mais\nzoom",
+          "dica": "Aumentar o zoom da página\nTecla: Ctrl++",
+          "largura": 84,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "tirar_caixa",
+          "texto": "Tirar a\ncaixa",
+          "dica": "Tirar a caixa do diagrama selecionado",
+          "largura": 87,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_pagina",
+          "texto": "OCR todos\ndiagramas",
+          "dica": "Ler esta página\nTecla: Ctrl+R",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "ler_melhor",
+          "texto": "OCR melhor\ndiagrama",
+          "dica": "Ler o melhor diagrama da página\nTecla: Ctrl+D",
+          "largura": 119,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "selecionar_area",
+          "texto": "Selecionar\nárea (OCR)",
+          "dica": "Selecionar área para ler",
+          "largura": 111,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "lance_anterior",
+          "texto": "Lance\nanterior",
+          "dica": "Lance anterior",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "proximo_lance",
+          "texto": "Próximo\nlance",
+          "dica": "Próximo lance",
+          "largura": 99,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "inicio_da_linha",
+          "texto": "Início\nda linha",
+          "dica": "Início da linha",
+          "largura": 97,
+          "altura": 45,
+          "tem_icone": true
+        },
+        {
+          "acao": "fim_da_linha",
+          "texto": "Fim da\nlinha",
+          "dica": "Fim da linha",
+          "largura": 90,
+          "altura": 45,
+          "tem_icone": true
+        }
+      ],
+      "total": 24,
+      "com_rotulo": 24,
+      "sem_rotulo": [],
+      "hit_pequeno": [],
+      "hit_abaixo_do_ideal": 0,
+      "cabecalhos_declarados": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_visiveis": [
+        "Arquivo",
+        "Edição",
+        "Visualização",
+        "OCR",
+        "Estudo"
+      ],
+      "cabecalhos_faltando": [],
+      "sabotagem": "",
+      "defeitos": 0,
+      "veredito": "PASSOU"
+    }
+  ],
+  "botoes": 144,
+  "sem_rotulo": 0,
+  "cabecalhos_faltando": 0,
+  "hit_pequeno": 0,
+  "veredito": "PASSOU"
+}
