@@ -455,3 +455,100 @@ alterados.
 .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py
 3601 passed, 6 skipped, 3 warnings in 867.53s (0:14:27)
 ```
+
+---
+
+## §4 — Passo 8: a confiança por diagrama — instrumento construído, portão bloqueado pela população
+
+### 4.0 Em uma tela
+
+Existe agora `caissa.vision.classify.confidence` (os sinais de um tabuleiro reconhecido —
+`min_confidence`, média, casas abaixo de 0,90 e de 0,70, menor margem top-1/top-2, casas
+reparadas pelo decodificador, fatal, troca de lado, orientação ambígua, via vetorial — e uma
+regressão logística L2 sobre eles, só numpy, com AUROC, ECE, Brier e risco × cobertura) e
+`benchmarks/diagram_confidence_gate.py`, que corre o conjunto de campo pelo reconhecedor de
+produção (3 execuções idênticas, ou reprova), rotula cada diagrama casado contra a anotação com
+as duas réguas, ajusta por *leave-one-book-out* e compara com o preditor constante; `--sabotar
+ruido` troca os sinais por ruído.
+
+**O que a medição disse: não há o que ajustar.** Dos 114 diagramas casados, **96 têm FEN
+anotada**, e desses **94 são exatos** (régua corrigida) — **2 negativos**. Nenhum modelo se
+ajusta com dois negativos, nenhum portão de discriminação se julga (AUROC fora da dobra 0,02
+com os sinais reais, 0,12 com ruído — indistinguíveis; `min_confidence` sozinho dá 0,88 sobre
+os mesmos dois), e o gate reprova nas duas rodadas **por falta de população, não por falta de
+sinal**. Nenhum peso foi empacotado; `default_confidence()` devolve `None` e quem chama
+continua com `min_confidence`, dizendo-o.
+
+```
+.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3                   # REPROVOU: negativos 2
+.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3 --sabotar ruido   # REPROVOU: indistinguível
+```
+
+### 4.1 O que a extração corrigiu na análise (D1)
+
+`OCR_UI_ANALISE.md` §2.2 lia a tabela do `F4_FIELD_REPORT.md` §2.1 (`scan-hachurado`: 21
+casados, 10 `exported_comparable`; `scan-puro`: 44 casados, 35) como "20 diagramas certos
+barrados pelo portão". Errado: `exported_comparable` exige FEN anotada, e **19 dos diagramas
+anotados não a têm** (9 hachurados, 10 scan-puro). Os barrados de verdade são **2**, os dois
+do Levenfis p150 (hachurado): um **exato** com `min_confidence` 0,30 depois de 1 reparo — o
+caso aritmético do `decode.py`, 1 em 96 —, e um errado com 0,07 e 2 reparos, que o portão
+barra bem. O portão de exportação, no conjunto de campo, perde **um** diagrama certo. A
+linha 6 da tabela da análise e o passo 9 do roadmap ficam corrigidos: a alavanca ali é
+**anotar** (os 19 sem FEN e mais livros), não mexer no piso.
+
+```
+.venv\Scripts\python.exe - <<EOF
+# anotados por estrato / sem FEN anotada — chess_diagram_ocr.field_eval.load_field_set
+# {'scan-puro': 45, 'scan-hachurado': 21, 'vetorial': 31, 'fonte': 18} / {'scan-hachurado': 9, 'scan-puro': 10}
+
+---
+
+## §4 — Passo 8: a confiança por diagrama — instrumento construído, portão bloqueado pela população
+
+### 4.0 Em uma tela
+
+Existe agora `caissa.vision.classify.confidence` (os sinais de um tabuleiro reconhecido —
+`min_confidence`, média, casas abaixo de 0,90 e de 0,70, menor margem top-1/top-2, casas
+reparadas pelo decodificador, fatal, troca de lado, orientação ambígua, via vetorial — e uma
+regressão logística L2 sobre eles, só numpy, com AUROC, ECE, Brier e risco × cobertura) e
+`benchmarks/diagram_confidence_gate.py`, que corre o conjunto de campo pelo reconhecedor de
+produção (3 execuções idênticas, ou reprova), rotula cada diagrama casado contra a anotação com
+as duas réguas, ajusta por *leave-one-book-out* e compara com o preditor constante; `--sabotar
+ruido` troca os sinais por ruído.
+
+**O que a medição disse: não há o que ajustar.** Dos 114 diagramas casados, **96 têm FEN
+anotada**, e desses **94 são exatos** (régua corrigida) — **2 negativos**. Nenhum modelo se
+ajusta com dois negativos, nenhum portão de discriminação se julga (AUROC fora da dobra 0,02
+com os sinais reais, 0,12 com ruído — indistinguíveis; `min_confidence` sozinho dá 0,88 sobre
+os mesmos dois), e o gate reprova nas duas rodadas **por falta de população, não por falta de
+sinal**. Nenhum peso foi empacotado; `default_confidence()` devolve `None` e quem chama
+continua com `min_confidence`, dizendo-o.
+
+```
+.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3                   # REPROVOU: negativos 2
+.venv\Scripts\python.exe benchmarks\diagram_confidence_gate.py --runs 3 --sabotar ruido   # REPROVOU: indistinguível
+```
+
+### 4.1 O que a extração corrigiu na análise (D1)
+
+`OCR_UI_ANALISE.md` §2.2 lia a tabela do `F4_FIELD_REPORT.md` §2.1 (`scan-hachurado`: 21
+casados, 10 `exported_comparable`; `scan-puro`: 44 casados, 35) como "20 diagramas certos
+barrados pelo portão". Errado: `exported_comparable` exige FEN anotada, e **19 dos diagramas
+anotados não a têm** (9 hachurados, 10 scan-puro — contados com
+`chess_diagram_ocr.field_eval.load_field_set`). Os barrados de verdade são **2**, os dois do
+Levenfis p150 (hachurado): um **exato** com `min_confidence` 0,30 depois de 1 reparo — o caso
+aritmético do `decode.py`, 1 em 96 —, e um errado com 0,07 e 2 reparos, que o portão barra
+bem. O portão de exportação, no conjunto de campo, perde **um** diagrama certo. A linha 6 da
+tabela da análise e o passo 9 do roadmap ficam corrigidos: a alavanca ali é **anotar** (os 19
+sem FEN e mais livros), não mexer no piso.
+
+### 4.2 O que fica
+
+- Sinais e instrumento prontos; testes em `tests/unit/classify/test_diagram_confidence.py`
+  (o ajuste separa o separável, as métricas respondem 0,5/0 a uma constante, ida e volta dos
+  pesos, sinais lidos de um diagrama).
+- **Pré-requisito humano, registrado como passo 0b no roadmap**: anotar a FEN dos 19
+  diagramas sem ela e acrescentar diagramas **errados** ao conjunto (a fila da aba Dataset por
+  menor `min_confidence` os encontra) — ≥ 30 negativos é o mínimo para um modelo de dez sinais
+  dizer algo. Enquanto isso, o âmbar da UI e a fila de revisão seguem em `min_confidence`.
+- Os passos 9, 13 (âmbar por p(exato)) e 18 dependem disto e ficam suspensos até lá.
