@@ -1,6 +1,6 @@
 {
  "version": 2,
- "built_at": "2026-09-13T08:27:04+00:00",
+ "built_at": "2026-09-14T17:44:22+00:00",
  "files": {
   "deu.txt": {
    "lang": "deu",
@@ -65,6 +65,12 @@
    "source": "autoral (este projeto)",
    "license": "AGPL-3.0-or-later"
   },
+  "LICENSE_ru_RU.txt": {
+   "lang": "rus",
+   "sha256": "262af2f6ad70a61e5ee1332ff44fa8ee50edca819cf33207d8ad6ba6a0c9be52",
+   "source": "README_ru_RU.txt do dicionário",
+   "license": "BSD-3-Clause (aviso obrigatório)"
+  },
   "eng.dic.gz": {
    "lang": "eng",
    "words": 49545,
@@ -118,6 +124,24 @@
    "source_path": "C:\\Program Files\\LibreOffice\\share\\extensions\\dict-es\\es_ES.aff",
    "source_sha256": "e73a9bf8e1383f4986a5dc9e2fbed49371c0c61f511c626d15586bd433c1cad9",
    "license": "GPLv3 / LGPLv3 / MPL 1.1 (RLA-ES)"
+  },
+  "rus.dic.gz": {
+   "lang": "rus",
+   "words": 146269,
+   "sha256": "04339736a429677d12d49dd2a014a0c7e0fa80d7ad7df9e5f72130633afd3d3f",
+   "source": "ru_RU Hunspell dictionary, LibreOffice dictionaries repository (ru_RU/)",
+   "source_path": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez\\models\\hunspell\\ru_RU\\ru_RU.dic",
+   "source_sha256": "f6047416a0204adbecf3a451b874ec8a97ee37e2cbc714466ef04d8dbcc0d6fc",
+   "license": "BSD-3-Clause (Alexander I. Lebedev, 1997-2008; see LICENSE_ru_RU.txt)"
+  },
+  "rus.aff.gz": {
+   "lang": "rus",
+   "rules": 1606,
+   "sha256": "60be923e43e30b2cd174604e8e019262058a9de229de5af7eb1fb78c84854563",
+   "source": "ru_RU Hunspell dictionary, LibreOffice dictionaries repository (ru_RU/)",
+   "source_path": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez\\models\\hunspell\\ru_RU\\ru_RU.aff",
+   "source_sha256": "38ce7d4af78e211e9bafe4bf7e3d6a2c420591136cb738ec6648f8fdf6524cd7",
+   "license": "BSD-3-Clause (Alexander I. Lebedev, 1997-2008; see LICENSE_ru_RU.txt)"
   }
  },
  "notes": [

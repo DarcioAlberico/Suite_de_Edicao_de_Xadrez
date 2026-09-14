@@ -353,7 +353,7 @@ def test_gaprindashvili_third_party_ocr_layer(corpus_doc):
     page         verdict    why
     ===========  =========  =====================================
     28, 72, 115  image-only the reprocessing dropped the layer
-    158          rejected   48 % of words unpronounceable
+    158          kept 0.55  48 % "unpronounceable" — mostly mangled moves (passo 6)
     202, 245     accepted   at 0.98
     ===========  =========  =====================================
 
@@ -389,8 +389,15 @@ def test_gaprindashvili_third_party_ocr_layer(corpus_doc):
     for page in (28, 72, 115):
         assert verdicts[page].is_image_only, (page, verdicts[page].reason)
 
-    assert not verdicts[158].accepted, verdicts[158].reason
-    assert verdicts[158].signals["nonword_ratio"] > 0.45
+    # Page 158 used to be *rejected* for 48 % unpronounceable words — 29 of
+    # its 40 "words" were mangled moves (``Wh2t``).  Since OCR_UI_ROADMAP
+    # passo 6 those count as notation, not words: the page is kept at 0,55
+    # like the other two, with 37 % of 149 moves damaged, and the OCR
+    # contests it (passo 2) instead of replacing the whole page.
+    assert verdicts[158].accepted and verdicts[158].notation_damaged, verdicts[158].reason
+    assert verdicts[158].confidence == 0.55
+    assert verdicts[158].signals["nonword_ratio"] < 0.45
+    assert verdicts[158].signals["mangled_move_ratio"] == pytest.approx(0.369, abs=0.005)
 
     # Both stay accepted: the prose is correct and worth keeping, and throwing
     # a good page away to save its moves is the worse trade.  What changed is

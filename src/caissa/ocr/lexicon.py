@@ -546,6 +546,15 @@ def nonword_ratio(text: str, langs: tuple[str, ...] = ()) -> tuple[float, int]:
             continue
         if not any(c.isalpha() for c in token):
             continue
+        if is_mangled_move(token, langs):
+            # OCR_UI_ROADMAP passo 6: ``Wh2t`` and ``t2'ic4`` are notation whose
+            # piece glyph did not survive, not words that cannot be words.
+            # They have their own signal (:func:`mangled_move_ratio`), and
+            # counting them here rejected a solutions page outright — Yusupov
+            # p. 701, 55 % "unpronounceable", 29 of the 40 being moves — where
+            # the damaged-notation verdict, kept at 0,55, is the one that lets
+            # the OCR contest the layer and recover them.
+            continue
         considered += 1
         if is_implausible_token(token):
             bad += 1

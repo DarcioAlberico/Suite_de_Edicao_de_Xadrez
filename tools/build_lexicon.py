@@ -48,6 +48,15 @@ HUNSPELL = [
     ("spa", r"C:\Program Files\LibreOffice\share\extensions\dict-es\es_ES.dic",
      "GPLv3 / LGPLv3 / MPL 1.1 (RLA-ES)",
      "es_ES Hunspell dictionary, LibreOffice dict-es"),
+    # OCR_UI_ROADMAP passo 6 (2026-09-14): no Russian dictionary ships with the
+    # LibreOffice on this machine, so this one was fetched once from the
+    # LibreOffice dictionaries repository (ru_RU/, master) into models/hunspell/
+    # and its licence read before anything else: BSD-3-Clause, Alexander I.
+    # Lebedev, 1997-2008 (README_ru_RU.txt, copied into the package as
+    # LICENSE_ru_RU.txt because the BSD notice must travel with the files).
+    ("rus", str(REPO_ROOT / "models" / "hunspell" / "ru_RU" / "ru_RU.dic"),
+     "BSD-3-Clause (Alexander I. Lebedev, 1997-2008; see LICENSE_ru_RU.txt)",
+     "ru_RU Hunspell dictionary, LibreOffice dictionaries repository (ru_RU/)"),
 ]
 
 
@@ -115,6 +124,14 @@ def main() -> int:
         files[path.name] = {
             "lang": lang, "words": len(words), "sha256": sha256_of(target),
             "source": "autoral (este projeto)", "license": "AGPL-3.0-or-later",
+        }
+
+    readme = REPO_ROOT / "models" / "hunspell" / "ru_RU" / "README_ru_RU.txt"
+    if readme.is_file():
+        (OUT / "LICENSE_ru_RU.txt").write_bytes(readme.read_bytes())
+        files["LICENSE_ru_RU.txt"] = {
+            "lang": "rus", "sha256": sha256_of(OUT / "LICENSE_ru_RU.txt"),
+            "source": "README_ru_RU.txt do dicionário", "license": "BSD-3-Clause (aviso obrigatório)",
         }
 
     for lang, source, licence, origin in HUNSPELL:

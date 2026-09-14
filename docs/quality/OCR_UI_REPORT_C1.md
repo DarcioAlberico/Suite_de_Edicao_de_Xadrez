@@ -552,3 +552,57 @@ sem FEN e mais livros), não mexer no piso.
   menor `min_confidence` os encontra) — ≥ 30 negativos é o mínimo para um modelo de dez sinais
   dizer algo. Enquanto isso, o âmbar da UI e a fila de revisão seguem em `min_confidence`.
 - Os passos 9, 13 (âmbar por p(exato)) e 18 dependem disto e ficam suspensos até lá.
+
+---
+
+## §5 — Passo 6: o dicionário russo e os lances que não são palavras
+
+### 5.0 Em uma tela
+
+- **`rus.dic.gz` / `rus.aff.gz`** no léxico empacotado: o `ru_RU` do repositório de dicionários
+  do LibreOffice (146.269 radicais, 1.606 regras), **BSD-3-Clause**, Alexander I. Lebedev
+  1997–2008 — licença lida **antes** de baixar; o aviso viaja no pacote como
+  `LICENSE_ru_RU.txt`, como a BSD exige. A máquina não tinha `dict-ru`; o arquivo foi buscado
+  uma vez para `models/hunspell/ru_RU/` (fora do git) e `tools/build_lexicon.py` o empacota
+  como os outros três. Os `eng/por/spa` reconstruídos saíram byte a byte idênticos ao HEAD
+  (conferido pelo SHA do conteúdo descomprimido) e foram mantidos.
+- **Acerto de dicionário nas cinco páginas fixas do Boleslávski (E6)**: 25 / 20 / 13 / 22 / 25 %
+  → **62 / 55 / 48 / 53 / 73 %** (`notation_integrity.py --what verdicts`, com e sem o
+  `rus.dic.gz`). Nenhum veredito mudou; o Sol nos 9 itens sintéticos russos das partições
+  `dev`+`calib` sai idêntico (o dicionário pesa na plausibilidade, não na leitura).
+- **Um lance danificado não é uma "palavra impronunciável".** `lexicon.nonword_ratio` passou
+  a pular os tokens que `is_mangled_move` reconhece — `Wh2t`, `t2'ic4`, `Elxg7t` são notação
+  cujo glifo não sobreviveu, com sinal próprio. Efeito, medido:
+
+| página | antes | depois |
+|---|---|---|
+| Yusupov *Build Up* p. 700–701 (soluções, 87–136 lances) | **rejeitada** — "55 % impronunciáveis" (29 dos 40 eram lances) | mantida a 0,55, notação danificada → **contestada** pelo passo 2 |
+| Gaprindashvili p158 | rejeitada — 48 % — página inteira ao OCR | mantida a 0,55 (37 % de 149 lances) → contestada: 137 lances com peça, **95 %** certos, prosa do livro (CER 0,054) |
+| Nunn *Minor Piece* p150, coluna direita | camada rejeitada, parágrafos da análise fragmentados pelo Tesseract | camada mantida: a análise fica **um parágrafo** com os lances legíveis dentro |
+| os 16 livros acusados, os 2 controles | — | vereditos inalterados (`--what verdicts`) |
+
+```
+.venv\Scripts\python.exe tools\build_lexicon.py
+.venv\Scripts\python.exe benchmarks\notation_integrity.py --what verdicts
+.venv\Scripts\python.exe benchmarks\notation_integrity.py --what contest --json benchmarks\reports\ni_c6_contest.json
+```
+
+O `sol_gate.py` compara o hash do manifesto do léxico com o do baseline congelado e vai
+acusar a diferença até o baseline ser recongelado — correto: o léxico mudou.
+
+### 5.1 O que a medição mudou
+
+A sabotagem prevista no roadmap ("contar o token danificado como lance válido no
+`mangled_move_ratio`") não foi necessária como sabotagem: a mudança de fato foi a inversa — tirar
+o token danificado do `nonword`, deixando o `mangled` como está — e os dois testes de corpus que
+fixavam o comportamento antigo (`test_gaprindashvili_third_party_ocr_layer`: "p158 rejeitada";
+`test_nunn_ocr_layer_keeps_the_paragraphs_whole`) reprovaram na hora e foram reescritos com o
+motivo. O p158 é o caso a vigiar: da rejeição (OCR da página inteira, 98 % das peças) passou à
+disputa (camada na âncora, 95 %) — três lances a menos e a prosa do livro no lugar da do
+Tesseract.
+
+### 5.2 Testes
+
+`test_lexicon_package.py::test_the_russian_hunspell_dictionary_answers_prose_and_refuses_garbage`
+(o pacote tem o dicionário e o aviso; prosa russa ≥ 0,9; espelhado 0/3); os dois testes de corpus
+acima. Suíte `tests/unit/ocr` + `tests/unit/ingest` verde.

@@ -101,3 +101,20 @@ def test_names_are_looked_up_but_never_modelled():
     # The Latin model was built from the language lists alone: a bigram that
     # only occurs in a surname must stay unseen.
     assert "vj" not in lx._BIGRAMS or lx._BIGRAMS.get("vj", 0) == 0
+
+
+def test_the_russian_hunspell_dictionary_answers_prose_and_refuses_garbage():
+    """OCR_UI_ROADMAP passo 6: ``rus.dic.gz`` (BSD-3-Clause, A. I. Lebedev; the notice
+    ships as ``LICENSE_ru_RU.txt``) replaces the 13–26 % dictionary hit rate the
+    authored list gave Russian prose."""
+    from importlib import resources
+
+    from caissa.ocr.lexicon import dictionary_hit_rate, normalise_lang
+
+    package = resources.files("caissa.ocr.data.lexicon")
+    assert package.joinpath("rus.dic.gz").is_file()
+    assert "Lebedev" in package.joinpath("LICENSE_ru_RU.txt").read_text("utf-8")
+    prose = "Комбинация начинается жертвой слона и белые выигрывают решающий материал"
+    hit, judged = dictionary_hit_rate(prose, normalise_lang("rus"))
+    assert judged >= 8 and hit >= 0.9
+    assert dictionary_hit_rate("bsbluoitib sb zism", normalise_lang("rus")) == (0.0, 3)

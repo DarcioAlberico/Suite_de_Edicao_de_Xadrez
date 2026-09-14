@@ -151,8 +151,11 @@ def test_nunn_ocr_layer_keeps_the_paragraphs_whole():
         "(207): Black is to play.",
     ], [t[:24] for t in texts]
     assert texts[0].endswith("and wins.")
-    analysis = " ".join(texts[5:])
-    assert "Ng5" in analysis and "Nc6" in analysis, "the moves are readable now"
+    # Since passo 6 the right column's layer is kept too (its "unpronounceable"
+    # tokens were mangled moves), so the analysis stays one paragraph with its
+    # prose and the moves come back inside it.
+    analysis = " ".join(texts[4:])
+    assert "Ne4" in analysis and "Bf4" in analysis, "the moves are readable now"
 
 
 def test_chernev_tabular_moves_and_flush_paragraphs():
