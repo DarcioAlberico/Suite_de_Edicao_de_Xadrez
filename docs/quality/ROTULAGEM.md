@@ -529,6 +529,9 @@ como o `diagram`), e o marcador ficou só para arquivo ausente, pela feature `im
 Conferido abrindo o DOCX da página de prova no LibreOffice Writer (`--convert-to pdf`): as seis
 figuras sobrevivem. `test_the_images_of_the_pages_are_embedded_in_the_docx` cobra a parte de
 mídia, a relação e o `[Content_Types]`; a fidelidade do corpus continua acima do portão.
+Bundle reconstruído e o item *DOCX…* dirigido no `Caissa.exe` como o *EPUB…* acima: rodapé
+*«DOCX gravado em caissa_pagina_de_prova.docx: 1 página(s) (livro completo); … 6 imagens …»*,
+seis partes em `word/media/` e seis `w:drawing` no corpo.
 
 ### 7d. O que não é
 
