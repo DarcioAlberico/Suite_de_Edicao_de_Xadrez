@@ -103,7 +103,12 @@ ocr-surya = [
     "surya-ocr>=0.6,<1",
 ]
 ocr-rapid = [
-    "rapidocr-onnxruntime>=1.3,<3",
+    # rapidocr 3.x: per-script recognisers (PP-OCRv6 multilingual, PP-OCRv5
+    # Cyrillic/East Slavic), measured on 2026-09-14 (OCR_UI_ROADMAP passo 1).
+    # It declares opencv-python; this environment ships opencv-python-headless,
+    # which satisfies ``cv2`` at runtime — install with ``--no-deps`` and add
+    # onnxruntime, omegaconf, colorlog, requests, PyYAML, pyclipper, shapely.
+    "rapidocr>=3.9,<4",
 ]
 
 # --- group: ui --------------------------------------------------------------

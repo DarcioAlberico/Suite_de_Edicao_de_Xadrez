@@ -251,8 +251,13 @@ o Dvoretsky a partir do `eng`, não do `por`; o `caissa_eng` entra só como **ca
 (`ROTULAGEM.md` §7): `caissa-rotular` abre o PDF, **Treinar…** treina só com as linhas do livro e
 registra o modelo para o hash do PDF em `models/tessdata/livros.json`, `PdfImporter` aplica esse
 modelo a esse PDF (segunda opinião, nota no relatório) e a nenhum outro, **Medir no livro…** relê
-as páginas rotuladas sem e com o modelo por partição. **2026-09-14 (tarde): o livro sai da aba como EPUB/DOCX, inteiro ou por intervalo de páginas** (`ROTULAGEM.md` §7f): `caissa.export.book` compõe F2 → exportador, `caissa-exportar` é a CLI, `caissa.ui.views.exportacao` o diálogo, e o tronco os tem em *Arquivo* (`e98b738`); (2) instalar um segundo motor (Surya para
-cirílico) e rodar `tests/unit/ocr/test_optional_engines.py` como contrato; (3) a janela de
+as páginas rotuladas sem e com o modelo por partição. **2026-09-14 (tarde): o livro sai da aba como EPUB/DOCX, inteiro ou por intervalo de páginas** (`ROTULAGEM.md` §7f): `caissa.export.book` compõe F2 → exportador, `caissa-exportar` é a CLI, `caissa.ui.views.exportacao` o diálogo, e o tronco os tem em *Arquivo* (`e98b738`); (2) ~~instalar um segundo motor~~ — **feito em 2026-09-14 (noite)**: RapidOCR 3.x
+(Apache-2.0, ONNX CPU) como motor secundário, roteado às páginas degradadas e barrado da
+âncora onde há figurinas: lances 0,819 → **0,893**, inventados 291 → **169**, nenhuma
+regressão fora do IC (`docs/quality/OCR_UI_REPORT_C1.md` §1 — o plano é
+`docs/OCR_UI_ROADMAP.md`, passo 1). Aviso que vale ler: `test_optional_engines.py` injeta
+módulos falsos e **não prova** o motor real; o contrato ao vivo é
+`tests/integration/test_engine_live.py`. Surya continua por medir (licença dos pesos); (3) a janela de
 revisão sobre `caissa.ocr.review.ReviewQueue` quando o shell F9 entrar; (4) `python
 benchmarks/sol_gate.py --blind` só num release.
 

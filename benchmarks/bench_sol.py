@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -142,11 +143,11 @@ def model_lang(lang: str) -> str:
 def make_sol() -> System:
     """The production service.  ``SOL_CONFIG='{"fuse": false}'`` (JSON kwargs of
     :class:`OcrServiceConfig`) switches parts off for an ablation run."""
-    import os
-
     from caissa.ingest.pdf.ocr_service import OcrService, OcrServiceConfig
 
     overrides = json.loads(os.environ.get("SOL_CONFIG", "{}"))
+    if "secondary_engines" in overrides:          # JSON has lists, the field is a tuple
+        overrides["secondary_engines"] = tuple(overrides["secondary_engines"])
     engines = None
     if TESSDATA_DIR is not None:
         from caissa.ocr.engines.tesseract import TesseractConfig, TesseractEngine
@@ -406,7 +407,10 @@ def main() -> int:
         "blind_included": args.blind,
         "environment": {**environment(),
                         "tessdata_dir": str(TESSDATA_DIR) if TESSDATA_DIR else None,
-                        "model_prefix": MODEL_PREFIX if TESSDATA_DIR else None},
+                        "model_prefix": MODEL_PREFIX if TESSDATA_DIR else None,
+                        # The ablation/opt-in knobs of ``make_sol`` — a report
+                        # without them cannot say which service it measured.
+                        "sol_config": json.loads(os.environ.get("SOL_CONFIG", "{}"))},
         "thresholds": GateThresholds().__dict__ if hasattr(GateThresholds(), "__dict__") else {},
         "summary": {
             "overall": summarise_rows(rows),

@@ -172,8 +172,10 @@ VRAM de pico ≤ 7,0 GB. *Sabotagem:* rotear o motor novo também no `native` co
 o `sol_gate` tem de acusar regressão por estrato no nativo (o IC existe: `bootstrap_mean_ci`).
 
 **Saída.** `docs/quality/OCR_UI_REPORT_C1.md` §1 com a tabela por estrato; `weights.json`;
-`routing.py`; `ocr_service.py`; memória `sol-ocr-state` atualizada. **Desfazer:** `routing.py`
-sem o motor; os pesos ficam no disco sem uso.
+`ocr_service.py` (a rota ficou no serviço, pela evidência da página — `degradation_reasons` —
+e não em `routing.py`, que roteia por idioma/tipo de região); memória `sol-ocr-state` atualizada.
+**Desfazer:** `OcrServiceConfig(secondary_engines=())`; os pesos ficam no disco sem uso.
+**Estado (2026-09-14): executado** — ver a tabela de mutações do §4 e o relatório.
 
 ---
 
@@ -899,6 +901,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-14 | 1 | **executado** — `docs/quality/OCR_UI_REPORT_C1.md` §1 | RapidOCR 3.x (Apache-2.0) roteado às páginas degradadas: lances 0,819 → 0,893, inventados 291 → 169, nenhuma regressão fora do IC; o portão de CER fecha só no fax (os outros dois degradados caem dentro do IC); ✗ residual: inserções no estrato de sombra (verso espelhado). Quatro defeitos de fusão/âncora expostos e corrigidos. Surya não medido (Q1) | construtor |
 
 ---
 

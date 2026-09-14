@@ -129,7 +129,7 @@ revisão, exportar — numa pele projetada, com a fita legível sem dica de ferr
 | interface | hoje | depois |
 |---|---|---|
 | `PdfImportOptions` | `enable_ocr`, `book_models`, `ocr` | + `ocr_contests_text_layer: bool = True` (T2), + `book_cipher: bool = True` (G1) |
-| `OcrServiceConfig` | `glyph_candidates`, `figurine_tessdata` | + `secondary_engine: str | None` (T1, **dono: passo 1**), roteado por estrato/idioma pela tabela de `routing.py` |
+| `OcrServiceConfig` | `glyph_candidates`, `figurine_tessdata` | + `secondary_engines: tuple[str, ...] = ()` (T1, **dono: passo 1** — feito em 2026-09-14): os motores de nível ≥ 2 que o serviço acrescenta quando monta a cascata pelo registro; instalar deixa de mudar o comportamento por si; + `secondary_only_when_degraded: bool = True` — entram só nas páginas cujos sinais justificam uma variante do portfólio (`portfolio.degradation_reasons`); padrão medido: `("rapidocr",)` |
 | `OcrService` | `recognize`, `recognize_image` | a disputa com a camada usa `recognize_image` sobre a página (ou faixa) renderizada; **não** há `recognize_region` — se for criado, é novo |
 | fusão SOL-6 | candidatos: variantes × motor + glifos + `caissa_<lang>` | + candidato `text_layer` **por token**, com a confiança calibrada do nível 0 da região (não da página — portão cego 15), marcado `accused` quando `mangled_move_ratio > 0.15` e por isso nunca âncora; onde prosa e lances dividem a linha (Gaprindashvili p202) a disputa é na página inteira e a regra "âncora que é palavra ou lance não é substituída" protege a prosa |
 | `caissa.ocr.notation.cipher` | resolve dama pela promoção | + `BookCipher` (tabela por livro, evidência por entrada, piso N, controle de contradição) — **novo módulo** `notation/book_cipher.py` |

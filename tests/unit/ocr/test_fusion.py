@@ -126,3 +126,41 @@ def test_one_candidate_or_empty_ones_fuse_to_nothing():
     assert fuse_candidates([(a, 0.9, decision())]) is None
     empty = OcrResult(engine="t", lang="eng")
     assert fuse_candidates([(a, 0.9, decision()), (empty, 0.1, decision(Decision.ABSTAINED))]) is None
+
+
+def test_a_bare_move_number_is_not_replaced_by_a_move():
+    """``38`` is the printed form of a move number.  A candidate misaligned by
+    one slot offers ``g5`` for it with lexical support; before 2026-09-14 the
+    fusion took it, and every such swap was an invented move."""
+    from caissa.ocr.fusion import _supported
+
+    assert _supported("38", ("eng",))
+    assert _supported("36...", ("eng",))
+    assert _supported("12.", ("eng",))
+    assert not _supported("@c2", ("eng",))
+
+
+def test_an_abstained_anchor_comes_out_of_the_fusion_as_review_at_most():
+    """SOL-2: the alternatives' agreement may propose a reading for a region
+    the arbiter abstained on, never certify it (41 such regions were ACCEPTED
+    at CER 0,24 on 2026-09-14 before this rule)."""
+    from caissa.ocr.decision import Decision, RegionDecision
+    from caissa.ocr.fusion import fuse_candidates
+    from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+    def reading(engine, text, conf):
+        words = tuple(OcrWord(text=t, box=BBox(10.0 + 60 * i, 8.0, 50.0, 18.0), confidence=conf,
+                              word_index=i) for i, t in enumerate(text.split()))
+        line = OcrLine(words=words, box=BBox(10.0, 8.0, 60.0 * len(words), 18.0), baseline=None,
+                       block_index=0, paragraph_index=0, line_index=0, kind=RegionKind.MOVETEXT)
+        return OcrResult(engine=engine, lang="eng", lines=(line,), region_kind=RegionKind.MOVETEXT)
+
+    abstained = RegionDecision(Decision.ABSTAINED, 0.47, 0.78, 0.55, ("baixo",))
+    accepted = RegionDecision(Decision.ACCEPTED, 0.95, 0.78, 0.55, ())
+    fused = fuse_candidates([
+        (reading("tesseract", "G\e4 Kf3", 0.5), 0.47, abstained),
+        (reading("mock_b", "Nxe4 Kf3", 0.99), 0.95, accepted),
+        (reading("mock_c", "Nxe4 Kf3", 0.99), 0.95, accepted),
+    ], lang="eng", never_anchor=frozenset({"mock_b", "mock_c"}))
+    assert fused is not None
+    assert fused.decision.decision is not Decision.ACCEPTED

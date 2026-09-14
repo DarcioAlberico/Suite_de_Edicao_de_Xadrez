@@ -136,3 +136,28 @@ def test_signals_on_a_binary_page_skip_the_grey_measures():
     assert signals.is_binary
     assert signals.noise_sigma == 0.0
     assert signals.bleed_share == 0.0
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP passo 1: the route of the secondary engine is the portfolio's
+# own planning, so the two cannot disagree.
+# --------------------------------------------------------------------------- #
+
+
+@requires_font
+def test_degradation_reasons_are_the_variants_the_portfolio_builds(clean_page):
+    from caissa.ocr.portfolio import degradation_reasons
+
+    rng = np.random.default_rng(1)
+    noisy = np.clip(clean_page.astype(np.float32) + rng.normal(0, 14, clean_page.shape),
+                    0, 255).astype(np.uint8)
+    for image, dpi in ((clean_page, 300), (noisy, 300), (rotate(clean_page, 1.2), 300),
+                       (clean_page, 120)):
+        signals = detect_signals(image, dpi=dpi)
+        planned = degradation_reasons(signals, dpi=dpi)
+        built = build_portfolio(image, dpi=dpi, signals=signals)
+        names = tuple(n for n in built.names if n != "original")
+        # A planned variant may be dropped for changing nothing; never the reverse.
+        assert set(names) <= set(planned), (planned, names)
+    assert degradation_reasons(detect_signals(clean_page, dpi=300), dpi=300) == ()
+    assert degradation_reasons(detect_signals(noisy, dpi=300), dpi=300) != ()

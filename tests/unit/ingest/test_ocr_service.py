@@ -339,3 +339,53 @@ def test_the_importer_points_the_service_at_the_books_model(pdf_file, monkeypatc
     other = pdf_file([PageSpec(), PageSpec()], name="livro.pdf")
     with open_pdf(other) as document:
         assert PdfImporter(document)._book_ocr_config().figurine_tessdata is None
+
+
+def test_the_secondary_engine_enters_only_where_the_portfolio_enters():
+    """OCR_UI_ROADMAP passo 1: a clean page keeps the level-0/1 cascade; a page
+    whose signals justify a variant gets the named secondary engines too."""
+    from caissa.ocr.engines.base import EngineCapabilities, EngineLevel
+
+    class Secondary(MockRaster):
+        name = "rapidocr"
+
+        def capabilities(self) -> EngineCapabilities:
+            return EngineCapabilities(level=EngineLevel.PADDLE, cost_per_megapixel_s=1.2,
+                                      supports_char_boxes=False, supports_confidence=True,
+                                      handles_layout=False)
+
+    class Registry:
+        def __init__(self, engines):
+            self._engines = engines
+
+        def available(self, lang=None):
+            return list(self._engines)
+
+    import caissa.ocr.engines.registry as registry_module
+
+    engines = [MockRaster(confidence=0.9), Secondary(confidence=0.9)]
+    original = registry_module.default_registry
+    registry_module.default_registry = lambda: Registry(engines)
+    try:
+        service = OcrService(config=OcrServiceConfig(secondary_engines=("rapidocr",),
+                                                     use_portfolio=False), lang="eng")
+        with_secondary = [e.name for e in service.engines_for("eng", secondary=True)]
+        without = [e.name for e in service.engines_for("eng", secondary=False)]
+        assert "rapidocr" in with_secondary
+        assert "rapidocr" not in without
+        notes: list[str] = []
+        clean = np.full((400, 1200), 248, dtype=np.uint8)
+        clean[8:26, ::3] = 10
+        wants, _ = service._wants_secondary(clean, 300, notes)
+        assert wants is False and notes == []
+        rng = np.random.default_rng(1)
+        noisy = np.clip(clean.astype(np.float32) + rng.normal(0, 14, clean.shape),
+                        0, 255).astype(np.uint8)
+        wants, signals = service._wants_secondary(noisy, 300, notes)
+        assert wants is True and signals is not None
+        assert notes and "motor secundário" in notes[0]
+        always = OcrService(config=OcrServiceConfig(secondary_engines=("rapidocr",),
+                                                    secondary_only_when_degraded=False))
+        assert always._wants_secondary(clean, 300, []) == (True, None)
+    finally:
+        registry_module.default_registry = original

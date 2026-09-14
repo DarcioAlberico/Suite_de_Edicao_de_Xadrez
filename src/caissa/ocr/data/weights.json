@@ -5,11 +5,181 @@
   "Notas de licença são fatos sobre as fontes publicadas, não parecer jurídico. 'verify' marca o que precisa de conferência antes de qualquer distribuição comercial."
  ],
  "artifacts": [
-  {"engine": "paddleocr", "name": "PP-OCRv5_server_det", "source": "PaddleOCR model zoo (BOS/HuggingFace, baixado pelo pacote paddleocr)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv5", "sha256": "", "size_bytes": 0, "note": "detecção de texto"},
-  {"engine": "paddleocr", "name": "PP-OCRv5_server_rec", "source": "PaddleOCR model zoo", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv5", "sha256": "", "size_bytes": 0, "note": "reconhecimento multilíngue (latim, cirílico)"},
-  {"engine": "paddle_structure", "name": "PP-DocLayout-L", "source": "PaddleOCR model zoo (PP-StructureV3)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-StructureV3", "sha256": "", "size_bytes": 0, "note": "detecção de leiaute (texto, título, tabela, figura, cabeçalho, rodapé, número)"},
-  {"engine": "paddle_structure", "name": "SLANeXt / PP-TableStructure", "source": "PaddleOCR model zoo (PP-StructureV3)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-StructureV3", "sha256": "", "size_bytes": 0, "note": "estrutura de tabelas"},
-  {"engine": "rapidocr", "name": "ch_PP-OCRv4 det/rec (ONNX)", "source": "rapidocr-onnxruntime (empacotado no wheel)", "license": "Apache-2.0", "commercial_use": "ok", "version": "PP-OCRv4", "sha256": "", "size_bytes": 0, "note": "roda em onnxruntime; processo isolado por ADR-0003"},
-  {"engine": "surya", "name": "surya_det / surya_rec (foundation + recognition)", "source": "HuggingFace datalab-to/*, baixado pelo pacote surya-ocr", "license": "código GPL-3.0; pesos CC-BY-NC-SA-4.0 com exceção comercial condicionada a limite de receita do editor", "commercial_use": "verify", "version": "surya-ocr 0.6–0.x", "sha256": "", "size_bytes": 0, "note": "Verificar os termos vigentes em datalab.to antes de qualquer distribuição comercial; uso local e não comercial coberto."}
+  {
+   "engine": "paddleocr",
+   "name": "PP-OCRv5_server_det",
+   "source": "PaddleOCR model zoo (BOS/HuggingFace, baixado pelo pacote paddleocr)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-OCRv5",
+   "sha256": "",
+   "size_bytes": 0,
+   "note": "detecção de texto"
+  },
+  {
+   "engine": "paddleocr",
+   "name": "PP-OCRv5_server_rec",
+   "source": "PaddleOCR model zoo",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-OCRv5",
+   "sha256": "",
+   "size_bytes": 0,
+   "note": "reconhecimento multilíngue (latim, cirílico)"
+  },
+  {
+   "engine": "paddle_structure",
+   "name": "PP-DocLayout-L",
+   "source": "PaddleOCR model zoo (PP-StructureV3)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-StructureV3",
+   "sha256": "",
+   "size_bytes": 0,
+   "note": "detecção de leiaute (texto, título, tabela, figura, cabeçalho, rodapé, número)"
+  },
+  {
+   "engine": "paddle_structure",
+   "name": "SLANeXt / PP-TableStructure",
+   "source": "PaddleOCR model zoo (PP-StructureV3)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-StructureV3",
+   "sha256": "",
+   "size_bytes": 0,
+   "note": "estrutura de tabelas"
+  },
+  {
+   "engine": "surya",
+   "name": "surya_det / surya_rec (foundation + recognition)",
+   "source": "HuggingFace datalab-to/*, baixado pelo pacote surya-ocr",
+   "license": "código GPL-3.0; pesos CC-BY-NC-SA-4.0 com exceção comercial condicionada a limite de receita do editor",
+   "commercial_use": "verify",
+   "version": "surya-ocr 0.6–0.x",
+   "sha256": "",
+   "size_bytes": 0,
+   "note": "Verificar os termos vigentes em datalab.to antes de qualquer distribuição comercial; uso local e não comercial coberto."
+  },
+  {
+   "engine": "rapidocr",
+   "name": "ch_PP-OCRv4_det_infer.onnx",
+   "source": "rapidocr-onnxruntime 1.4.4 (empacotado no wheel; PyPI, RapidAI/RapidOCR, Apache-2.0)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-OCRv4 / rapidocr-onnxruntime 1.4.4",
+   "sha256": "d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9",
+   "size_bytes": 4745517,
+   "note": "detecção de texto; roda em onnxruntime CPU no mesmo processo (sem provedor CUDA — nada da ADR-0003 a isolar); registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "ch_PP-OCRv4_rec_infer.onnx",
+   "source": "rapidocr-onnxruntime 1.4.4 (empacotado no wheel; PyPI, RapidAI/RapidOCR, Apache-2.0)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-OCRv4 / rapidocr-onnxruntime 1.4.4",
+   "sha256": "48fc40f24f6d2a207a2b1091d3437eb3cc3eb6b676dc3ef9c37384005483683b",
+   "size_bytes": 10857958,
+   "note": "reconhecimento (chinês + latino); roda em onnxruntime CPU no mesmo processo (sem provedor CUDA — nada da ADR-0003 a isolar); registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "ch_ppocr_mobile_v2.0_cls_infer.onnx",
+   "source": "rapidocr-onnxruntime 1.4.4 (empacotado no wheel; PyPI, RapidAI/RapidOCR, Apache-2.0)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "PP-OCRv4 / rapidocr-onnxruntime 1.4.4",
+   "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+   "size_bytes": 585532,
+   "note": "classificador de ângulo; roda em onnxruntime CPU no mesmo processo (sem provedor CUDA — nada da ADR-0003 a isolar); registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "multi_PP-OCRv6_det_small",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/det/multi_PP-OCRv6_det_small.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+   "size_bytes": 9929594,
+   "note": "detecção de texto (padrão do pacote); onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "PP-OCRv6_rec_small",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv6/rec/PP-OCRv6_rec_small.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+   "size_bytes": 21234383,
+   "note": "reconhecimento multilíngue padrão: lê latino com acentos e espaços (medido em 2026-09-14); onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "ch_PP-OCRv5_det_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/det/ch_PP-OCRv5_det_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "4d97c44a20d30a81aad087d6a396b08f786c4635742afc391f6621f5c6ae78ae",
+   "size_bytes": 4819576,
+   "note": "detector v5, baixado num teste; não usado pelo adaptador; onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "ch_ppocr_mobile_v2.0_cls_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv4/cls/ch_ppocr_mobile_v2.0_cls_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+   "size_bytes": 585532,
+   "note": "classificador de ângulo; onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "en_PP-OCRv5_rec_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/rec/en_PP-OCRv5_rec_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "c3461add59bb4323ecba96a492ab75e06dda42467c9e3d0c18db5d1d21924be8",
+   "size_bytes": 7872351,
+   "note": "baixado num teste; o adaptador usa o PP-OCRv6 para latino; onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "latin_PP-OCRv5_rec_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/rec/latin_PP-OCRv5_rec_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "b20bd37c168a570f583afbc8cd7925603890efbcdc000a59e22c269d160b5f5a",
+   "size_bytes": 7904513,
+   "note": "baixado num teste; o adaptador usa o PP-OCRv6 para latino; onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "cyrillic_PP-OCRv5_rec_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/rec/cyrillic_PP-OCRv5_rec_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "90f761b4bfcce0c8c561c0cb5c887b0971d3ec01c32164bdf7374a35b0982711",
+   "size_bytes": 8074092,
+   "note": "cirílico genérico (bul/srp/mkd); onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  },
+  {
+   "engine": "rapidocr",
+   "name": "eslav_PP-OCRv5_rec_mobile",
+   "source": "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2/onnx/PP-OCRv5/rec/eslav_PP-OCRv5_rec_mobile.onnx (baixado pelo pacote rapidocr 3.9.2 na primeira execução; modelos PP-OCR da PaddleOCR reexportados pela RapidAI)",
+   "license": "Apache-2.0",
+   "commercial_use": "ok",
+   "version": "rapidocr 3.9.2",
+   "sha256": "08705d6721849b1347d26187f15a5e362c431963a2a62bfff4feac578c489aab",
+   "size_bytes": 7911802,
+   "note": "eslavo oriental (rus/ukr/bel): mantém as casas latinas (h7), o cirílico genérico escreve һ7; onnxruntime CPU no mesmo processo; registrado em 2026-09-14, OCR_UI_ROADMAP passo 1"
+  }
  ]
 }

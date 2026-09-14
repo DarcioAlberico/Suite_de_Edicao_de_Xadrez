@@ -87,6 +87,8 @@ _PIECE_LETTERS = {"eng": "KQRBN", "por": "RDTBC", "spa": "RDTAC", "deu": "KDTLS"
 #: digit before a square (``2d5``) is not a number — it is what a line engine
 #: makes of ♗.
 _NUMBER_PREFIX = re.compile(r"^(\d{1,3})(?:\.{1,3}|\s)")
+#: A token that is only a move number, with or without its dots.
+_MOVE_NUMBER = re.compile(r"^\d{1,3}\.{0,3}$")
 _DIACRITIC_LANGS = frozenset({"por", "spa", "deu", "fra", "ita", "nld", "ron"})
 
 
@@ -319,6 +321,19 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
             accept_threshold=anchor_decision.accept_threshold,
             reached_threshold=not anchor_decision.below_threshold,
             trusted_source=trusted, legality=anchor_decision.legality)
+        if (anchor_decision.decision is Decision.ABSTAINED
+                and decision.decision is Decision.ACCEPTED):
+            # SOL-2: an anchor the arbiter abstained on is not certified by
+            # the agreement of its alternatives.  Measured 2026-09-14 with a
+            # second engine: 41 abstained move regions came out ACCEPTED at
+            # CER 0,24 (``♘e4`` for ``37... ♘e4`` — right move, lost number).
+            # Worth showing, not worth accepting: REVIEW, never more.
+            decision = RegionDecision(
+                Decision.REVIEW, decision.score, decision.accept_threshold,
+                decision.review_threshold,
+                decision.reasons_pt + ("o motor âncora se absteve; a fusão só pode "
+                                       "propor, não aceitar.",),
+                decision.evidence, decision.flagged_words, True, decision.legality)
         if (disputed_chars / total_chars > cfg.max_disputed_share
                 and decision.decision is Decision.ACCEPTED):
             decision = RegionDecision(
@@ -343,6 +358,11 @@ def _supported(text: str, langs: tuple[str, ...]) -> bool:
     core = text.strip(".,;:!?()\"'—–-+#")
     if not core:
         return False
+    if _MOVE_NUMBER.match(text.strip()):
+        # A bare move number (``38``, ``36...``, ``12.``) is the printed form
+        # too: a misaligned candidate must not turn it into a move (measured
+        # 2026-09-14 with a second engine: ``38`` → ``g5`` is an invention).
+        return True
     prefix = _NUMBER_PREFIX.match(core)
     if is_move_token(core) or (prefix and is_move_token(core[prefix.end():].strip(".,;:!?—–-+#"))):
         return True

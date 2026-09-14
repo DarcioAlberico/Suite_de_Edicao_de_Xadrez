@@ -124,6 +124,24 @@ class OcrServiceConfig:
     figurine_tessdata: str | None = None
     #: The fine-tuned models are named ``<prefix>_<lang>``.
     figurine_prefix: str = "caissa"
+    #: OCR_UI_ROADMAP passo 1: the optional engines (level 2 and above —
+    #: ``rapidocr``, ``paddleocr``, ``paddle_structure``, ``surya``) the
+    #: service may add to the text layer and Tesseract when it assembles the
+    #: cascade from the registry itself.  Installing one of them no longer
+    #: changes production behaviour by itself: it enters only when named here,
+    #: and the default is what the measurement on the golden corpus decided
+    #: (``docs/quality/OCR_UI_REPORT_C1.md`` §1): RapidOCR 3.x, routed to the
+    #: degraded pages (below), moves 0,819 → 0,893 and invented moves 291 →
+    #: 169 with no stratum regressing outside the bootstrap interval.  A name
+    #: that is not installed is simply absent from the registry.  An injected
+    #: engine list (tests, ``bench_sol.py --tessdata-dir``) is the caller's
+    #: choice and is not filtered.
+    secondary_engines: tuple[str, ...] = ("rapidocr",)
+    #: The secondary engines run only on a page whose signals justify a
+    #: preprocessing variant (:func:`caissa.ocr.portfolio.degradation_reasons`):
+    #: measured on the golden corpus they win the degraded strata and lose on
+    #: clean scans and native pages, so they enter where the portfolio enters.
+    secondary_only_when_degraded: bool = True
     page: PageConfig = field(default_factory=PageConfig)
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
@@ -386,18 +404,38 @@ class OcrService:
 
     # -- engines ----------------------------------------------------------- #
 
-    def engines_for(self, lang: str) -> list[OcrEngine]:
+    def engines_for(self, lang: str, *, secondary: bool = True) -> list[OcrEngine]:
         if self._engines is not None:
             return [e for e in self._engines if e.available() and e.supports_language(lang)]
+        from caissa.ocr.engines.base import EngineLevel
         from caissa.ocr.engines.registry import default_registry
 
-        return default_registry().available(lang=lang)
+        allowed = set(self.config.secondary_engines) if secondary else set()
+        return [e for e in default_registry().available(lang=lang)
+                if e.capabilities().level <= EngineLevel.TESSERACT or e.name in allowed]
 
-    def recognizer_for(self, lang: str) -> PageRecognizer:
-        if lang not in self._recognizers:
-            self._recognizers[lang] = PageRecognizer(
-                self.engines_for(lang), self.config.page, self.log)
-        return self._recognizers[lang]
+    def recognizer_for(self, lang: str, *, secondary: bool = True) -> PageRecognizer:
+        key = f"{lang}|{'+' if secondary else '-'}"
+        if key not in self._recognizers:
+            self._recognizers[key] = PageRecognizer(
+                self.engines_for(lang, secondary=secondary), self.config.page, self.log)
+        return self._recognizers[key]
+
+    def _wants_secondary(self, image: NDArray[np.uint8], dpi: int,
+                         notes: list[str]) -> tuple[bool, Any]:
+        """Whether this page gets the secondary engines, and the signals measured."""
+        cfg = self.config
+        if not cfg.secondary_engines:
+            return False, None
+        if not cfg.secondary_only_when_degraded:
+            return True, None
+        from caissa.ocr.portfolio import degradation_reasons, detect_signals
+
+        signals = detect_signals(image, dpi=dpi)
+        reasons = degradation_reasons(signals, dpi=dpi, config=cfg.portfolio)
+        if reasons:
+            notes.append("motor secundário nesta página: " + ", ".join(reasons))
+        return bool(reasons), signals
 
     def engine_versions(self, lang: str) -> dict[str, str]:
         versions: dict[str, str] = {}
@@ -498,15 +536,18 @@ class OcrService:
     def _recognize_task(self, task: PageTask, image: NDArray[np.uint8],
                         started: float) -> PageRecognition:
         cfg = self.config
-        recognizer = self.recognizer_for(task.lang)
+        notes: list[str] = []
+        secondary, signals = self._wants_secondary(image, int(task.dpi), notes)
+        recognizer = self.recognizer_for(task.lang, secondary=secondary)
         outcome: PageOutcome = recognizer.run(task)
-        notes = list(outcome.notes)
+        notes.extend(outcome.notes)
         portfolio: Portfolio | None = None
         regions: list[RegionRecognition] = []
 
         for region_outcome in outcome.regions:
             base = self._candidate("original", region_outcome)
             candidates = [base]
+            candidates.extend(self._engine_candidates(recognizer, region_outcome, task))
             if cfg.movetext_candidates:
                 candidates.extend(self._profile_candidates(recognizer, region_outcome, task))
             if cfg.glyph_candidates:
@@ -515,7 +556,7 @@ class OcrService:
                 candidates.extend(self._figurine_candidates(recognizer, region_outcome, task))
             if self._wants_variants(region_outcome):
                 if portfolio is None:
-                    portfolio = self._portfolio(image, int(task.dpi), notes)
+                    portfolio = self._portfolio(image, int(task.dpi), notes, signals=signals)
                 for variant in portfolio.variants[1:]:
                     candidate = self._read_on_variant(recognizer, variant, region_outcome, task)
                     if candidate is not None:
@@ -559,6 +600,45 @@ class OcrService:
             outcome=arbitration,
         )
 
+    @staticmethod
+    def _engine_candidates(recognizer: PageRecognizer, region_outcome: RegionOutcome,
+                           task: PageTask) -> list[Candidate]:
+        """The readings of the engines that ran on the region and did not win.
+
+        OCR_UI_ROADMAP passo 1: with a second engine in the cascade the
+        arbiter's loser is still a reading of the same pixels — the fusion
+        needs it as a candidate, and the figurine guard of :meth:`_settle`
+        needs the Tesseract reading at hand when the winner may not anchor.
+        Each loser carries **its own** decision, judged by the same policy on
+        its own arbiter score: a reading the arbiter would have abstained on
+        stays abstained here (a flat "review" label let 41 abstained move
+        regions come out accepted on 2026-09-14).
+        """
+        from caissa.ocr.decision import decide
+        from caissa.ocr.lexicon import normalise_lang
+
+        arbitration = region_outcome.outcome
+        scores = {score.engine: score for score in arbitration.scores}
+        out: list[Candidate] = []
+        for result in arbitration.candidates:
+            # The winner is the base candidate already (possibly as a
+            # transformed copy, so compare by engine, not identity).
+            if (result.engine in {region_outcome.engine, arbitration.result.engine}
+                    or result.is_empty or not result.text.strip()):
+                continue
+            score = scores.get(result.engine)
+            total = float(score.total) if score is not None else 0.0
+            level = int(score.level) if score is not None else 1
+            decision = decide(
+                result, total, policy=recognizer.config.arbiter.policy,
+                image=task.image, langs=normalise_lang(task.lang),
+                region_kind=region_outcome.region.kind,
+                accept_threshold=recognizer.config.arbiter.threshold_for(level))
+            out.append(Candidate(
+                variant="original", engine=result.engine, result=result,
+                decision=decision, score=total, outcome=arbitration))
+        return out
+
     def _wants_variants(self, region_outcome: RegionOutcome) -> bool:
         if not self.config.use_portfolio:
             return False
@@ -575,8 +655,10 @@ class OcrService:
         score = arbitration.winner.total if arbitration.winner else 0.0
         return score >= self.config.min_score_for_variants or arbitration.result.is_empty
 
-    def _portfolio(self, image: NDArray[np.uint8], dpi: int, notes: list[str]) -> Portfolio:
-        portfolio = build_portfolio(image, dpi=dpi, config=self.config.portfolio)
+    def _portfolio(self, image: NDArray[np.uint8], dpi: int, notes: list[str],
+                   signals: Any = None) -> Portfolio:
+        portfolio = build_portfolio(image, dpi=dpi, config=self.config.portfolio,
+                                    signals=signals)
         if len(portfolio.variants) > 1:
             notes.append("portfólio: " + ", ".join(
                 f"{v.name} ({'; '.join(v.reasons_pt)})" for v in portfolio.variants[1:]))
@@ -839,7 +921,19 @@ class OcrService:
                 task: PageTask) -> RegionRecognition:
         """Pick the best candidate, fuse, validate, and record everything."""
         cfg = self.config
-        best = max(candidates, key=lambda c: c.rank)
+        # Who may hold the anchor seat.  The second opinions never do; and a
+        # secondary engine (OCR_UI_ROADMAP passo 1: RapidOCR) does not where
+        # the glyph reader sees figurines — measured on the SFC4 scans, it
+        # drops ♖ and ♕ from the moves it wins, and the swap that rescues
+        # Tesseract's look-alikes has nothing to swap in its output.  The
+        # Tesseract reading is among the candidates (``_engine_candidates``)
+        # and takes the seat; RapidOCR stays as an alternative per token.
+        never_anchor = {c.result.engine for c in candidates if c.secondary}
+        if cfg.secondary_engines and any(
+                c.variant == "glyph" and _has_figurines(c.result) for c in candidates):
+            never_anchor.update(cfg.secondary_engines)
+        anchorable = [c for c in candidates if c.engine not in never_anchor] or candidates
+        best = max(anchorable, key=lambda c: c.rank)
         result, decision, fusion = best.result, best.decision, {}
         if cfg.fuse and len(candidates) > 1:
             try:
@@ -848,7 +942,7 @@ class OcrService:
                 fused = fuse_candidates(
                     [(c.result, c.score, c.decision) for c in candidates],
                     lang=task.lang, image=task.image if task.pdf_page is None else None,
-                    never_anchor=frozenset(c.result.engine for c in candidates if c.secondary))
+                    never_anchor=frozenset(never_anchor))
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
             except ImportError:
@@ -937,6 +1031,15 @@ def _is_board_coordinates(text: str) -> bool:
         return False
     flat = "".join(tokens)
     return all(len(t) <= 2 and set(t) <= _COORDINATE_TOKEN for t in tokens) and len(flat) <= 16
+
+
+_FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
+
+
+def _has_figurines(result: OcrResult, *, min_confidence: float = 0.70) -> bool:
+    """Whether a reading carries at least one confident figurine token."""
+    return any(any(ch in _FIGURINES for ch in word.text) and word.confidence >= min_confidence
+               for line in result.lines for word in line.words)
 
 
 def _looks_like_movetext(result: OcrResult) -> bool:

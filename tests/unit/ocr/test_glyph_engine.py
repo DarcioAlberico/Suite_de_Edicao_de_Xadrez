@@ -420,3 +420,55 @@ def test_a_move_with_glued_number_or_evaluation_mark_keeps_its_support():
                             never_anchor=frozenset({"glyph"}))
     assert fused is not None
     assert fused.result.text == "8.Kc2! Bg6—+ 2.g5"
+
+
+class MockSecondary(MockRaster):
+    """A level-2 engine (OCR_UI_ROADMAP passo 1: RapidOCR) that outscores the
+    level-1 reading on a figurine line and drops the figurines it cannot read."""
+
+    name = "rapidocr"
+    version = "mock 3.x"
+
+    def capabilities(self) -> EngineCapabilities:
+        return EngineCapabilities(
+            level=EngineLevel.PADDLE, cost_per_megapixel_s=1.2,
+            supports_char_boxes=False, supports_confidence=True, handles_layout=False)
+
+
+def test_a_secondary_engine_does_not_anchor_where_the_glyph_reader_sees_figurines():
+    """Measured on the SFC4 scans: RapidOCR wins the move line at a higher score,
+    emits ``12 fd1`` for ``12 ♖fd1``, and the look-alike swap has nothing to
+    swap.  With the guard, the Tesseract reading keeps the anchor seat, the
+    figurines are swapped in, and RapidOCR stays a candidate."""
+    tesseract_text = "36... Hea! 37 Exd5 Hb6 38 2g5"
+    answers = {"36...": "36...", "Hea!": "♖e8!", "37": "37", "Exd5": "♖xd5",
+               "Hb6": "♖b6", "38": "38", "2g5": "♗g5"}
+    glyph = FakeGlyph(answers)
+    tesseract = MockRaster(text=tesseract_text, confidence=0.60)
+    rapid = MockSecondary(text="36... ea! 37 xd5 b6 38 g5", confidence=0.99)
+    service = OcrService(
+        [tesseract, rapid],
+        OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                         secondary_engines=("rapidocr",)),
+        lang="eng", glyph_engine=glyph)
+    recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    region = recognition.regions[0]
+    assert {c.engine for c in region.candidates} >= {"mock_raster", "rapidocr"}, (
+        "every engine that ran is a candidate")
+    assert region.engine == "mock_raster", "the secondary engine did not take the anchor"
+    assert region.text == "36... ♖e8! 37 ♖xd5 ♖b6 38 ♗g5"
+
+
+def test_a_secondary_engine_may_anchor_prose_without_figurines():
+    glyph = FakeGlyph({})
+    tesseract = MockRaster(text="Whlte has excellent prospects on the klngside", confidence=0.60)
+    rapid = MockSecondary(text="White has excellent prospects on the kingside", confidence=0.99)
+    service = OcrService(
+        [tesseract, rapid],
+        OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                         secondary_engines=("rapidocr",)),
+        lang="eng", glyph_engine=glyph)
+    recognition = service.recognize_image(inked_page(), dpi=300.0, lang="eng")
+    region = recognition.regions[0]
+    assert region.engine == "rapidocr"
+    assert region.text == "White has excellent prospects on the kingside"

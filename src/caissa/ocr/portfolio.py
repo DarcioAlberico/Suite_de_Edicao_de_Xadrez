@@ -429,6 +429,34 @@ def _run_steps(gray: Image, dpi: int, steps: Sequence[Any], *,
     return current, ctx.dpi, reports, VariantGeometry(scale=scale, affine=affine, field=field_)
 
 
+def degradation_reasons(signals: PageSignals, *, dpi: int,
+                        config: PortfolioConfig | None = None) -> tuple[str, ...]:
+    """Why the page counts as degraded — the conditions of :func:`build_portfolio`.
+
+    One name per variant the signals would justify (``upscale``,
+    ``deskew_shadow``, ``bleed_sauvola``, ``dewarp``); empty for a clean page.
+    OCR_UI_ROADMAP passo 1 keys the second engine on this: measured on the
+    golden corpus, RapidOCR wins the degraded strata (fax, photo, shadow,
+    150 DPI) and loses on clean scans and native pages, so it enters exactly
+    where the portfolio enters.  Kept as one function so the route and the
+    portfolio cannot drift apart; ``test_portfolio`` holds them together.
+    """
+    cfg = config or PortfolioConfig()
+    reasons: list[str] = []
+    if dpi < cfg.low_dpi or (0.0 < signals.xheight_px < cfg.min_xheight_px):
+        reasons.append("upscale")
+    if abs(signals.skew_deg) >= cfg.min_skew_deg or signals.shadow_spread >= cfg.min_shadow_spread:
+        reasons.append("deskew_shadow")
+    if (signals.bleed_share >= cfg.min_bleed_share
+            or signals.noise_sigma >= cfg.min_noise_sigma) and not signals.is_binary:
+        reasons.append("bleed_sauvola")
+    if (signals.curl_amplitude_px >= cfg.min_curl_amplitude_px
+            and signals.curl_consistency is not None
+            and signals.curl_consistency >= cfg.min_curl_consistency):
+        reasons.append("dewarp")
+    return tuple(reasons)
+
+
 def build_portfolio(image: NDArray[Any], *, dpi: int = 300,
                     config: PortfolioConfig | None = None,
                     signals: PageSignals | None = None) -> Portfolio:
