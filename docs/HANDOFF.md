@@ -247,7 +247,7 @@ rotuladas (Dvoretsky SFC4 + Modern Endgame Manual), 256 regiões `pdf-scan` no m
 privado; o leitor de glifos do tronco é candidato da fusão (figurinas `Hea!`→`♖e8!` sem
 treino); o ajuste fino do Tesseract com alfabeto estendido funciona (`caissa_por`: lances nos
 scans 52 % → 94 %) **mas regride fora do livro treinado** — modelo é por idioma/livro, treinar
-o Dvoretsky a partir do `eng`, não do `por`. **2026-09-14: o ciclo por livro está no pacote**
+o Dvoretsky a partir do `eng`, não do `por`; o `caissa_eng` entra só como **candidato secundário da fusão** (medido 2026-09-14: lances 75,7 → 82,1 % no corpus, inventados 412 → 317, controles 0 — `ROTULAGEM.md` §4c). **2026-09-14: o ciclo por livro está no pacote**
 (`ROTULAGEM.md` §7): `caissa-rotular` abre o PDF, **Treinar…** treina só com as linhas do livro e
 registra o modelo para o hash do PDF em `models/tessdata/livros.json`, `PdfImporter` aplica esse
 modelo a esse PDF (segunda opinião, nota no relatório) e a nenhum outro, **Medir no livro…** relê
