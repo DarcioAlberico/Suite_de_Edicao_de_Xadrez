@@ -644,6 +644,65 @@ inalterados (o 0,9952 do EPUB é `document.metadata`, pré-existente). Testes:
 `test_a_diagram_comes_back_from_its_picture`, `test_a_bare_diagram_needs_no_neighbours`,
 `test_a_child_of_a_field_the_format_declared_it_drops_is_a_declared_loss`.
 
+### 7h. O modelo do livro na âncora, dentro do livro (2026-09-14, `OCR_UI_ROADMAP` passo 4b)
+
+O §4d terminou com um número que não fechava: o modelo do SFC4 **sozinho** lê 204/204
+figurinas e 282/288 lances da avaliação `calib`, e o caminho do produto no mesmo livro lia
+193/204 e 273/288. A razão é a regra do §4c — "nunca âncora, só candidato" — somada à SOL-6:
+a fusão só troca tokens do âncora que não são palavra nem lance e nunca insere; um lance que
+o `eng` base leu como `Hea!` e o modelo leu como `♖e8!` é trocado, mas um lance que o base
+leu como outro lance plausível, ou não leu, fica como o base o deixou.
+
+**O que mudou.** `OcrServiceConfig.book_model_anchors` (padrão ligado): quando
+`figurine_tessdata` aponta para a pasta de um livro **registrado para o PDF** (o importador e
+a aba Rotulagem a apontam assim; a pasta global `models/tessdata` nunca dispara isto), o
+Tesseract do idioma do livro é `TunedTesseractEngine` sobre essa pasta — lê `eng` com
+`caissa_eng`, devolve o resultado com o idioma pedido (léxico, árbitro e decisão continuam
+chaveados em `eng`) e `meta["model"]` diz o que leu. O modelo deixa de correr como candidato
+nesse caso (já é o âncora); leitor de glifos, cifra e segundo motor continuam candidatos.
+Fora do livro — sem registro, ou idioma do livro sem modelo (`ron+eng` com `caissa_eng`:
+não ancora) — tudo como antes. «Medir no livro…» (Qt e Tk) ganhou o terceiro lado.
+
+**Medido no SFC4** (`Medir no livro…`, 13 páginas, modelo D do §4d):
+
+| avaliação `calib` (261 linhas) | sem modelo | modelo candidato (§4c) | **modelo na âncora** |
+|---|---:|---:|---:|
+| lances certos / 288 | 265 | 273 | **281** |
+| lances inventados | 12 | 9 | **5** |
+| figurinas certas / 204 | 185 | 193 | **204** |
+| figurinas inventadas | 0 | 0 | 3 |
+| ♔ ♕ ♖ ♗ ♘ | 15/17 36/41 50/53 26/27 58/66 | 15/17 39/41 51/53 26/27 62/66 | **17/17 41/41 53/53 27/27 66/66** |
+| linhas exatas / 261 | 235 | 241 | **243** |
+| CER ponderado | 0,6 % | 0,5 % | **0,4 %** |
+| treino `dev` (458): lances · figurinas | 340/365 · 245/268 | 350/365 · 251/268 | **360/365 · 268/268** |
+
+As 3 figurinas inventadas são as mesmas do modelo sozinho (§4d) — o preço de ler figurinas
+onde o base lia nada.
+
+**Sabotagem — o registro cruzado.** O modelo do SFC4 apontado como se fosse o de outro livro
+inglês, de notação em **letras** (Karpov, *Chess Combinations* vol. 1; 6 páginas espaçadas,
+300 DPI; toda figurina emitida é inventada):
+
+| | figurinas emitidas | regiões ancoradas pelo modelo |
+|---|---:|---:|
+| base `eng` | 0 | 0 |
+| modelo candidato | 9 | 0 |
+| **modelo na âncora, registro cruzado** | **519** (p. 287: 262; p. 345: 256) | 5 |
+
+É isto que o isolamento por impressão digital (`livros.json`) segura: um modelo ancorado no
+livro errado transforma `Nf3` em ♘f3 em página inteira. A `bench_sol` do corpus, onde nenhum
+item tem livro registrado, saiu **idêntica** à anterior (Δ CER 0,0000 em todos os estratos,
+controles 0/9, `docs/quality/sol/c1_anchor.json`) — o âncora não entra sem registro.
+
+```
+.venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --label c1_anchor --publish --compare docs\quality\sol\c1_rapidocr.json
+.venv\Scripts\python.exe -m pytest tests\unit\ingest\test_ocr_service.py tests\unit\ocr\test_measure.py -q
+```
+(medida e sabotagem: `measure_sfc4.py`, `sabotage_cross.py` no scratchpad da sessão; a mesma
+medida sai de «Medir no livro…» na aba.)
+
+**Desfazer:** `book_model_anchors=False` devolve o caminho do §4c.
+
 ### 7d. O que não é
 
 - Não é o treino de *padrões* do FineReader (por caractere): é ajuste fino da LSTM de linha,

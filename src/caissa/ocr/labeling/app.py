@@ -434,12 +434,18 @@ class LabelWindow:
             self.service = self._build_service(with_book=True)
         return self.service
 
-    def _build_service(self, *, with_book: bool) -> Any:
+    def _build_service(self, *, with_book: bool, anchor: bool = True) -> Any:
+        """The product's service for the open book.
+
+        ``anchor=False`` keeps the book's model a candidate (the §4c path)
+        so «Medir no livro…» can show both sides.
+        """
         from caissa.ingest.pdf.ocr_service import OcrService, OcrServiceConfig
 
         config = OcrServiceConfig()
         if with_book and self.book is not None:
             config.figurine_tessdata = self.book.tessdata_dir
+            config.book_model_anchors = anchor
         else:
             config.figurine_candidates = with_book
         return OcrService(lang=self.lang_var.get(), config=config)
@@ -1383,7 +1389,8 @@ class LabelWindow:
             self.document,
             services={
                 "sem modelo": self._build_service(with_book=False),
-                "com modelo": self._build_service(with_book=True),
+                "modelo candidato": self._build_service(with_book=True, anchor=False),
+                "modelo na âncora": self._build_service(with_book=True),
             },
         )
 

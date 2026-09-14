@@ -50,7 +50,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
@@ -66,7 +66,8 @@ from .base import (
     normalise_gray,
 )
 
-__all__ = ["TesseractEngine", "TesseractConfig", "find_tesseract", "PSM_BY_REGION"]
+__all__ = ["TesseractEngine", "TesseractConfig", "TunedTesseractEngine", "find_tesseract",
+           "PSM_BY_REGION"]
 
 
 # --------------------------------------------------------------------------- #
@@ -886,3 +887,49 @@ class TesseractEngine(OcrEngineBase):
                 font_size=box.h,
             ))
         return out
+
+
+class TunedTesseractEngine(TesseractEngine):
+    """Tesseract over a directory of fine-tuned models — the book's own reader.
+
+    OCR_UI_ROADMAP passo 4b: inside the book a model was trained and
+    registered for (``caissa.ocr.training.books``), that model is the
+    *anchor*, not a secondary candidate.  Every language part the caller asks
+    for (``eng``) is read with ``<prefix>_<part>`` when the directory has it
+    (``caissa_eng``) and with the base file otherwise; the result comes back
+    with the language the caller asked for — the lexicon, the arbiter and
+    the decision key on it — and ``meta["model"]`` says what actually read
+    the region.  The engine name stays ``tesseract``: to the fusion this is
+    the anchor, with the anchor's rights.
+    """
+
+    def __init__(self, tessdata_dir: str | Path, *, prefix: str = "caissa",
+                 config: TesseractConfig | None = None) -> None:
+        config = config or TesseractConfig()
+        config.tessdata_dir = str(tessdata_dir)
+        super().__init__(config)
+        self.prefix = prefix
+        self.tessdata_dir = Path(tessdata_dir)
+
+    def tuned_lang(self, lang: str) -> str:
+        """``eng+deu`` → ``caissa_eng+deu`` when only ``caissa_eng`` exists."""
+        parts = [p for p in lang.split("+") if p]
+        tuned = []
+        for part in parts:
+            candidate = f"{self.prefix}_{part}"
+            tuned.append(candidate if (self.tessdata_dir / f"{candidate}.traineddata").is_file()
+                         else part)
+        return "+".join(tuned)
+
+    def has_model_for(self, lang: str) -> bool:
+        """Whether the book's language (the first part) has a fine-tune here."""
+        first = next((p for p in lang.split("+") if p), "")
+        return bool(first) and (self.tessdata_dir / f"{self.prefix}_{first}.traineddata").is_file()
+
+    def _recognize(self, image: NDArray[np.uint8], *, lang: str,
+                   psm_hint: RegionKind) -> OcrResult:
+        tuned = self.tuned_lang(lang)
+        result = super()._recognize(image, lang=tuned, psm_hint=psm_hint)
+        if tuned == lang:
+            return result
+        return replace(result, lang=lang).with_meta(model=tuned, tuned_dir=str(self.tessdata_dir))

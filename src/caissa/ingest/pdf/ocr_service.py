@@ -124,6 +124,16 @@ class OcrServiceConfig:
     figurine_tessdata: str | None = None
     #: The fine-tuned models are named ``<prefix>_<lang>``.
     figurine_prefix: str = "caissa"
+    #: OCR_UI_ROADMAP passo 4b: when ``figurine_tessdata`` names the directory
+    #: of a book **registered for the PDF at hand** (the importer and the
+    #: labelling tab set it that way; the global ``models/tessdata`` fallback
+    #: never triggers this), the book's model is the *anchor* of its own
+    #: language instead of a secondary candidate.  Measured on the SFC4
+    #: (``ROTULAGEM.md`` §4d): alone the model reads 204/204 figurines of the
+    #: evaluation lines, as a candidate the fusion keeps 193 — the anchor's
+    #: words and moves are never replaced (SOL-6), so the anchor has to be
+    #: the reader that already has them.  Off, the candidate path of §4c.
+    book_model_anchors: bool = True
     #: OCR_UI_ROADMAP passo 1: the optional engines (level 2 and above —
     #: ``rapidocr``, ``paddleocr``, ``paddle_structure``, ``surya``) the
     #: service may add to the text layer and Tesseract when it assembles the
@@ -405,6 +415,8 @@ class OcrService:
         self._figurine_engine: OcrEngine | None = figurine_engine
         self._figurine_probed = figurine_engine is not None
         self._figurine_dir: Path | None = None
+        #: The book's model as anchor (passo 4b), built on first use.
+        self._book_anchor: Any = None
         self._recognizers: dict[str, PageRecognizer] = {}
         self.last: PageRecognition | None = None
         #: Set by the importer before each page: diagrams and notation locale.
@@ -425,8 +437,37 @@ class OcrService:
         from caissa.ocr.engines.registry import default_registry
 
         allowed = set(self.config.secondary_engines) if secondary else set()
-        return [e for e in default_registry().available(lang=lang)
-                if e.capabilities().level <= EngineLevel.TESSERACT or e.name in allowed]
+        engines = [e for e in default_registry().available(lang=lang)
+                   if e.capabilities().level <= EngineLevel.TESSERACT or e.name in allowed]
+        anchor = self.book_anchor(lang)
+        if anchor is not None:
+            # The book's model takes the Tesseract seat; the base stays out
+            # (it would be the same reader without the figurines).
+            engines = [anchor if e.name == anchor.name else e for e in engines]
+            if all(e.name != anchor.name for e in engines):
+                engines.insert(0, anchor)
+        return engines
+
+    def book_anchor(self, lang: str) -> OcrEngine | None:
+        """The registered book's model as anchor engine, when passo 4b applies.
+
+        Only with ``figurine_tessdata`` set explicitly (a book registered for
+        the PDF) and a model for the book's own language in it.
+        """
+        cfg = self.config
+        if not cfg.book_model_anchors or not cfg.figurine_tessdata:
+            return None
+        if self._book_anchor is None:
+            from caissa.ocr.engines.tesseract import TunedTesseractEngine
+
+            engine = TunedTesseractEngine(cfg.figurine_tessdata, prefix=cfg.figurine_prefix)
+            if not engine.available():
+                self.log.info("modelo do livro indisponível na âncora: %s",
+                              engine.unavailable_reason())
+                return None
+            self._book_anchor = engine
+        anchor = self._book_anchor
+        return anchor if anchor.has_model_for(lang) and anchor.supports_language(lang) else None
 
     def recognizer_for(self, lang: str, *, secondary: bool = True) -> PageRecognizer:
         key = f"{lang}|{'+' if secondary else '-'}"
@@ -846,6 +887,8 @@ class OcrService:
         if not (region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
                 or _carries_notation(result)):
             return []
+        if self.book_anchor(task.lang) is not None:
+            return []  # the model already read the region, as the anchor
         engine = self.figurine_engine()
         lang = self._figurine_lang(task.lang) if engine is not None else None
         if engine is None or lang is None:

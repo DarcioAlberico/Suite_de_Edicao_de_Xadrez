@@ -324,7 +324,8 @@ def test_the_importer_points_the_service_at_the_books_model(pdf_file, monkeypatc
         importer = PdfImporter(document, PdfImportOptions(lang="eng"))
         config = importer._book_ocr_config()
         assert config.figurine_tessdata == str(out.resolve())
-        assert config.figurine_candidates, "still a secondary candidate, never the anchor"
+        assert config.figurine_candidates
+        assert config.book_model_anchors, "passo 4b: inside its book the model anchors"
         assert importer.report.notes == [
             "modelo ajustado para este livro: caissa_eng · treinado em 2026-09-14 · 10 linhas de treino"
         ]
@@ -389,3 +390,86 @@ def test_the_secondary_engine_enters_only_where_the_portfolio_enters():
         assert always._wants_secondary(clean, 300, []) == (True, None)
     finally:
         registry_module.default_registry = original
+
+
+def test_the_books_model_takes_the_anchor_seat_only_inside_its_book(tmp_path: Path, monkeypatch):
+    """OCR_UI_ROADMAP passo 4b: with ``figurine_tessdata`` pointing at a book
+    registered for the PDF, the tuned Tesseract replaces the base one as anchor
+    and the figurine candidate stands down; the global fallback directory and
+    a language the book has no model for keep the candidate path of §4c."""
+    from caissa.ocr.engines.tesseract import TunedTesseractEngine
+
+    class Registry:
+        def available(self, lang=None):
+            return [MockRaster(confidence=0.9)]
+
+    class Tuned(TunedTesseractEngine):
+        name = "mock_raster"  # the seat it takes
+
+        def available(self) -> bool:
+            return True
+
+        def supports_language(self, lang: str) -> bool:
+            return True
+
+    import caissa.ocr.engines.registry as registry_module
+
+    book = tmp_path / "livro"
+    book.mkdir()
+    (book / "caissa_eng.traineddata").write_bytes(b"model")
+    (book / "eng.traineddata").write_bytes(b"base")
+    original = registry_module.default_registry
+    registry_module.default_registry = lambda: Registry()
+    monkeypatch.setattr("caissa.ocr.engines.tesseract.TunedTesseractEngine", Tuned)
+    try:
+        inside = OcrService(lang="eng", config=OcrServiceConfig(figurine_tessdata=str(book)))
+        anchor = inside.book_anchor("eng")
+        assert isinstance(anchor, Tuned)
+        assert anchor.tuned_lang("eng+deu") == "caissa_eng+deu"
+        assert [type(e).__name__ for e in inside.engines_for("eng")] == ["Tuned"]
+        assert inside.book_anchor("deu") is None, "no model for the book's language: no anchor"
+        assert [type(e).__name__ for e in inside.engines_for("deu")] == ["MockRaster"]
+
+        off = OcrService(lang="eng", config=OcrServiceConfig(figurine_tessdata=str(book),
+                                                             book_model_anchors=False))
+        assert off.book_anchor("eng") is None
+        assert [type(e).__name__ for e in off.engines_for("eng")] == ["MockRaster"]
+
+        nowhere = OcrService(lang="eng", config=OcrServiceConfig())
+        assert nowhere.book_anchor("eng") is None, "the global fallback never anchors"
+    finally:
+        registry_module.default_registry = original
+
+
+def test_the_tuned_engine_maps_languages_and_hands_back_the_requested_one(tmp_path: Path):
+    from caissa.ocr.engines.tesseract import TunedTesseractEngine
+    from caissa.ocr.types import OcrResult
+
+    book = tmp_path / "livro"
+    book.mkdir()
+    (book / "caissa_eng.traineddata").write_bytes(b"model")
+    engine = TunedTesseractEngine(book)
+    assert engine.config.tessdata_dir == str(book)
+    assert engine.tuned_lang("eng") == "caissa_eng"
+    assert engine.tuned_lang("por+eng") == "por+caissa_eng"
+    assert engine.has_model_for("eng+deu")
+    assert not engine.has_model_for("deu+eng"), "the book's own language is the first part"
+    seen: list[str] = []
+
+    def fake(self, image, *, lang, psm_hint):
+        seen.append(lang)
+        return OcrResult(engine="tesseract", lang=lang, lines=(), region_kind=psm_hint)
+
+    from caissa.ocr.engines.tesseract import TesseractEngine
+
+    original = TesseractEngine._recognize
+    TesseractEngine._recognize = fake
+    try:
+        result = engine._recognize(np.zeros((10, 10), dtype=np.uint8), lang="eng",
+                                   psm_hint=RegionKind.PARAGRAPH)
+    finally:
+        TesseractEngine._recognize = original
+    assert seen == ["caissa_eng"]
+    assert result.lang == "eng", "the caller's language comes back: lexicon and decision key on it"
+    assert result.meta["model"] == "caissa_eng"
+    assert result.engine == "tesseract", "to the fusion it is the anchor"

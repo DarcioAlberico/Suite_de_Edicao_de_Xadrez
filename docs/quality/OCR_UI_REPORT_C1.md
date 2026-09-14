@@ -708,3 +708,37 @@ set SOL_CONFIG={"glyph_candidates": false, "figurine_candidates": false, "second
 .venv\Scripts\python.exe -m pytest tests\unit\ocr\test_training.py tests\unit\ocr\test_measure.py -q      # 18 passed
 set PYTHONPATH=.venv-pack\Lib\site-packages && .venv\Scripts\python.exe -m pytest tests\unit\ui\test_rotulagem_view.py -q   # 6 passed
 ```
+
+---
+
+## §8 — Passo 4b: o modelo do livro na âncora, dentro do livro
+
+### 8.0 Em uma tela
+
+- `OcrServiceConfig.book_model_anchors` (ligado) + `TunedTesseractEngine`
+  (`ocr/engines/tesseract.py`): com `figurine_tessdata` apontando para o livro **registrado
+  para o PDF**, o modelo do livro é o motor âncora do seu idioma (`eng` lido com `caissa_eng`,
+  resultado devolvido como `eng`, `meta["model"]` diz quem leu); o candidato de figurinas
+  fica de fora nesse caso. Sem registro, ou idioma do livro sem modelo: nada muda.
+- **SFC4, `calib`, caminho do produto**: figurinas 193 → **204/204**, lances 273 → **281**/288,
+  inventados 9 → **5**, exatas 241 → 243, todas as peças 100 %. Portão (≥ 200 e ≥ 280) ✓.
+- **Sabotagem (registro cruzado)**: o modelo do SFC4 ancorando um livro inglês de notação em
+  letras emite **519 figurinas** em 6 páginas (base 0, candidato 9) — o isolamento por
+  impressão digital é o que segura o risco, e o portão o vê.
+- **`bench_sol` idêntica** à anterior (Δ 0,0000 em todos os estratos; controles 0/9;
+  `c1_anchor.json`): sem livro registrado o âncora não entra. Os quatro portões absolutos
+  continuam vermelhos como estavam.
+
+```
+.venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --label c1_anchor --publish --compare docs\quality\sol\c1_rapidocr.json
+#   ✓ regressão de CER em 6/6 estratos (Δ ≤ 0,0001) · controles 0/9 · lances 6295/7047 (0,8933; antes 0,893)
+.venv\Scripts\python.exe -m pytest tests\unit\ingest\test_ocr_service.py tests\unit\ocr\test_measure.py -q   # 19 passed
+# medida no livro e sabotagem: scratchpad measure_sfc4.py / sabotage_cross.py (ROTULAGEM.md §7h tem as tabelas)
+```
+
+### 8.1 Testes
+
+`test_ocr_service.py` (+2: o modelo toma o assento do Tesseract só com `figurine_tessdata` de
+livro e só no idioma que tem modelo — a pasta global e `book_model_anchors=False` mantêm o
+candidato; `TunedTesseractEngine` mapeia `por+eng → por+caissa_eng` e devolve o idioma pedido
+com `meta["model"]`), o teste do importador atualizado (`book_model_anchors` ligado).
