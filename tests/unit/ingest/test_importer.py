@@ -367,7 +367,9 @@ def test_figurines_become_piece_glyphs(pdf_file):
     knight_width = pymupdf.Font(fontfile=str(find_font("arial.ttf"))).text_length("N", fontsize=11)
     spec.text("f3 e5", after_number + knight_width, 100)
     path = pdf_file([spec])
-    paragraph = import_pdf(path, PdfImportOptions(figurine_fonts=("Arial",))).document.body[0]
+    # ``games=False``: from move 1 the line would chain into a game (passo 11).
+    options = PdfImportOptions(figurine_fonts=("Arial",), games=False)
+    paragraph = import_pdf(path, options).document.body[0]
     assert isinstance(paragraph, Paragraph)
     assert any(isinstance(n, PieceGlyph) for n in paragraph.content)
     assert " ".join(plain_text(paragraph.content).split()) == "1.Nf3 e5"

@@ -97,13 +97,16 @@ def _diagram_boxes(pdf: Path, page_index: int) -> list[tuple[float, float, float
 
 def _first_move_legal(fen: str, truth: str) -> bool | None:
     """Whether the region's first move is legal from its ``start_fen`` (``None`` = unparsed)."""
+    from caissa.ingest.pdf.games import is_invention
     from caissa.notation.legality_repair import repair_movetext
 
     try:
         report = repair_movetext(truth, start_fen=fen)
     except Exception:  # noqa: BLE001 - the truth is data; a crash is "unknown"
         return None
-    return len(report.moves) > 0
+    # A first move the repairer had to turn into another move is not legal as
+    # printed (passo 11 caught p10 «22... ♖g6» → Bg6 this way).
+    return len(report.moves) > 0 and not is_invention(report.moves[0])
 
 
 def _box_above(region_box, boxes) -> tuple[float, float, float, float] | None:

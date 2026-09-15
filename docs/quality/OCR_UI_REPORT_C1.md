@@ -1014,3 +1014,106 @@ Suíte: `test_captions.py` (+4: o primeiro lance sob o diagrama, a legenda «ap�
 vence a numeração e a numeração vence o escopo de página, número de exercício não é lance),
 `test_importer.py` (+1: origem `move-number` no IR e no contador; +2 asserções). Tronco:
 `test_pdf_text.py` (+5).
+
+---
+
+## §12 — Passo 11: parágrafo `Movetext` → `GameScore` (portão vermelho)
+
+### 12.0 Em uma tela
+
+- **O passe** (`caissa/ingest/pdf/games.py`, ligado por `PdfImportOptions.games=True`, no fim
+  de `_to_ir`): uma coluna de parágrafos `Movetext` consecutivos é um só texto; o **tronco**
+  da análise (`ocr/notation/movetext.move_runs(main_line_only=True)`) é reproduzido a partir
+  da posição do diagrama com o reparador de legalidade (`notation/legality_repair`); se ≥ 2
+  lances encadeiam **e o primeiro é o primeiro impresso**, a coluna vira `GameScore` com um
+  `MoveNode` por lance (`san`, `ply`, `position_before/after`, proveniência do parágrafo com
+  a nota «impresso → SAN; reparo»); a prosa antes do tronco vai para `comment_before` do
+  primeiro lance, a prosa depois e o que não encadeou para `comment_after` do último
+  (`[não reproduzidos: …]`) — nada some (R2.4). Sem posição: o parágrafo fica.
+- **A posição vem da geometria**, não da ordem de leitura: o importador lista os diagramas da
+  página antes do texto, e a regra «último diagrama antes» dava à coluna esquerda o tabuleiro
+  da direita (p10, p12). Agora é o diagrama mais próximo **acima** da coluna, na mesma página e
+  com x sobreposto; uma partida que encadeou entrega a posição em que parou à coluna abaixo.
+  Sem caixas (blocos sem `rect`), vale a ordem de leitura.
+- **Sem inventar — três regras**, todas com sabotagem no unitário: (1) um reparo que muda a
+  peça, a casa, a captura ou a promoção do token impresso (`Nb4`→`Nb8`, `♖g6`→`Bg6`,
+  `Nxe5`→`Ne5` para e5 vazia) **encerra a cadeia** (`is_invention`); um que só muda a
+  grafia (`1d4`→`d4`, `♖g8`→`Rg8`) não; (2) a captura impressa que o tabuleiro não vê é o
+  sinal mais seguro de que a posição não é a da linha (p15: «14 ♘xe5» do diagrama que está
+  dois meios-lances antes — legal por acaso, agora recusado); (3) uma coluna que começa em
+  «1 d4» sem diagrama parte da posição inicial. Número colado pelo OCR («20g3») é separado
+  antes do tronco, que o descartaria.
+- **Portão (`benchmarks/games_gate.py`): REPROVOU.** Nunn 0 lances encadeados em 99 tokens
+  (≥ 16); SFC4 cobertura da verdade 0,06 (≥ 0,9), inventados 0 (= 0). Sabotagem (`--sabotar
+  fen`, toda posição trocada por outra do livro): cobertura 0,00 → reprova, como deve.
+- **Onde funciona** (informativo, páginas de camada de texto com diagrama vetorial):
+  Dvoretsky *Endgame Manual* p202: 2 partidas / 6 lances (`1.Kd7!! Kf4 2.Ke8! Kg5`,
+  `1.b6 axb6`); p206–207: 3 / 22 (`Rh8 d2 g8=Q d1=Q+ Ka2 Qb3+ Qxb3 axb3+` completo). SFC4
+  (OCR, via raster): p10 `21 ♖a3! ♔h8 22 ♖g3` (conferido na página), p13 `17... ♗b4! 18 ♔g1`.
+
+```
+.venv\Scripts\python.exe benchmarks\games_gate.py                 # games_20260915_073236.json: Nunn 0/99, SFC4 0.06, inventados 0 → REPROVOU
+.venv\Scripts\python.exe benchmarks\games_gate.py --sabotar fen   # games_20260915_073350_fen.json: cobertura 0.00 → REPROVOU
+.venv\Scripts\python.exe benchmarks\side_to_move_gate.py          # PASSOU; acusa p10 e p15 [verdade: 1.º lance ilegal da FEN]
+.venv\Scripts\python.exe -m pytest tests\unit\ingest tests\unit\export -q   # 664 passed, 1 skipped (test_games.py: 9)
+```
+
+### 12.1 Por que o portão está vermelho — e o que cada número mede
+
+- **Nunn (0/99).** As seis páginas saem `text-layer` (p120–p200, glifos danificados `\x15`,
+  `i!D`, sem parágrafo `Movetext`: os lances vivem na prosa) ou `text-layer+ocr` (p220,
+  p240) com `Movetext` ilegível («Bl) 1) 1.1...Nc5 lLic5 2 Kc4») e diagramas OCR com peças a
+  menos (`5k2/8/2P1P3/2P5/8/6K1/8/8` para uma posição com bispo). Os 12/18 da F5 foram
+  medidos noutro ponto da cadeia (tokens das legendas, não parágrafos do importador). Aqui o
+  passe não tem em que trabalhar; o gargalo é o passo 8/9 (OCR do scan), não este.
+- **SFC4 (0,06).** A verdade do passo 0 é *a região* reproduzida da sua `start_fen`; o
+  produto encadeia *colunas `Movetext`*. As duas coisas divergem por construção em 4 das 6
+  regiões: p12 «19... g5!» e p10 (cabeça) são **prosa com lances** (classe `Body` no layout,
+  não `Movetext`) — o passe não as toca; p17 «English Opening» é a partida do lance 1, cuja
+  coluna sai do layout **fora de ordem** (15, 16, 4, 17, 8, 9, 10, …: as duas colunas da
+  página intercaladas) e com OCR «1 5 eh1»; p18 o OCR leu «18 ♔h8» sem os três pontos, o lado
+  ficou brancas (§11) e nada encadeia. As duas que casam, casam inteiras (p13 2/2) ou casariam
+  se a verdade estivesse certa (p10, abaixo).
+- **Verdade com erro (2 de 6), acusada pelo `side_to_move_gate` endurecido** (a legalidade do
+  1.º lance agora exige *sem reparo que mude o lance*): p10 «22... ♖g6» tem FEN com brancas a
+  jogar e torre já em g8 (posição *depois* de 22...♖g8) e o texto diz «g6» onde a página
+  imprime **♖g8**; p15 «14 ♘xe5 ♖xe5» tem a FEN do diagrama, que está **dois meios-lances
+  antes** (13 h3! ♘e5 fica na prosa) — e5 vazia, «♘xe5» não é captura. Correções para o
+  revisor (na bancada, não no disco):
+  - p10, região «22... ♖g6»: texto `22... ♖g8`; FEN
+    `3qr2k/rb2bpp1/1p1pp2p/p3P3/Pn1P1PN1/6R1/1P1NQ1PP/1B3R1K b - - 3 22`;
+  - p15, região «14 ♘xe5 ♖xe5»: FEN
+    `r2qr1k1/p4pbp/bp1p1np1/2pPn3/8/P1N2NPP/1PQ1PPB1/R1B1R1K1 w - - 1 14`.
+- **O contador «inventados»** conta lances da partida que não estão impressos na página; um
+  jogo do lado errado feito de lances impressos noutro lugar (p18 antes da regra 2: `Qf2
+  Bxe4`) passa por ele — o que o pegou foi a captura impressa. A cobertura é a medida que
+  vale; «inventados» é o piso.
+
+### 12.2 O que muda no produto
+
+`PdfImportOptions.games` (padrão `True`); contadores `games`, `game_moves`,
+`movetext_kept_no_position`, `movetext_kept_no_chain`, `movetext_kept_short`. Os testes de
+forma de página (`test_corpus.py` p202/p206, `test_importer.py` figurinas) passam
+`games=False` para continuar a ler parágrafos. Exportadores já conheciam `GameScore`
+(`export/{docx,html,latex,pdf,text}.py`); a fidelidade do corpus com partidas dentro não foi
+medida (tarefa 5 do passo, aberta).
+
+### 12.3 O que não fechou
+
+- O portão como escrito (cobertura da região de verdade) não mede o passe; mede a soma
+  «layout classifica a linha como `Movetext` + ordem de leitura + OCR + lado». Para ficar
+  verde precisa de (a) verdade corrigida (2 regiões), (b) prosa com lances (`Body`) também
+  reproduzida — regra nova, não deste passo, (c) ordem de leitura por coluna nas páginas OCR
+  (p17), (d) passo 8/9 no Nunn. A meta ≥ 16/18 do Nunn é de outra medição e fica registrada
+  como não comparável.
+- Colunas partidas por prosa (p15: «16 ♗e3 ♘d7 / prosa / 17 f4! c4») encadeiam só até a
+  prosa: a partida acaba onde o comentário começa, e o comentário seguinte recomeça do
+  `position_after` — correto, mas sai em duas `GameScore` em vez de uma com comentário.
+
+### 12.4 Testes
+
+`tests/unit/ingest/test_games.py` (9): tronco encadeia e prosa fica; reparo que muda o lance
+encerra a cadeia; linha que não começa no 1.º lance impresso fica; coluna de uma linha por
+parágrafo é uma partida e a posição segue; sem diagrama nada muda; reparo de grafia não é
+invenção; captura impressa em casa vazia recusa a posição; coluna «1 d4» parte da inicial;
+a coluna toma o tabuleiro acima dela e não o último em ordem de leitura.

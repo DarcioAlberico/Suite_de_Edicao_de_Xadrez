@@ -689,6 +689,15 @@ SFC4 (regiões com `start_fen`, partição `calib`): ≥ 90 % dos lances rotulad
 lances que não estão na página. *Sabotagem:* FEN de partida trocada — o encadeamento tem de
 cair abaixo de 30 % (um lance legal por acaso não sustenta uma sequência).
 
+**Executado em 2026-09-15, portão vermelho** (§4): `games.py` encadeia o tronco da coluna
+`Movetext` a partir do diagrama **acima** dela (geometria, não ordem de leitura), sem
+inventar (reparo que muda peça/casa/captura/promoção encerra a cadeia; captura impressa em
+casa vazia recusa a posição; «1 d4» sem diagrama parte da inicial). Nunn 0/99 (páginas sem
+`Movetext` legível — gargalo do OCR do scan, passos 8/9), SFC4 cobertura 0,06 e inventados 0;
+sabotagem 0,00. Duas verdades do passo 0 (p10, p15) estavam erradas e o `side_to_move_gate`
+endurecido as acusa; correções em `OCR_UI_REPORT_C1.md` §12.1. Onde há camada de texto e
+diagrama vetorial funciona: Dvoretsky p202/p206–207, 5 partidas / 28 lances.
+
 **Saída.** `OCR_UI_REPORT_C2.md` §1. **Desfazer:** `games.py` fora do importador; o
 parágrafo permanece.
 
@@ -985,6 +994,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-15 | 11 | **executado, portão vermelho** — `OCR_UI_REPORT_C1.md` §12 | `caissa/ingest/pdf/games.py` (`attach_games`, `game_from_paragraph`, `is_invention`), `PdfImportOptions.games=True`, `benchmarks/games_gate.py` (+ `--sabotar fen`). Posição pela geometria (diagrama acima da coluna) porque o importador lista diagramas antes do texto; três regras contra invenção. Nunn 0/99 (sem `Movetext` legível: OCR do scan), SFC4 cobertura 0,06 / inventados 0, sabotagem 0,00 → REPROVOU. A verdade do passo 0 tem 2 FENs erradas (p10, p15) — o portão do passo 7 passou a exigir 1.º lance legal *sem reparo* e as acusa; a cobertura mede também layout (prosa com lances é `Body`), ordem de leitura (p17) e lado (p18). Funciona no Dvoretsky (camada de texto + vetor): 5 partidas / 28 lances | construtor; revisor corrige p10 e p15 |
 | 2026-09-15 | 7 | **executado, meta de acervo não alcançada** — `OCR_UI_REPORT_C1.md` §11 | `move-number` e `caption-after` nas duas cascatas, entre o texto e o escopo de página (alcance 200 pt sob o tabuleiro); `RecognitionResult.side_to_move_source`; portão sobre a verdade humana n = 6: 6/6, origem ≠ default 5/6, sabotagem 0,17; acervo 267/911 (era 109), abaixo de ≥ 500 — sem lance impresso não há numeração. Duas FENs do passo 0 estavam erradas (1.º lance ilegal) e o portão as acusou; corrigidas; manifesto `eb9b31eff07efe2c`, baseline recongelado | construtor + revisor |
 | 2026-09-15 | 0 | **executado (humano)** — `OCR_UI_REPORT_C1.md` §0 | 8 regiões com `start_fen` (7 fora da cega), 21 `movetext`; das 26 colunas de lances só 6 seguem um diagrama na mesma página, 2 são partidas do lance 1, 18 são continuações sem posição a copiar. Manifesto `ab9e366c8e1c6a61` → `86426402f56220aa`; baseline recongelado. Replay de hoje reproduz 0–28 lances por região (linha de base do 11) | revisor + construtor |
 | 2026-09-14 | 12 | **executado** — `OCR_UI_REPORT_C1.md` §10 | `caissa.ui.audit.fita` e `.icones` (novos, com sabotagem); tronco: `rotulo_na_fita` nos seis botões de glifo, cabeçalho desenhado no compacto (orçamento 64 → 72), `desfazer`/`refazer` redesenhados; 18/24 → 24/24 rótulos, 0/5 → 5/5 cabeçalhos; "Apagar a peça" na fita devolve o pleno a 1.920 px (rotular os seis o tinha empurrado a 1.926). Mudanças do tronco não commitadas lá (árvore com 60 arquivos de outra sessão) — pares reaplicáveis em `docs/quality/ui/c17/tronco_passo12.py` | construtor |

@@ -262,6 +262,11 @@ class PdfImportOptions:
     #: (:mod:`caissa.ocr.notation.book_cipher`).  ``False`` neither reads nor
     #: writes it.
     book_cipher: bool = True
+    #: OCR_UI_ROADMAP passo 11: a ``Movetext`` paragraph that follows a read
+    #: diagram is replayed from its position and, when the main line chains,
+    #: becomes a :class:`GameScore` with provenance per move
+    #: (:mod:`caissa.ingest.pdf.games`).  ``False`` keeps every paragraph.
+    games: bool = True
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -1052,6 +1057,13 @@ class PdfImporter:
                 node = self._scan_node(entry)
                 if node is not None:
                     body.append(node)
+        if self.options.games:
+            from caissa.ingest.pdf.games import GamesReport, attach_games
+
+            games = GamesReport()
+            body = attach_games(body, notation_lang=self.report.notation_lang, report=games)
+            for key, value in games.counters().items():
+                self.report.counters[key] = self.report.counters.get(key, 0) + value
         return Document(
             metadata=self._metadata(),
             styles=_stylesheet(self.report.body_size),

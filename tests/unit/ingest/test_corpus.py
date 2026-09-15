@@ -29,7 +29,7 @@ def test_dvoretsky_page_202_matches_the_printed_page():
     bold move line, prose, analysis; a bold section head at the foot.
     """
     path = corpus_file("Dvoretsky - Dvoretsky's Endgame Manual")
-    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[201], lang="eng"))
+    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[201], lang="eng", games=False))
     assert result.report.pages[0].source == "text-layer"
     assert result.report.pages[0].columns == 2
     diagrams = [b for b in result.document.body if isinstance(b, Diagram)]
@@ -61,7 +61,7 @@ def test_dvoretsky_page_202_matches_the_printed_page():
 
 def test_dvoretsky_analysis_continues_across_the_page_break():
     path = corpus_file("Dvoretsky - Dvoretsky's Endgame Manual")
-    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[205, 206], lang="eng"))
+    result = import_pdf(open_pdf(path), PdfImportOptions(pages=[205, 206], lang="eng", games=False))
     joined = next(
         b
         for b in result.document.body
