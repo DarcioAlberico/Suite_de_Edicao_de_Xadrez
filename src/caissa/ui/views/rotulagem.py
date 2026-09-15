@@ -29,17 +29,14 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from PyQt6.QtCore import QEvent, QObject, QPointF, QRectF, Qt, QTimer
+from PyQt6.QtCore import QObject, QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import (
     QBrush,
     QColor,
-    QImage,
     QKeySequence,
     QPainter,
     QPen,
-    QPixmap,
     QShortcut,
-    QTextCursor,
 )
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -67,7 +64,6 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
-    QTextEdit,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -83,11 +79,9 @@ from caissa.ocr.labeling.export import (
     write_ground_truth,
 )
 from caissa.ocr.labeling.helpers import (
-    FIGURINE_KEYS,
     STATUS_COLOR,
     default_project_dir,
     fen_problem,
-    letters_to_figurines,
     status_pt,
 )
 from caissa.ocr.labeling.measure import BookMeasure, measure_book
@@ -115,6 +109,7 @@ from caissa.ocr.training import (
 )
 from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
+from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
 
 __all__ = [
     "TITULO",
@@ -130,8 +125,7 @@ TITULO = "Rotulagem"
 REGION_COLOR = "#7c3aed"
 SELECTED_COLOR = "#dc2626"
 PAGE_DPI = 150  # the page image in the viewer; the crop on the right is at 300
-CROP_HEIGHT_PX = 90
-CROP_MAX_ZOOM = 3.0
+SEM_LINHA = "Reconheça a página (F5) ou desenhe uma região (D)."
 CLICK_SLOP_PX = 4
 WEAK_WORDS_SHOWN = 6
 LANGS = ["por+eng", "eng", "por", "spa+eng", "deu+eng", "rus+eng", "fra+eng", "ita+eng", "nld+eng"]
@@ -148,12 +142,7 @@ def abrir_projeto(caminho: Path | str | None = None, *, revisor: str = "") -> La
     )
 
 
-def _pixmap(rgb: np.ndarray) -> QPixmap:
-    """A numpy ``HxWx3`` uint8 array as a pixmap (the bytes are copied)."""
-    array = np.ascontiguousarray(rgb)
-    height, width = array.shape[:2]
-    image = QImage(array.data, width, height, 3 * width, QImage.Format.Format_RGB888)
-    return QPixmap.fromImage(image.copy())
+_pixmap = pixmap_de  # the page viewer's pixmaps come from the shared card module
 
 
 # --------------------------------------------------------------------------- #
@@ -244,6 +233,11 @@ class _Visor(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setAccessibleName("Página com as regiões e linhas reconhecidas")
+        # The keyboard walks past the page: Tab must not stop in a canvas that
+        # only the mouse can use (the audit counted 20 controls behind it).
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.viewport().setAccessibleName("Imagem da página")
+        self.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._ao_clicar = ao_clicar
         self._ao_clicar_direito = ao_clicar_direito
         self._ao_desenhar = ao_desenhar
@@ -467,11 +461,18 @@ class PainelDeRotulagem(QWidget):
             dica="Página anterior (PageUp)",
             em=linha1,
         )
+        b.setAccessibleName("Página anterior")
         b.setFixedWidth(28)
         self.page_spin = QSpinBox(self)
         self.page_spin.setAccessibleName("Página")
         self.page_spin.setRange(0, 0)
-        self.page_spin.editingFinished.connect(lambda: self.go_page(self.page_spin.value()))
+        # ``editingFinished`` also fires when Tab leaves the field: only a
+        # changed number turns the page (turning it moves the focus to the
+        # truth field, which broke the keyboard's walk through the toolbar).
+        self.page_spin.editingFinished.connect(
+            lambda: self.page_spin.value() != self.page_index
+            and self.go_page(self.page_spin.value())
+        )
         linha1.addWidget(self.page_spin)
         self.page_total = QLabel("/ 0", self)
         linha1.addWidget(self.page_total)
@@ -481,6 +482,7 @@ class PainelDeRotulagem(QWidget):
             dica="Próxima página (PageDown)",
             em=linha1,
         )
+        b.setAccessibleName("Próxima página")
         b.setFixedWidth(28)
         botao("Salvar", self.save, dica="Ctrl+S", em=linha1)
         exportar = QToolButton(self)
@@ -521,6 +523,8 @@ class PainelDeRotulagem(QWidget):
         self.lang_box.setEditable(True)
         self.lang_box.addItems(LANGS)
         self.lang_box.setAccessibleName("Idioma do reconhecimento")
+        if self.lang_box.lineEdit() is not None:
+            self.lang_box.lineEdit().setAccessibleName("Idioma do reconhecimento, escrito")
         barra.addWidget(self.lang_box)
         botao(
             "Reconhecer (F5)",
@@ -547,8 +551,12 @@ class PainelDeRotulagem(QWidget):
         esq.setContentsMargins(0, 0, 0, 0)
         zoom_bar = QHBoxLayout()
         esq.addLayout(zoom_bar)
-        for texto, acao in (("−", lambda: self.zoom(1 / 1.25)), ("+", lambda: self.zoom(1.25))):
+        for texto, nome, acao in (
+            ("−", "Menos zoom", lambda: self.zoom(1 / 1.25)),
+            ("+", "Mais zoom", lambda: self.zoom(1.25)),
+        ):
             b = QPushButton(texto, esquerda)
+            b.setAccessibleName(nome)
             b.setFixedWidth(28)
             b.clicked.connect(lambda _c=False, a=acao: a())
             zoom_bar.addWidget(b)
@@ -570,54 +578,21 @@ class PainelDeRotulagem(QWidget):
         direita = QWidget(corpo)
         dir_ = QVBoxLayout(direita)
         dir_.setContentsMargins(4, 0, 0, 0)
-        self.crop_label = QLabel("Reconheça a página (F5) ou desenhe uma região (D).", direita)
-        self.crop_label.setStyleSheet("background:#e5e7eb; padding:2px;")
-        self.crop_label.setMinimumHeight(CROP_HEIGHT_PX + 8)
-        self.crop_label.setMaximumHeight(CROP_HEIGHT_PX + 8)
-        self.crop_label.setAccessibleName("Recorte da linha atual")
-        dir_.addWidget(self.crop_label)
-        self.context_label = QLabel("", direita)
-        self.context_label.setStyleSheet("color:#6b7280;")
-        dir_.addWidget(self.context_label)
-        dir_.addWidget(QLabel("Leitura do motor (palavras fracas em destaque):", direita))
-        self.reading = QTextEdit(direita)
-        self.reading.setReadOnly(True)
-        self.reading.setMaximumHeight(48)
-        self.reading.setAccessibleName("Leitura do motor")
-        dir_.addWidget(self.reading)
-        self.alternatives = QListWidget(direita)
-        self.alternatives.setMaximumHeight(52)
-        self.alternatives.setAccessibleName("Leituras alternativas")
-        self.alternatives.itemDoubleClicked.connect(lambda _i: self._use_alternative())
-        dir_.addWidget(self.alternatives)
-        self.reason_label = QLabel("", direita)
-        self.reason_label.setStyleSheet("color:#b45309;")
-        self.reason_label.setWordWrap(True)
-        dir_.addWidget(self.reason_label)
-        dir_.addWidget(
-            QLabel(
-                "Verdade (Enter aceita · Ctrl+Enter grava a edição · Ctrl+R rejeita):",
-                direita,
-            )
-        )
-        self.truth = QPlainTextEdit(direita)
-        self.truth.setMaximumHeight(60)
-        self.truth.setAccessibleName("Verdade da linha")
-        self.truth.installEventFilter(self)
-        dir_.addWidget(self.truth)
-        paleta = QHBoxLayout()
-        paleta.addWidget(QLabel("Figurinas:", direita))
-        for key, glyph in FIGURINE_KEYS.items():
-            b = QPushButton(glyph, direita)
-            b.setToolTip(f"Alt+{key.upper()}")
-            b.setFixedWidth(34)
-            b.clicked.connect(lambda _c=False, g=glyph: self.insert_figurine(g))
-            paleta.addWidget(b)
-        conv = QPushButton("Letras → figurinas", direita)
-        conv.clicked.connect(lambda _c=False: self.letters_to_figurines())
-        paleta.addWidget(conv)
-        paleta.addStretch(1)
-        dir_.addLayout(paleta)
+        # The card is shared with the text-review window (passo 14); the
+        # names below are the ones the rest of this file has always used.
+        self.cartao = CartaoDaLinha(direita, vazio=SEM_LINHA)
+        self.crop_label = self.cartao.recorte
+        self.context_label = self.cartao.contexto
+        self.reading = self.cartao.leitura
+        self.alternatives = self.cartao.alternativas
+        self.reason_label = self.cartao.motivo
+        self.truth = self.cartao.verdade
+        self.cartao.aceitar.connect(self._on_enter)
+        self.cartao.gravar.connect(lambda: self.decide(LineStatus.EDITED))
+        self.cartao.rejeitar.connect(lambda: self.decide(LineStatus.REJECTED))
+        self.cartao.andar.connect(self.step)
+        self.cartao.alternativa_pedida.connect(lambda i: self._use_alternative(index=i))
+        dir_.addWidget(self.cartao)
         botoes = QHBoxLayout()
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(LineStatus.ACCEPTED)),
@@ -668,34 +643,6 @@ class PainelDeRotulagem(QWidget):
         desenhar = QShortcut(QKeySequence("D"), self.visor)
         desenhar.setContext(contexto)
         desenhar.activated.connect(self.toggle_drawing)
-
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802, PLR0911 - Qt name; one return per key
-        """The truth field's keys: Enter decides, Ctrl+R rejects, Alt+n copies, Alt+k types ♔."""
-        if obj is self.truth and event.type() == QEvent.Type.KeyPress:
-            tecla, mods = event.key(), event.modifiers()
-            ctrl = bool(mods & Qt.KeyboardModifier.ControlModifier)
-            alt = bool(mods & Qt.KeyboardModifier.AltModifier)
-            if tecla in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                self.decide(LineStatus.EDITED) if ctrl else self._on_enter()
-                return True
-            if ctrl and tecla == Qt.Key.Key_R:
-                self.decide(LineStatus.REJECTED)
-                return True
-            if ctrl and tecla == Qt.Key.Key_Down:
-                self.step(1)
-                return True
-            if ctrl and tecla == Qt.Key.Key_Up:
-                self.step(-1)
-                return True
-            if alt and tecla in (Qt.Key.Key_1, Qt.Key.Key_2):
-                self._use_alternative(index=tecla - Qt.Key.Key_1)
-                return True
-            if alt:
-                letra = event.text().lower() or QKeySequence(tecla).toString().lower()
-                if letra in FIGURINE_KEYS:
-                    self.insert_figurine(FIGURINE_KEYS[letra])
-                    return True
-        return super().eventFilter(obj, event)
 
     # -- service ------------------------------------------------------------ #
 
@@ -1097,53 +1044,25 @@ class PainelDeRotulagem(QWidget):
             self._fill_table()
 
     def _show_line(self, line: LineLabel | None) -> None:
-        self.reading.clear()
-        self.alternatives.clear()
-        self.truth.clear()
         if line is None or self.page is None:
-            self.crop_label.setPixmap(QPixmap())
-            self.crop_label.setText("Reconheça a página (F5) ou desenhe uma região (D).")
-            self.context_label.setText("")
-            self.reason_label.setText("")
+            self.cartao.limpar()
             return
         region = self.current[0] if self.current else None
         pad = 3.0
         x0, y0, x1, y1 = line.box
-        rgb = render_rgb(
-            self.page.pdf_path,
-            self.page.page_index,
-            300,
-            clip=(x0 - pad, y0 - pad, x1 + pad, y1 + pad),
-        )
-        pixmap = _pixmap(rgb)
-        avail = max(300, self.crop_label.width() - 8)
-        ratio = min(
-            avail / max(1, pixmap.width()), CROP_HEIGHT_PX / max(1, pixmap.height()), CROP_MAX_ZOOM
-        )
-        self.crop_label.setText("")
-        self.crop_label.setPixmap(
-            pixmap.scaled(
-                max(1, int(pixmap.width() * ratio)),
-                max(1, int(pixmap.height() * ratio)),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
+        self.cartao.mostrar_recorte(
+            render_rgb(
+                self.page.pdf_path,
+                self.page.page_index,
+                300,
+                clip=(x0 - pad, y0 - pad, x1 + pad, y1 + pad),
             )
         )
         threshold = self.project.doubt_threshold
-        html: list[str] = []
-        for word in line.words:
-            texto = word.text.replace("&", "&amp;").replace("<", "&lt;")
-            if word.confidence >= threshold:
-                html.append(texto)
-            elif word.confidence < threshold * 0.7:
-                html.append(f'<span style="background:#fca5a5">{texto}</span>')
-            else:
-                html.append(f'<span style="background:#fde68a">{texto}</span>')
-        self.reading.setHtml(" ".join(html) if line.words else line.hypothesis)
-        for source, text in line.alternatives:
-            self.alternatives.addItem(f"{source}: {text}")
-        if not line.alternatives:
-            self.alternatives.addItem("(nenhum candidato leu esta linha de outro jeito)")
+        self.cartao.mostrar_leitura(
+            [(w.text, w.confidence) for w in line.words], threshold, fallback=line.hypothesis
+        )
+        self.cartao.mostrar_alternativas(line.alternatives)
         partition = self.page.region_partition(region).value if region else ""
         if partition == "blind":
             partition = "blind (cega: não treina)"
@@ -1168,26 +1087,20 @@ class PainelDeRotulagem(QWidget):
                 f"{len(line.alternatives)} leitura(s) alternativa(s) — Alt+1/Alt+2 copia"
             )
         self.reason_label.setText(" · ".join(reasons))
-        self.truth.setPlainText(line.text if line.done else line.hypothesis)
-        self.truth.setFocus()
-        self.truth.moveCursor(QTextCursor.MoveOperation.End)
+        self.cartao.mostrar_verdade(line.text if line.done else line.hypothesis)
 
     def _use_alternative(self, *, index: int | None = None) -> None:
         if index is None:
             index = max(0, self.alternatives.currentRow())
-        if self.current and index < len(self.current[1].alternatives):
-            self.truth.setPlainText(self.current[1].alternatives[index][1])
+        texto = self.cartao.alternativa(index)
+        if self.current and texto is not None:
+            self.truth.setPlainText(texto)
 
     def insert_figurine(self, glyph: str) -> None:
-        self.truth.insertPlainText(glyph)
-        self.truth.setFocus()
+        self.cartao.inserir_figurina(glyph)
 
     def letters_to_figurines(self) -> None:
-        text = self.truth.toPlainText()
-        converted = letters_to_figurines(text)
-        if converted != text:
-            self.truth.setPlainText(converted)
-        self.truth.setFocus()
+        self.cartao.letras_para_figurinas()
 
     def _on_enter(self) -> None:
         typed = self.truth.toPlainText().strip()

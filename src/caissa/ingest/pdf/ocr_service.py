@@ -239,6 +239,8 @@ class RegionRecognition:
     own_verdict: bool = False
     legality: dict[str, Any] = field(default_factory=dict)
     fusion: dict[str, Any] = field(default_factory=dict)
+    #: A person settled this region (OCR_UI_ROADMAP passo 14): the IR says so.
+    verified: bool = False
 
     @property
     def emits_text(self) -> bool:
@@ -383,7 +385,8 @@ class PageRecognition:
                     box=box,
                     spans=(TextSpan(text=text, box=box, size=size, baseline=box[3],
                                     confidence=float(line.confidence),
-                                    engine=region.engine, review=review),),
+                                    engine=region.engine, review=review,
+                                    verified=region.verified),),
                     block_index=(int(line.block_index) if line.block_index >= 0
                                  else region.reading_order * 1000 + index),
                 ))

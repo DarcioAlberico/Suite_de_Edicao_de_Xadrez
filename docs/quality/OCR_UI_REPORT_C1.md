@@ -1144,3 +1144,111 @@ de Sol recongelado no hash novo. Resultado:
 .venv\Scripts\python.exe benchmarksench_sol.py --system baseline --label baseline --publish   # corpus f019591babf2941e, commit 4047bb5
 ```
 
+---
+
+## §13 — Passo 14: a janela de revisão de texto (SOL-11)
+
+(O roadmap previa este relatório em `OCR_UI_REPORT_C2.md` §4; os passos executados
+continuam num só arquivo, como os anteriores.)
+
+### 13.0 Em uma tela
+
+- **A aba «Revisão de texto»** (`caissa/ui/views/revisao_de_texto.py`, montada no tronco
+  por `qt/painel_de_revisao_de_texto.py` com a mesma guarda da Rotulagem; `abas.py`
+  ganha `REVISAO_DE_TEXTO` no acervo, entre Rotulagem e Configuração). Abre um PDF, importa as
+  páginas pedidas com OCR numa thread (campo «Páginas» — um capítulo de cada vez, porque um
+  livro inteiro com OCR leva minutos), e mostra **só** os spans `REVIEW`/`ABSTAINED`
+  (`ReviewQueue.from_import`, ordem por risco): tabela à esquerda (página, tipo, decisão,
+  escore, motivo, texto), cartão à direita com recorte a 300 DPI, leitura com as palavras
+  fracas em destaque, alternativas, motivo (razões, tokens em disputa, lances sem leitura
+  legal, sugestão nunca aplicada) e o campo da verdade. Três ações e um atalho cada: Enter
+  aceita (ou grava, se o texto mudou), Ctrl+Enter grava a edição, Ctrl+R mantém como imagem;
+  «Pular» não decide. Cada decisão vai para a trilha (quem, quando, segundos) e a fila anda
+  para a próxima pendente.
+- **As decisões sobrevivem à janela e chegam à exportação.** `ReviewDecisions`
+  (`caissa/ocr/review.py`) é o diário reduzido a uma decisão por região, gravado a cada
+  decisão em `labeling/revisao/<livro>.json` (e a fila com a trilha em `<livro>.fila.json`,
+  retomada ao reabrir o PDF). O importador as **aplica** (`PdfImportOptions.review_decisions`,
+  `_apply_review_decisions` antes de tirar o texto da página): região aceita deixa de estar
+  «para revisão» e sai com `verified_by_human` e confiança 1,0; editada leva o texto do
+  revisor (linha a linha quando o número de linhas bate, senão uma linha sobre a caixa);
+  mantida como imagem é abstida e vira a figura de sempre. `export_book` carrega as decisões
+  do livro sozinho e o resumo diz «N decisão(ões) do revisor aplicada(s); OCR: restam M
+  região(ões) para revisão» — a tarefa 4 do passo.
+- **O cartão é um só** (`caissa/ui/widgets/cartao_da_linha.py`): a metade direita da
+  Rotulagem foi extraída para um widget com sinais (aceitar/gravar/rejeitar/andar/alternativa)
+  e as duas abas o montam; a Rotulagem mantém os nomes de sempre (`crop_label`, `truth`…)
+  como apelidos, e os seus 6 testes de janela passam sem mudança.
+- **Portão: PASSOU.** Num livro com N = 3 dúvidas a janela visita **3 e só 3** (cada chave
+  uma vez, a tabela lista as pendentes e só elas); a correção numa página da partição cega é
+  recusada com a frase «página N está na partição cega: a leitura não pode ser aceita nem
+  corrigida aqui (ela mede o OCR)» e nada entra no diário — manter como imagem continua
+  permitido; o tempo por página fica em `seconds_per_page` e na linha de estado
+  («s/página»). *Sabotagem executada:* com `blind_guard` desligado a mesma correção passa e
+  a página cega aparece no arquivo que o importador lê — o teste acusa a gravação.
+- **Auditorias da F9**, pela primeira vez com as abas da suíte dentro da janela (o venv do
+  tronco é 3.10 e não importa a suíte; a receita passa a ser o Python 3.11 da suíte com o
+  `site-packages` do `.venv-pack` — a mesma composição do bundle): **teclado PASSOU** nos
+  seis arranjos (Revisão de texto 43–48 focáveis, todos pelo Tab, 0 sem nome); **contraste
+  PASSOU** (300 pares, 0 reprovados, claro e escuro); **bloqueio REPROVOU nas 7 operações de
+  sempre** (item aberto do C16; abrir PDF mediana 117 ms contra 214,5 no C16 — não piorou;
+  nenhuma das sete é da aba nova).
+
+```
+.venv\Scripts\python.exe -m pytest tests\unit\ocr\test_review.py -q                                # 8 passed
+.venv\Scripts\python.exe -m pytest tests\unit\ingest tests\unit\export -q                          # 667 passed, 1 skipped
+set PYTHONPATH=.venv-pack\Lib\site-packages& .venv\Scripts\python.exe -m pytest tests\unit\ui\test_revisao_de_texto_view.py tests\unit\ui\test_rotulagem_view.py -q   # 11 passed
+set PYTHONPATH=.venv-pack\Lib\site-packages& .venv\Scripts\python.exe -m pytest tests\unit\ui tests\unit\ocr -q   # 838 passed, 12 failed: test_arquitetura «importa sem Qt» — falha só com o PyQt6 no caminho (16/16 no venv puro)
+cd ..\ChessVisionOFF_Puro & set PYTHONPATH=..\Suite_de_Edicao_de_Xadrez\src;src;..\Suite_de_Edicao_de_Xadrez\.venv-pack\Lib\site-packages& ..\Suite_de_Edicao_de_Xadrez\.venv\Scripts\python.exe -m pytest tests\test_qt_janela.py -q   # 83 passed (oito abas)
+cd ..\ChessVisionOFF_Puro & .venv\Scripts\python.exe -m pytest tests\test_packaging.py -q -k janela   # 5 passed (catraca 1902 → 1905)
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages& .venv\Scripts\python.exe -m caissa.ui.audit.teclado --pdf "%PDF%" --saida benchmarks\reports\ui\c17     # teclado_20260915_083037.json: TODOS PASSOU
+... -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c17                                    # contraste_20260915_082654.json: PASSOU
+... -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17                       # bloqueio_20260915_083111.json: REPROVOU, 7 operações (as do C16)
+```
+
+### 13.1 O que a auditoria achou de graça: a Rotulagem nunca tinha sido medida
+
+Com a suíte dentro da janela, o `teclado` viu a aba Rotulagem pela primeira vez — e a
+reprovou: **20 de 60 controles inalcançáveis pelo Tab** e **11 nomes que não nomeiam**
+(◀ ▶ − + e as seis figurinas «sem letras», o campo do idioma «eco do papel», o visor sem
+nome). A causa dos 20 era um roubo de foco: `page_spin.editingFinished` dispara quando o
+Tab sai do campo, `go_page` reabria a página e `_show_line` punha o foco na verdade — a
+volta do teclado pulava a barra inteira. Corrigido (só um número **diferente** vira a página;
+o visor é `ClickFocus`, a tela só o mouse usa; nomes acessíveis nos botões de símbolo e nas
+figurinas do cartão, que servem às duas abas): **58–62 focáveis, todos pelo Tab, 0 nomes
+vazios**. Fica registrado que os portões da F9 rodados com o venv do tronco medem a janela
+**sem** as abas da suíte; a receita acima é a que mede o produto que o bundle entrega.
+
+### 13.2 Decisões de construção (tarefa 3)
+
+- **Aba, não modo da Revisão.** A Revisão do tronco é a fila de diagramas (S-22); a
+  revisão de texto é outra fila e outra unidade (o livro importado). Um interruptor de modo
+  esconderia trabalho — o que a S-162 mediu como o pior lugar. Cabeçalho de
+  `qt/painel_de_revisao_de_texto.py`.
+- **Aplicar no importador, não no IR.** As decisões entram antes de o texto da página ser
+  tirado dos regiões do OCR, onde já existe o caminho para «abstida → imagem» e a marca de
+  revisão por span; o IR nasce certo em vez de ser remendado. Custo: a região é reencontrada
+  por sobreposição de caixas (IoU ≥ 0,5) na próxima importação — o layout é determinístico
+  para a mesma página e DPI.
+- **Onde as decisões moram:** `labeling/revisao/` (git-ignored, ao lado do projeto de
+  rotulagem), nunca ao lado do PDF — a pasta do acervo não é nossa para escrever.
+
+### 13.3 O que não fechou
+
+- A edição substitui o texto da região inteira; uma região de várias linhas em que o revisor
+  muda só uma palavra continua a sair certa (linha a linha quando a contagem bate), mas a
+  proveniência por span vira uma só (1,0, «decidida pelo revisor»).
+- Depois do passo 8, diagramas com `confidence` baixa entrariam na mesma fila; hoje a fila é
+  só de texto.
+- `bloqueio` segue vermelho nas 7 operações do tronco (item aberto de sempre).
+
+### 13.4 Testes
+
+`tests/unit/ocr/test_review.py` (+4: diário → decisões e aplicação às regiões; manter como
+imagem abstém e aceitar verifica; página cega recusa aceitar/editar com a frase, sabotagem
+sem guarda grava; fila gravada volta com trilha e relógio). `tests/unit/ingest/test_importer.py`
+(+1: decisões aplicadas na importação — `verified_by_human`, confiança 1,0, lista de revisão
+vazia, contador). `tests/unit/ui/test_revisao_de_texto_view.py` (novo, 5: HTML da leitura;
+monta e lista N e só N; decide, anda, grava sozinha e retoma; página cega com a frase e a
+sabotagem; importação em thread). Tronco: `test_qt_janela.py` (oitava aba), `test_packaging.py`
+(catraca 1905 com o motivo).

@@ -492,3 +492,66 @@ def test_the_importer_keeps_the_book_cipher_next_to_the_books_models(pdf_file, m
     result = import_pdf(path, PdfImportOptions(detect_diagrams=False, book_cipher=False))
     assert not cipher_path.exists()
     monkeypatch.setattr(importer_module.PdfImporter, "_ocr_provider", original)
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP passo 14: the reviewer's decisions are applied on import
+# --------------------------------------------------------------------------- #
+
+
+class _ServiceLikeOcr:
+    """A provider shaped like ``OcrService``.
+
+    It keeps ``last``, the page recognition, which is what the decisions are applied to.
+    """
+
+    def __init__(self) -> None:
+        self.last = None
+
+    def __call__(self, _page, frame, _verdict):
+        from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+        from caissa.ocr.decision import Decision, RegionDecision
+        from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+        def region(order, y_px, text, decision):
+            box = BBox(300.0, y_px, 950.0, 50.0)
+            words = tuple(OcrWord(text=w, box=box, confidence=0.7) for w in text.split())
+            result = OcrResult(engine="tesseract", lang="eng", lines=(
+                OcrLine(words=words, box=box, kind=RegionKind.PARAGRAPH),))
+            return RegionRecognition(
+                reading_order=order, kind=RegionKind.PARAGRAPH, box_px=box, result=result,
+                decision=RegionDecision(decision, 0.7, 0.78, 0.55, ("Escore baixo",)),
+                engine="tesseract", variant="base", score=0.7)
+
+        self.last = PageRecognition(page_index=frame.index, dpi=300.0, regions=[
+            region(0, 400.0, "the r0ok belongs", Decision.REVIEW),
+            region(1, 1200.0, "a clean line", Decision.ACCEPTED),
+        ], portfolio=None, notes=[], duration_s=0.1, whole_page=False, engines={})
+        return self.last.to_page_text(frame)
+
+
+def test_review_decisions_settle_the_region_on_import(pdf_file):
+    from caissa.ocr.review import Action, Decided, ReviewDecisions
+
+    spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
+    path = pdf_file([spec])
+    before = import_pdf(path, PdfImportOptions(ocr=_ServiceLikeOcr(), detect_diagrams=False))
+    assert [i.text for i in before.report.review_items] == ["the r0ok belongs"]
+    doubtful = before.document.body[0]
+    assert isinstance(doubtful, Paragraph)
+    assert not doubtful.provenance.verified_by_human
+    rect = before.report.review_items[0].rect
+    decisions = ReviewDecisions(entries=(
+        Decided(0, rect, Action.EDIT, text="the rook belongs", reviewer="ana"),))
+    after = import_pdf(path, PdfImportOptions(
+        ocr=_ServiceLikeOcr(), detect_diagrams=False, review_decisions=decisions))
+    assert after.report.review_items == []
+    assert after.report.counters["review_decisions_applied"] == 1
+    settled = after.document.body[0]
+    assert isinstance(settled, Paragraph)
+    assert plain_text(settled.content) == "the rook belongs"
+    assert settled.provenance.verified_by_human
+    assert settled.provenance.confidence == 1.0
+    assert "revisor" in (settled.provenance.note or "")
+    clean = after.document.body[1]
+    assert not clean.provenance.verified_by_human, "the reviewer did not touch the clean line"

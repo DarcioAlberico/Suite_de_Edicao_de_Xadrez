@@ -170,6 +170,8 @@ class TextSpan:
             the text layer.
         review: The span comes from a region the OCR decision sent to
             review (Sol §SOL-2); the IR marks it and the reviewer sees it.
+        verified: A person settled the region the span comes from
+            (OCR_UI_ROADMAP passo 14); the IR carries ``verified_by_human``.
     """
 
     text: str
@@ -187,6 +189,7 @@ class TextSpan:
     confidence: float = 1.0
     engine: str = ""
     review: bool = False
+    verified: bool = False
 
     def same_style(self, other: TextSpan) -> bool:
         return (

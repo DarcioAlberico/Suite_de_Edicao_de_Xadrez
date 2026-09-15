@@ -267,6 +267,12 @@ class PdfImportOptions:
     #: becomes a :class:`GameScore` with provenance per move
     #: (:mod:`caissa.ingest.pdf.games`).  ``False`` keeps every paragraph.
     games: bool = True
+    #: OCR_UI_ROADMAP passo 14: what the reviewer already settled on this
+    #: book's OCR regions (:class:`caissa.ocr.review.ReviewDecisions`) —
+    #: accepted regions stop being "for review" and carry
+    #: ``verified_by_human``, edited ones carry the reviewer's text, regions
+    #: kept as image are abstained.  ``None`` applies nothing.
+    review_decisions: Any | None = None
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -476,6 +482,7 @@ class PdfImporter:
         self._pending_ocr: tuple[int, dict[str, Any]] | None = None
         #: Abstained OCR regions of the page being built, as figure entries.
         self._abstained_figures: list[_FigureEntry] = []
+        self._decisions_applied = 0
 
     # -- driver ------------------------------------------------------------ #
 
@@ -534,6 +541,8 @@ class PdfImporter:
         # OCR_UI_ROADMAP passo 2: pages whose kept layer was contested by the OCR.
         counters["contested_pages"] = sum(
             1 for r in self.report.pages if r.source == "text-layer+ocr")
+        # Counted while the pages were read (passo 14): the reviewer's decisions.
+        counters["review_decisions_applied"] = self._decisions_applied
         self.report.counters = counters
         self.report.figurines_mapped = self._mapper.count
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))
@@ -863,6 +872,7 @@ class PdfImporter:
         except Exception as exc:  # noqa: BLE001 - OCR failing must not lose the book
             self.report.notes.append(f"OCR falhou na página {frame.index}: {exc}")
             return None
+        result = self._apply_review_decisions(frame, provider, result)
         self._record_ocr(frame, provider, (time.perf_counter() - started) * 1000.0)
         if result is None or result.is_empty:
             return None
@@ -874,6 +884,23 @@ class PdfImporter:
         total = sum(w for _, w in weights)
         confidence = sum(c * w for c, w in weights) / total if total else 0.0
         return result, confidence
+
+    def _apply_review_decisions(self, frame: PageFrame, provider: Any, result: Any) -> Any:
+        """The reviewer's decisions on this page, applied to the service's regions.
+
+        Before the page text and the review list are drawn from them.
+        """
+        decisions = self.options.review_decisions
+        recognition = getattr(provider, "last", None)
+        if decisions is None or recognition is None or not decisions.for_page(frame.index):
+            return result
+        if getattr(recognition, "page_index", -1) != frame.index:
+            return result
+        applied = decisions.apply(recognition, frame)
+        if not applied:
+            return result
+        self._decisions_applied += applied
+        return recognition.to_page_text(frame) if recognition.answered else None
 
     def _share_page_context(self, index: int, text: PageText, hits: Sequence[DiagramHit]) -> None:
         """Hand the OCR service the page's diagrams and their captions' side."""
@@ -1113,10 +1140,12 @@ class PdfImporter:
         note: str | None = None,
         engine: str | None = None,
         band: ConfidenceBand | None = None,
+        verified: bool = False,
     ) -> Provenance:
         report = self._page_reports.get(page_index)
         dpi = report.ocr_dpi if (report is not None and kind is SourceKind.OCR) else None
         return Provenance(
+            verified_by_human=verified,
             kind=kind,
             document_path=str(self.document.path) if self.document.path else None,
             document_hash=self.document.content_hash,
@@ -1153,14 +1182,18 @@ class PdfImporter:
             confidence = draft.confidence
             engines = sorted({sp.engine for sp in draft.spans if sp.engine})
             review = any(sp.review for sp in draft.spans)
+            verified = bool(draft.spans) and all(sp.verified for sp in draft.spans)
             notes = [n for n in (note,) if n]
             if review:
                 notes.append("OCR para revisão: confiança ou evidência insuficiente na região")
+            if verified:
+                notes.append("região decidida pelo revisor")
             provenance = self._provenance(
-                page, draft.boxes.get(page), confidence, kind=kind,
+                page, draft.boxes.get(page), 1.0 if verified else confidence, kind=kind,
                 note="; ".join(notes) or None,
                 engine="+".join(engines) if engines else None,
                 band=ConfidenceBand.DOUBTFUL if review and confidence >= _DOUBTFUL else None,
+                verified=verified,
             )
         else:
             # Text-layer spans carry 1.0; the page's verdict is what bounds them

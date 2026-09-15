@@ -840,6 +840,17 @@ tem de acusar a gravação.
 
 **Saída.** `OCR_UI_REPORT_C2.md` §4. **Desfazer:** a aba/modo some; `ReviewQueue` fica.
 
+**Executado em 2026-09-15** (§4; relatório em `OCR_UI_REPORT_C1.md` §13, no arquivo dos
+passos anteriores): aba «Revisão de texto» (`caissa/ui/views/revisao_de_texto.py`; tronco
+`qt/painel_de_revisao_de_texto.py`, `abas.REVISAO_DE_TEXTO`) sobre `ReviewQueue`, cartão
+partilhado com a Rotulagem (`ui/widgets/cartao_da_linha.py`); decisões gravadas em
+`labeling/revisao/<livro>.json` e **aplicadas pelo importador** (`PdfImportOptions
+.review_decisions`) — a exportação diz quantas dúvidas restam. Portão: N e só N, cega recusada
+com frase, tempo por página; sabotagem sem guarda acusa a gravação → PASSOU. Auditorias com as
+abas da suíte na janela (Python 3.11 + `.venv-pack`): teclado e contraste PASSOU, bloqueio as 7
+operações de sempre; a Rotulagem, medida pela primeira vez, tinha 20 controles fora do Tab —
+corrigida.
+
 ---
 
 ### Passo 15 — Visor por ladrilhos
@@ -994,6 +1005,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-15 | 14 | **executado** — `OCR_UI_REPORT_C1.md` §13 | `PainelDeRevisaoDeTexto` (aba nova no tronco, entre Rotulagem e Configuração) sobre `ReviewQueue`; `ReviewDecisions` gravadas a cada decisão e aplicadas na importação (`_apply_review_decisions`: aceita → `verified_by_human`, editada → texto do revisor, imagem → abstida); `export_book` carrega-as e diz «restam N». Cartão extraído da Rotulagem para `ui/widgets/cartao_da_linha.py`. Portão PASSOU (N e só N; cega recusada; s/página; sabotagem grava). Auditorias pela primeira vez com as abas da suíte (3.11 + `.venv-pack`): teclado/contraste PASSOU, bloqueio 7 de sempre; Rotulagem tinha 20 controles fora do Tab e 11 nomes vazios — corrigida. Tronco: `abas.py`, `janela.py` (+3, catraca 1905), `test_qt_janela.py`, `test_packaging.py` | construtor |
 | 2026-09-15 | 11 | **executado, portão vermelho** — `OCR_UI_REPORT_C1.md` §12 | `caissa/ingest/pdf/games.py` (`attach_games`, `game_from_paragraph`, `is_invention`), `PdfImportOptions.games=True`, `benchmarks/games_gate.py` (+ `--sabotar fen`). Posição pela geometria (diagrama acima da coluna) porque o importador lista diagramas antes do texto; três regras contra invenção. Nunn 0/99 (sem `Movetext` legível: OCR do scan), SFC4 cobertura 0,06 / inventados 0, sabotagem 0,00 → REPROVOU. A verdade do passo 0 tem 2 FENs erradas (p10, p15) — o portão do passo 7 passou a exigir 1.º lance legal *sem reparo* e as acusa; a cobertura mede também layout (prosa com lances é `Body`), ordem de leitura (p17) e lado (p18). Funciona no Dvoretsky (camada de texto + vetor): 5 partidas / 28 lances. Revisor corrigiu p10 e p15 no mesmo dia (manifesto `f019591babf2941e`, baseline recongelado): cobertura 0,04, portão segue vermelho; o portão do passo 7 passou a excluir do acerto a região que não começa sob o diagrama (n = 4, PASSOU) | construtor + revisor |
 | 2026-09-15 | 7 | **executado, meta de acervo não alcançada** — `OCR_UI_REPORT_C1.md` §11 | `move-number` e `caption-after` nas duas cascatas, entre o texto e o escopo de página (alcance 200 pt sob o tabuleiro); `RecognitionResult.side_to_move_source`; portão sobre a verdade humana n = 6: 6/6, origem ≠ default 5/6, sabotagem 0,17; acervo 267/911 (era 109), abaixo de ≥ 500 — sem lance impresso não há numeração. Duas FENs do passo 0 estavam erradas (1.º lance ilegal) e o portão as acusou; corrigidas; manifesto `eb9b31eff07efe2c`, baseline recongelado | construtor + revisor |
 | 2026-09-15 | 0 | **executado (humano)** — `OCR_UI_REPORT_C1.md` §0 | 8 regiões com `start_fen` (7 fora da cega), 21 `movetext`; das 26 colunas de lances só 6 seguem um diagrama na mesma página, 2 são partidas do lance 1, 18 são continuações sem posição a copiar. Manifesto `ab9e366c8e1c6a61` → `86426402f56220aa`; baseline recongelado. Replay de hoje reproduz 0–28 lances por região (linha de base do 11) | revisor + construtor |

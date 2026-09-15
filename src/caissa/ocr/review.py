@@ -9,11 +9,18 @@ long, and exports the decisions in the shapes calibration (SOL-4) and the
 benchmark (SOL-0) consume — with one guard: **a decision on a page of the
 blind partition never leaves the queue as training data**.
 
-There is no Qt here on purpose.  The F9 shell is not in this repository
-yet; a widget written blind would be a second design to throw away.  What
-the widget will need — a list of items, a crop for each, three actions, an
-audit log, a timer — is all here and testable, and it is what the batch
-importer's report can already write to disk as JSON.
+There is no Qt here on purpose: the window (:mod:`caissa.ui.views.revisao_de_texto`,
+OCR_UI_ROADMAP passo 14) is a list, a crop, three buttons and a timer over
+this queue, and everything it decides is decided here.
+
+The decisions outlive the window.  :class:`ReviewDecisions` is the queue's
+log reduced to one decision per region, saved as JSON next to the labelling
+project (``labeling/revisao/<book>.json``) and **applied by the importer** the
+next time the book is read (``PdfImportOptions.review_decisions``): an
+accepted region stops being "for review" and carries ``verified_by_human``,
+an edited one carries the reviewer's text, a region kept as image is
+abstained — so the export sees the book as the reviewer left it, and says
+how many doubtful regions remain.
 """
 
 from __future__ import annotations
@@ -32,9 +39,12 @@ from .golden import Partition, partition_for
 __all__ = [
     "Action",
     "AuditEntry",
+    "Decided",
+    "ReviewDecisions",
     "ReviewItem",
     "ReviewQueue",
     "blind_guard",
+    "decisions_path",
 ]
 
 RectT = tuple[float, float, float, float]
@@ -75,6 +85,20 @@ class ReviewItem:
         trouble = 0.2 if self.legality.get("unresolved") else 0.0
         return base + trouble + (1.0 - min(1.0, self.score)) * 0.3
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ReviewItem:
+        return cls(
+            key=data["key"], document=data["document"], page_index=int(data["page_index"]),
+            rect=tuple(float(v) for v in data["rect"]), kind=data.get("kind", ""),
+            decision=data.get("decision", "review"), reasons=tuple(data.get("reasons", ())),
+            text=data.get("text", ""), engine=data.get("engine", ""),
+            score=float(data.get("score", 0.0)),
+            alternatives=tuple((a, b) for a, b in data.get("alternatives", ())),
+            low_confidence_words=tuple(data.get("low_confidence_words", ())),
+            disputed_tokens=tuple((a, b) for a, b in data.get("disputed_tokens", ())),
+            legality=dict(data.get("legality", {})), suggestion=data.get("suggestion", ""),
+        )
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "key": self.key, "document": self.document, "page_index": self.page_index,
@@ -102,6 +126,12 @@ class AuditEntry:
         return {"key": self.key, "action": str(self.action), "text": self.text,
                 "reviewer": self.reviewer, "at": self.at, "seconds": round(self.seconds, 2),
                 "note": self.note}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AuditEntry:
+        return cls(key=data["key"], action=Action(data["action"]), text=data.get("text", ""),
+                   reviewer=data.get("reviewer", ""), at=data.get("at", ""),
+                   seconds=float(data.get("seconds", 0.0)), note=data.get("note", ""))
 
 
 #: Decides whether a page belongs to the blind partition.  The default maps
@@ -146,7 +176,7 @@ class ReviewQueue:
     @classmethod
     def from_import(cls, report: Any, *, document: str, reviewer: str = "",
                     render: Callable[[str, int, RectT], bytes] | None = None,
-                    blind: BlindGuard | None = None) -> "ReviewQueue":
+                    blind: BlindGuard | None = None) -> ReviewQueue:
         """From an :class:`~caissa.ingest.pdf.importer.ImportReport`.
 
         Only ``REVIEW`` and ``ABSTAINED`` regions are queued (Sol §SOL-11,
@@ -170,6 +200,21 @@ class ReviewQueue:
                 legality=dict(trace.get("legality", {})),
             ))
         queue.items.sort(key=lambda i: (-i.risk, i.page_index, i.rect[1]))
+        return queue
+
+    @classmethod
+    def load(cls, path: Path | str, *, render: Callable[[str, int, RectT], bytes] | None = None,
+             blind: BlindGuard | None = None) -> ReviewQueue:
+        """A queue :meth:`save` wrote, items and log, ready to go on."""
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        queue = cls(reviewer=data.get("reviewer", ""), render=render)
+        if blind is not None:
+            queue.blind = blind
+        queue.items = [ReviewItem.from_dict(i) for i in data.get("items", ())]
+        queue.log = [AuditEntry.from_dict(e) for e in data.get("log", ())]
+        for key, seconds in (data.get("seconds_per_page") or {}).items():
+            document, _, page = key.rpartition(":")
+            queue._page_seconds[(document, int(page))] = float(seconds)
         return queue
 
     # -- viewing ----------------------------------------------------------- #
@@ -217,6 +262,44 @@ class ReviewQueue:
 
     def seconds_per_page(self) -> dict[tuple[str, int], float]:
         return dict(self._page_seconds)
+
+    def refusal(self, key: str, action: Action) -> str:
+        """Why the window must not record ``action`` on ``key`` — empty when it may.
+
+        A correction on a page of the blind partition is refused with the
+        phrase (SOL-11): the partition exists to measure, and a page the
+        reviewer fixed by hand would measure the reviewer.  Keeping the
+        region as an image or skipping it changes no text and is allowed.
+        """
+        item = self._item(key)
+        if action in (Action.ACCEPT, Action.EDIT) and self.blind(item.document, item.page_index):
+            return (f"página {item.page_index + 1} está na partição cega: "
+                    "a leitura não pode ser aceita nem corrigida aqui (ela mede o OCR).")
+        return ""
+
+    def decided(self) -> dict[str, AuditEntry]:
+        """The last non-skip decision per item."""
+        out: dict[str, AuditEntry] = {}
+        for entry in self.log:
+            if entry.action is Action.SKIP:
+                continue
+            out[entry.key] = entry
+        return out
+
+    def decisions(self) -> ReviewDecisions:
+        """The decisions the importer applies (blind pages withheld, as in :meth:`corrections`)."""
+        entries = []
+        for key, entry in self.decided().items():
+            item = self._item(key)
+            if entry.action in (Action.ACCEPT, Action.EDIT) and self.blind(
+                item.document, item.page_index
+            ):
+                continue
+            entries.append(Decided(page_index=item.page_index, rect=item.rect,
+                                   action=entry.action, text=entry.text, reviewer=entry.reviewer,
+                                   at=entry.at))
+        return ReviewDecisions(document=self.items[0].document if self.items else "",
+                               entries=tuple(entries))
 
     # -- exporting --------------------------------------------------------- #
 
@@ -302,3 +385,145 @@ def _iou(a: RectT, b: RectT) -> float:
     inter = (x1 - x0) * (y1 - y0)
     union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
     return inter / union if union > 0 else 0.0
+
+
+# --------------------------------------------------------------------------- #
+# Decisions the importer applies
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True, slots=True)
+class Decided:
+    """One region's final decision, placed on the page."""
+
+    page_index: int
+    rect: RectT
+    action: Action
+    text: str = ""
+    reviewer: str = ""
+    at: str = ""
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"page_index": self.page_index, "rect": list(self.rect), "action": str(self.action),
+                "text": self.text, "reviewer": self.reviewer, "at": self.at}
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewDecisions:
+    """What the reviewer settled, by page and box — applied to the OCR regions on import.
+
+    Matching is by overlap (IoU ≥ 0.5) between the decision's box and the
+    region's, both in page points: the layout is deterministic for a given
+    page and DPI, so a region found again is found at the same place.
+    """
+
+    document: str = ""
+    entries: tuple[Decided, ...] = ()
+
+    IOU_FLOOR = 0.5
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+    def for_page(self, page_index: int) -> list[Decided]:
+        return [d for d in self.entries if d.page_index == page_index]
+
+    def match(self, page_index: int, rect: RectT) -> Decided | None:
+        best, best_iou = None, 0.0
+        for decided in self.for_page(page_index):
+            iou = _iou(decided.rect, rect)
+            if iou > best_iou:
+                best, best_iou = decided, iou
+        return best if best_iou >= self.IOU_FLOOR else None
+
+    def apply(self, recognition: Any, frame: Any) -> int:
+        """Patch ``recognition.regions`` in place; how many regions were decided.
+
+        ``accept`` → the region is accepted and verified; ``edit`` → its
+        reading becomes the reviewer's text (one line over the region's box
+        when the line count differs), accepted and verified; ``keep_image``
+        → abstained, so the importer keeps the region as a picture.
+        """
+        from dataclasses import replace
+
+        from caissa.ocr.decision import Decision
+        from caissa.ocr.types import OcrLine, OcrWord
+
+        applied = 0
+        regions = list(recognition.regions)
+        for index, region in enumerate(regions):
+            if region.decision.decision is Decision.ACCEPTED:
+                continue
+            box = region.box_px
+            rect = frame.pixels_to_page((box.x0, box.y0, box.x1, box.y1), recognition.dpi)
+            decided = self.match(frame.index, rect)
+            if decided is None:
+                continue
+            reason = f"decidido pelo revisor {decided.reviewer or '?'} em {decided.at or '?'}"
+            if decided.action is Action.KEEP_IMAGE:
+                decision = replace(region.decision, decision=Decision.ABSTAINED,
+                                   reasons_pt=("mantida como imagem pelo revisor", reason))
+                regions[index] = replace(region, decision=decision, verified=True)
+            elif decided.action in (Action.ACCEPT, Action.EDIT):
+                result = region.result
+                if decided.action is Action.EDIT:
+                    typed = [t for t in decided.text.splitlines() if t.strip()]
+                    lines = list(result.lines)
+                    if typed and len(typed) == len(lines):
+                        lines = [
+                            replace(line, words=(OcrWord(text=text, box=line.box, confidence=1.0),))
+                            for line, text in zip(lines, typed, strict=True)
+                        ]
+                    else:
+                        lines = [OcrLine(words=(OcrWord(text=" ".join(typed), box=box,
+                                                         confidence=1.0),), box=box,
+                                         kind=result.region_kind)]
+                    result = replace(result, lines=tuple(lines))
+                decision = replace(region.decision, decision=Decision.ACCEPTED, score=1.0,
+                                   reasons_pt=("aceita pelo revisor", reason))
+                regions[index] = replace(region, result=result, decision=decision, score=1.0,
+                                         verified=True)
+            else:
+                continue
+            applied += 1
+        if applied:
+            recognition.regions[:] = regions
+        return applied
+
+    # -- files ------------------------------------------------------------ #
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"document": self.document, "entries": [d.as_dict() for d in self.entries]}
+
+    def save(self, path: Path | str) -> Path:
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(self.as_dict(), ensure_ascii=False, indent=1),
+                          encoding="utf-8")
+        return target
+
+    @classmethod
+    def load(cls, path: Path | str) -> ReviewDecisions:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        return cls(document=data.get("document", ""), entries=tuple(
+            Decided(page_index=int(e["page_index"]), rect=tuple(float(v) for v in e["rect"]),
+                    action=Action(e["action"]), text=e.get("text", ""),
+                    reviewer=e.get("reviewer", ""), at=e.get("at", ""))
+            for e in data.get("entries", ())))
+
+    @classmethod
+    def for_pdf(cls, pdf_path: Path | str) -> ReviewDecisions | None:
+        """The decisions saved for this book, or ``None`` when nobody reviewed it."""
+        path = decisions_path(pdf_path)
+        return cls.load(path) if path.is_file() else None
+
+
+def decisions_path(pdf_path: Path | str) -> Path:
+    """Where a book's review decisions live: ``<labeling>/revisao/<book>.json``.
+
+    Next to the labelling project (git-ignored, on this machine), never
+    next to the PDF — the corpus folder is not ours to write in.
+    """
+    from caissa.ocr.labeling.helpers import default_project_dir
+
+    return default_project_dir() / "revisao" / (Path(pdf_path).stem + ".json")

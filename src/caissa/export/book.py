@@ -209,6 +209,8 @@ class BookExportResult:
     export_result: ExportResult
     warnings: tuple[str, ...] = field(default_factory=tuple)
     """The OCR regions the import could not settle, one line each, one-based page first."""
+    decisions_applied: int = 0
+    """Regions the reviewer had settled (OCR_UI_ROADMAP passo 14), applied on import."""
 
     @property
     def pages(self) -> str:
@@ -231,8 +233,13 @@ class BookExportResult:
         degraded = self.export_result.degradation
         if not degraded.is_lossless:
             parts.append(f"{len(degraded.warnings)} propriedade(s) aproximada(s) no {label}")
+        if self.decisions_applied:
+            parts.append(f"{self.decisions_applied} decisão(ões) do revisor aplicada(s)")
         if self.warnings:
-            parts.append(f"OCR: {len(self.warnings)} região(ões) para revisão")
+            parts.append(
+                f"OCR: {'restam ' if self.decisions_applied else ''}"
+                f"{len(self.warnings)} região(ões) para revisão"
+            )
         return "; ".join(parts) + "."
 
 
@@ -339,6 +346,11 @@ def _export_book(
             options.enable_ocr = enable_ocr
         if options.asset_dir is None:
             options.asset_dir = scratch / "assets"
+        if options.review_decisions is None:
+            # What the reviewer settled in the text-review window, when anything.
+            from caissa.ocr.review import ReviewDecisions
+
+            options.review_decisions = ReviewDecisions.for_pdf(source)
         imported = PdfImporter(pdf, options).run()
 
     if should_cancel is not None and should_cancel():
@@ -364,6 +376,7 @@ def _export_book(
         import_report=imported.report,
         export_result=written,
         warnings=warnings,
+        decisions_applied=int(imported.report.counters.get("review_decisions_applied", 0)),
     )
 
 
