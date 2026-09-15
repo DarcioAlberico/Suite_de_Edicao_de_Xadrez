@@ -163,8 +163,23 @@ def measure_truth(
         # legal from its FEN; when it is not, the FEN is the diagram's placement
         # with the wrong move number/side (passo 0 data), not a rule failure.
         row["truth_consistent"] = _first_move_legal(region.start_fen, region.truth)
+        # Does the region start under the diagram?  When the first move line
+        # under the board is not the region's first line (SFC4 p10: «21 ♖a3!»
+        # sits in a prose region, the FEN region starts at «22... ♖g8»), the
+        # FEN is the region's position, not the diagram's — the two sides are
+        # not comparable and the row stays out of the accuracy.
+        row["comparable"] = row["origin"] != "move-number" or _same_line(
+            row["evidence"], region.truth
+        )
         rows.append(row)
     return rows
+
+
+def _same_line(evidence: str, truth: str) -> bool:
+    """Whether the move line found under the diagram is the region's first line."""
+    first = " ".join(truth.splitlines()[0].split()) if truth.strip() else ""
+    found = " ".join(evidence.split())
+    return bool(found) and (first.startswith(found) or found.startswith(first))
 
 
 def measure_product(project: LabelProject, items: list[Any]) -> list[dict[str, Any]]:
@@ -240,15 +255,25 @@ def main(argv: list[str] | None = None) -> int:
     truth_rows = measure_truth(project, usable, sabotage=args.sabotar)
     for row in truth_rows:
         flag = "" if row["truth_consistent"] else "  [verdade: 1.º lance ilegal da FEN]"
+        if not row["comparable"]:
+            flag += "  [região não começa sob o diagrama: FEN é da região, fora do acerto]"
         print(
             f"  p{row['page']:<3} {row['partition']:5s} «{row['first_line']}»  "
             f"verdade {row['truth']}  inferido {row['inferred']}  origem {row['origin']:14s} "
             f"{'✓' if row['correct'] else '✗'}  "
             f"{row['evidence'][:30]!r}{flag}"
         )
-    n = len(truth_rows)
-    accuracy = sum(r["correct"] for r in truth_rows) / n if n else 0.0
-    with_origin = sum(1 for r in truth_rows if r["origin"] != "default") / n if n else 0.0
+    comparable = [r for r in truth_rows if r["comparable"]]
+    n = len(comparable)
+    accuracy = sum(r["correct"] for r in comparable) / n if n else 0.0
+    # The origin floor is about diagrams: a region with no board above it
+    # (SFC4 p17, the game from move 1) can only be ``default``, rightly.
+    with_board = [r for r in comparable if r["diagram_found"]]
+    with_origin = (
+        sum(1 for r in with_board if r["origin"] != "default") / len(with_board)
+        if with_board
+        else 0.0
+    )
     product_rows: list[dict[str, Any]] = []
     if not args.sem_produto and not args.sabotar:
         product_rows = measure_product(project, usable)
@@ -262,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"portão (verdade humana, n={n}): acerto {accuracy:.2f} ≥ {ACCURACY_FLOOR} "
         f"{'✓' if accuracy >= ACCURACY_FLOOR else '✗'} · origem ≠ default "
-        f"{with_origin:.2f} ≥ {ORIGIN_FLOOR} "
+        f"{with_origin:.2f} (n={len(with_board)} com diagrama) ≥ {ORIGIN_FLOOR} "
         f"{'✓' if with_origin >= ORIGIN_FLOOR else '✗'} → {'PASSOU' if passed else 'REPROVOU'}"
         f"{'  (sabotagem: ' + args.sabotar + ')' if args.sabotar else ''}"
     )

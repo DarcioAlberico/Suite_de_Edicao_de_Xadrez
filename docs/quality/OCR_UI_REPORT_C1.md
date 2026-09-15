@@ -1117,3 +1117,30 @@ encerra a cadeia; linha que não começa no 1.º lance impresso fica; coluna de 
 parágrafo é uma partida e a posição segue; sem diagrama nada muda; reparo de grafia não é
 invenção; captura impressa em casa vazia recusa a posição; coluna «1 d4» parte da inicial;
 a coluna toma o tabuleiro acima dela e não o último em ordem de leitura.
+
+### 12.5 Depois da correção do revisor (mesmo dia)
+
+As duas regiões foram corrigidas na bancada (p10: texto «22... ♖g8» e FEN antes desse lance;
+p15: FEN depois de 13 h3! ♘e5); manifesto privado regravado (`merge_into_manifest`: 256
+substituídos, 8 com `start_fen`), hash `eb9b31eff07efe2c` → **`f019591babf2941e`**; baseline
+de Sol recongelado no hash novo. Resultado:
+
+- `games_gate`: as duas verdades agora reproduzem (p10 3 lances, p15 7); a cobertura cai para
+  **0,04** (2/46) — o produto continua a encadear só p13 e o p10 da *coluna sob o diagrama*
+  (`21 ♖a3! ♔h8 22 ♖g3`, que não é a região de verdade). O portão fica vermelho pelas razões
+  de §12.1, menos a verdade.
+- `side_to_move_gate`: a correção de p10 pôs a FEN da região (pretas, 22…) sob um diagrama
+  cuja linha seguinte é «21 ♖a3!» (brancas) — as duas coisas não são comparáveis, e o portão
+  passou a dizê-lo: uma região cuja primeira linha **não é a linha de lance sob o diagrama**
+  fica fora do acerto (`[região não começa sob o diagrama: FEN é da região, fora do acerto]`,
+  p10 e p15), e o piso de origem conta só as regiões com diagrama (p17 é a partida do lance
+  1, sem tabuleiro). **n = 4: acerto 4/4, origem ≠ default 3/3 → PASSOU**; sabotagem
+  paridade 0,25 → REPROVOU.
+
+```
+.venv\Scripts\python.exe benchmarks\games_gate.py                   # games_20260915_075039.json: SFC4 0.04, inventados 0 → REPROVOU
+.venv\Scripts\python.exe benchmarks\side_to_move_gate.py            # side_to_move_20260915_075243.json: n=4 1.00, origem 1.00 (n=3) → PASSOU
+.venv\Scripts\python.exe benchmarks\side_to_move_gate.py --sabotar paridade   # 0.25 → REPROVOU
+.venv\Scripts\python.exe benchmarksench_sol.py --system baseline --label baseline --publish   # corpus f019591babf2941e, commit 4047bb5
+```
+
