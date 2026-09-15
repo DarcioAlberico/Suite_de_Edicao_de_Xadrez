@@ -6,6 +6,7 @@ import pytest
 
 from caissa.ingest.pdf.captions import (
     CaptionLine,
+    NearbyLine,
     assign_lines_to_diagrams,
     bare_integers,
     caption_lines,
@@ -255,6 +256,69 @@ def test_page_contexts_apply_scope_only_where_the_caption_is_silent():
     assert contexts[1].side_to_move is False
     assert contexts[1].side_to_move_origin == "text"
     assert len(consumed) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Side to move from the numbering (OCR_UI_ROADMAP passo 7)
+# --------------------------------------------------------------------------- #
+
+
+def test_the_first_move_under_the_diagram_says_whose_turn_it_is():
+    """``22... ♖g8`` is Black's move; ``23 ♘c4`` (SFC4 prints no dot) is White's."""
+    black = CaptionLine("22... ♖g8", (100, 310, 300, 322), block_words=6)
+    white = CaptionLine("23 ♘c4 ♗d5", (100, 322, 300, 334), block_words=6)
+    context = context_from_lines(
+        [NearbyLine(white, 22.0, "below"), NearbyLine(black, 10.0, "below")]
+    )
+    assert context.side_to_move is False
+    assert context.side_to_move_origin == "move-number"
+    assert context.first_move_number == (22, True)
+    assert context.side_to_move_evidence == "22... ♖g8"
+    assert context.side_to_move_confidence == pytest.approx(0.9)
+    only_white = context_from_lines([NearbyLine(white, 10.0, "below")])
+    assert only_white.side_to_move is True
+    assert only_white.first_move_number == (23, False)
+    # A line above the diagram is the game so far, not its continuation.
+    assert context_from_lines([NearbyLine(black, 10.0, "above")]).side_to_move is None
+
+
+def test_a_caption_after_move_gives_the_side_to_move_next():
+    for caption, side, number in (
+        ("Position after 23...Bd5", True, 24),
+        ("após 23.♘c4", False, 23),
+        ("Stellung nach 12...Sf6", True, 13),
+    ):
+        context = parse_context(caption)
+        assert context.side_to_move is side, caption
+        assert context.side_to_move_origin == "caption-after"
+        assert context.caption_after_move == (number, not side)
+
+
+def test_words_beat_the_numbering_and_the_numbering_beats_the_page_scope():
+    declared = CaptionLine("Black to move", (100, 310, 300, 322), block_words=3)
+    moves = CaptionLine("23 ♘c4", (100, 322, 300, 334), block_words=6)
+    context = context_from_lines(
+        [NearbyLine(declared, 10.0, "below", True), NearbyLine(moves, 22.0, "below")]
+    )
+    assert context.side_to_move is False
+    assert context.side_to_move_origin == "text"
+    assert context.first_move_number == (23, False), "read, but outranked"
+    lines = [
+        _line("WHITE TO PLAY", (72, 30, 400, 42), block=0),
+        _line("22... ♖g8", (100, 305, 300, 317), block=1),
+    ]
+    contexts, _ = page_contexts(_page(lines), [(100.0, 100.0, 300.0, 300.0)])
+    assert contexts[0].side_to_move is False
+    assert contexts[0].side_to_move_origin == "move-number"
+
+
+def test_an_exercise_number_before_a_name_is_not_a_move():
+    from caissa.ingest.pdf.captions import move_start
+
+    assert move_start("119 Bartrina - Ghitescu") is None
+    assert move_start("12") is None
+    assert move_start("14... a6") == (14, True)
+    assert move_start("5 O-O") == (5, False)
 
 
 # --------------------------------------------------------------------------- #

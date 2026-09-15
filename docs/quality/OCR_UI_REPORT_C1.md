@@ -14,7 +14,7 @@
 ### 0.0 O número
 
 **8 regiões com `start_fen`** nas 13 páginas rotuladas (todas no SFC4), preenchidas pelo
-revisor a partir do diagrama impresso acima de cada coluna de lances — **é o denominador dos
+revisor (duas delas corrigidas depois, no passo 7 — ver §11.1) a partir do diagrama impresso acima de cada coluna de lances — **é o denominador dos
 passos 7 e 11**. Não são "todas as colunas de lances": das 26 colunas com ≥ 6 lances, só 6 vêm
 logo depois de um diagrama na mesma página; as outras 20 são continuações da partida (o diagrama
 está páginas antes, ou os lances intermediários estão na prosa) e não têm posição a copiar. As
@@ -23,12 +23,12 @@ duas restantes são partidas do lance 1 (posição inicial). 21 regiões marcada
 | pág. | região | partição | FEN | lances que a repetição de legalidade reproduz da FEN |
 |---|---:|---|---|---:|
 | 10 | «22... ♖g6» | dev | `…/1B3R1K w - - 4 24` — o diagrama está em 24, a região começa em 22… | 1 |
-| 10 | «39 ♔f1» | calib | `8/6k1/3b4/1R1p4/1PpPr1p1/2P3n1/3B2K1/6N1 w - - 0 39` | 0 |
+| 10 | ~~«39 ♔f1» `w 39`~~ → «36 ... ♖e8!» (cega) | cega | `8/6k1/3b4/1R1p4/1PpPr1p1/2P3n1/3B2K1/6N1 b - - 0 36` — corrigida no passo 7 (§11.1): a FEN era do diagrama, e a região do diagrama é a que começa em 36… | 2 |
 | 12 | «19... g5!» | dev | `4k2r/p2n1ppp/Npr1p3/3pP3/3p1P2/8/P2N2PP/R3K2R b - - 0 19` | 6 |
 | 13 | «17... ♗b4!» | calib | `r2q2k1/2p1b1pp/p3b3/1p1pP3/3P4/1PN1B3/1P4PP/R2Q1K2 b - - 0 17` | 2 |
 | 15 | «14 ♘xe5 ♖xe5» | calib | `r2qr1k1/p2n1pbp/bp1p1np1/2pP4/8/P1N2NP1/1PQ1PPBP/R1B1R1K1 w - - 0 14` | 5 |
 | 17 | «English Opening / 1 d4 ♘f6» | dev | posição inicial | 28 |
-| 18 | «19 ♖c2 ♖g8!» | dev | `1qr1r1k1/1bbn1ppp/pp1ppn2/8/2P1P3/1NN1BP2/PP4PP/2RR1BQK w - - 0 19` | 1 |
+| 18 | ~~«19 ♖c2 ♖g8!» `w 19`~~ → «18... ♔h8!!» | dev | `1qr1r1k1/1bbn1ppp/pp1ppn2/8/2P1P3/1NN1BP2/PP4PP/2RR1BQK b - - 0 18` — corrigida no passo 7 (§11.1) | 1 |
 | 19 | «Fischer — Andersson» | **cega** | posição inicial | 19 |
 
 A última coluna é o `repair_movetext(truth, start_fen=…)` de hoje sobre a verdade humana — a
@@ -43,6 +43,8 @@ da região. É trabalho do passo 11, não deste; aqui fica o número.
 - `labeling/pages/*.json` (fora do git): 8 `start_fen`, 21 `kind=movetext`.
 - Manifesto privado regravado (`Exportar → Fundir no manifesto`): 256 itens substituídos,
   446 itens, hash **`ab9e366c8e1c6a61` → `86426402f56220aa`**; 8 itens com `start_fen`.
+  Após as duas correções do passo 7 (§11.1): **`eb9b31eff07efe2c`**, 8 itens com `start_fen`,
+  2 na cega (p19 e a nova p10 «36…»), 6 utilizáveis.
 - Baseline de Sol **recongelado** no hash novo (`docs/quality/sol/baseline.{json,md}`,
   747 medições): os relatórios `c1_*` deste ciclo foram medidos em `43ac7c57017324d8` e o
   `sol_gate` vai acusar a diferença de hash contra eles — correto, o corpus mudou.
@@ -944,3 +946,71 @@ os três defeitos e o orçamento, o ícone pelo traço/caixa/tinta).
 .venv\Scripts\python.exe -m pytest tests\unit\ui\test_audit_fita.py -q                                                                # 4 passed
 ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:randomly -p no:cacheprovider                                 # 4487 passed, 3 failed — os 3 são dos módulos novos de outra sessão (biblioteca, substituicao, desenho_de_diagrama, pdf_substituicao: acento, README, lista sem Tk), não deste passo
 ```
+
+---
+
+## §11 — Passo 7: o lado a jogar pela numeração do lance seguinte
+
+### 11.0 Em uma tela
+
+- **A regra, nas duas cascatas.** Suíte (`ingest/pdf/captions.py`): quando nenhuma palavra
+  declara o lado, o **primeiro lance impresso sob o diagrama** decide (`22... ♖g8` → pretas,
+  `23 ♘c4` / `23.Nc4` → brancas; origem `move-number`, confiança 0,9), e depois dele a legenda
+  «após/after/nach/después/после N.x» (a posição *depois* daquele lance, origem
+  `caption-after`, 0,85). Ordem: texto declarado → numeração → legenda «após» → escopo de
+  página → (legalidade, no tronco) → `default`. O alcance da numeração é de 200 pt abaixo do
+  tabuleiro, na mesma coluna — mais que o raio de legenda (60), porque no SFC4 um parágrafo de
+  comentário separa o diagrama da coluna de lances (p. 12: 96 pt). Tronco
+  (`pdf_text.py`, `semantics.py`, `procedencias.py`; commit `8d0f18c` **no tronco**, três
+  arquivos que estavam limpos lá): mesma regra, mesmos dois valores em `SideOrigin`/`SideSource`.
+- **A origem vai ao IR**: `RecognitionResult.side_to_move_source` (R2.5) — no registro do
+  reconhecimento, não em `Diagram`, porque é proveniência de máquina e não sai para EPUB/DOCX;
+  o relatório de importação conta `side_to_move_origin:<origem>`, com `default` dito.
+- **Portão (verdade humana, `benchmarks/side_to_move_gate.py`)**: as regiões com `start_fen`
+  do passo 0 fora da cega — **n = 6** —, o texto do revisor como texto da página e os
+  tabuleiros do detector do tronco: **acerto 6/6, origem ≠ default 5/6** (a que fica é a
+  partida do lance 1 sem diagrama, onde `default` = brancas é o certo). Sabotagem (paridade
+  invertida): acerto 1/6 = 0,17 → REPROVOU. **PASSOU.**
+- **Produto (OCR + via raster, informativo)**: 4/6 — p17 sem diagrama (default), p18 o OCR
+  leu a linha «18... ♔h8!!» sem os três pontos e a numeração deu brancas.
+- **Acervo** (`bench_ingest --sample 12 --raster`, 46 livros, 911 diagramas): origem ≠
+  `default` **109 → 267** (`move-number` 142, `caption-after` 11, texto 92, OCR 13, escopo de
+  página 9). **Abaixo dos ≥ 500 do roadmap**: 644 seguem `default`, em boa parte livros de
+  problemas (mate em N sem lance impresso) — ali não há numeração a ler; o que sobra são
+  legenda simbólica e escopo de página, que já estavam.
+
+```
+.venv\Scripts\python.exe benchmarks\side_to_move_gate.py                      # n=6: acerto 1.00, origem≠default 0.83 → PASSOU
+.venv\Scripts\python.exe benchmarks\side_to_move_gate.py --sabotar paridade   # acerto 0.17 → REPROVOU
+.venv\Scripts\python.exe benchmarks\bench_ingest.py --sample 12 --raster      # ingest_20260915_053902.json: 267/911
+#   somatório: counters side_to_move_origin:* dos 46 livros (default 644, move-number 142, text 92, ocr 13, caption-after 11, text-page-scope 8, ocr-page-scope 1)
+..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests\test_pdf_text.py tests\test_semantics.py tests\test_side_survey.py -q   # 74 passed
+.venv\Scripts\python.exe -m pytest tests\unit\ingest tests\unit\model -q --ignore=tests\unit\model\test_roundtrip_corpus.py           # 1105 passed
+```
+
+### 11.1 O que o portão achou na verdade humana — e o que foi corrigido antes de medir
+
+A primeira rodada do portão deu 4/7 e as três falhas eram do **dado**, não da regra:
+em p10 «39 ♔f1» a FEN era a do diagrama (posição antes de `36 ... ♖e8!`, a linha impressa sob
+ele) com lado e número da região três lances depois — o primeiro lance era **ilegal** a partir
+dela (o cavalo em g3 cobre f1); em p18 «19 ♖c2» a FEN tinha o rei preto em g8 com a linha
+sob o diagrama dizendo `18... ♔h8!!`; p17 é a partida do lance 1 sem diagrama. O portão passou
+a acusar `[verdade: 1.º lance ilegal da FEN]` por região, e o revisor corrigiu as duas (a FEN
+do diagrama vai na região cuja primeira linha é a impressa logo abaixo dele, com o lado e o
+número dessa linha). Manifesto `86426402f56220aa` → `eb9b31eff07efe2c`; baseline recongelado.
+Lição para o passo 0, registrada no roadmap: a FEN é do **diagrama**, e a região que a recebe
+é a que **começa** na linha sob ele.
+
+### 11.2 O que não fechou
+
+- A meta de acervo (≥ 500/911) não é alcançável por numeração: onde não há lance impresso
+  não há o que ler. O número honesto é 267/911 (29 %), e o resto pede outra fonte (símbolo de
+  legenda, escopo de página, legalidade no tronco) que já existe e não cobre.
+- n = 6 é pouco para um portão; o que o sustenta é a sabotagem (0,17) e o acervo.
+
+### 11.3 Testes
+
+Suíte: `test_captions.py` (+4: o primeiro lance sob o diagrama, a legenda «após», a palavra
+vence a numeração e a numeração vence o escopo de página, número de exercício não é lance),
+`test_importer.py` (+1: origem `move-number` no IR e no contador; +2 asserções). Tronco:
+`test_pdf_text.py` (+5).

@@ -309,6 +309,25 @@ def test_a_vector_diagram_becomes_a_position_with_its_caption(pdf_file, merida_f
     assert not any(t in ("8", "a b c d e f g h", "12", "Brancas jogam") for t in texts)
     assert result.report.counters["diagrams_read"] == 1
     assert result.report.counters["side_to_move"] == 1
+    assert diagram.recognition.side_to_move_source == "text"
+    assert result.report.counters["side_to_move_origin:text"] == 1
+
+
+def test_the_first_move_under_a_vector_diagram_decides_the_side(pdf_file, merida_font):
+    """OCR_UI_ROADMAP passo 7: no caption says whose turn; the moves below do."""
+    placement = "8/8/8/4k3/8/8/4K3/8"
+    spec = PageSpec()
+    for i, row in enumerate(_merida_rows(placement)):
+        spec.text(row, 100, 160 + i * 22, size=22, fontfile=str(merida_font))
+    spec.text("22... Kd5 23.Kd3 Kc5", 100, 372, size=10)
+    spec.text("24.Ke3 Kd5", 100, 386, size=10)
+    path = pdf_file([spec])
+    result = import_pdf(path)
+    diagram = next(b for b in result.document.body if isinstance(b, Diagram))
+    assert diagram.fen.split()[1] == "b"
+    assert diagram.recognition.side_to_move_source == "move-number"
+    assert result.report.counters["side_to_move_origin:move-number"] == 1
+    assert "22... Kd5" in " ".join(w.strip() for w in diagram.recognition.warnings)
 
 
 def test_a_custom_finder_can_report_an_unread_diagram(pdf_file):

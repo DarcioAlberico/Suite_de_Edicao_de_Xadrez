@@ -506,6 +506,16 @@ class PdfImporter:
             for e in entries
             if isinstance(e, _DiagramEntry) and e.context.side_to_move is not None
         )
+        # OCR_UI_ROADMAP passo 7: how many diagrams got their side from each
+        # origin (``default`` = nothing on the page said whose turn it is).
+        for e in entries:
+            if isinstance(e, _DiagramEntry):
+                origin = (
+                    e.context.side_to_move_origin if e.context.side_to_move is not None
+                    else "default"
+                )
+                key = f"side_to_move_origin:{origin}"
+                counters[key] = counters.get(key, 0) + 1
         # OCR_UI_ROADMAP passo 10: boards in a chess font outside the catalog,
         # read from pixels with a capped confidence — counted apart so the
         # report says how many positions are inferred rather than decoded.
@@ -1199,6 +1209,11 @@ class PdfImporter:
             overall_confidence=hit.confidence if hit.fen else 0.0,
             side_to_move_confidence=(
                 context.side_to_move_confidence if context.side_to_move is not None else None
+            ),
+            # OCR_UI_ROADMAP passo 7 (SPEC R2.5): the origin travels with the
+            # side, and "default" is said out loud.
+            side_to_move_source=(
+                context.side_to_move_origin if context.side_to_move is not None else "default"
             ),
             path=hit.path,
             model_name=hit.method or None,

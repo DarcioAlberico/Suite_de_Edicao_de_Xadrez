@@ -116,7 +116,10 @@ aba Resultado copia a FEN). Depois, *Exportar → Fundir no manifesto* regrava o
 
 **Portão.** Contagem: regiões `movetext` com `start_fen` ≠ "" nas 13 páginas (esperado: todas
 as que seguem um diagrama). Registrar o número em `OCR_UI_REPORT_C1.md` §0 — é o denominador
-dos passos 7 e 11. Sem sabotagem: é dado, não código.
+dos passos 7 e 11. Sem sabotagem: é dado, não código. **Regra de preenchimento (aprendida no
+passo 7):** a FEN é a do diagrama, e vai na região cuja **primeira linha é a impressa logo
+abaixo dele**, com o lado e o número dessa linha; `side_to_move_gate.py` acusa a FEN de que o
+primeiro lance da região não sai legal.
 
 **Saída.** `labeling/pages/*.json`, `GOLD` regravado, `docs/quality/sol/baseline.json` recongelado
 (`PY benchmarks\bench_sol.py --system baseline --label baseline --publish`).
@@ -503,7 +506,13 @@ FEN em ≥ 90 %, com origem ≠ `default` em ≥ 80 %; no acervo (`--raster`), d
 ≠ `default` sobem de 109/911 para ≥ 500/911. *Sabotagem:* paridade invertida — o acerto cai
 abaixo de 20 % e o portão reprova.
 
-**Saída.** `OCR_UI_REPORT_C1.md` §7. **Desfazer:** as duas regras fora das cascatas.
+**Saída.** `OCR_UI_REPORT_C1.md` §11. **Desfazer:** as duas regras fora das cascatas.
+
+**Executado em 2026-09-15** (§4): regra nas duas cascatas (tronco `8d0f18c`), origem no IR
+(`RecognitionResult.side_to_move_source`) e no relatório; verdade humana n = 6: acerto 6/6,
+origem ≠ default 5/6, sabotagem 0,17 → PASSOU; acervo 109 → **267**/911 (meta ≥ 500 não
+alcançável por numeração: 644 são livros de problemas sem lance impresso). O portão achou
+duas FENs do passo 0 inconsistentes com a página (1.º lance ilegal); corrigidas pelo revisor.
 
 ---
 
@@ -976,6 +985,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-15 | 7 | **executado, meta de acervo não alcançada** — `OCR_UI_REPORT_C1.md` §11 | `move-number` e `caption-after` nas duas cascatas, entre o texto e o escopo de página (alcance 200 pt sob o tabuleiro); `RecognitionResult.side_to_move_source`; portão sobre a verdade humana n = 6: 6/6, origem ≠ default 5/6, sabotagem 0,17; acervo 267/911 (era 109), abaixo de ≥ 500 — sem lance impresso não há numeração. Duas FENs do passo 0 estavam erradas (1.º lance ilegal) e o portão as acusou; corrigidas; manifesto `eb9b31eff07efe2c`, baseline recongelado | construtor + revisor |
 | 2026-09-15 | 0 | **executado (humano)** — `OCR_UI_REPORT_C1.md` §0 | 8 regiões com `start_fen` (7 fora da cega), 21 `movetext`; das 26 colunas de lances só 6 seguem um diagrama na mesma página, 2 são partidas do lance 1, 18 são continuações sem posição a copiar. Manifesto `ab9e366c8e1c6a61` → `86426402f56220aa`; baseline recongelado. Replay de hoje reproduz 0–28 lances por região (linha de base do 11) | revisor + construtor |
 | 2026-09-14 | 12 | **executado** — `OCR_UI_REPORT_C1.md` §10 | `caissa.ui.audit.fita` e `.icones` (novos, com sabotagem); tronco: `rotulo_na_fita` nos seis botões de glifo, cabeçalho desenhado no compacto (orçamento 64 → 72), `desfazer`/`refazer` redesenhados; 18/24 → 24/24 rótulos, 0/5 → 5/5 cabeçalhos; "Apagar a peça" na fita devolve o pleno a 1.920 px (rotular os seis o tinha empurrado a 1.926). Mudanças do tronco não commitadas lá (árvore com 60 arquivos de outra sessão) — pares reaplicáveis em `docs/quality/ui/c17/tronco_passo12.py` | construtor |
 | 2026-09-14 | 12 | **portão reescrito** | "tinta ≥ 50 %" não mede legibilidade de ícone de traço (disco cheio = 78 %; a família toda fica em 11–52 % por construção); o portão cobra traço ≥ 2 px no tamanho desenhado, caixa menor ≥ 60 % do lado, tinta ≥ 10 % — e a sabotagem (traço a 1 px) o derruba | construtor |

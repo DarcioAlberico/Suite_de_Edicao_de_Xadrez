@@ -180,6 +180,10 @@ class RecognitionResult:
         overall_confidence: Calibrated confidence for the whole board.
         orientation_confidence: Confidence that the board is the right way up.
         side_to_move_confidence: Confidence in the side-to-move reading.
+        side_to_move_source: Where the side came from (SPEC R2.5, roadmap
+            passo 7): ``"text"``, ``"ocr"``, ``"move-number"``,
+            ``"caption-after"``, ``"text-page-scope"``, ``"legality"``,
+            ``"default"`` ... ``None`` when nothing recorded it.
         path: Which detection route produced this.
         model_name: Identity of the classifier.
         model_version: Its version.
@@ -198,6 +202,7 @@ class RecognitionResult:
     overall_confidence: float | None = None
     orientation_confidence: float | None = None
     side_to_move_confidence: float | None = None
+    side_to_move_source: str | None = None
     path: RecognitionPath = RecognitionPath.MANUAL
     model_name: str | None = None
     model_version: str | None = None

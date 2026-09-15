@@ -151,7 +151,7 @@ revisão, exportar — numa pele projetada, com a fita legível sem dica de ferr
 
 | nó / campo | mudança |
 |---|---|
-| `Diagram.side_to_move` | ganha `side_to_move_source` (R2.5) e `confidence` (R2.7) |
+| `Diagram.side_to_move` | ganha `side_to_move_source` (R2.5) e `confidence` (R2.7). **Executado (passo 7):** a origem mora em `RecognitionResult.side_to_move_source` — proveniência de máquina, junto de `side_to_move_confidence`, e por isso fora do que sai para EPUB/DOCX; valores `text`/`ocr`/`move-number`/`caption-after`/`*-page-scope`/`legality`/`default` |
 | `Paragraph` de estilo `Movetext` → `GameScore` | não existe classe `Movetext`: é `ParagraphStyle(name="Movetext")` (`importer.py`) sobre `RegionKind.MOVETEXT` (`paragraphs.py`). Passo novo `caissa.ingest.pdf.games` (T3): FEN do diagrama + lado + tokens reparados → analisador tolerante de `caissa.notation` (`parser`, `book_import`, `variation_builder`, `pipeline.build_games_for_export` — absorvidos do `PGN_Live_Editor`, nunca chamados por `ingest/`) → `legality_repair` → `GameScore` (`core/model/game.py`; variantes são `MoveNode.children[1:]`) com proveniência por lance; o parágrafo permanece quando não há posição de partida |
 | spans de OCR | já carregam motor/confiança/revisão (SOL-10); ganham `cipher_evidence` quando reescritos por G1 |
 | `review_items` | passam a incluir diagramas com `DiagramConfidence` abaixo do limiar, não só texto |

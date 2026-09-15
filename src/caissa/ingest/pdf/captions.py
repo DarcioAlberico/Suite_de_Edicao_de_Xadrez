@@ -46,7 +46,7 @@ import logging
 import math
 import re
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Final, Literal
 
@@ -182,6 +182,18 @@ _PLAYERS: Final = re.compile(rf"({_NAME})\s*[-–—]\s*({_NAME})\s*$")
 #: trunk's pattern knew only Latin piece letters, and a figurine line
 #: (``♕b3+! 4.♕xb3 axb3+``) passed for a caption.
 _MOVE_TEXT: Final = re.compile(r"\d\s*[.…]\s*[\w♔-♟]|[♔-♟KQRBNRPKDTLSC][a-h][1-8]")
+#: OCR_UI_ROADMAP passo 7: the first move printed under a diagram says whose
+#: turn it is -- ``22... ♖g8`` is Black's, ``23 ♘c4`` / ``23.♘c4`` is White's.
+#: The number is the full-move number of that side's move.
+_MOVE_TOKEN_AHEAD: Final = r"(?=[♔-♟]|[KQRBNDTLSCФЛКС][a-h]?[1-8x]|[a-h][1-8x]|O-O|0-0)"  # noqa: S105
+_MOVE_START: Final = re.compile(r"^\s*(\d{1,3})\s*(\.{3}|…|\.)?\s*" + _MOVE_TOKEN_AHEAD)
+#: "após 23...♗d5" / "after 23.Nc4" / "nach 23...Ld5" / "después de" / "после":
+#: the position *after* that move, so the other side is to move.
+_AFTER_MOVE: Final = re.compile(
+    r"\b(?:ap[oó]s|depois de|after|nach|despu[eé]s de|после|posle)\s+"
+    r"(\d{1,3})\s*(\.{3}|…|\.)\s*" + _MOVE_TOKEN_AHEAD,
+    re.IGNORECASE,
+)
 #: Exercise number without punctuation, digits possibly split by OCR: the
 #: ``AAGAARD`` numbers ``1 19 Bartrina - Ghitescu`` for exercise 119.
 _LOOSE_NUMBER_PREFIX: Final = re.compile(r"^(\d[\d ]{0,4})\s+(?=[A-ZÀ-Þ])")
@@ -268,6 +280,13 @@ class DiagramContext:
     side_to_move_evidence: str = ""
     side_to_move_origin: str | None = None
     side_to_move_confidence: float = 1.0
+    #: OCR_UI_ROADMAP passo 7: ``(number, black_to_move)`` read from the first
+    #: line of moves under the diagram (``22...`` → ``(22, True)``; ``23 ♘c4``
+    #: → ``(23, False)``), and from a caption "após/after N.x" (the position
+    #: after that move: ``after 23...♗d5`` → ``(24, False)``).  Both feed the
+    #: side cascade after the declared text and before the page scope.
+    first_move_number: tuple[int, bool] | None = None
+    caption_after_move: tuple[int, bool] | None = None
     exercise_number: int | None = None
     players: tuple[str, str] | None = None
     event: str | None = None
@@ -833,6 +852,26 @@ def _parse_event_year(text: str) -> tuple[str | None, int | None]:
     return (event or None), year
 
 
+def move_start(text: str) -> tuple[int, bool] | None:
+    """``(number, black_to_move)`` when ``text`` opens with a numbered move."""
+    match = _MOVE_START.match(text)
+    if match is None:
+        return None
+    dots = match.group(2) or ""
+    return int(match.group(1)), dots in ("...", "…")
+
+
+def after_move(text: str) -> tuple[int, bool] | None:
+    """``(number, black_to_move)`` of the side to move *after* "após N.x" in ``text``."""
+    match = _AFTER_MOVE.search(text)
+    if match is None:
+        return None
+    number = int(match.group(1))
+    black_moved = match.group(2) in ("...", "…")
+    # After Black's Nth move White is to move at N+1; after White's, Black at N.
+    return (number + 1, False) if black_moved else (number, True)
+
+
 @dataclass(frozen=True, slots=True)
 class _ParsedLine:
     text: str
@@ -872,12 +911,53 @@ def _side_from_tier(lines: Sequence[_ParsedLine]) -> _SideDecision | None:
     return next((item for item in found if item.origin == "text"), found[0])
 
 
-def _parse_lines(lines: Sequence[_ParsedLine], *, page_number: int | None) -> DiagramContext:
+def _first_found(
+    items: Sequence[_ParsedLine], reader: Callable[[str], tuple[int, bool] | None]
+) -> tuple[tuple[int, bool] | None, str]:
+    for item in items:
+        found = reader(item.text)
+        if found is not None:
+            return found, item.text
+    return None, ""
+
+
+def _side_from_numbering(
+    first_move: tuple[int, bool] | None,
+    first_move_text: str,
+    after: tuple[int, bool] | None,
+    after_text: str,
+) -> _SideDecision | None:
+    """OCR_UI_ROADMAP passo 7: the numbering decides when no words did.
+
+    The first line of moves under the diagram (``22...`` is Black's turn,
+    ``23 ♘c4`` White's) comes first; a caption "após/after N.x" (the
+    position *after* that move) second.  Both sit between the declared text
+    and the page scope in the cascade -- more specific than a page header,
+    less than a caption that says "Black to move".
+    """
+    if first_move is not None:
+        return _SideDecision(not first_move[1], first_move_text.strip()[:40], "move-number", 0.9)
+    if after is not None:
+        return _SideDecision(not after[1], after_text.strip()[:60], "caption-after", 0.85)
+    return None
+
+
+def _parse_lines(
+    lines: Sequence[_ParsedLine],
+    *,
+    page_number: int | None,
+    below: Sequence[_ParsedLine] = (),
+) -> DiagramContext:
     # The caption decides; the neighbourhood answers only when it is silent.
     primary = [item for item in lines if item.primary]
     secondary = [item for item in lines if not item.primary]
     decision = _side_from_tier(primary) or _side_from_tier(secondary)
     captions = [item.text for item in [*primary, *secondary] if item.caption_like]
+
+    first_move, first_move_text = _first_found(below, move_start)
+    after, after_text = _first_found([*primary, *secondary], after_move)
+    if decision is None:
+        decision = _side_from_numbering(first_move, first_move_text, after, after_text)
 
     exercise_number: int | None = None
     for text in captions:
@@ -918,6 +998,8 @@ def _parse_lines(lines: Sequence[_ParsedLine], *, page_number: int | None) -> Di
         side_to_move_evidence="" if decision is None else decision.evidence,
         side_to_move_origin=None if decision is None else decision.origin,
         side_to_move_confidence=1.0 if decision is None else decision.confidence,
+        first_move_number=first_move,
+        caption_after_move=after,
         exercise_number=exercise_number,
         players=players,
         event=event,
@@ -949,6 +1031,14 @@ def context_from_lines(
     if not nearby:
         return DiagramContext()
     has_primary = any(item.primary for item in nearby)
+    below = [
+        _ParsedLine(text=item.text, caption_like=item.line.is_caption_like,
+                    primary=item.primary, origin=item.line.origin,
+                    confidence=item.line.confidence)
+        for item in sorted(
+            (i for i in nearby if i.placement == "below"), key=lambda i: i.line.box[1]
+        )
+    ]
     return _parse_lines(
         [
             _ParsedLine(
@@ -961,6 +1051,7 @@ def context_from_lines(
             for item in nearby
         ],
         page_number=page_number,
+        below=below,
     )
 
 
@@ -1020,8 +1111,11 @@ def page_contexts(
     buckets = assign_lines_to_diagrams(lines, boxes, radius_pt=radius_pt)
     scope = page_scope_declaration(page)
     contexts = [
-        apply_page_scope(context_from_lines(bucket, page_number=page_number), scope)
-        for bucket in buckets
+        apply_page_scope(
+            _with_numbering_below(context_from_lines(bucket, page_number=page_number), lines, box),
+            scope,
+        )
+        for bucket, box in zip(buckets, boxes, strict=True)
     ]
     consumed = [
         item.line.box
@@ -1030,6 +1124,45 @@ def page_contexts(
         if item.primary and item.line.is_caption_like
     ]
     return contexts, consumed
+
+
+#: OCR_UI_ROADMAP passo 7: how far below a diagram the first line of moves may
+#: sit and still count as its continuation -- past the caption radius, because
+#: a paragraph of commentary often stands between the board and the moves
+#: (SFC4 p. 12: 96 pt).  Same column only.
+NUMBERING_REACH_PT: Final = 200.0
+
+
+def _with_numbering_below(
+    context: DiagramContext, lines: Sequence[CaptionLine], box: RectT
+) -> DiagramContext:
+    """The numbering rule with the longer reach, when the caption bucket had no move line."""
+    if context.side_to_move is not None or context.first_move_number is not None:
+        return context
+    below = sorted(
+        (
+            (relation[0], line)
+            for line in lines
+            if (relation := _relate(line.box, box)) is not None
+            and relation[1] == "below" and relation[0] <= NUMBERING_REACH_PT
+        ),
+        key=lambda pair: (pair[0], pair[1].box[1]),
+    )
+    for _distance, line in below:
+        found = move_start(line.text)
+        if found is not None:
+            decision = _side_from_numbering(found, line.text, None, "")
+            if decision is None:  # pragma: no cover - a found move always decides
+                return context
+            return replace(
+                context,
+                side_to_move=decision.color,
+                side_to_move_evidence=decision.evidence,
+                side_to_move_origin=decision.origin,
+                side_to_move_confidence=decision.confidence,
+                first_move_number=found,
+            )
+    return context
 
 
 def contexts_for_page(
