@@ -9,6 +9,52 @@
 
 ---
 
+## §0 — Passo 0 (humano, 2026-09-15): FEN inicial nas regiões de lances rotuladas
+
+### 0.0 O número
+
+**8 regiões com `start_fen`** nas 13 páginas rotuladas (todas no SFC4), preenchidas pelo
+revisor a partir do diagrama impresso acima de cada coluna de lances — **é o denominador dos
+passos 7 e 11**. Não são "todas as colunas de lances": das 26 colunas com ≥ 6 lances, só 6 vêm
+logo depois de um diagrama na mesma página; as outras 20 são continuações da partida (o diagrama
+está páginas antes, ou os lances intermediários estão na prosa) e não têm posição a copiar. As
+duas restantes são partidas do lance 1 (posição inicial). 21 regiões marcadas `movetext`.
+
+| pág. | região | partição | FEN | lances que a repetição de legalidade reproduz da FEN |
+|---|---:|---|---|---:|
+| 10 | «22... ♖g6» | dev | `…/1B3R1K w - - 4 24` — o diagrama está em 24, a região começa em 22… | 1 |
+| 10 | «39 ♔f1» | calib | `8/6k1/3b4/1R1p4/1PpPr1p1/2P3n1/3B2K1/6N1 w - - 0 39` | 0 |
+| 12 | «19... g5!» | dev | `4k2r/p2n1ppp/Npr1p3/3pP3/3p1P2/8/P2N2PP/R3K2R b - - 0 19` | 6 |
+| 13 | «17... ♗b4!» | calib | `r2q2k1/2p1b1pp/p3b3/1p1pP3/3P4/1PN1B3/1P4PP/R2Q1K2 b - - 0 17` | 2 |
+| 15 | «14 ♘xe5 ♖xe5» | calib | `r2qr1k1/p2n1pbp/bp1p1np1/2pP4/8/P1N2NP1/1PQ1PPBP/R1B1R1K1 w - - 0 14` | 5 |
+| 17 | «English Opening / 1 d4 ♘f6» | dev | posição inicial | 28 |
+| 18 | «19 ♖c2 ♖g8!» | dev | `1qr1r1k1/1bbn1ppp/pp1ppn2/8/2P1P3/1NN1BP2/PP4PP/2RR1BQK w - - 0 19` | 1 |
+| 19 | «Fischer — Andersson» | **cega** | posição inicial | 19 |
+
+A última coluna é o `repair_movetext(truth, start_fen=…)` de hoje sobre a verdade humana — a
+linha de base dos passos 7 e 11, e ela já diz duas coisas: (1) 7 das 8 estão fora da cega
+(uma cai na cega e não serve a portão de treino); (2) a repetição para cedo em 4 regiões
+(0–2 lances) — em p10 «39 ♔f1» o replay não anda um lance de uma posição em que ♔g2–f1 é legal
+(idioma não detectado), em p10 «22...» a FEN é do diagrama a 24, dois lances depois do início
+da região. É trabalho do passo 11, não deste; aqui fica o número.
+
+### 0.1 O que mudou nos artefatos
+
+- `labeling/pages/*.json` (fora do git): 8 `start_fen`, 21 `kind=movetext`.
+- Manifesto privado regravado (`Exportar → Fundir no manifesto`): 256 itens substituídos,
+  446 itens, hash **`ab9e366c8e1c6a61` → `86426402f56220aa`**; 8 itens com `start_fen`.
+- Baseline de Sol **recongelado** no hash novo (`docs/quality/sol/baseline.{json,md}`,
+  747 medições): os relatórios `c1_*` deste ciclo foram medidos em `43ac7c57017324d8` e o
+  `sol_gate` vai acusar a diferença de hash contra eles — correto, o corpus mudou.
+- Contagem: `python -c` sobre `caissa.ocr.labeling.LabelProject` (8 regiões com FEN, todas
+  válidas pelo `fen_problem`); fusão: `caissa.ocr.labeling.export.merge_into_manifest`.
+
+```
+.venv\Scripts\python.exe benchmarks\bench_sol.py --system baseline --label baseline --publish   # hash 86426402f56220aa
+```
+
+---
+
 ## §1 — Passo 1: segundo motor de OCR ao vivo
 
 ### 1.0 Em uma tela

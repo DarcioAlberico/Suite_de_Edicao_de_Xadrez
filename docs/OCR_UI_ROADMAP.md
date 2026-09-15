@@ -121,6 +121,10 @@ dos passos 7 e 11. Sem sabotagem: é dado, não código.
 **Saída.** `labeling/pages/*.json`, `GOLD` regravado, `docs/quality/sol/baseline.json` recongelado
 (`PY benchmarks\bench_sol.py --system baseline --label baseline --publish`).
 
+**Executado em 2026-09-15** (§4): **8** regiões com `start_fen` (7 fora da cega) — não 26: só
+as colunas logo depois de um diagrama têm posição a copiar; as continuações não. Manifesto
+`86426402f56220aa`, baseline recongelado. `OCR_UI_REPORT_C1.md` §0.
+
 ---
 
 ### Passo 1 — Segundo motor de OCR ao vivo
@@ -972,6 +976,7 @@ estratos sempre; a sabotagem de cada portão executada e citada; todo passo tem 
 | 2026-09-14 | 0 | inserido | crítica: `start_fen` vazio em 256/256 regiões — os portões de 7 e 11 não tinham verdade | análise |
 | 2026-09-14 | 8 | portão reescrito | crítica: com 93/94 exatos o ECE é cego; discriminação sobre os 114 casados | análise |
 | 2026-09-14 | 16 | reescrito | crítica: a Foco já é a Imagem 1; não há pele nova | análise |
+| 2026-09-15 | 0 | **executado (humano)** — `OCR_UI_REPORT_C1.md` §0 | 8 regiões com `start_fen` (7 fora da cega), 21 `movetext`; das 26 colunas de lances só 6 seguem um diagrama na mesma página, 2 são partidas do lance 1, 18 são continuações sem posição a copiar. Manifesto `ab9e366c8e1c6a61` → `86426402f56220aa`; baseline recongelado. Replay de hoje reproduz 0–28 lances por região (linha de base do 11) | revisor + construtor |
 | 2026-09-14 | 12 | **executado** — `OCR_UI_REPORT_C1.md` §10 | `caissa.ui.audit.fita` e `.icones` (novos, com sabotagem); tronco: `rotulo_na_fita` nos seis botões de glifo, cabeçalho desenhado no compacto (orçamento 64 → 72), `desfazer`/`refazer` redesenhados; 18/24 → 24/24 rótulos, 0/5 → 5/5 cabeçalhos; "Apagar a peça" na fita devolve o pleno a 1.920 px (rotular os seis o tinha empurrado a 1.926). Mudanças do tronco não commitadas lá (árvore com 60 arquivos de outra sessão) — pares reaplicáveis em `docs/quality/ui/c17/tronco_passo12.py` | construtor |
 | 2026-09-14 | 12 | **portão reescrito** | "tinta ≥ 50 %" não mede legibilidade de ícone de traço (disco cheio = 78 %; a família toda fica em 11–52 % por construção); o portão cobra traço ≥ 2 px no tamanho desenhado, caixa menor ≥ 60 % do lado, tinta ≥ 10 % — e a sabotagem (traço a 1 px) o derruba | construtor |
 | 2026-09-14 | 10 | **executado, tarefas 2–3 sem população** — `OCR_UI_REPORT_C1.md` §9 | `detect_unknown_font_lattices` + `inferred_font_finder` (`VECTOR_INFERRED`, ≤ 0,85); survey: 0/46 livros com fonte fora do catálogo, medido pela sabotagem (famílias escondidas): DEM 35/35, Polgar 114/114. **Achado**: a via exata tomava casa ausente por vazia — Polgar 61/114 posições erradas (torres em casa escura omitidas pelo extrator); agora ≤ 0,60 + `holes`, e o `combined_finder` completa com o classificador | construtor |
