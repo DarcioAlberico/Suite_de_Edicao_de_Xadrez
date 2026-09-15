@@ -1252,3 +1252,34 @@ vazia, contador). `tests/unit/ui/test_revisao_de_texto_view.py` (novo, 5: HTML d
 monta e lista N e só N; decide, anda, grava sozinha e retoma; página cega com a frase e a
 sabotagem; importação em thread). Tronco: `test_qt_janela.py` (oitava aba), `test_packaging.py`
 (catraca 1905 com o motivo).
+
+---
+
+## §14 — Passo 15, tarefa 0: o «antes» do visor por ladrilhos (2026-09-15)
+
+Medido com as abas da suíte na janela (receita de §13.0), livro `1937 Kemeri.pdf`:
+
+- **`quadros` (3×): PASSOU.** zoom **75,3 / 81,8 / 78,3 fps @ p95** (piso 70), pan 790 / 745 /
+  770, juntos 101,9 / 100,8 / 103,7. O D19 do ciclo 1 (59 fps mediana, 2026-09-07) está
+  ultrapassado: o reescalonamento só quando o zoom muda (`pagina_escalada`) já dá a folga.
+- **`bloqueio`: REPROVOU, 7 operações** (as mesmas do C16; `bloqueio_20260915_083111.json`):
+  abrir PDF **170 ms** (PyMuPDF 41 %, disco 30 % — `games_cache.open_store` da Galeria,
+  builtins 24 %), virar página **~70 ms** (rasterizar a 300 DPI = 45 ms + `mostrar_pagina`),
+  aba Dataset 70 ms, aba Galeria 23 ms, rasterizar 46 ms. Nenhuma é do zoom ou do pan.
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages& .venv\Scripts\python.exe -m caissa.ui.audit.quadros --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # fps_20260915_085705/085707/085709.json
+... -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # bloqueio_20260915_083111.json
+```
+
+**O que o «antes» diz sobre o passo.** O portão do passo 15 («0 operações > 16 ms; abrir PDF
+≤ 16 ms») não é um portão do visor: das 7 operações, 5 são rasterização e E/S **fora** dele
+(`painel_do_pdf.desenhar_pagina` rasteriza na thread de UI e devolve `True` só com a imagem
+pronta — é o contrato de quem chama o OCR; `painel_da_galeria.load_pdf` abre o SQLite; a aba
+Dataset carrega as amostras ao aparecer). Ladrilhos em worker resolvem o zoom, que já passa.
+O que falta é render e E/S fora da thread em `qt/painel_do_pdf.py`, `qt/painel_da_galeria.py`,
+`qt/painel_do_dataset.py` — e os três, mais `qt/visor.py` e `ui/viewport.py`, carregam
+**1.267 linhas não commitadas de outra sessão** (desde 2026-09-14 02:26). Pela regra deste
+trabalho (commit só por caminho, em arquivo limpo) o passo fica **suspenso** até essa sessão
+commitar ou guardar o que tem; o precedente do passo 12 (pares reaplicáveis em
+`docs/quality/ui/c17/tronco_passo12.py`) vale para mudanças pequenas, não para esta.
