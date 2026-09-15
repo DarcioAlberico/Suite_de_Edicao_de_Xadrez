@@ -1055,7 +1055,7 @@ vence a numeração e a numeração vence o escopo de página, número de exerc�
 .venv\Scripts\python.exe benchmarks\games_gate.py                 # games_20260915_073236.json: Nunn 0/99, SFC4 0.06, inventados 0 → REPROVOU
 .venv\Scripts\python.exe benchmarks\games_gate.py --sabotar fen   # games_20260915_073350_fen.json: cobertura 0.00 → REPROVOU
 .venv\Scripts\python.exe benchmarks\side_to_move_gate.py          # PASSOU; acusa p10 e p15 [verdade: 1.º lance ilegal da FEN]
-.venv\Scripts\python.exe -m pytest tests\unit\ingest tests\unit\export -q   # 664 passed, 1 skipped (test_games.py: 9)
+.venv\Scripts\python.exe -m pytest tests\unit\ingest tests\unit\export tests\unit\notation -q   # 991 passed, 1 skipped (test_games.py: 9)
 ```
 
 ### 12.1 Por que o portão está vermelho — e o que cada número mede
