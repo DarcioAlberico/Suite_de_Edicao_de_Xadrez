@@ -141,6 +141,66 @@ def test_page_selection_progress_and_cancel(pdf_file):
         import_pdf(path, PdfImportOptions(pages=[99]))
 
 
+def test_a_cancel_at_thirty_percent_keeps_thirty_percent_of_the_pages(pdf_file):
+    """OCR_UI_ROADMAP passo 17 (R3.5): the partial result is the pages built so far.
+
+    Ten pages; the cancel flag rises after the third page is built (progress in the build
+    pass is ``total + n + 1`` of ``2 * total``).  The document must carry exactly the three
+    pages, the report must say it was canceled and how many were planned.  The sabotage the
+    roadmap names -- "a cancel that throws the partial away" -- is the ``keep_partial=False``
+    default, asserted right below as an empty result raising ``ImportCanceled``.
+    """
+    pages = [
+        PageSpec().text(f"Página {i} com texto suficiente para contar.", 72, 100)
+        for i in range(10)
+    ]
+    path = pdf_file(pages)
+    built: list[int] = []
+
+    def progress(done: int, total: int) -> None:
+        if done > total // 2:
+            built.append(done - total // 2)
+
+    result = import_pdf(
+        path,
+        PdfImportOptions(
+            progress=progress,
+            should_cancel=lambda: len(built) >= 3,
+            keep_partial=True,
+        ),
+    )
+    assert result.report.canceled is True
+    assert result.report.pages_planned == 10
+    assert [p.index for p in result.report.pages] == [0, 1, 2]
+    assert result.report.pages_built == 3
+    assert any("cancelada" in note for note in result.report.notes)
+
+    # The complete import of the same book, for the denominator: the partial document is
+    # the head of the whole one -- three of ten pages of text, block for block.
+    whole = import_pdf(path, PdfImportOptions())
+    assert whole.report.canceled is False
+    assert [p.index for p in whole.report.pages][:3] == [0, 1, 2]
+    assert 0 < len(result.document.body) < len(whole.document.body)
+    assert [type(b).__name__ for b in result.document.body] == [
+        type(b).__name__ for b in whole.document.body[: len(result.document.body)]
+    ]
+    assert len(result.document.body) * 10 // len(whole.document.body) == 3
+
+    # The sabotage: without ``keep_partial`` the same cancel discards everything.
+    built.clear()
+    with pytest.raises(ImportCanceled):
+        import_pdf(path, PdfImportOptions(progress=progress, should_cancel=lambda: len(built) >= 3))
+
+
+def test_a_cancel_during_the_survey_returns_an_empty_document_marked_canceled(pdf_file):
+    pages = [PageSpec().text(f"Página {i}.", 72, 100) for i in range(4)]
+    path = pdf_file(pages)
+    result = import_pdf(path, PdfImportOptions(should_cancel=lambda: True, keep_partial=True))
+    assert result.report.canceled is True
+    assert result.report.pages_built == 0
+    assert result.report.pages_planned == 4
+
+
 # --------------------------------------------------------------------------- #
 # Scans, OCR, images
 # --------------------------------------------------------------------------- #

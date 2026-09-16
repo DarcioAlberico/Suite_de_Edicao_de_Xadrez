@@ -149,7 +149,13 @@ _PIECE_OF_GLYPH: Final[Mapping[str, PieceType]] = {
 
 
 class ImportCanceled(RuntimeError):  # noqa: N818 - matches ExportCanceled next door
-    """The import was stopped on request.  The partial document is discarded."""
+    """The import was stopped on request and the partial document was discarded.
+
+    Raised only when :attr:`PdfImportOptions.keep_partial` is off.  With it on
+    (OCR_UI_ROADMAP passo 17, R3.5 -- *the long operation is cancelable, with
+    real progress and a usable partial result*) ``run()`` returns the pages
+    built so far instead, and :attr:`ImportReport.canceled` says so.
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -305,6 +311,14 @@ class PdfImportOptions:
     paragraphs: ParagraphConfig = field(default_factory=ParagraphConfig)
     progress: Callable[[int, int], None] | None = None
     should_cancel: Callable[[], bool] | None = None
+    #: OCR_UI_ROADMAP passo 17 (R3.5): on cancel, return the document built so
+    #: far -- the pages already assembled, in reading order, with the report
+    #: marked ``canceled`` -- instead of raising :class:`ImportCanceled` and
+    #: throwing the work away.  A cancel during the survey pass (before any
+    #: page is built) returns an empty document, marked the same way.  Off by
+    #: default so the CLIs that catch ``ImportCanceled`` keep their contract;
+    #: the window turns it on.
+    keep_partial: bool = False
 
 
 @dataclass(slots=True)
@@ -386,10 +400,20 @@ class ImportReport:
     prose_lang_reason: str = ""
     notation_lang: str = ""
     notation_lang_reason: str = ""
+    #: OCR_UI_ROADMAP passo 17: the import was canceled and this is a partial
+    #: result.  ``pages_planned`` is how many pages were asked for; the pages
+    #: actually built are ``len(pages)``.
+    canceled: bool = False
+    pages_planned: int = 0
 
     @property
     def pages_by_source(self) -> dict[str, int]:
         return dict(Counter(p.source for p in self.pages))
+
+    @property
+    def pages_built(self) -> int:
+        """How many pages made it into the document (all of them unless canceled)."""
+        return len(self.pages)
 
     def describe_pt(self) -> str:
         c = self.counters
@@ -472,6 +496,7 @@ class PdfImporter:
         self._resources: list[Resource] = []
         self._asset_counter = 0
         self._page_reports: dict[int, PageReport] = {}
+        self._partial_entries: list[_Entry] = []
         self._ocr_service: Any = None
         self._ocr_unavailable = False
         #: The language the verdicts and the OCR use: the option, or what the
@@ -496,8 +521,23 @@ class PdfImporter:
     def run(self) -> ImportResult:
         started = time.perf_counter()
         indices = self.page_indices
-        self._survey(indices)
-        entries = self._build(indices)
+        self.report.pages_planned = len(indices)
+        try:
+            self._survey(indices)
+            entries = self._build(indices)
+        except ImportCanceled:
+            if not self.options.keep_partial:
+                raise
+            # Passo 17: the pages built before the cancel are the result.  The
+            # survey pass builds nothing, so a cancel there yields an empty
+            # document -- still marked canceled, so nobody mistakes it for a
+            # book with no pages.
+            self.report.canceled = True
+            entries = list(self._partial_entries)
+            self.report.notes.append(
+                f"Importação cancelada: {len(self.report.pages)} de "
+                f"{len(indices)} página(s) montadas ficaram no documento."
+            )
         blocks = [e for e in entries if isinstance(e, BlockDraft)]
         figure_pages = Counter(
             e.page_index for e in entries if isinstance(e, (_FigureEntry, _DiagramEntry))
@@ -649,15 +689,24 @@ class PdfImporter:
             vector_diagram_finder if self.options.detect_diagrams else None
         )
         for n, index in enumerate(indices):
-            self._check_cancel()
+            try:
+                self._check_cancel()
+            except ImportCanceled:
+                # Passo 17: close the paragraph in progress so the partial
+                # document ends on a whole block, then hand the entries over.
+                tail = builder.flush()
+                if tail is not None:
+                    entries.append(tail)
+                self._partial_entries = entries
+                raise
             started = time.perf_counter()
             page_report, page_entries = self._build_page(index, builder, finder)
             page_report.duration_ms = (time.perf_counter() - started) * 1000.0
             self.report.pages.append(page_report)
             self._page_reports[index] = page_report
             entries.extend(page_entries)
-            if n % 10 == 0:
-                self._progress(total + n, 2 * total)
+            # Passo 17: every page, not every tenth -- the rail follows the import.
+            self._progress(total + n + 1, 2 * total)
         tail = builder.flush()
         if tail is not None:
             entries.append(tail)

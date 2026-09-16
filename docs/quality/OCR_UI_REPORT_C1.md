@@ -1573,3 +1573,112 @@ pré-existentes de §15.0. Suíte `caissa` `tests/unit/ui`: 282 passed no venv p
 Tronco: `a3bf4c5` sobre `8d9b02f`. Suíte: `caissa/ui/audit/vazio.py` (novo), `contraste
 --sabotar`, `views/rotulagem.py`, este §16, a linha do roadmap. **Desfazer:** `ui/pele.PADRAO =
 CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independentes da pele).
+
+---
+
+## §17 — Passo 17: o livro como unidade — trilho de páginas, importação cancelável, percurso (2026-09-16)
+
+(Previsto em `OCR_UI_REPORT_C3.md` §2; segue no arquivo único. **Em ramo próprio do tronco:
+`passo-17-trilho`**, como Q4 pediu; a suíte recebe as partes que não mudam a janela.)
+
+### 17.0 Em uma tela
+
+- **O percurso principal fecha em 6 ações, medido**: abrir o livro → importar → primeira
+  página duvidosa → abrir o diagrama → gravar → exportar (`AUDIT.percurso`, novo; PASSOU sobre
+  `AAGAARD - Practical Chess Defence.pdf` p. 31–38, que tem 5 páginas duvidosas). Sobre o
+  Kemeri a mesma corrida dá **3 ações** porque não há dúvida a resolver (camada de texto limpa,
+  sem diagramas vetoriais) — o relatório o diz em vez de contar passos que não aconteceram.
+- **Cancelar a importação a 30 % devolve o documento com 30 % das páginas** (R3.5):
+  `PdfImportOptions.keep_partial`; pedidas 8, cancelada após 2 montadas, **3 no documento**
+  (as duas e a que estava no meio), `report.canceled=True`, o trilho com 3 páginas acesas. A
+  sabotagem do roadmap — «cancelamento que descarta o parcial» — é o comportamento antigo
+  (`keep_partial=False`, que os CLIs mantêm) e o teste a acusa: `ImportCanceled` e nada.
+- **O trilho de páginas** (`qt/trilho.py`): uma miniatura por página a 18 DPI (processo de
+  trabalho, as visíveis primeiro), número e três marcas — ▣ lidos/achados, ¶ texto, ✓ revisada
+  — com a cor da linha dizendo se há trabalho (⚠ N). Clicar vai à página; a página exibida está
+  marcada; «Primeira duvidosa» e «Exportar o livro para EPUB…» sob a lista; a importação com
+  barra e «Cancelar» no lugar de «Importar o livro». Interruptor *Ver ▸ Trilho de páginas*.
+- **Tarefa 3 (abas de diagrama → modos do painel principal) não foi feita**: é a que muda a
+  forma da janela medida em 16 ciclos e a razão de o ramo existir; fica como a próxima entrega
+  do ramo, com o crítico. Os portões da F9 rerodados com o trilho: `teclado`, `comandos`,
+  `bloqueio` **PASSOU**.
+
+### 17.1 Suíte (main)
+
+| onde | o quê |
+|---|---|
+| `ingest/pdf/importer.py` | `PdfImportOptions.keep_partial`; `run()` devolve o parcial marcado (`ImportReport.canceled`, `pages_planned`, `pages_built`); o parágrafo em curso é fechado antes de entregar; progresso **a cada página** (era a cada 10) |
+| `ui/trilho.py` (novo) | regra pura: `EstadoDaPagina`, `estados(report, decisions, page_count)`, `primeira_duvidosa`, `progresso`, `resumo_pt`. Duvidosa = região de OCR em revisão/abstida sem decisão do revisor **ou** diagrama localizado sem posição; a primeira em ordem de página |
+| `ui/views/importacao.py` (novo) | `ImportadorDoLivro(QObject)`: thread, `keep_partial=True`, `ReviewDecisions.for_pdf`, sinais `estado/progresso/pagina_montada/controles/terminou` — o desenho do `ExportadorDeLivro` |
+| `ui/audit/percurso.py` (novo) | o portão: 6 ações nomeadas por comando do catálogo, o cancelamento a 30 % e a exportação; **tudo numa pasta temporária** (estado, `labels.csv`, galeria, estudos) |
+| testes | `test_importer.py` (+2: 30 % / sabotagem; cancel na survey → vazio marcado), `test_trilho.py` (5) |
+
+### 17.2 Tronco (ramo `passo-17-trilho`, sobre `a3bf4c5`)
+
+| onde | o quê |
+|---|---|
+| `ui/trilho.py` (novo) | `MarcaDaPagina` (copia o estado da suíte por nome), `rotulo_da_pagina`, `papel_da_pagina` (ATENCAO / PRONTO_TEXTO / TEXTO_MORTO / TEXTO_PADRAO — só papéis de texto, medidos ≥ 4,57:1 sobre a lista), `dica_da_pagina` |
+| `qt/trilho.py` (novo) | `TrilhoDoLivro`: lista em `IconMode` vertical com altura de item declarada, miniaturas pelo processo de trabalho (uma por vez, visíveis primeiro, `_visiveis` pela barra e não por `indexAt`), botões do catálogo, barra de progresso, resumo |
+| `qt/importador_de_livro.py` (novo) | a guarda da suíte (como `exportador_de_livro`), a `Ponte` importador↔trilho, o registro no `BusyRegistry` (cancelável, progresso por página), `estados_do_trilho` |
+| `ui/comandos.py`, `ui/menu.py` | `importar_livro`, `cancelar_importacao` (Arquivo), `trilho` (interruptor) e `primeira_duvidosa` (Ver); todos neutros — a ênfase única continua `ler_melhor` |
+| `qt/janela.py` | o trilho à esquerda da coluna do livro; `livro = importador_de_livro.montar(...)`; quatro comandos; 1.944 → 1.983 linhas (catraca com o motivo) |
+| `ui/busy.py`, `docs/ARCHITECTURE.md` | a thread da miniatura declarada; 18 threads |
+| testes | `test_qt_trilho.py` (10), `test_qt_janela.py` (+3), `test_ui_comandos.py` (rótulos divergentes) |
+
+### 17.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --paginas 31-38 --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "%PDF%" --paginas 40-47 --saida benchmarks\reports\ui\c19     # Kemeri: 3 acoes, sem duvida
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado  --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.comandos --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+```
+
+| portão | resultado |
+|---|---|
+| `percurso` (Aagaard 31–38) | **PASSOU, 6 ações**: abrir 391 ms · importar 31,9 s (OCR em 8 páginas) · primeira duvidosa 75 ms · abrir o diagrama 1,07 s (lê a página) · gravar 0 ms · exportar 3,4 s → `percurso.epub` 1,06 MB. Cancelamento: 8 pedidas, cancelada após 2, **3 montadas** (0,38), `canceled=True`, trilho com 3 acesas. `percurso_20260916_074202.json` |
+| `percurso` (Kemeri 40–47) | PASSOU com **3 ações** — 289 páginas com estado, 0 duvidosas: os passos 3–5 não se aplicam e o relatório o declara. `percurso_20260916_073528.json` |
+| `teclado` | PASSOU em todos os arranjos com o trilho (+3 focáveis por aba: a lista e dois botões, nomeados pelo catálogo). `teclado_20260916_074039.json` |
+| `comandos` | PASSOU: 397 medidos, 388 habilitados, 0 soltos, 0 que prometem. `comandos_20260916_*.json` |
+| `bloqueio` | PASSOU com o trilho (289 itens criados na abertura, miniaturas no processo). `bloqueio_20260916_074047.json` |
+
+**Sabotagem.** A do roadmap — cancelamento que descarta o parcial — é o comportamento de
+`keep_partial=False`, afirmado em `test_importer.py::test_a_cancel_at_thirty_percent_keeps_thirty_percent_of_the_pages`
+(o mesmo cancelamento sem a opção levanta `ImportCanceled` e não devolve página nenhuma).
+
+### 17.4 O que o arnês ensinou
+
+1. **A primeira corrida do `percurso` gravou uma amostra de verdade** em `data/labels.csv` e um
+   PNG em `data/samples/` do tronco — o passo 5 é `salvar`, e a janela do arnês usava o dataset
+   padrão. Revertido à mão no mesmo minuto; o arnês passa `csv_de_rotulos`, `pasta_de_estudos`
+   e `pasta_da_galeria` para a pasta temporária, como os testes de janela. É a lição da F9-C10
+   (`estado_de_medicao`) estendida ao acervo: **um portão que escreve no acervo de quem o roda
+   não é um portão** — e `test_medicao.TestNenhumPortaoEscreveNaSessaoDeQuemORoda` só vigia o
+   estado; o dataset fica como item para o crítico.
+2. **`indexAt` não serve para saber que linhas estão à vista** numa lista com `spacing`: cai no
+   vão e responde −1; a primeira versão pedia as miniaturas 0–12 fosse qual fosse a página. A
+   conta pela barra de rolagem e pela altura uniforme é a certa.
+3. **Um item sem ícone e um com ícone medem alturas diferentes**, e `uniformItemSizes` mede o
+   primeiro: a altura do item é declarada (`ALTURA_DO_ITEM`) e a página ainda não rasterizada
+   tem uma folha lisa na superfície **elevada** — na afundada ela era invisível (fotografado).
+4. Sobre o Kemeri o importador não roda OCR: as 289 páginas têm camada de texto válida e nenhum
+   diagrama vetorial, então nada é duvidoso. O trilho diz «289 página(s) lida(s) · nada para
+   rever», que é verdade — mas é o livro errado para medir o percurso; por isso o Aagaard.
+
+### 17.5 O que o ramo ainda deve
+
+- **Tarefa 3**: Resultado, Estudo, Revisão e Texto como **modos** do painel principal, com as
+  abas de acervo (Dataset, Galeria, Rotulagem, Revisão de texto) mantidas. Muda a janela medida
+  em 16 ciclos; exige rerodar os cinco portões da F9 e o crítico visual — é o critério para o
+  ramo se fundir.
+- O trilho não persiste a visibilidade no `AppState` (sem campo novo neste passo).
+- A miniatura não se atualiza quando a página é anotada/salva (só com a importação).
+
+### 17.6 Saída
+
+Tronco: ramo `passo-17-trilho` (commit próprio sobre `a3bf4c5`), **não fundido**. Suíte:
+`ingest/pdf/importer.py`, `ui/trilho.py`, `ui/views/importacao.py`, `ui/audit/percurso.py`,
+testes, este §17 e a linha do roadmap. **Desfazer:** o ramo não se funde; na suíte,
+`keep_partial` é opcional e desligado por padrão.

@@ -1,0 +1,167 @@
+"""A importação do livro como tarefa da janela (OCR_UI_ROADMAP passo 17, R3.5).
+
+Progresso por página, cancelável, parcial aproveitável.
+
+**O mesmo desenho do exportador** (:class:`caissa.ui.views.exportacao.ExportadorDeLivro`):
+``estado`` fala pela linha de status, ``progresso`` alimenta uma barra determinada,
+``controles`` tranca quem o montou, ``terminou`` entrega o
+:class:`~caissa.ingest.pdf.importer.ImportResult` -- inteiro ou **parcial**. A diferença que
+importa é a última: a importação corre com ``keep_partial=True``, então cancelar não descarta
+nada; o que já foi montado volta como documento, e o relatório diz ``canceled``. É esse
+documento que o trilho pinta e que *Exportar* grava, sem reimportar.
+
+``pagina_montada`` sai a cada página construída, com o índice dela: o trilho acende a miniatura
+enquanto a importação anda, em vez de esperar o fim.
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+from pathlib import Path
+from typing import Any
+
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QMessageBox, QWidget
+
+from caissa.ingest.pdf import PdfImportOptions, import_pdf
+from caissa.ingest.pdf.importer import ImportResult
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["ImportadorDoLivro"]
+
+
+class ImportadorDoLivro(QObject):
+    """Roda ``import_pdf`` numa thread, página a página, e guarda o resultado para o trilho."""
+
+    estado = pyqtSignal(str)
+    progresso = pyqtSignal(int, int)
+    pagina_montada = pyqtSignal(int)
+    controles = pyqtSignal(bool)
+    terminou = pyqtSignal(object)
+    """O :class:`ImportResult`, inteiro ou parcial (``result.report.canceled``)."""
+
+    _acabou = pyqtSignal(object)
+    _falhou = pyqtSignal(str)
+    _avancou = pyqtSignal(int, int)
+
+    def __init__(self, pai: QWidget | None) -> None:
+        super().__init__(pai)
+        self._pai = pai
+        self._cancelar: threading.Event | None = None
+        self._rodando = False
+        self._indices: tuple[int, ...] = ()
+        self._montadas = 0
+        self.resultado: ImportResult | None = None
+        """A última importação que terminou (inteira ou parcial). ``None`` antes da primeira."""
+        self.pdf_path: Path | None = None
+        self._acabou.connect(self._concluiu)
+        self._falhou.connect(self._deu_errado)
+        self._avancou.connect(self._mostrar_progresso)
+
+    @property
+    def rodando(self) -> bool:
+        return self._rodando
+
+    def comecar(
+        self,
+        pdf_path: Path | None,
+        page_count: int,
+        *,
+        paginas: tuple[int, ...] | None = None,
+        enable_ocr: bool = True,
+    ) -> bool:
+        """Começa a importar. ``False`` se não havia PDF ou já rodava."""
+        if pdf_path is None:
+            self.estado.emit("Abra um PDF antes de importar o livro.")
+            return False
+        if self._rodando:
+            self.estado.emit("Já existe uma importação em execução.")
+            return False
+        self._indices = tuple(paginas) if paginas is not None else tuple(range(page_count))
+        self._montadas = 0
+        self._rodando = True
+        self._cancelar = threading.Event()
+        self.pdf_path = Path(pdf_path)
+        self.controles.emit(False)
+        self.estado.emit(f"Importando {self.pdf_path.name} ({len(self._indices)} página(s))…")
+        threading.Thread(
+            target=self._trabalho,
+            args=(self.pdf_path, self._indices, enable_ocr, self._cancelar),
+            daemon=True,
+        ).start()
+        return True
+
+    def cancelar(self) -> None:
+        if self._cancelar is None:
+            return
+        self._cancelar.set()
+        self.estado.emit("Cancelando a importação… o que já foi lido fica.")
+
+    def _trabalho(
+        self,
+        pdf_path: Path,
+        indices: tuple[int, ...],
+        enable_ocr: bool,
+        cancelar: threading.Event,
+    ) -> None:
+        try:
+            from caissa.ocr.review import ReviewDecisions
+
+            resultado = import_pdf(
+                pdf_path,
+                PdfImportOptions(
+                    pages=indices,
+                    enable_ocr=enable_ocr,
+                    progress=lambda feito, total: self._avancou.emit(feito, total),
+                    should_cancel=cancelar.is_set,
+                    keep_partial=True,
+                    review_decisions=ReviewDecisions.for_pdf(pdf_path),
+                ),
+            )
+        except Exception as exc:  # a thread não pode derrubar a janela
+            logger.exception("A importação de %s falhou.", pdf_path)
+            self._falhou.emit(str(exc))
+            return
+        self._acabou.emit(resultado)
+
+    def _mostrar_progresso(self, feito: int, total: int) -> None:
+        self.progresso.emit(feito, total)
+        metade = total // 2
+        if feito <= metade:
+            self.estado.emit(f"Importando… lendo a camada de texto ({feito}/{metade}).")
+            return
+        # A segunda metade é a montagem, uma página por passo (ver `PdfImporter._build`).
+        montadas = feito - metade
+        while self._montadas < montadas and self._montadas < len(self._indices):
+            self.pagina_montada.emit(self._indices[self._montadas])
+            self._montadas += 1
+        self.estado.emit(f"Importando… montando as páginas ({montadas}/{metade}).")
+
+    def _concluiu(self, resultado: Any) -> None:
+        self._encerrar()
+        if not isinstance(resultado, ImportResult):  # pragma: no cover - o sinal é object
+            return
+        self.resultado = resultado
+        relatorio = resultado.report
+        if relatorio.canceled:
+            self.estado.emit(
+                f"Importação cancelada: {relatorio.pages_built} de {relatorio.pages_planned} "
+                "página(s) ficaram lidas e podem ser exportadas."
+            )
+        else:
+            self.estado.emit(f"Importação concluída. {relatorio.describe_pt()}")
+        self.terminou.emit(resultado)
+
+    def _deu_errado(self, detalhe: str) -> None:
+        self._encerrar()
+        self.estado.emit("Falha na importação do livro.")
+        QMessageBox.critical(
+            self._pai, "Importar livro", f"Não foi possível importar o livro:\n{detalhe}"
+        )
+
+    def _encerrar(self) -> None:
+        self._rodando = False
+        self._cancelar = None
+        self.controles.emit(True)

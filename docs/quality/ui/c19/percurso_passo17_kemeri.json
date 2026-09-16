@@ -1,0 +1,50 @@
+{
+  "portao": "OCR_UI passo 17 -- abrir → primeira duvidosa → corrigir → exportar em <= 6 acoes; cancelar a 30 % devolve 30 % das paginas",
+  "quando": "2026-09-16T07:35:28+00:00",
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+    "paginas": "40-47"
+  },
+  "acoes": [
+    {
+      "numero": 1,
+      "nome": "abrir o livro",
+      "comando": "abrir_pdf",
+      "espera_ms": 528.8169999985257,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "importar o livro",
+      "comando": "importar_livro",
+      "espera_ms": 1938.975199998822,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "exportar o livro",
+      "comando": "exportar_epub",
+      "espera_ms": 4330.841300004977,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "cancelamento": {
+    "pedidas": 8,
+    "cancelada_apos_montar": 2,
+    "montadas_no_documento": 3,
+    "canceled": true,
+    "fracao": 0.38,
+    "paginas_do_trilho_montadas": 3,
+    "ok": true
+  },
+  "exportado": "percurso.epub (23229506 bytes)",
+  "notas": [
+    "289 página(s) com estado no trilho; duvidosas: []",
+    "nenhuma página duvidosa: o passo 3 não tem para onde ir",
+    "a página duvidosa não tem caixa de diagrama: os passos 4 e 5 não se aplicam"
+  ],
+  "veredito": "PASSOU"
+}
