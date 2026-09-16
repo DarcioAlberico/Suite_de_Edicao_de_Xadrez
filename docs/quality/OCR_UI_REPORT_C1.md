@@ -1689,8 +1689,8 @@ set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
 
 ### 17.5 O que o ramo ainda deve
 
-- **O crítico visual** (§11.4) sobre a janela com o trilho e os modos — é o critério que falta
-  para o ramo se fundir (Q4). A tarefa 3 está feita (§17.7).
+- **O crítico visual** (§11.4) sobre a janela com o trilho e os modos. O ramo foi fundido em
+  `4d8c894` pelo critério de Q4 (portões e `percurso` verdes); o crítico revisa o fundido.
 - O trilho não persiste a visibilidade no `AppState` (sem campo novo neste passo).
 - A miniatura não se atualiza quando a página é anotada/salva (só com a importação).
 - A barra de modos é um grupo de botões: `Tab` para no modo à frente e as **setas** andam entre
@@ -1700,7 +1700,9 @@ set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
 ### 17.6 Saída
 
 Tronco: ramo `passo-17-trilho`, commits `10aac70` (tarefas 1, 2, 4) e `faf0b1a` (tarefa 3)
-sobre `a3bf4c5`, **não fundido** (o checkout volta a `religa-as-decisoes-orfas`). Suíte:
+sobre `a3bf4c5`. **Fundido em `4d8c894`** (2026-09-16, `git merge --no-ff`) pelo critério que Q4
+fixou — «só se funde com os portões e o `AUDIT.percurso` verdes», que `c20` cumpriu; desfazer é
+`git revert -m 1 4d8c894`. O crítico visual (C3) revisa o resultado fundido. Suíte:
 `ingest/pdf/importer.py`, `ui/trilho.py`, `ui/views/importacao.py`, `ui/audit/percurso.py`,
 `ui/audit/capture.py` (`areas_de_trabalho`), `ui/audit/teclado.py` (a régua do grupo), os laços
 de `teclado`/`texto_pintado`/`execucao`/`capture`, testes, este §17 e a linha do roadmap.
@@ -1748,3 +1750,137 @@ Num tronco anterior ao passo o helper cai para "cada aba é uma área".
 3. **Nenhuma medida da F9 piorou**: contraste 0 reprovados, texto pintado 0 cobertos/cortados,
    bloqueio pior 13,5 ms, quadros ≥ 430 fps, comandos 0 soltos — e o `percurso` continua em 6
    ações. A barra de modos custou uma linha de botões (≈ 30 px) ao painel; a janela cabe em 768.
+
+## §18 — Passo 13: editor de posição com o recorte e sobreposição numerada (2026-09-16)
+
+### 18.0 Em uma tela
+
+- **Corrigir uma casa errada leva 3 ações, sem zoom na página — medido** (`AUDIT.percurso
+  --fluxo casa`, novo fluxo do instrumento do passo 17): clicar a casa **no recorte** → escolher
+  a peça na paleta → aplicar no tabuleiro. PASSOU sobre o Kemeri p. 80 (e2: dama branca → dama
+  preta) e sobre o Aagaard p. 31 (f1: torre branca → bispo branco). A sabotagem
+  (`--sabotar sem_sincronia`, o clique do recorte não chega ao tabuleiro) custa a ação a mais
+  — clicar a casa de novo, no tabuleiro — e o portão **REPROVA com 4**.
+- **O recorte do diagrama ao lado do tabuleiro** (U1, SPEC §10.4): o tabuleiro retificado que o
+  classificador leu (`board_rgb`), ampliado, num divisor com o tabuleiro editável; os dois
+  quadrados saem do mesmo tamanho em qualquer largura (pisos iguais, folga 1:1). A casa sob o
+  ponteiro e a selecionada se espelham nos dois; a dica de qualquer casa diz as **três leituras**
+  e a **margem**; um clique no recorte é o gesto inteiro do tabuleiro (`pressionar`: pinta com
+  pincel, seleciona sem). O recorte é focável e nomeado: setas andam, `Enter` clica.
+- **Âmbar por margem, ligado por padrão.** A tinta de incerteza passou a seguir a margem entre a
+  primeira e a segunda leitura (`LIMIAR_DE_MARGEM = 0,5`), na mesma rampa do produto; sem matriz
+  (fila, dataset) vale a régua antiga. A caixa virou «Esconder incerteza» e nasce desmarcada;
+  `AppState.show_heatmap` continua sendo o que se guarda (é o inverso dela).
+- **Caixas da página com dois estados a mais**: «duvidoso» (a leitura hesitou em alguma casa;
+  âmbar, `?`) e «corrigido» (correção no editor ainda não gravada; `✎`), além de lido, pronto
+  e dispensado — regra em `page_overlay.estado_da_caixa`, com a precedência salvo > confirmado >
+  corrigido > duvidoso > lido; o «corrigido» é recarimbado a cada edição e desfazer o devolve a
+  lido. **Vazio desenhado**: sem diagrama o recorte mostra uma moldura tracejada com a frase.
+- **O que o âmbar não é**: p(exato) do diagrama. Isso é o passo 8, bloqueado pela população
+  (§4); o âmbar diz «aqui o modelo hesitou», e a dica diz entre o quê.
+- Portões da F9 rerodados (`c21`): `teclado` (o recorte entra na volta do Tab, 0 sem nome),
+  `contraste`, `texto_pintado`, `bloqueio` (abrir PDF 7,0 ms ≤ 214,5), `quadros` (≥ 413 fps),
+  `comandos`, `percurso --fluxo livro` (6 ações) — **todos PASSOU**.
+
+### 18.1 Tronco (`religa-as-decisoes-orfas`, depois de fundir o ramo `passo-17-trilho` em `4d8c894`)
+
+| onde | o quê |
+|---|---|
+| `ui/recorte_do_diagrama.py` (novo, sem toolkit) | `casa_em` / `retangulo_da_casa` (casa ↔ pixel, com o giro de 180° de `RecognizedDiagram.rotation`), `alternativas` (top-3), `margem`/`margens`, `casas_ambar`, `tinta_do_diagrama` (uma `Tinta` para o tabuleiro e o recorte: por margem com matriz, pela confiança sem), `e_duvidoso`, `dica_da_casa` («e7 · dama branca 0,600 · dama preta 0,350 · … · margem 0,25») |
+| `qt/painel_de_recorte.py` (novo) | `PainelDeRecorte`: o recorte com fio neutro de 1 px, contorno das casas em hesitação na rampa de calor (contorno e não tinta: o pixel impresso é o que se veio ver), anéis de seleção e de ponteiro, dica por casa, teclado (setas, `Espaço`/`Enter`), vazio desenhado; `sizeHint` = 240 (o piso do tabuleiro) |
+| `qt/tabuleiro_editavel.py` | `casa_apontada` (mouse tracking ligado), `apontar`, `selecionar_casa`, `pressionar` (o clique de um espelho), `definir_probabilidades`, dica por casa, anel tracejado da casa apontada |
+| `qt/painel_de_resultado.py` | o divisor recorte ∥ tabuleiro (1:1 sobre pisos iguais), a fiação nos dois sentidos, `ligar_recorte` (a costura da sabotagem), `mudou` (sinal), `mostrar_incerteza` (propriedade), tinta por margem, «Esconder incerteza», legenda numa linha, piso de 1 px na lista e nos detalhes |
+| `ui/page_overlay.py`, `qt/visor.py` | `DiagramBox.doubtful`/`.edited`, estados `DUVIDOSO`/`CORRIGIDO` com traço e glifo próprios (assinatura injetiva mantida; `pronto` continua o traço mais forte), `mark_edited`, `boxes_from_diagrams` decide `doubtful`; cores `ATENCAO`/`CORRIGIDO` no visor |
+| `ui/editor_model.py` | `hand_edited_indices()` — a diferença de agora entre leitura e tela, e não a marca `edited_by_hand` |
+| `qt/janela.py` | `_publicar_caixas` carimba `mark_edited` quando o editor mostra a página; `_recarimbar_caixas` religado a `painel.mudou`; 1.967 → 1.979 linhas (catraca com o motivo) |
+| `ui/strings.py` | `ESCONDER_INCERTEZA`; `resumo_da_legenda` / `LIMITE_DA_LEGENDA` (ver 18.3 item 2) |
+| testes | `test_ui_recorte_do_diagrama.py` (18), `test_qt_painel_de_recorte.py` (12), `test_qt_painel_de_resultado.py` (+9: a fiação, a sabotagem, a tinta, a caixa), `test_page_overlay.py` (+3), `test_editor_model.py` (+1, e os seis módulos de `ui/` sem Tk registrados em `SEM_TKINTER` — o teste estava vermelho desde `8b61a3e`), `test_qt_janela.py` (+1: lido → corrigido → lido → pronto). Suíte do tronco: 4.441 passaram |
+
+### 18.2 Suíte (main)
+
+| onde | o quê |
+|---|---|
+| `ui/audit/percurso.py` | `--fluxo casa`: preparação (abrir, ir à página, ler pelo clique na caixa — cronometrada, não conta) e as três ações como **cliques de mouse de verdade** (`QTest.mouseClick`) nos widgets nomeados; a casa é a ocupada de menor margem (ou de menor confiança) do primeiro diagrama, a peça é a segunda leitura; `--sabotar sem_sincronia`; o relatório diz a casa, a leitura, a peça, o zoom antes/depois, se a caixa ficou «corrigido» e se o recorte é focável. `--fluxo livro` é o do passo 17, intacto |
+
+### 18.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "%PDF%" --pagina 80 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "%PDF%" --pagina 80 --sabotar sem_sincronia --saida benchmarks\reports\ui\c21   # tem de reprovar
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --pagina 31 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --paginas 31-38 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado  --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.comandos --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.texto_pintado --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.quadros  --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+```
+
+| portão | resultado |
+|---|---|
+| `percurso --fluxo casa` (Kemeri p. 80) | **PASSOU, 3 ações**: clicar e2 no recorte (selecionada no tabuleiro) · dama preta na paleta · aplicar; sem zoom (0,402 antes e depois, enquadramento à largura); a caixa da página ficou «corrigido»; recorte focável. Preparação: abrir 459 ms · página 493 ms · ler 2,1 s. `percurso_casa_20260916_115628.json` |
+| `percurso --fluxo casa` (Aagaard p. 31) | PASSOU, 3 ações (f1: torre branca → bispo branco). `percurso_casa_20260916_115608.json` |
+| sabotagem `sem_sincronia` | **REPROVOU, 4 ações**: a 2.ª é «clicar a casa e2 no tabuleiro (o recorte não a selecionou)». `percurso_casa_sabotado_20260916_115637.json` |
+| `percurso --fluxo livro` (Aagaard 31–38) | PASSOU, 6 ações (importar 31,6 s; exportou 1,06 MB; cancelamento 3/8). `percurso_20260916_115521.json` |
+| `teclado` | PASSOU nos 6 arranjos; Resultado 35 focáveis na Foco (era 34: o recorte), 0 sem nome. `teclado_20260916_115238.json` |
+| `contraste` | PASSOU: 0 reprovados nas duas polaridades. `contraste_20260916_115323.json` |
+| `texto_pintado` | PASSOU: 828 medidos, 0 cobertos, 0 cortados. `texto_pintado_20260916_115323.json` |
+| `bloqueio` | PASSOU: abrir PDF 7,0 ms (o passo pedia ≤ 214,5 e ≤ 7 operações fora do visor: 0). `bloqueio_20260916_115331.json` |
+| `quadros` | PASSOU: pan 627 · zoom 414 · juntos 447 fps @ p95 (o passo pedia ≥ 55). `fps_20260916_115334.json` |
+| `comandos` | PASSOU: 397 medidos, 0 soltos, 0 que prometem. `comandos_20260916_115253.json` |
+| retratos | `c21/retratos/recorte_foco_{1366x768,1440x900,1920x1080}.png`: o recorte e o tabuleiro do mesmo tamanho (242/240 a 1366; 379/436 a 1920), a casa apontada tracejada nos dois, a selecionada cheia |
+
+### 18.4 O que o arnês ensinou
+
+1. **A primeira corrida do fluxo `casa` esperou 300 s por uma página sem diagrama.** O Kemeri
+   p. 41 (a página dos outros portões) não tem caixa; o clique na caixa 0 lia a página, a
+   leitura terminava em `NoBoardDetectedError` e a condição «itens > 0» nunca vinha. O
+   instrumento passou a esperar «a leitura terminou» (o adiamento do duplo clique inativo e a
+   `Tarefa` zerada) e a recusar a página sem caixa com a frase certa. A página do portão é a 80
+   (a única do Kemeri no conjunto de campo com diagrama), e o Aagaard p. 31 é a segunda amostra.
+2. **A legenda inteira forçava a janela a 1.323 px de altura.** O rótulo de detalhes escrevia
+   `Legenda: {caption}` com o parágrafo de análise inteiro (dezenove linhas no Kemeri p. 80), e
+   um `QLabel` que quebra linha pede a altura de todas como **mínimo** — a janela deixava de caber
+   em 768 na primeira página lida com legenda longa. Defeito anterior ao passo, invisível para
+   os portões porque nenhum deles lia uma página com legenda; a legenda passou a uma linha
+   (`strings.resumo_da_legenda`, 120 caracteres) e a lista de diagramas e o parágrafo ganharam
+   piso de 1 px — o painel com um diagrama lido pede 541 px em vez de 697, e a janela **cabe em
+   768 com página lida** (mínimo 697 na Foco).
+3. **Empilhar não serve.** A primeira versão punha o recorte **acima** do tabuleiro quando o
+   painel era mais alto que largo; o piso de altura do empilhado forçava a janela acima de 768,
+   e a janela alta fazia o painel parecer estreito — um laço que se fecha sozinho. Lado a lado, o
+   piso de altura não muda, e a 1366 × 768 o tabuleiro continua com os ~240–300 px que a altura
+   já lhe dava.
+4. **Pisos iguais, folga 1:1.** Com o recorte pedindo o mínimo (160) o divisor lhe dava 175 px ao
+   lado de um tabuleiro de 436 a 1920 — uma miniatura. Pedir 240 (o piso do tabuleiro) faz a
+   folga se repartir ao meio sobre o mesmo piso, e os dois saem iguais em qualquer largura.
+5. **Uma casa vazia não se seleciona** — nem no tabuleiro nem no recorte (`BoardModel.press`):
+   o fluxo `casa → peça → aplicar` é o de uma peça lida como outra, e o instrumento escolhe a
+   casa entre as ocupadas. Para uma casa vazia o caminho é `peça → casa` (2 ações), e o mesmo
+   clique no recorte o serve.
+6. **`test_editor_model.SemTkinterTests` estava vermelho desde o WIP da outra sessão**
+   (`8b61a3e`): quatro módulos de `ui/` sem Tk fora do registro, mais o `trilho.py` do passo 17.
+   Os seis entraram no registro com a frase de cada um; o teste voltou a vigiar.
+
+### 18.5 O que fica
+
+- **O âmbar significa hesitação, não p(exato)**: o passo 8 continua bloqueado pela população do
+  conjunto de campo (0b, humano). Quando ele entrar, `tinta_do_diagrama` é o único lugar a mudar.
+- O divisor recorte ∥ tabuleiro não é persistido no `AppState` (sem campo novo neste passo).
+- A 1366 × 768 com página lida a lista de diagramas cede primeiro (1 px): o número do diagrama
+  continua no seletor e nas caixas da página. É o preço de caber; o crítico visual decide se
+  vale.
+- **Crítico visual (C3)** sobre os passos 13, 16 e 17: é papel do crítico (`CRITIC_CHARTER.md`),
+  às cegas contra Affinity/Resolve/Chessbase; o material está em `benchmarks/reports/ui/c18`,
+  `c20` e `c21/retratos`.
+
+### 18.6 Saída
+
+Tronco: `religa-as-decisoes-orfas`, commit `790b8c8` (sobre `4d8c894`, a fusão do ramo do
+passo 17 pelo critério de Q4 — portões e `percurso` verdes). Suíte: `ui/audit/percurso.py`
+(`--fluxo casa`), este §18, a linha do roadmap, cópias em `docs/quality/ui/c21`. **Desfazer:** o
+divisor é um widget do painel (`PainelDeResultado.divisor`); a tinta volta à confiança trocando
+`tinta_do_diagrama` pela chamada antiga; os dois estados novos das caixas só aparecem com
+`doubtful`/`edited` marcados.
