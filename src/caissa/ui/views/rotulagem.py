@@ -44,6 +44,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
+    QFrame,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsScene,
@@ -60,6 +61,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QSplitter,
     QTableWidget,
@@ -575,7 +577,19 @@ class PainelDeRotulagem(QWidget):
         esq.addWidget(self.visor, 1)
         corpo.addWidget(esquerda)
 
-        direita = QWidget(corpo)
+        # The card, its buttons and the table live inside a scroll area (OCR_UI passo 16):
+        # stacked, they asked 496 px of minimum height, which put the whole window at 827 px
+        # and made it refuse a 1366x768 screen -- the declared floor of the product. Inside a
+        # scroll area the minimum is two lines; the form scrolls when the window is short and
+        # fills the pane when it is not (`setWidgetResizable`).
+        rolagem = QScrollArea(corpo)
+        rolagem.setWidgetResizable(True)
+        rolagem.setFrameShape(QFrame.Shape.NoFrame)
+        # The frame is not a control: Tab visits the fields inside it. Without this the
+        # `teclado` gate counts one focusable widget with neither name nor role.
+        rolagem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        direita = QWidget(rolagem)
+        rolagem.setWidget(direita)
         dir_ = QVBoxLayout(direita)
         dir_.setContentsMargins(4, 0, 0, 0)
         # The card is shared with the text-review window (passo 14); the
@@ -619,7 +633,7 @@ class PainelDeRotulagem(QWidget):
         self.table.setAccessibleName("Linhas da página")
         self.table.itemSelectionChanged.connect(self._on_table_select)
         dir_.addWidget(self.table, 1)
-        corpo.addWidget(direita)
+        corpo.addWidget(rolagem)
         corpo.setStretchFactor(0, 3)
         corpo.setStretchFactor(1, 2)
         corpo.setSizes([560, 440])

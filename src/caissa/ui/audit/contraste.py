@@ -1087,11 +1087,37 @@ class Pele:
         return not self.reprovados()
 
 
-def medir(*, caminho_do_tronco: Path = TRONCO, densidades: Iterable[str] = ()) -> dict[str, Any]:
-    """Mede as duas peles inteiras e devolve o relatório. É o que o teste e o CLI chamam."""
+SABOTAGEM_ESCURA = "#787d85"
+"""`TEXTO_SECUNDARIO` a **3,90:1** sobre a superfície padrão do cromo escuro (`#1f2124`).
+
+É a sabotagem do passo 16 da OCR_UI: um par de texto abaixo do piso AA de 4,5:1, plantado só
+na pele escura. O portão tem de acusar exatamente um par a mais na escura e nenhum na clara;
+se não acusar, ele não está lendo a folha da Foco."""
+
+
+def medir(
+    *, caminho_do_tronco: Path = TRONCO, densidades: Iterable[str] = (), sabotar: bool = False
+) -> dict[str, Any]:
+    """Mede as duas peles inteiras e devolve o relatório. É o que o teste e o CLI chamam.
+
+    `sabotar` troca `TEXTO_SECUNDARIO` do cromo escuro por `SABOTAGEM_ESCURA` só durante a
+    medição -- a tabela de tokens é restaurada antes de devolver, porque um portão que deixa o
+    produto sabotado é pior que um que não mede.
+    """
     _preparar(caminho_do_tronco)
     from chess_diagram_ocr.ui import folha_de_estilo as folha_pura
     from chess_diagram_ocr.ui import pele as peles
+    from chess_diagram_ocr.ui import tokens as tokens_do_tronco
+
+    if sabotar:
+        original = tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO]
+        tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO] = SABOTAGEM_ESCURA
+        try:
+            relatorio = medir(caminho_do_tronco=caminho_do_tronco, densidades=densidades)
+        finally:
+            tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO] = original
+        relatorio["sabotagem"] = f"TEXTO_SECUNDARIO do cromo escuro = {SABOTAGEM_ESCURA} (3,90:1)"
+        return relatorio
 
     lista = list(densidades) or [peles.CONFORTAVEL, peles.COMPACTA]
     resultados: list[Pele] = []
@@ -1217,16 +1243,21 @@ def main(argv: list[str] | None = None) -> int:
         help="onde gravar o relatorio. Obrigatorio: este portao nao escolhe pasta por voce.",
     )
     parser.add_argument("--todos", action="store_true", help="lista todos os pares, não só os reprovados")
+    parser.add_argument(
+        "--sabotar",
+        action="store_true",
+        help="planta um par de texto a 3,9:1 na pele escura; o portao tem de acusar exatamente ele",
+    )
     args = parser.parse_args(argv)
 
-    relatorio = medir(caminho_do_tronco=args.tronco)
+    relatorio = medir(caminho_do_tronco=args.tronco, sabotar=args.sabotar)
     args.saida.mkdir(parents=True, exist_ok=True)
     # **Carimbado, e o motivo é uma perda de evidência real.** `contraste.json` era um nome
     # fixo: rodar o portão apagava a medição do ciclo anterior sem aviso. O crítico do ciclo 5
     # caiu nisso na sessão dele e declarou; o mesmo defeito, na família de instrumentos que
     # grava PNG, já tinha destruído 17 capturas em dois ciclos. `bloqueio_*.json`,
     # `fps_*.json` e `progresso_*.json` sempre carimbaram -- este passou a carimbar também.
-    alvo = args.saida / f"contraste_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
+    alvo = args.saida / f"contraste_{'sabotagem_' if args.sabotar else ''}{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
     alvo.write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(tabela(relatorio))

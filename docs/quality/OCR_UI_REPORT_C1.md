@@ -1456,3 +1456,120 @@ Tronco: `8d9b02f` sobre `8b61a3e` (os 25 caminhos de 15.2). Suíte: este §15, a
 roadmap, `caissa/ui/audit/*` e `test_medicao.py`; relatórios em `benchmarks/reports/ui/c17/`.
 **Desfazer:** `qt/painel_do_pdf.RASTERIZAR_AO_FUNDO = False` (o visor volta ao que era: tudo em
 linha) — o `bloqueio` volta a reprovar nas 7, que é a sabotagem.
+
+---
+
+## §16 — Passo 16: Foco como padrão e polimento (Q3) (2026-09-16)
+
+(O roadmap previa este relatório em `OCR_UI_REPORT_C3.md` §1; segue no arquivo único.)
+
+### 16.0 Em uma tela
+
+- **Foco é a pele de fábrica** (`ui/pele.PADRAO = FOCO`, decisão Q3 do usuário em 2026-09-16).
+  As três continuam em *Ver ▸ Aparência* (R3.6); Clássica passa a segunda. A escura é
+  **projetada**, como a SPEC §10.2 pede: `ui/tokens.NO_CROMO_ESCURO` tem valor próprio por papel
+  de cromo, matiz preservada ao grau, elevação invertida — conferido, não refeito.
+- **A janela voltou a caber em 1366×768, nas três peles.** Achado do passo: o piso da janela
+  estava em **827 px na Foco** (793 na Clássica, 743 na Fita) — acima dos 768 que a F9-C2 tinha
+  devolvido ao produto — por duas colunas: os dez cabeçalhos do PGN empilhados na Galeria
+  (531 px) e o cartão da Rotulagem (496 px). Ambas rolam agora; piso **674 / 640 / 640**. Com
+  a Foco como padrão, era o defeito que mais gente veria.
+- `contraste` PASSOU nas duas polaridades (0 reprovados em 220 pares sob portão × 2), sabotagem
+  acusa; `teclado` PASSOU em todos os arranjos; `texto_pintado` PASSOU.
+- **`vazio` a 4K REPROVOU: 6 de 8 painéis acima de 200 kpx, antes e depois, nas três peles.**
+  O instrumento é novo (`caissa.ui.audit.vazio`, régua do crítico do ciclo 5/9 promovida ao
+  arnês) e o número reproduz o do ciclo 15 (Revisão 3 104,2 kpx). O que ele mede é a ausência
+  de dados, não o leiaute — ver 16.4. Fica vermelho e declarado.
+- Polimento: contadores tabulares (`tnum`, propriedade `tipografia.PROPRIEDADE_TABULAR` em
+  página / total / zoom / rodapé), contorno neutro na página do visor e no recorte da Galeria,
+  legenda da Galeria com 3–8 linhas em vez de 8 cravadas. Raio concêntrico e foco visível já
+  estavam na folha (F9-C2: `raio - 1` no indicador, `:focus` 2 px) — conferidos.
+- **O crítico visual às cegas (SPEC §11.4) não foi feito**: é papel do crítico, e o material
+  está pronto — 96 retratos `depois16_*` (3 peles × 4 tamanhos × 8 abas) e as pranchas de
+  controles (`amostrario_*.png`, `estados_*.png`) em `benchmarks/reports/ui/c18/`.
+
+### 16.1 Padrão de fábrica
+
+`ui/pele.py`: `PADRAO = FOCO`; `valida` e `escolhida` caem nele; `PELES` reordenada (Foco,
+Clássica, Fita) porque a regra 1 da tabela é "a primeira é o padrão". `AppState.skin` continua
+vazio para "nunca escolhida" — o padrão mora num lugar só. Testes: `test_ui_pele.py` (padrão =
+Foco, primeira = padrão, inválida cai no padrão, Clássica continua registrada),
+`test_qt_janela.py` (o menu abre com o padrão marcado; os dois testes da Clássica pedem-na por
+nome). `test_qt_menu.py` e `test_strings.py` sem mudança.
+
+### 16.2 O piso de 768, medido
+
+`scratchpad/minalt*.py` (janela Foco a 1366×768, `minimumSizeHint` por aba):
+
+| aba | antes | depois | o que mudou |
+|---|---:|---:|---|
+| Galeria | 674 | **516** | a lateral «Cabeçalhos do PGN» (10 campos + 5 botões = 531 px) entra numa `QScrollArea` de largura fixa; a legenda passa de 8 linhas cravadas a mínimo 3 / máximo 8 (`LINHAS_MINIMAS_DA_LEGENDA`) |
+| Rotulagem (suíte) | 702 | **266** | cartão + botões + tabela numa `QScrollArea` dentro do divisor vertical |
+| Resultado | 549 | 549 | passa a ser a mais alta |
+| Revisão de texto | 501 | 501 | — |
+| janela Foco / Clássica / Fita | 827 / 793 / 743 | **674 / 640 / 640** | `capture` deixou de avisar «pediu 1366x768, ficou …» nas 96 capturas |
+
+As duas áreas de rolagem têm `NoFocus`: sem isso o `teclado` contou um focável sem nome nem papel
+em cada aba (medido e corrigido antes do PASSOU).
+
+### 16.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c18            # contraste_20260916_064651.json
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c18 --sabotar  # contraste_sabotagem_20260916_063027.json
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado --pdf "%PDF%" --saida benchmarks\reports\ui\c18        # teclado_20260916_065028.json
+.venv\Scripts\python.exe -m caissa.ui.audit.texto_pintado --pdf "%PDF%" --saida benchmarks\reports\ui\c18  # texto_pintado_20260916_064740.json
+.venv\Scripts\python.exe -m caissa.ui.audit.capture --saida benchmarks\reports\ui\c18 --marca depois16 --pdf "%PDF%"   # 96 PNG
+.venv\Scripts\python.exe -m caissa.ui.audit.vazio --capturas benchmarks\reports\ui\c18 --marca depois16 --saida benchmarks\reports\ui\c18
+.venv\Scripts\python.exe -m caissa.ui.audit.amostrario --saida benchmarks\reports\ui\c18 [--estados]
+```
+
+| portão | resultado |
+|---|---|
+| `contraste` | claro 300 pares / 220 sob portão / **0 reprovados**; escuro idem; menor folga 3,03:1 (polegar da barra, piso 3,0). **PASSOU** |
+| `contraste --sabotar` | `TEXTO_SECUNDARIO` do cromo escuro a **3,90:1** (`#787d85`): escuro **12 reprovados**, todos do token plantado (a dica de campo em 12 lugares); claro 0. Acusa. O roadmap dizia «acusar 1»: um token são doze pares, e o portão acusa os doze |
+| `teclado` | **PASSOU** em todos os arranjos (3 peles × 2 densidades, 8 abas + 13 diálogos) |
+| `texto_pintado` | **PASSOU** |
+| `vazio` (novo) | **REPROVOU** — 6 de 8 acima de 200 kpx em cada pele, antes (3 104,2 Revisão) e depois (3 036,0). Dataset e Resultado passam |
+| `quadros` / `bloqueio` | do passo 15, sem mudança de visor além do contorno |
+
+Cópias em `docs/quality/ui/c18/` (`*_passo16*.json`, um retrato por pele a 1366×768).
+
+### 16.4 O que o `vazio` mede — e por que fica vermelho
+
+Os seis painéis acima do teto são **áreas de conteúdo sem dados**: a tabela da Revisão com 27
+linhas num viewport de 2 071 px, a coluna de lances do Estudo vazia, a Galeria sem varredura, o
+Texto sem OCR, a Rotulagem e a Revisão de texto sem livro importado. A 3840×2160 **a 100 %** (a
+captura não escala; um monitor 4K real corre a 150–200 %) qualquer área de dados vazia com mais
+de ~100 px de altura passa de 200 kpx. Os dois que passam (Dataset 146,8; Resultado 43,3) passam
+porque têm dados: 5.431 linhas e um tabuleiro.
+
+Fechar o número exigiria pautar as áreas vazias (traços a cada linha, como uma folha de
+planilha) — decisão de produto que este passo não toma. O que o passo entrega é a régua
+(instrumento no arnês, testado em `test_medicao.py::TestVazio`), o número antes/depois e esta
+leitura; a proposta para o crítico do C3 é medir a 200 % ou excluir do teto a área de dados
+declaradamente vazia (com `EstadoVazio` desenhado). Fica **aberto e declarado**, como desde o C16.
+
+### 16.5 Polimento entregue (tronco)
+
+| onde | o quê |
+|---|---|
+| `ui/tipografia.py` | `PROPRIEDADE_TABULAR` (decisão: quem conta); `qt/tema.tabular` (o `tnum`); `qt/escala.aplicar_escala` aplica-o na varredura |
+| `qt/painel_do_pdf.py`, `qt/rodape.py` | página, total, zoom e documento do rodapé declarados tabulares. **Medido: a Segoe UI já tem algarismos tabulares** (`1111` = `0000` = 28,0 px a 10 pt); o recurso vale para a família de reserva |
+| `qt/visor.py` | `_desenhar_contorno`: fio de 1 px `CONTORNO_DE_CROMO` sobre o pixel externo da folha (não fora dela: crescer a folha deslocaria caixas e cliques) |
+| `qt/tema.pintar_varios`, `qt/painel_da_galeria.py` | recorte da Galeria com fundo **e** contorno (dois `pintar` no mesmo widget deixavam só o segundo) |
+| `qt/painel_da_galeria.py`, `ui/galeria_declarada.py` | lateral em rolagem; `LINHAS_MINIMAS_DA_LEGENDA = 3` |
+| suíte `caissa/ui/views/rotulagem.py` | cartão em rolagem |
+
+Testes: `test_qt_tema.py::PolimentoDoPasso16Tests` (3: o contador ganha `tnum` e a prosa não; os
+contadores do produto estão declarados; `pintar_varios` declara as duas propriedades),
+`test_medicao.py::TestVazio` (3). Suíte do tronco: **4.511 passed**, as mesmas 3 falhas
+pré-existentes de §15.0. Suíte `caissa` `tests/unit/ui`: 282 passed no venv puro
+(`test_revisao_de_texto_view` continua exigindo o `.venv-pack`, como desde o passo 14).
+
+### 16.6 Saída
+
+Tronco: `a3bf4c5` sobre `8d9b02f`. Suíte: `caissa/ui/audit/vazio.py` (novo), `contraste
+--sabotar`, `views/rotulagem.py`, este §16, a linha do roadmap. **Desfazer:** `ui/pele.PADRAO =
+CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independentes da pele).

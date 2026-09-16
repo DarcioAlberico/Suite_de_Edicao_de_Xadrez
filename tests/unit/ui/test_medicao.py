@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from caissa.ui.audit import bloqueio, capture, contraste, progresso, quadros, teclado
+from caissa.ui.audit import bloqueio, capture, contraste, progresso, quadros, teclado, vazio
 
 # ------------------------------------------------------------------- o tempo de quadro
 
@@ -1336,3 +1336,48 @@ class TestUmSeparadorSo:
             for arquivo in self.modulos_de_interface(raiz_do_tronco)
         )
         assert usos >= 10, f"o separador declarado quase sumiu da interface: {usos} usos"
+
+
+# ------------------------------------------------------------------- o vazio de painel a 4K
+
+
+class TestVazio:
+    """O maior retângulo sem tinta, exato -- a régua do passo 16 da OCR_UI sem abrir janela."""
+
+    def test_o_maior_retangulo_e_o_maximo_e_nao_um_chute(self) -> None:
+        import numpy as np
+
+        m = np.zeros((6, 8), dtype=bool)
+        m[1:5, 2:7] = True  # 4 x 5 = 20 blocos
+        m[0, :] = True  # uma linha inteira por cima: 8 blocos sozinha...
+        # ...mas com ela o bloco central cresce uma linha: 5 x 5 = 25, e é isso que o exato acha
+        # onde uma busca gulosa por linha ficaria nos 20.
+        area, x0, y0, x1, y1 = vazio.maior_retangulo(m)
+        assert area == 25
+        assert (x0, y0, x1, y1) == (2, 0, 7, 5)
+        m[0, :] = False
+        assert vazio.maior_retangulo(m)[0] == 20
+
+    def test_a_mascara_le_tinta_pelo_fundo_dominante_e_pela_tolerancia(self) -> None:
+        import numpy as np
+
+        a = np.full((16, 16, 3), 30, dtype=np.uint8)
+        a[4:8, 4:8] = 200  # um quadrado de tinta de 4 x 4 px = um bloco
+        a[0, 0] = 33  # ruído dentro da tolerância: continua fundo
+        mascara, fundo = vazio.mascara_vazia(a, 0, 0, 16, 16)
+        assert fundo == "#1e1e1e"
+        assert mascara.shape == (4, 4)
+        assert not mascara[1, 1], "o bloco com o quadrado é tinta"
+        assert mascara.sum() == 15
+
+    def test_um_painel_todo_vazio_a_4k_reprova_e_um_com_tinta_a_cada_linha_passa(self) -> None:
+        import numpy as np
+
+        liso = np.ones((500, 500), dtype=bool)
+        area, *_ = vazio.maior_retangulo(liso)
+        assert area * vazio.BLOCO * vazio.BLOCO / 1000 > vazio.TETO_KPX
+        pautado = np.ones((500, 500), dtype=bool)
+        pautado[::7, :] = False  # um traço a cada 28 px
+        area, *_ = vazio.maior_retangulo(pautado)
+        assert area * vazio.BLOCO * vazio.BLOCO / 1000 <= vazio.TETO_KPX
+
