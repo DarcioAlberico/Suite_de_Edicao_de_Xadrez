@@ -475,15 +475,15 @@ def auditar(
             f"{len(acao.nao_atribuidas):>2} nao atribuidas"
         )
 
-    if pdf is not None and pdf.exists():
-        from caissa.ui.audit.capture import aguardar_a_folha
+    from caissa.ui.audit.capture import aguardar_a_folha, areas_de_trabalho
 
+    if pdf is not None and pdf.exists():
         rodar("abrir o livro", lambda: (janela.abrir_pdf(pdf), aguardar_a_folha(janela)))
         rodar("ir para a pagina 41", lambda: (janela.pdf.ir_para_pagina(40), aguardar_a_folha(janela)))
         rodar("ir para a pagina 121", lambda: (janela.pdf.ir_para_pagina(120), aguardar_a_folha(janela)))
-    for indice in range(janela.abas.count()):
-        nome_da_aba = janela.abas.tabText(indice).split(" (")[0].strip()
-        rodar(f"abrir a aba {nome_da_aba}", lambda i=indice: janela.abas.setCurrentIndex(i))
+    # Cada área uma vez -- as abas do acervo e os modos da aba `Livro` (OCR_UI passo 17).
+    for area in areas_de_trabalho(janela):
+        rodar(f"abrir a aba {area.nome}", area.mostrar)
 
     janela.close()
     janela.deleteLater()

@@ -18,6 +18,8 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -193,6 +195,59 @@ def aguardar_a_folha(janela_ou_painel: Any, limite_ms: int = 15_000) -> bool:
     if aguardar is None:
         return True
     return bool(aguardar(limite_ms))
+
+
+@dataclass(frozen=True)
+class AreaDeTrabalho:
+    """Um lugar onde se trabalha na janela do tronco: aba do acervo ou modo da aba `Livro`."""
+
+    nome: str
+    """O nome sem contagem (`Resultado`, `Dataset`), como `ui/abas.nome_base` o devolve."""
+    mostrar: Callable[[], object]
+    """Traz a área para a frente -- a aba, ou a aba `Livro` no modo certo."""
+    widget: Callable[[], Any]
+    """O painel da área, para quem mede a subárvore dele e não a janela inteira."""
+
+
+def areas_de_trabalho(janela: Any) -> list[AreaDeTrabalho]:
+    """Cada lugar onde se trabalha, uma vez, na ordem em que a janela os lista.
+
+    **Desde o passo 17 da OCR_UI (tarefa 3) as quatro abas do diagrama são modos da aba `Livro`**
+    (`qt/areas_de_trabalho.py` no tronco): um laço `for indice in range(janela.abas.count())`
+    passou a ver três abas onde há sete ou oito áreas, e um portão que só andasse pelas abas
+    mediria o modo Resultado quatro vezes e Estudo, Revisão e Texto nenhuma. Este é o **único**
+    laço do arnês sobre as áreas -- teclado, texto pintado, execução e captura andam por ele -- e
+    ele pergunta à janela (`areas`, `mostrar_area`), sem saber se um nome é aba ou modo. Num
+    tronco anterior ao passo, sem esses métodos, cada aba é uma área, como sempre foi.
+    """
+    abas = janela.abas
+    listar = getattr(abas, "areas", None)
+    mostrar_area = getattr(abas, "mostrar_area", None)
+    if listar is None or mostrar_area is None:
+        return [
+            AreaDeTrabalho(
+                nome=abas.tabText(indice).split(" (")[0].replace("&", "").strip(),
+                mostrar=lambda i=indice: abas.setCurrentIndex(i),
+                widget=lambda i=indice: abas.widget(i),
+            )
+            for indice in range(abas.count())
+        ]
+
+    def widget_de(nome: str) -> Any:
+        modo = abas.principal.widget_do_modo(nome)
+        if modo is not None:
+            return modo
+        indice = abas.indice_da_aba(nome)
+        return abas.widget(indice) if indice is not None else None
+
+    return [
+        AreaDeTrabalho(
+            nome=nome,
+            mostrar=lambda n=nome: mostrar_area(n),
+            widget=lambda n=nome: widget_de(n),
+        )
+        for nome in listar()
+    ]
 
 
 def estado_de_medicao(pasta: Path) -> Path:
@@ -423,12 +478,11 @@ def capturar_uma_pele(
                 f"{janela.width()}x{janela.height()} (mínimo "
                 f"{janela.minimumSizeHint().width()}x{janela.minimumSizeHint().height()})"
             )
-        for indice in range(janela.abas.count()):
-            janela.abas.setCurrentIndex(indice)
+        for area in areas_de_trabalho(janela):
+            area.mostrar()
             for _ in range(4):
                 aplicacao.processEvents()
-            rotulo_da_aba = janela.abas.tabText(indice)
-            nome_base = rotulo_da_aba.split(" (")[0].strip().lower()
+            nome_base = area.nome.lower()
             nome_base = (
                 nome_base.replace("ã", "a")
                 .replace("é", "e")

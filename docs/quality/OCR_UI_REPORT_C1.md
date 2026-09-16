@@ -1598,10 +1598,12 @@ CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independente
   — com a cor da linha dizendo se há trabalho (⚠ N). Clicar vai à página; a página exibida está
   marcada; «Primeira duvidosa» e «Exportar o livro para EPUB…» sob a lista; a importação com
   barra e «Cancelar» no lugar de «Importar o livro». Interruptor *Ver ▸ Trilho de páginas*.
-- **Tarefa 3 (abas de diagrama → modos do painel principal) não foi feita**: é a que muda a
-  forma da janela medida em 16 ciclos e a razão de o ramo existir; fica como a próxima entrega
-  do ramo, com o crítico. Os portões da F9 rerodados com o trilho: `teclado`, `comandos`,
-  `bloqueio` **PASSOU**.
+- **Tarefa 3 (abas de diagrama → modos do painel principal), na segunda entrega do ramo**
+  (`faf0b1a`): a faixa de abas passou a ter a aba **Livro** e as do acervo; Resultado, Estudo,
+  Revisão e Texto são **modos** da Livro — uma barra de botões marcáveis e exclusivos no topo do
+  painel (`qt/painel_principal.py`), e quem sabe onde cada área mora é `qt/areas_de_trabalho.py`.
+  Ver §17.7. Os portões da F9 rerodados com o trilho e os modos: `teclado`, `contraste`,
+  `texto_pintado`, `bloqueio`, `quadros`, mais `comandos` e `percurso` — **todos PASSOU** (§17.3).
 
 ### 17.1 Suíte (main)
 
@@ -1624,6 +1626,11 @@ CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independente
 | `qt/janela.py` | o trilho à esquerda da coluna do livro; `livro = importador_de_livro.montar(...)`; quatro comandos; 1.944 → 1.984 linhas (catraca com o motivo) |
 | `ui/busy.py`, `docs/ARCHITECTURE.md` | a thread da miniatura declarada; 18 threads |
 | testes | `test_qt_trilho.py` (10), `test_qt_janela.py` (+3), `test_ui_comandos.py` (rótulos divergentes) |
+| **tarefa 3** — `ui/abas.py` | `LIVRO`, `MODOS` (= `DO_DIAGRAMA`), `ABAS = (LIVRO, *DO_ACERVO)`, `ABA_DE_TRABALHO = LIVRO`, `MODO_DE_TRABALHO = RESULTADO`, `e_modo()` |
+| **tarefa 3** — `qt/painel_principal.py` (novo) | `PainelPrincipal`: barra de `QToolButton` marcáveis num `QButtonGroup` exclusivo (nome acessível `Modo X`, grupo `Modos do livro`) + `QStackedWidget`; `adicionar_modo`, `definir_modo`, `definir_contagem` (a regra de `ui/abas.rotulo`), `modo_de(painel)` |
+| **tarefa 3** — `qt/areas_de_trabalho.py` (novo) | `AreasDeTrabalho(QTabWidget)`: a `Livro` montada e à frente; `areas()` (modos + acervo, a ordem das oito abas antigas), `mostrar_area(nome)`, `mostrar(painel)`, `area_atual()`, `nome_da_area_atual()`, `definir_contagens` — a janela e os portões falam por nome, sem saber se é aba ou modo |
+| **tarefa 3** — `qt/janela.py` | monta cada painel e diz se é modo ou aba; `_indice_da_aba`, o laço das contagens e o `indexOf` do `_focar_aba` saíram para o widget; **1.984 → 1.967 linhas**, catraca descida. O estado continua guardando o **modo** (`Revisão`), e uma sessão anterior ao passo reabre a `Livro` nele |
+| **tarefa 3** — testes | `test_qt_janela.py`: ordem `[Livro, Dataset, Galeria, +Rotulagem, +Revisão de texto]`, os quatro modos na ordem de `MODOS` e exclusivos, toda área alcançada por nome, o modo volta pelo estado; `test_busy.py` e a régua do estado vazio varrem `areas()` |
 
 ### 17.3 Portões
 
@@ -1643,6 +1650,19 @@ set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
 | `teclado` | PASSOU em todos os arranjos com o trilho (+3 focáveis por aba: a lista e dois botões, nomeados pelo catálogo). `teclado_20260916_074039.json` |
 | `comandos` | PASSOU: 397 medidos, 388 habilitados, 0 soltos, 0 que prometem. `comandos_20260916_*.json` |
 | `bloqueio` | PASSOU com o trilho (289 itens criados na abertura, miniaturas no processo). `bloqueio_20260916_074047.json` |
+
+**Segunda entrega (tarefa 3), `benchmarks/reports/ui/c20`**, os mesmos comandos com `c20`:
+
+| portão | resultado |
+|---|---|
+| `teclado` | **PASSOU nos 6 arranjos**, com os quatro modos medidos um a um (Foco: Resultado 34, Estudo 62, Revisão 40, Texto 49 focáveis, todos pelo Tab; 0 sem nome). A 1.ª corrida **REPROVOU** — ver §17.7 item 1. `teclado_20260916_084346.json` |
+| `contraste` | PASSOU: 300 pares por polaridade, 220 sob portão, 0 reprovados (menor folga 3,03:1 na barra de rolagem escura). `contraste_20260916_084439.json` |
+| `texto_pintado` | PASSOU: 828 medidos, 24 cegos, 0 cobertos, 0 cortados, nos 24 arranjos × tamanhos. `texto_pintado_20260916_084432.json` |
+| `bloqueio` | PASSOU: pior 13,5 ms (abrir o PDF) contra a referência de 55,6 ms. `bloqueio_20260916_084455.json` |
+| `quadros` | PASSOU: pan 657 · zoom 430 · juntos 459 fps @ p95. `fps_20260916_084506.json` |
+| `comandos` | PASSOU: 397 medidos, 388 habilitados, 0 soltos, 0 que prometem. `comandos_20260916_084403.json` |
+| `percurso` (Aagaard 31–38) | **PASSOU, 6 ações** (importar 33,1 s; exportou 1,06 MB); cancelamento a 30 % → 3 de 8 montadas, `canceled=True`. `percurso_20260916_084614.json` |
+| capturas | `c20/capturas/modos_{claro,escuro,fita}_1366x768_{resultado,estudo,revisao,texto,dataset,...}.png` — a barra de modos sob a faixa de abas, o modo à frente na cor de seleção |
 
 **Sabotagem.** A do roadmap — cancelamento que descarta o parcial — é o comportamento de
 `keep_partial=False`, afirmado em `test_importer.py::test_a_cancel_at_thirty_percent_keeps_thirty_percent_of_the_pages`
@@ -1669,16 +1689,62 @@ set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
 
 ### 17.5 O que o ramo ainda deve
 
-- **Tarefa 3**: Resultado, Estudo, Revisão e Texto como **modos** do painel principal, com as
-  abas de acervo (Dataset, Galeria, Rotulagem, Revisão de texto) mantidas. Muda a janela medida
-  em 16 ciclos; exige rerodar os cinco portões da F9 e o crítico visual — é o critério para o
-  ramo se fundir.
+- **O crítico visual** (§11.4) sobre a janela com o trilho e os modos — é o critério que falta
+  para o ramo se fundir (Q4). A tarefa 3 está feita (§17.7).
 - O trilho não persiste a visibilidade no `AppState` (sem campo novo neste passo).
 - A miniatura não se atualiza quando a página é anotada/salva (só com a importação).
+- A barra de modos é um grupo de botões: `Tab` para no modo à frente e as **setas** andam entre
+  os quatro (a regra do Qt para grupos, a mesma dos rádios). Não há atalho direto por modo
+  (`Ctrl+1..4`); fica para o crítico dizer se falta.
 
 ### 17.6 Saída
 
-Tronco: ramo `passo-17-trilho`, commit `10aac70` sobre `a3bf4c5`, **não fundido** (o checkout volta a `religa-as-decisoes-orfas`). Suíte:
+Tronco: ramo `passo-17-trilho`, commits `10aac70` (tarefas 1, 2, 4) e `faf0b1a` (tarefa 3)
+sobre `a3bf4c5`, **não fundido** (o checkout volta a `religa-as-decisoes-orfas`). Suíte:
 `ingest/pdf/importer.py`, `ui/trilho.py`, `ui/views/importacao.py`, `ui/audit/percurso.py`,
-testes, este §17 e a linha do roadmap. **Desfazer:** o ramo não se funde; na suíte,
-`keep_partial` é opcional e desligado por padrão.
+`ui/audit/capture.py` (`areas_de_trabalho`), `ui/audit/teclado.py` (a régua do grupo), os laços
+de `teclado`/`texto_pintado`/`execucao`/`capture`, testes, este §17 e a linha do roadmap.
+**Desfazer:** o ramo não se funde; na suíte, `keep_partial` é opcional e desligado por padrão, e
+`areas_de_trabalho` cai para "cada aba é uma área" num tronco sem `AreasDeTrabalho`.
+
+### 17.7 Tarefa 3 — as abas do diagrama viram modos
+
+**O que mudou de forma.** A faixa de abas tinha sete ou oito abas de peso igual, e quatro delas
+(Resultado, Estudo, Revisão, Texto) falam do mesmo objeto — o diagrama e a página no visor ao
+lado — enquanto as outras falam do acervo. Agora a faixa tem `Livro | Dataset | Galeria |
+Rotulagem | Revisão de texto`, e a `Livro` tem no topo uma barra de quatro botões marcáveis e
+exclusivos, com o painel do modo escolhido embaixo. A contagem da fila (`Revisão (27)`) foi para
+o botão, pela mesma regra pura de `ui/abas.rotulo`. Nenhum painel saiu, nenhum foi reescrito;
+quatro mudaram de casa. **O estado guarda o mesmo nome de sempre** (`active_tab = "Revisão"`),
+e é por isso que uma sessão anterior ao passo reabre no mesmo lugar: `mostrar_area("Revisão")`
+abre a `Livro` naquele modo.
+
+**Onde mora o conhecimento.** Um só widget, `qt/areas_de_trabalho.AreasDeTrabalho(QTabWidget)`,
+sabe se um nome é aba ou modo, o que está à frente e como percorrer cada área uma vez. A janela
+só monta cada painel e diz se ele é modo ou aba — e perdeu 17 linhas com isso (1.984 → 1.967,
+catraca descida). Os portões da suíte ganharam o helper `capture.areas_de_trabalho(janela)`, o
+**único** laço do arnês sobre as áreas: um `for indice in range(janela.abas.count())` passaria a
+ver três abas onde há oito áreas, e mediria o modo Resultado quatro vezes e os outros nenhuma.
+Num tronco anterior ao passo o helper cai para "cada aba é uma área".
+
+**O que o arnês ensinou.**
+
+1. **A 1.ª corrida do `teclado` REPROVOU as quatro áreas da Livro nos 6 arranjos**: «Modo
+   Estudo / Revisão / Texto inalcançáveis pelo Tab». O Qt faz de um grupo de botões marcáveis
+   **um** ponto de parada (`QAbstractButtonPrivate::fixFocusPolicy`: depois do foco, os outros do
+   grupo perdem `TabFocus`) e as setas andam entre eles marcando o vizinho (`moveFocus`) — a
+   regra dos rádios, que a régua já aceitava (`por_seta`). Mas `_grupo_exclusivo` só olhava o
+   `QButtonGroup` **depois** de `autoExclusive()` dizer sim, e um botão num grupo **não** é
+   `autoExclusive` (a propriedade é para botões sem grupo). Medido em PyQt6 6.11 offscreen: três
+   botões num grupo, `autoExclusive=[False]*3`; após o foco, as políticas dos outros dois perdem
+   o `TabFocus`; `Right` foca e marca o seguinte; `Tab` sai do grupo. A régua passou a seguir a
+   condição do próprio Qt (`group || autoExclusive`), com teste em `test_medicao.py`. É a mesma
+   classe de lição da F9-C12: **um defeito que descreve o Qt, e não o produto, é defeito da
+   régua** — e a régua é que muda, com a prova ao lado.
+2. **A catraca desceu em vez de subir.** A primeira versão pôs `mostrar_por_nome`,
+   `superficie_atual`, `superficies` e `mostrar` na janela (+57 linhas, 2.041). Reler o
+   docstring da catraca («baixe o que for possível») deu o desenho certo: o `QTabWidget` que sabe
+   onde cada área mora é um widget, e a janela só o usa.
+3. **Nenhuma medida da F9 piorou**: contraste 0 reprovados, texto pintado 0 cobertos/cortados,
+   bloqueio pior 13,5 ms, quadros ≥ 430 fps, comandos 0 soltos — e o `percurso` continua em 6
+   ações. A barra de modos custou uma linha de botões (≈ 30 px) ao painel; a janela cabe em 768.

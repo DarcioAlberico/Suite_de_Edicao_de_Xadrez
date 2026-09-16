@@ -631,14 +631,24 @@ def _grupo_exclusivo(widget: Any) -> int | None:
     O Qt tem dois jeitos de formar o grupo, e os dois contam: um `QButtonGroup` explícito, e --
     quando não há grupo -- **todos os botões `autoExclusive` com o mesmo pai**, que é a regra
     que o `QAbstractButton` documenta.
+
+    **O `QButtonGroup` conta por si, sem `autoExclusive`** (OCR_UI passo 17, tarefa 3). A forma
+    anterior só olhava o grupo depois de `autoExclusive()` responder sim -- e um botão dentro de
+    um `QButtonGroup` **não** é `autoExclusive` (a propriedade é para botões sem grupo). É a
+    regra do próprio Qt, `QAbstractButtonPrivate::fixFocusPolicy`: `if (!group && !autoExclusive)
+    return;` -- um botão marcável num grupo, exclusivo ou não, vira **um** ponto de parada do
+    `Tab` com os outros do grupo, e as setas andam entre eles (`moveFocus`). A barra de modos da
+    aba `Livro` -- quatro `QToolButton` marcáveis num `QButtonGroup` exclusivo -- foi o primeiro
+    grupo desse tipo na janela, e a régua antiga acusou três modos inalcançáveis que as setas
+    alcançam.
     """
-    exclusivo = getattr(widget, "autoExclusive", None)
-    if not (exclusivo and exclusivo()):
-        return None
     grupo = getattr(widget, "group", None)
     achado = grupo() if callable(grupo) else None
     if achado is not None:
         return id(achado)
+    exclusivo = getattr(widget, "autoExclusive", None)
+    if not (exclusivo and exclusivo()):
+        return None
     pai = widget.parentWidget()
     return id(pai) if pai is not None else None
 
@@ -1109,7 +1119,7 @@ def auditar(
     from PyQt6.QtCore import QT_VERSION_STR
     from PyQt6.QtWidgets import QApplication
 
-    from caissa.ui.audit.capture import aguardar_a_folha, estado_de_medicao
+    from caissa.ui.audit.capture import aguardar_a_folha, areas_de_trabalho, estado_de_medicao
 
     aplicacao = QApplication.instance() or QApplication(sys.argv)
     # **Estado próprio, e não o `data/app_tkinter_state.json` do tronco** (F9-C10). Ver
@@ -1133,14 +1143,16 @@ def auditar(
             aplicacao.processEvents()
 
     abas: list[Aba] = []
-    for indice in range(janela.abas.count()):
-        janela.abas.setCurrentIndex(indice)
+    # Cada área uma vez -- as abas do acervo e os modos da aba `Livro` (OCR_UI passo 17). Ver
+    # `capture.areas_de_trabalho`, o único laço do arnês sobre elas.
+    for area in areas_de_trabalho(janela):
+        area.mostrar()
         for _ in range(4):
             aplicacao.processEvents()
         # **A mesma régua das outras telas, e desde o ciclo 12 é literalmente a mesma função.**
         # Ver `_medir_uma_tela`: duas cópias do laço eram duas oportunidades de a aba e o
         # diálogo passarem a ser medidos por réguas que divergem sem ninguém notar.
-        aba = _medir_uma_tela(janela.abas.tabText(indice).split(" (")[0].strip(), janela)
+        aba = _medir_uma_tela(area.nome, janela)
         abas.append(aba)
         print(
             f"  {os.environ.get('CVOFF_SKIN', '?'):<9} "

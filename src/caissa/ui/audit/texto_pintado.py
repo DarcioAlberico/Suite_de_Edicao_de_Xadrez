@@ -991,7 +991,12 @@ def medir_uma_passada(
     from PyQt6.QtWidgets import QApplication
 
     from caissa.ui.audit import teclado
-    from caissa.ui.audit.capture import aguardar_a_folha, estado_de_medicao, impor_a_fonte_do_produto
+    from caissa.ui.audit.capture import (
+        aguardar_a_folha,
+        areas_de_trabalho,
+        estado_de_medicao,
+        impor_a_fonte_do_produto,
+    )
 
     aplicacao = QApplication.instance() or QApplication(sys.argv[:1])
     impor_a_fonte_do_produto(aplicacao)
@@ -1057,16 +1062,17 @@ def medir_uma_passada(
         for _ in range(8):
             aplicacao.processEvents()
         medicao = Medicao(arranjo=arranjo, tamanho=(largura, altura), ignorados=ignorados)
-        for indice in range(janela.abas.count()):
-            janela.abas.setCurrentIndex(indice)
+        # Cada área uma vez -- as abas do acervo e os modos da aba `Livro` (OCR_UI passo 17);
+        # ver `capture.areas_de_trabalho`. O rótulo `aba X` fica: é o nome das séries antigas.
+        for area in areas_de_trabalho(janela):
+            area.mostrar()
             for _ in range(6):
                 aplicacao.processEvents()
-            nome = janela.abas.tabText(indice).split(" (")[0].replace("&", "")
             medicao.achados += medir_a_tela(
-                janela.abas.widget(indice),
+                area.widget(),
                 regras=regras,
                 quem_pinta=quem_pinta,
-                tela=f"aba {nome}",
+                tela=f"aba {area.nome}",
             )
         medicao.achados += medir_a_tela(
             janela,

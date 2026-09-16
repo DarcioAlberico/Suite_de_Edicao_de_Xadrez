@@ -1,0 +1,1833 @@
+{
+  "portao": "SPEC 11.3 -- nenhuma operacao segura a thread da interface por mais de 16 ms",
+  "quando": "2026-09-16T08:44:55+00:00",
+  "ambiente": {
+    "qt": "6.11.0",
+    "python": "3.11.9",
+    "plataforma_qpa": "offscreen"
+  },
+  "metodo": {
+    "instrumento": "QTimer PreciseTimer de 4 ms na thread da interface",
+    "amostrador": "thread separada a cada 2.0 ms, sys._current_frames()",
+    "piso_ms": 16.0,
+    "execucoes": 3,
+    "reportado": "PIOR travamento de todas as execucoes (é ele quem decide `viola`); a mediana e a execucao fria vao ao lado, em `pior_ms_mediana` e `pior_ms_frio`",
+    "por_que_o_pior": "a execucao 1 é a unica fria: trocar para a aba ja mostrada nao dispara showEvent e o CSV ja esta lido, entao as execucoes 2 e 3 medem no-op. A mediana de tres execucoes das quais duas sao no-op escondeu 1302 ms de congelamento no ciclo 1.",
+    "limite_conhecido": "o amostrador precisa da GIL; extensao C que a segure atrasa a foto da pilha. A duracao nao depende disso.",
+    "atribuicao": "tempo PROPRIO (tottime do cProfile) somado por familia de arquivo, numa passada a mais fora do vigia -- ver `_perfilar`. Existe porque `pilha_do_pior` e UMA amostra e sempre premia o maior bloco C contiguo: no ciclo 3 ela atribuiu a virada de pagina inteira ao PyMuPDF, e 30 % dela eram 108.620 chamadas Python de qt/. A soma de tottime nao conta ninguem duas vezes; a de cumtime contaria."
+  },
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+    "paginas_base_1": [
+      41,
+      42,
+      121
+    ]
+  },
+  "sabotagem": "",
+  "operacoes": [
+    {
+      "operacao": "rasterizar pagina a 300 DPI (render_pdf_page)",
+      "pior_ms": 55.56049999804236,
+      "pior_ms_mediana": 53.82290000206558,
+      "pior_ms_frio": 53.82290000206558,
+      "pior_ms_por_execucao": [
+        53.82290000206558,
+        48.45940000168048,
+        55.56049999804236
+      ],
+      "total_bloqueado_ms_mediana": 53.82290000206558,
+      "travamentos_mediana": 1.0,
+      "viola": false,
+      "referencia": true,
+      "excesso_ms": 39.56049999804236,
+      "pilha_do_pior": [
+        "<frozen runpy>:198 _run_module_as_main",
+        "<frozen runpy>:88 _run_code",
+        "bloqueio.py:1226 <module>",
+        "bloqueio.py:1206 main",
+        "bloqueio.py:888 medir",
+        "bloqueio.py:769 <lambda>",
+        "pdf_io.py:180 render_pdf_page",
+        "__init__.py:12044 get_pixmap",
+        "__init__.py:2796 get_pixmap",
+        "__init__.py:21337 JM_pixmap_from_display_list",
+        "__init__.py:13536 __init__",
+        "__init__.py:22425 args_match"
+      ],
+      "atribuicao": {
+        "total_perfilado_ms": 52.54910000000001,
+        "por_familia": [
+          {
+            "familia": "PyMuPDF",
+            "ms": 47.61900000000001,
+            "fracao": 0.9061810763647713
+          },
+          {
+            "familia": "builtins (C)",
+            "ms": 3.2474000000000007,
+            "fracao": 0.06179744277256889
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.0574,
+            "fracao": 0.02012213339524368
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 0.2705,
+            "fracao": 0.005147566751856835
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.19870000000000002,
+            "fracao": 0.003781225558572839
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.07930000000000001,
+            "fracao": 0.001509064855535109
+          },
+          {
+            "familia": "pdf_io (tronco)",
+            "ms": 0.07680000000000001,
+            "fracao": 0.0014614903014514044
+          }
+        ],
+        "ms_desta_frente": 0.2705,
+        "fracao_desta_frente": 0.005147566751856835,
+        "funcoes_mais_caras": [
+          {
+            "ms": 34.13740000000001,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_run_display_list>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 5.4099,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_new_display_list_from_page>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 1.9892,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_load_page>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 1.6897000000000002,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_clear_pixmap_with_value>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 1.6402,
+            "quem": "__init__.py:13998 samples",
+            "disparada_por": ""
+          },
+          {
+            "ms": 1.6117000000000001,
+            "quem": "~:0 <method 'copy' of 'numpy.ndarray' objects>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 1.0981,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.8141,
+            "quem": "bloqueio.py:769 <lambda>",
+            "disparada_por": ""
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.1517,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0167,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.009800000000000001,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0076,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0032,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0031000000000000003,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.003,
+            "quem": "pathlib.py:630 suffix",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0024000000000000002,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0009000000000000001,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.00030000000000000003,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": ""
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "abrir PDF (load_pdf, 1a pagina a 300 DPI)",
+      "pior_ms": 13.543500005558599,
+      "pior_ms_mediana": 12.73060000030091,
+      "pior_ms_frio": 4.828800004266668,
+      "pior_ms_por_execucao": [
+        4.828800004266668,
+        13.543500005558599,
+        12.73060000030091
+      ],
+      "total_bloqueado_ms_mediana": 107.56389999820385,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 163.21420000000003,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 144.0918,
+            "fracao": 0.8828386255607661
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 8.3107,
+            "fracao": 0.05091897641259155
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 4.365200000000001,
+            "fracao": 0.026745221923092474
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 2.9809,
+            "fracao": 0.018263729503927965
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 1.8814,
+            "fracao": 0.0115271832965514
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.9092000000000001,
+            "fracao": 0.00557059373510393
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.675,
+            "fracao": 0.004135669567966512
+          }
+        ],
+        "ms_desta_frente": 9.2199,
+        "fracao_desta_frente": 0.05648957014769548,
+        "funcoes_mais_caras": [
+          {
+            "ms": 133.7903,
+            "quem": "~:0 <built-in method exec>",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 1.9324000000000001,
+            "quem": "trilho.py:187 abrir_livro",
+            "disparada_por": "janela.py:947 <lambda>"
+          },
+          {
+            "ms": 1.6505,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 1.3237,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 1.2138000000000002,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 1.1978000000000002,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.9886,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.8041,
+            "quem": "~:0 <built-in method setTabText>",
+            "disparada_por": "areas_de_trabalho.py:106 definir_contagens"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 1.1978000000000002,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.5343,
+            "quem": "~:0 <built-in method nt._getfinalpathname>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.2826,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.2159,
+            "quem": "~:0 <built-in method io.open>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.1058,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.095,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.058100000000000006,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": "janela.py:1009 _abriu_livro"
+          },
+          {
+            "ms": 0.056100000000000004,
+            "quem": "pathlib.py:353 _select_from",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0442,
+            "quem": "pathlib.py:546 __fspath__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.043100000000000006,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.035500000000000004,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "janela.py:1009 _abriu_livro"
+          },
+          {
+            "ms": 0.0352,
+            "quem": "pathlib.py:1053 read_text",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.033900000000000007,
+            "quem": "pathlib.py:1036 open",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0326,
+            "quem": "~:0 <built-in method nt.scandir>",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0268,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.023500000000000004,
+            "quem": "pathlib.py:981 resolve",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.021700000000000004,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "janela.py:1867 _dizer_o_que_ha_na_pagina"
+          },
+          {
+            "ms": 0.020300000000000002,
+            "quem": "pathlib.py:523 _format_parsed_parts",
+            "disparada_por": "janela.py:1009 _abriu_livro"
+          },
+          {
+            "ms": 0.018900000000000004,
+            "quem": "pathlib.py:1008 stat",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0137,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.012100000000000001,
+            "quem": "pathlib.py:940 glob",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0118,
+            "quem": "pathlib.py:777 parent",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.009600000000000001,
+            "quem": "pathlib.py:1230 exists",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0095,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0079,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0066,
+            "quem": "pathlib.py:657 stem",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0044,
+            "quem": "~:0 <built-in method nt.getcwd>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0043,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0041,
+            "quem": "pathlib.py:877 _make_child_relpath",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0033,
+            "quem": "pathlib.py:1245 is_dir",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0031000000000000003,
+            "quem": "~:0 <built-in method nt._path_normpath>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0029000000000000002,
+            "quem": "pathlib.py:38 _ignore_error",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0028000000000000004,
+            "quem": "pathlib.py:313 select_from",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0013,
+            "quem": "~:0 <built-in method io.text_encoding>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0012000000000000001,
+            "quem": "pathlib.py:934 _scandir",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          },
+          {
+            "ms": 0.0010000000000000002,
+            "quem": "pathlib.py:327 _select_from",
+            "disparada_por": "escolha_de_bases.py:48 _mesmo_conjunto"
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "virar para a pagina 121 (ir_para_pagina)",
+      "pior_ms": 12.228700005740393,
+      "pior_ms_mediana": 12.024700002162717,
+      "pior_ms_frio": 8.846600002376363,
+      "pior_ms_por_execucao": [
+        8.846600002376363,
+        12.024700002162717,
+        12.228700005740393
+      ],
+      "total_bloqueado_ms_mediana": 185.65220000094268,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 254.36200000000014,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 249.7417000000001,
+            "fracao": 0.9818357301798223
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 2.3233,
+            "fracao": 0.009133832883842707
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.2106000000000001,
+            "fracao": 0.004759358709241158
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.5794000000000001,
+            "fracao": 0.0022778559690519802
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.3423000000000001,
+            "fracao": 0.001345719879541755
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.16030000000000003,
+            "fracao": 0.0006302041971678157
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 0.0044,
+            "fracao": 1.729818133211721e-05
+          }
+        ],
+        "ms_desta_frente": 2.4836,
+        "fracao_desta_frente": 0.009764037081010523,
+        "funcoes_mais_caras": [
+          {
+            "ms": 246.6098,
+            "quem": "~:0 <built-in method exec>",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.6717,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.5067,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.47500000000000003,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.4156,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.39530000000000004,
+            "quem": "~:0 <built-in method setStyleSheet>",
+            "disparada_por": "rodape.py:237 definir_documento"
+          },
+          {
+            "ms": 0.34720000000000006,
+            "quem": "~:0 <built-in method fromImage>",
+            "disparada_por": "trilho.py:352 _miniatura_chegou"
+          },
+          {
+            "ms": 0.3012,
+            "quem": "visor.py:508 mostrar_pagina",
+            "disparada_por": "painel_do_pdf.py:1070 _mostrar"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.21040000000000003,
+            "quem": "~:0 <built-in method nt._getfinalpathname>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.20470000000000002,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0499,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0227,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0174,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.015700000000000002,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.012400000000000001,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.006900000000000001,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.006,
+            "quem": "pathlib.py:981 resolve",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0048000000000000004,
+            "quem": "pathlib.py:523 _format_parsed_parts",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.004200000000000001,
+            "quem": "pathlib.py:1008 stat",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.004000000000000001,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0037,
+            "quem": "pathlib.py:546 __fspath__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0033,
+            "quem": "pathlib.py:777 parent",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0032,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "janela.py:1867 _dizer_o_que_ha_na_pagina"
+          },
+          {
+            "ms": 0.0027,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0023,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0016,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0016,
+            "quem": "~:0 <built-in method nt.getcwd>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0012000000000000001,
+            "quem": "~:0 <built-in method nt._path_normpath>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0007000000000000001,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "aba Dataset: mostrar e carregar as amostras",
+      "pior_ms": 12.178899997612461,
+      "pior_ms_mediana": 8.611899997864384,
+      "pior_ms_frio": 7.49019999866141,
+      "pior_ms_por_execucao": [
+        7.49019999866141,
+        8.611899997864384,
+        12.178899997612461
+      ],
+      "total_bloqueado_ms_mediana": 8.611899997864384,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 17.293,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 13.126599999999996,
+            "fracao": 0.759070143988897
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 2.261600000000001,
+            "fracao": 0.13078124096455218
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.5853,
+            "fracao": 0.09167293124385589
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.1626,
+            "fracao": 0.009402648470479384
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.07730000000000002,
+            "fracao": 0.004470016769791247
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.0763,
+            "fracao": 0.004412189903429134
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 0.0033000000000000004,
+            "fracao": 0.0001908286589949691
+          }
+        ],
+        "ms_desta_frente": 2.424200000000001,
+        "fracao_desta_frente": 0.14018388943503157,
+        "funcoes_mais_caras": [
+          {
+            "ms": 7.764300000000001,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 2.8013,
+            "quem": "~:0 <built-in method setCurrentIndex>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.8487000000000001,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.7336,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.7046,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.5904,
+            "quem": "~:0 <built-in method setEnabled>",
+            "disparada_por": "painel_do_dataset.py:401 _reler_agora"
+          },
+          {
+            "ms": 0.5193,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_do_dataset.py:401 _reler_agora"
+          },
+          {
+            "ms": 0.28890000000000005,
+            "quem": "acessibilidade.py:220 eventFilter",
+            "disparada_por": "painel_do_dataset.py:401 _reler_agora"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.024900000000000002,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.013300000000000001,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.011300000000000001,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0079,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0058000000000000005,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0057,
+            "quem": "pathlib.py:777 parent",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0023,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0018000000000000002,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "painel_do_dataset.py:467 _registrar_a_leitura"
+          },
+          {
+            "ms": 0.0014000000000000002,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0014000000000000002,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "painel_do_dataset.py:467 _registrar_a_leitura"
+          },
+          {
+            "ms": 0.0010000000000000002,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "painel_do_dataset.py:467 _registrar_a_leitura"
+          },
+          {
+            "ms": 0.0005000000000000001,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "virar para a pagina 42 (ir_para_pagina)",
+      "pior_ms": 11.969899999618065,
+      "pior_ms_mediana": 11.804499998921528,
+      "pior_ms_frio": 0.9456999986432492,
+      "pior_ms_por_execucao": [
+        0.9456999986432492,
+        11.804499998921528,
+        11.969899999618065
+      ],
+      "total_bloqueado_ms_mediana": 177.99290000251494,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 254.52660000000012,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 249.7115000000001,
+            "fracao": 0.9810821344409582
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 2.293999999999999,
+            "fracao": 0.009012810448888242
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.3406,
+            "fracao": 0.0052670329938010385
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.5868000000000001,
+            "fracao": 0.0023054564827408993
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.3702,
+            "fracao": 0.0014544648771483996
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.21370000000000006,
+            "fracao": 0.0008395979045019261
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 0.009800000000000001,
+            "fracao": 3.8502851961248835e-05
+          }
+        ],
+        "ms_desta_frente": 2.5076999999999994,
+        "fracao_desta_frente": 0.009852408353390168,
+        "funcoes_mais_caras": [
+          {
+            "ms": 246.71970000000002,
+            "quem": "~:0 <built-in method exec>",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.7067,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.6663000000000001,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.46770000000000006,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.40240000000000004,
+            "quem": "~:0 <built-in method setStyleSheet>",
+            "disparada_por": "rodape.py:237 definir_documento"
+          },
+          {
+            "ms": 0.382,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.37570000000000003,
+            "quem": "visor.py:508 mostrar_pagina",
+            "disparada_por": "painel_do_pdf.py:1070 _mostrar"
+          },
+          {
+            "ms": 0.33170000000000005,
+            "quem": "~:0 <built-in method fromImage>",
+            "disparada_por": "trilho.py:352 _miniatura_chegou"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.21430000000000002,
+            "quem": "~:0 <built-in method nt._getfinalpathname>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.1859,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.062200000000000005,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.022000000000000002,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0212,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0204,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.0137,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0087,
+            "quem": "pathlib.py:981 resolve",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0076,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0059,
+            "quem": "pathlib.py:523 _format_parsed_parts",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.0039,
+            "quem": "pathlib.py:1008 stat",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0037,
+            "quem": "pathlib.py:546 __fspath__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0028000000000000004,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "janela.py:1867 _dizer_o_que_ha_na_pagina"
+          },
+          {
+            "ms": 0.0026,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0025,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0024000000000000002,
+            "quem": "pathlib.py:777 parent",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0019,
+            "quem": "~:0 <built-in method nt.getcwd>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0017000000000000001,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0015,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0012000000000000001,
+            "quem": "~:0 <built-in method nt._path_normpath>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0007000000000000001,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "virar para a pagina 41 (ir_para_pagina)",
+      "pior_ms": 11.90750000468688,
+      "pior_ms_mediana": 11.07129999663448,
+      "pior_ms_frio": 2.5824999983306043,
+      "pior_ms_por_execucao": [
+        2.5824999983306043,
+        11.07129999663448,
+        11.90750000468688
+      ],
+      "total_bloqueado_ms_mediana": 67.94710000237683,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 415.1463,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 409.272,
+            "fracao": 0.9858500485250621
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 3.144599999999999,
+            "fracao": 0.007574679095056368
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.5957999999999999,
+            "fracao": 0.0038439460980382095
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.5465,
+            "fracao": 0.0013164033980310075
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.36390000000000006,
+            "fracao": 0.0008765584566211962
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.21500000000000002,
+            "fracao": 0.0005178897174321439
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 0.0085,
+            "fracao": 2.047470975894522e-05
+          }
+        ],
+        "ms_desta_frente": 3.359599999999999,
+        "fracao_desta_frente": 0.008092568812488512,
+        "funcoes_mais_caras": [
+          {
+            "ms": 405.77060000000006,
+            "quem": "~:0 <built-in method exec>",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.9289000000000001,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.6807,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          },
+          {
+            "ms": 0.6183,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.5825,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.3903,
+            "quem": "visor.py:508 mostrar_pagina",
+            "disparada_por": "painel_do_pdf.py:1070 _mostrar"
+          },
+          {
+            "ms": 0.38100000000000006,
+            "quem": "~:0 <built-in method fromImage>",
+            "disparada_por": "trilho.py:352 _miniatura_chegou"
+          },
+          {
+            "ms": 0.37560000000000004,
+            "quem": "acessibilidade.py:220 eventFilter",
+            "disparada_por": "painel_do_pdf.py:864 aguardar_pagina"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.19010000000000002,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.18780000000000002,
+            "quem": "~:0 <built-in method nt._getfinalpathname>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0461,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.023,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.019700000000000002,
+            "quem": "pathlib.py:981 resolve",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.015400000000000002,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.0143,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0122,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.006900000000000001,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0047,
+            "quem": "pathlib.py:523 _format_parsed_parts",
+            "disparada_por": "janela.py:1174 _parametros_de_ocr"
+          },
+          {
+            "ms": 0.0046,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0037,
+            "quem": "pathlib.py:546 __fspath__",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.0037,
+            "quem": "pathlib.py:1008 stat",
+            "disparada_por": "campo.py:170 _ler"
+          },
+          {
+            "ms": 0.003,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "janela.py:1867 _dizer_o_que_ha_na_pagina"
+          },
+          {
+            "ms": 0.0026,
+            "quem": "pathlib.py:777 parent",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0021000000000000003,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0020000000000000005,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0015,
+            "quem": "~:0 <built-in method nt.getcwd>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0014000000000000002,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          },
+          {
+            "ms": 0.0010000000000000002,
+            "quem": "~:0 <built-in method nt._path_normpath>",
+            "disparada_por": "state.py:270 _history_key"
+          },
+          {
+            "ms": 0.0007000000000000001,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "janela.py:1653 _caminhos_do_dataset"
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "aba Galeria: mostrar",
+      "pior_ms": 6.4842000000644475,
+      "pior_ms_mediana": 2.7705000037676655,
+      "pior_ms_frio": 6.4842000000644475,
+      "pior_ms_por_execucao": [
+        6.4842000000644475,
+        2.7705000037676655,
+        0.0
+      ],
+      "total_bloqueado_ms_mediana": 2.7705000037676655,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 15.397900000000002,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 12.605700000000002,
+            "fracao": 0.8186635839952202
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 1.5064999999999995,
+            "fracao": 0.09783801687243061
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 1.1423,
+            "fracao": 0.07418544087180719
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.14340000000000003,
+            "fracao": 0.009312958260542022
+          }
+        ],
+        "ms_desta_frente": 1.6498999999999995,
+        "fracao_desta_frente": 0.10715097513297264,
+        "funcoes_mais_caras": [
+          {
+            "ms": 8.533500000000002,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 2.8118000000000003,
+            "quem": "~:0 <built-in method setCurrentIndex>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.6613000000000001,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.5820000000000001,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.4734,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.4423,
+            "quem": "atalhos.py:239 eventFilter",
+            "disparada_por": "painel_da_galeria.py:577 showEvent"
+          },
+          {
+            "ms": 0.24130000000000001,
+            "quem": "acessibilidade.py:220 eventFilter",
+            "disparada_por": "painel_da_galeria.py:577 showEvent"
+          },
+          {
+            "ms": 0.16560000000000002,
+            "quem": "~:0 <built-in method sizeHint>",
+            "disparada_por": "barra.py:110 setGeometry"
+          }
+        ],
+        "e_s_de_disco": []
+      }
+    },
+    {
+      "operacao": "contar paginas do PDF",
+      "pior_ms": 0.0,
+      "pior_ms_mediana": 0.0,
+      "pior_ms_frio": 0.0,
+      "pior_ms_por_execucao": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_bloqueado_ms_mediana": 0,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 2.5093000000000005,
+        "por_familia": [
+          {
+            "familia": "PyMuPDF",
+            "ms": 1.7727000000000004,
+            "fracao": 0.706451998565337
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.3602,
+            "fracao": 0.14354600884708882
+          },
+          {
+            "familia": "builtins (C)",
+            "ms": 0.20110000000000006,
+            "fracao": 0.08014187223528475
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 0.0967,
+            "fracao": 0.038536643685489966
+          },
+          {
+            "familia": "pdf_io (tronco)",
+            "ms": 0.0707,
+            "fracao": 0.02817518829952576
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 0.0079,
+            "fracao": 0.0031482883672737413
+          }
+        ],
+        "ms_desta_frente": 0.0079,
+        "fracao_desta_frente": 0.0031482883672737413,
+        "funcoes_mais_caras": [
+          {
+            "ms": 0.7492,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_open_document_with_stream_and_dir>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.30000000000000004,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.2972,
+            "quem": "__init__.py:4296 close",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.14240000000000003,
+            "quem": "__init__.py:2900 __init__",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.13369999999999999,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_needs_password>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.10760000000000002,
+            "quem": "~:0 <built-in method pymupdf._mupdf.fz_lookup_metadata2>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.08630000000000002,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0709,
+            "quem": "~:0 <built-in method pymupdf._extra.page_count_fz>",
+            "disparada_por": ""
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.30000000000000004,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0202,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0142,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0106,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0045000000000000005,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0033,
+            "quem": "pathlib.py:630 suffix",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0028000000000000004,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0026,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0014000000000000002,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.0006000000000000001,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": ""
+          }
+        ]
+      }
+    },
+    {
+      "operacao": "ajustar a pagina (fit-to-page + repintura)",
+      "pior_ms": 0.0,
+      "pior_ms_mediana": 0.0,
+      "pior_ms_frio": 0.0,
+      "pior_ms_por_execucao": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_bloqueado_ms_mediana": 0,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 3.1233999999999997,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 2.4848,
+            "fracao": 0.7955433181789076
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 0.37920000000000015,
+            "fracao": 0.12140615995389646
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 0.15680000000000002,
+            "fracao": 0.050201703272075314
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.0519,
+            "fracao": 0.016616507651917783
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.0507,
+            "fracao": 0.016232310943202922
+          }
+        ],
+        "ms_desta_frente": 0.43110000000000015,
+        "fracao_desta_frente": 0.13802266760581425,
+        "funcoes_mais_caras": [
+          {
+            "ms": 1.1419000000000001,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.639,
+            "quem": "~:0 <built-in method repaint>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.2878,
+            "quem": "~:0 <built-in method drawPixmap>",
+            "disparada_por": "visor.py:168 paintEvent"
+          },
+          {
+            "ms": 0.09300000000000001,
+            "quem": "~:0 <built-in method type>",
+            "disparada_por": "atalhos.py:239 eventFilter"
+          },
+          {
+            "ms": 0.0661,
+            "quem": "enum.py:688 __call__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          },
+          {
+            "ms": 0.06160000000000001,
+            "quem": "~:0 <built-in method resize>",
+            "disparada_por": "visor.py:611 _ajustar_folha"
+          },
+          {
+            "ms": 0.057300000000000004,
+            "quem": "~:0 <built-in method start>",
+            "disparada_por": "visor.py:447 _pedir_reescalonamento"
+          },
+          {
+            "ms": 0.055600000000000004,
+            "quem": "enum.py:1095 __new__",
+            "disparada_por": "barra.py:71 expandingDirections"
+          }
+        ],
+        "e_s_de_disco": []
+      }
+    },
+    {
+      "operacao": "carregar indice da Galeria do livro",
+      "pior_ms": 0.0,
+      "pior_ms_mediana": 0.0,
+      "pior_ms_frio": 0.0,
+      "pior_ms_por_execucao": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "total_bloqueado_ms_mediana": 0,
+      "travamentos_mediana": 0.0,
+      "viola": false,
+      "referencia": false,
+      "excesso_ms": 0.0,
+      "pilha_do_pior": [],
+      "atribuicao": {
+        "total_perfilado_ms": 4.460100000000001,
+        "por_familia": [
+          {
+            "familia": "builtins (C)",
+            "ms": 1.6020999999999999,
+            "fracao": 0.35920719266384155
+          },
+          {
+            "familia": "tronco (outros)",
+            "ms": 1.2236000000000005,
+            "fracao": 0.2743436245824085
+          },
+          {
+            "familia": "pathlib/os (disco)",
+            "ms": 0.736,
+            "fracao": 0.16501872155332836
+          },
+          {
+            "familia": "qt/ (esta frente)",
+            "ms": 0.4500000000000001,
+            "fracao": 0.10089459877581221
+          },
+          {
+            "familia": "stdlib/terceiros",
+            "ms": 0.39350000000000007,
+            "fracao": 0.08822672137396023
+          },
+          {
+            "familia": "Qt (toolkit)",
+            "ms": 0.0333,
+            "fracao": 0.007466200309410103
+          },
+          {
+            "familia": "ui/ (esta frente)",
+            "ms": 0.021600000000000008,
+            "fracao": 0.004842940741238986
+          }
+        ],
+        "ms_desta_frente": 0.47160000000000013,
+        "fracao_desta_frente": 0.1057375395170512,
+        "funcoes_mais_caras": [
+          {
+            "ms": 0.6881,
+            "quem": "~:0 <built-in method processEvents>",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.5557,
+            "quem": "gallery.py:225 from_dict",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.48860000000000003,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.25100000000000006,
+            "quem": "gallery.py:340 from_dict",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.1785,
+            "quem": "decoder.py:332 decode",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.1394,
+            "quem": "~:0 <built-in method setStyleSheet>",
+            "disparada_por": "tema.py:172 aplicar"
+          },
+          {
+            "ms": 0.1242,
+            "quem": "visor.py:168 paintEvent",
+            "disparada_por": ""
+          },
+          {
+            "ms": 0.10200000000000001,
+            "quem": "decoder.py:343 raw_decode",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          }
+        ],
+        "e_s_de_disco": [
+          {
+            "ms": 0.48860000000000003,
+            "quem": "~:0 <built-in method nt.stat>",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0637,
+            "quem": "~:0 <built-in method io.open>",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0509,
+            "quem": "pathlib.py:56 parse_parts",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          },
+          {
+            "ms": 0.0237,
+            "quem": "pathlib.py:147 splitroot",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          },
+          {
+            "ms": 0.015400000000000002,
+            "quem": "pathlib.py:484 _parse_args",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          },
+          {
+            "ms": 0.0111,
+            "quem": "pathlib.py:504 _from_parts",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          },
+          {
+            "ms": 0.0095,
+            "quem": "pathlib.py:1053 read_text",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0094,
+            "quem": "pathlib.py:536 __str__",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0087,
+            "quem": "pathlib.py:622 name",
+            "disparada_por": "escolha_de_bases.py:49 <genexpr>"
+          },
+          {
+            "ms": 0.0068000000000000005,
+            "quem": "pathlib.py:1008 stat",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0061,
+            "quem": "pathlib.py:546 __fspath__",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0061,
+            "quem": "pathlib.py:868 __new__",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          },
+          {
+            "ms": 0.0052,
+            "quem": "pathlib.py:1230 exists",
+            "disparada_por": "painel_da_galeria.py:1292 _ler_indice"
+          },
+          {
+            "ms": 0.0046,
+            "quem": "pathlib.py:530 _make_child",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.004200000000000001,
+            "quem": "pathlib.py:569 _cparts",
+            "disparada_por": "painel_da_galeria.py:1153 _abrir_cache_de_posicoes"
+          },
+          {
+            "ms": 0.004000000000000001,
+            "quem": "pathlib.py:657 stem",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0031000000000000003,
+            "quem": "pathlib.py:523 _format_parsed_parts",
+            "disparada_por": "painel_da_galeria.py:826 _bases_atuais"
+          },
+          {
+            "ms": 0.0029000000000000002,
+            "quem": "pathlib.py:578 __eq__",
+            "disparada_por": "painel_da_galeria.py:1153 _abrir_cache_de_posicoes"
+          },
+          {
+            "ms": 0.0023,
+            "quem": "pathlib.py:1036 open",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0022,
+            "quem": "pathlib.py:38 _ignore_error",
+            "disparada_por": "painel_da_galeria.py:1292 _ler_indice"
+          },
+          {
+            "ms": 0.0016,
+            "quem": "pathlib.py:189 casefold_parts",
+            "disparada_por": "painel_da_galeria.py:1153 _abrir_cache_de_posicoes"
+          },
+          {
+            "ms": 0.0016,
+            "quem": "pathlib.py:765 __truediv__",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0015,
+            "quem": "pathlib.py:190 <listcomp>",
+            "disparada_por": "painel_da_galeria.py:1153 _abrir_cache_de_posicoes"
+          },
+          {
+            "ms": 0.0011,
+            "quem": "pathlib.py:515 _from_parsed_parts",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0010000000000000002,
+            "quem": "pathlib.py:94 join_parsed_parts",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.0004,
+            "quem": "~:0 <built-in method io.text_encoding>",
+            "disparada_por": "painel_da_galeria.py:1300 _ler_anotacoes"
+          },
+          {
+            "ms": 0.00030000000000000003,
+            "quem": "~:0 <built-in method nt.fspath>",
+            "disparada_por": "escolha_de_bases.py:52 store_path_for"
+          }
+        ]
+      }
+    }
+  ],
+  "violam_o_portao": [],
+  "veredito": "PASSOU"
+}

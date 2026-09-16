@@ -236,6 +236,43 @@ class TestTeclado:
         )
         assert controle.alcancavel()
 
+    def test_um_botao_num_qbuttongroup_esta_em_grupo_mesmo_sem_autoexclusive(self) -> None:
+        """A regra do próprio Qt (`fixFocusPolicy`: `if (!group && !autoExclusive) return;`): um
+        botão marcável num `QButtonGroup` **não** é `autoExclusive`, e mesmo assim vira um ponto
+        de parada só com os outros do grupo, com as setas entre eles. A régua antiga só olhava o
+        grupo depois de `autoExclusive()` dizer sim, e acusou três modos da aba `Livro` que as
+        setas alcançam (OCR_UI passo 17, tarefa 3). Medido em PyQt6 6.11 (offscreen): depois do
+        foco, os outros botões do grupo perdem `TabFocus` e `Right` marca e foca o vizinho."""
+
+        class Grupo:
+            pass
+
+        class Botao:
+            def __init__(self, grupo: object | None, auto_exclusivo: bool) -> None:
+                self._grupo, self._auto = grupo, auto_exclusivo
+
+            def group(self) -> object | None:
+                return self._grupo
+
+            def autoExclusive(self) -> bool:  # noqa: N802 - assinatura do Qt
+                return self._auto
+
+            def parentWidget(self) -> object:  # noqa: N802 - assinatura do Qt
+                return self
+
+        grupo = Grupo()
+        no_grupo = [Botao(grupo, auto_exclusivo=False) for _ in range(3)]
+        identidades = {teclado._grupo_exclusivo(botao) for botao in no_grupo}
+        assert identidades == {id(grupo)}, "os três respondem a mesma identidade: a do grupo"
+        solto = Botao(None, auto_exclusivo=False)
+        assert teclado._grupo_exclusivo(solto) is None
+        radio_sem_grupo = Botao(None, auto_exclusivo=True)
+        assert teclado._grupo_exclusivo(radio_sem_grupo) == id(radio_sem_grupo), "o pai é o grupo"
+        # E a pergunta que o portão faz: um membro fora do Tab está alcançado se **algum** membro
+        # do grupo dele foi visitado pela volta.
+        assert teclado._por_seta(no_grupo[1], {id(grupo)})
+        assert not teclado._por_seta(no_grupo[1], set())
+
     def test_texto_selecionavel_so_por_ponteiro_nao_e_defeito(self) -> None:
         controle = self._controle(
             classe="QLabel",
