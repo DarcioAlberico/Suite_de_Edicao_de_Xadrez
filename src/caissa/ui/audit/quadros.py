@@ -247,12 +247,16 @@ def _montar(pdf: Path, *, pagina: int, dpi: int, largura: int, altura: int) -> t
     from PyQt6.QtWidgets import QApplication
 
     aplicacao = QApplication.instance() or QApplication(sys.argv)
+    from caissa.ui.audit.capture import aguardar_a_folha
+
     painel = PainelDoPdf(None, dpi=lambda: dpi)
     painel.resize(largura, altura)
     painel.show()
     aplicacao.processEvents()
     painel.load_pdf(pdf)
+    aguardar_a_folha(painel)
     painel.ir_para_pagina(pagina)
+    aguardar_a_folha(painel)
     for _ in range(3):
         aplicacao.processEvents()
     if painel.page_rgb is None:

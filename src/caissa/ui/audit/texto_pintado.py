@@ -991,7 +991,7 @@ def medir_uma_passada(
     from PyQt6.QtWidgets import QApplication
 
     from caissa.ui.audit import teclado
-    from caissa.ui.audit.capture import estado_de_medicao, impor_a_fonte_do_produto
+    from caissa.ui.audit.capture import aguardar_a_folha, estado_de_medicao, impor_a_fonte_do_produto
 
     aplicacao = QApplication.instance() or QApplication(sys.argv[:1])
     impor_a_fonte_do_produto(aplicacao)
@@ -1004,6 +1004,7 @@ def medir_uma_passada(
     janela.show()
     if pdf is not None and Path(pdf).exists():
         janela.abrir_pdf(Path(pdf))
+        aguardar_a_folha(janela)
     for _ in range(8):
         aplicacao.processEvents()
 

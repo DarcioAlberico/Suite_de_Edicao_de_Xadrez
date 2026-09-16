@@ -476,9 +476,11 @@ def auditar(
         )
 
     if pdf is not None and pdf.exists():
-        rodar("abrir o livro", lambda: janela.abrir_pdf(pdf))
-        rodar("ir para a pagina 41", lambda: janela.pdf.ir_para_pagina(40))
-        rodar("ir para a pagina 121", lambda: janela.pdf.ir_para_pagina(120))
+        from caissa.ui.audit.capture import aguardar_a_folha
+
+        rodar("abrir o livro", lambda: (janela.abrir_pdf(pdf), aguardar_a_folha(janela)))
+        rodar("ir para a pagina 41", lambda: (janela.pdf.ir_para_pagina(40), aguardar_a_folha(janela)))
+        rodar("ir para a pagina 121", lambda: (janela.pdf.ir_para_pagina(120), aguardar_a_folha(janela)))
     for indice in range(janela.abas.count()):
         nome_da_aba = janela.abas.tabText(indice).split(" (")[0].strip()
         rodar(f"abrir a aba {nome_da_aba}", lambda i=indice: janela.abas.setCurrentIndex(i))

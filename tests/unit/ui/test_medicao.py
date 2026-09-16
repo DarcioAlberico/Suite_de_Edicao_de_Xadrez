@@ -178,6 +178,24 @@ class TestResumo:
         travas = [bloqueio.Travamento(duracao_ms=v, quando_s=0.0) for v in (5.0, 90.0, 30.0)]
         assert [t.duracao_ms for t in bloqueio.piores(travas, 2)] == [90.0, 30.0]
 
+    def test_a_referencia_e_publicada_mas_nao_decide_o_veredito(self) -> None:
+        """`render_pdf_page` chamado direto mede a thread de trabalho, e não a da interface.
+
+        Desde o passo 15 da OCR_UI o produto nunca rasteriza na thread da janela; a linha continua
+        no relatório -- é quanto custa a conta que o filho paga -- e sai de `viola`. Qualquer outra
+        operação com o mesmo número continua violando: a exceção é nominal, e só uma.
+        """
+        pesada = bloqueio.Medicao(operacao=bloqueio.REFERENCIA, resumo=bloqueio.resumir([60.0], piso_ms=16.0))
+        linha = bloqueio._consolidar(bloqueio.REFERENCIA, [pesada], 16.0)
+        assert linha["referencia"] is True
+        assert linha["viola"] is False
+        assert linha["pior_ms"] == pytest.approx(60.0)
+
+        outra = bloqueio.Medicao(operacao="abrir PDF", resumo=bloqueio.resumir([60.0], piso_ms=16.0))
+        linha = bloqueio._consolidar("abrir PDF", [outra], 16.0)
+        assert linha["referencia"] is False
+        assert linha["viola"] is True
+
     def test_o_relato_de_uma_falha_traz_numero_e_pilha(self) -> None:
         """Quem lê a falha é o pytest, e um número sem nome manda alguém procurar."""
         medicao = bloqueio.Medicao(operacao="abrir PDF")

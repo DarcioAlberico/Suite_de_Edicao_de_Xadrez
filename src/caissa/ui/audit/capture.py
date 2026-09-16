@@ -179,6 +179,22 @@ FRACAO_DO_DIVISOR = 0.566
 que os torna comparáveis com os do próximo. Ver `_fixar_o_divisor`."""
 
 
+def aguardar_a_folha(janela_ou_painel: Any, limite_ms: int = 15_000) -> bool:
+    """Espera a rasterização ao fundo do tronco entregar a folha (OCR_UI passo 15).
+
+    Desde o passo 15 `abrir_pdf` e `ir_para_pagina` voltam antes de a página estar na tela --
+    a rasterização corre num processo de trabalho e chega por sinal. Todo arnês que fotografa,
+    conta ou mede **a folha** tem de esperar por ela; este é o único lugar em que se espera, e
+    ele aceita a janela ou o painel. Num tronco anterior ao passo (sem `aguardar_pagina`) não
+    há o que esperar e devolve `True`.
+    """
+    painel = getattr(janela_ou_painel, "pdf", janela_ou_painel)
+    aguardar = getattr(painel, "aguardar_pagina", None)
+    if aguardar is None:
+        return True
+    return bool(aguardar(limite_ms))
+
+
 def estado_de_medicao(pasta: Path) -> Path:
     """Escreve um estado de sessão **próprio** naquela pasta e devolve o caminho dele.
 
@@ -259,6 +275,7 @@ def _fixar_a_vista(janela: object) -> None:
         return
     try:
         painel.ir_para_pagina(PAGINA_DA_AUDITORIA)
+        aguardar_a_folha(painel)
         painel.definir_enquadramento(ENQUADRAMENTO_DA_AUDITORIA)
     except Exception as exc:  # noqa: BLE001 - ver a docstring
         print(f"  (a vista não foi fixada: {exc})", file=sys.stderr)
@@ -381,6 +398,7 @@ def capturar_uma_pele(
     if pdf is not None and pdf.exists():
         try:
             janela.abrir_pdf(pdf)
+            aguardar_a_folha(janela)
             _fixar_a_vista(janela)
         except Exception as exc:
             print(f"  (livro {pdf.name} não abriu: {exc})", file=sys.stderr)

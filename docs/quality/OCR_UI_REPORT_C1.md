@@ -1283,3 +1283,176 @@ O que falta é render e E/S fora da thread em `qt/painel_do_pdf.py`, `qt/painel_
 trabalho (commit só por caminho, em arquivo limpo) o passo fica **suspenso** até essa sessão
 commitar ou guardar o que tem; o precedente do passo 12 (pares reaplicáveis em
 `docs/quality/ui/c17/tronco_passo12.py`) vale para mudanças pequenas, não para esta.
+
+---
+
+## §15 — Passo 15: render e E/S fora da thread da janela (2026-09-16)
+
+(O roadmap previa este relatório em `OCR_UI_REPORT_C2.md` §5; os passos executados continuam
+num só arquivo, como os anteriores. O «antes» é o §14.)
+
+### 15.0 Em uma tela
+
+- **O `bloqueio` passa pela primeira vez** — 3 invocações, 3 × PASSOU; nenhuma operação acima
+  de **6,6 ms** (piso 16). Era 7 operações reprovadas com 170 ms na pior (§14).
+- **O que faltava não era ladrilho: era o GIL.** Rasterizar numa `QThread` tirou a conta da
+  thread da janela só no nome — o `get_pixmap` do PyMuPDF 1.28 segura o interpretador os 43–49 ms
+  inteiros, e a janela ficou parada **51 ms** por página numa thread. A leitura do `labels.csv`
+  (5.431 FENs conferidas em Python) e a detecção de fundo têm a mesma doença. A solução é um
+  **processo filho** (`chess_diagram_ocr/processo_de_trabalho.py`): o pai só espera, e esperar
+  um `Pipe` solta o GIL.
+- `quadros` sobe de 75–82 para **346–415 fps @ p95** no zoom: a redução ao zoom novo roda ao
+  fundo (`cv2.resize`, que solta o GIL) e a folha anterior é esticada pelo pintor até a nítida
+  chegar (quadro provisório).
+- **Bandeira** `qt/painel_do_pdf.RASTERIZAR_AO_FUNDO` (padrão `True`; desfazer = `False`). A
+  suíte do tronco a desliga uma vez no `conftest`; o caminho ao fundo tem testes próprios.
+- Tronco: `8b61a3e` guarda o WIP da outra sessão (86 arquivos, a pedido do usuário); o passo vem
+  por cima em commit próprio. Suíte do tronco: 4.507 passaram; 3 falhas pré-existentes de
+  módulos da outra sessão (`biblioteca.py`, `cortina.py`, `selecao_de_area.py`,
+  `substituicao.py` fora de `SEM_TKINTER`/acentos; `test_field_eval` pede remedição de campo
+  desde o passo 7) e nenhuma nova.
+
+### 15.1 O que foi medido antes de escrever código
+
+A tarefa 0 (§14) dizia que 5 das 7 operações eram render e E/S fora do visor. Dividindo cada
+operação em partes (`scratchpad/perfil15*.py`, Kemeri, janela 1280×800, offscreen):
+
+| parte | ms | onde |
+|---|---:|---|
+| `get_pdf_page_count` (disco frio) | 19,5 | thread da janela |
+| `galeria.load_pdf` → `open_store` (SQLite, frio) | 67,6 | thread da janela |
+| `render_pdf_page` 220 DPI | 68 (frio) / 45 | thread da janela |
+| `visor.mostrar_pagina` (array → `QPixmap` + reescala) | 5,7 | thread da janela |
+| aba Dataset, 1.ª vez | **57,7** no 1.º `processEvents`; 4,4 com `_stale=False` | `_reler_agora` |
+| aba Dataset, quente | 14 ms de Qt (69 widgets + `QTreeWidget` de 200 linhas), 1,3 ms de Python | — |
+
+O 57,7 da aba Dataset **não era a aba**: era o CSV lendo numa thread e revezando o GIL com os
+442 `eventFilter` que uma troca de aba dispara. Com `sys.setswitchinterval` em 0,5 ms cai para
+7,8; em 0,1 ms para 6,0 (`perfil15g.py`); a leitura fica 20 % mais lenta (678 → 816 ms).
+
+**Faixas não resolvem o PyMuPDF.** Rasterizar em cinco `get_pixmap(clip=)` de 512 px custa
+110 ms no total e a pior faixa 30 ms — o scan embutido é decodificado inteiro a cada faixa — e
+a pior espera da thread principal fica em 33 ms. O `displaylist` não muda nada. Medido em
+`perfil15b/c`; é a razão de o passo não ter ficado em «ladrilhos em worker».
+
+**`QImage.scaled` também segura o GIL** (11,4 ms de espera numa thread, 24 ms no total);
+`cv2.resize` INTER_AREA custa 15 ms e a espera é 2,9 ms. Por isso `qt/imagens.reduzir_rgb`.
+
+### 15.2 O que foi construído (tronco)
+
+| onde | o quê |
+|---|---|
+| `processo_de_trabalho.py` (novo) | `ProcessoDeTrabalho`: um `ProcessPoolExecutor(spawn, 1)` preguiçoso; `executar(funcao, *args)`, `rasterizar`, `aquecer`, `encerrar`; recria o filho uma vez se ele morrer e cai para a linha com aviso se nem isso der; `em_processo=False` roda em linha |
+| `qt/trabalho.py` | `ceder_a_interface()` na primeira `Tarefa`: `sys.setswitchinterval` → 0,1 ms (tabela medida no docstring) |
+| `qt/painel_do_pdf.py` | `load_pdf` conta as páginas ao fundo e só aponta para o livro em `_livro_abriu` (S-123 mantida); `desenhar_pagina` pede a folha ao fundo (`_rasterizar` → filho → `preparar_folha`), a anterior fica na tela; `FolhaRasterizada` com a chave `(livro, página, dpi)` recusa folha atrasada; `aguardar_pagina()` para testes e arnês; bandeira `RASTERIZAR_AO_FUNDO` |
+| `qt/visor.py` | `_pagina` vira o tamanho; a página inteira mora só no array; `FolhaPreparada`/`preparar_folha` (prevê o zoom do enquadramento); reescala ao fundo com quadro provisório esticado; geração para descartar reescala de página que saiu |
+| `qt/imagens.py` | `reduzir_rgb` (OpenCV) |
+| `qt/painel_da_galeria.py` | `_abrir_cache_de_posicoes(ao_fundo=True)` na abertura do livro; a busca por posição espera a abertura em vez de abrir outra |
+| `games_cache.py` | `open_store(de_outra_thread=True)` → `check_same_thread=False` |
+| `qt/marcas.py` | `ler_marcas_e_treino` (uma passada pelo CSV, no filho, para marcas **e** amostras de treino); `amostras_de_treino_guardadas` só devolve o que já está guardado |
+| `qt/janela.py` | bandeira repassada; `_aviso_de_treino` não lê mais na thread da janela; detecção de fundo no filho (`detect_diagrams_rendering_page`, que rasteriza de novo em vez de receber 26 MB) |
+| `qt/painel_do_dataset.py` | `load_rows` no filho, atravessando como tuplas (7,8 → 3,0 ms de `pickle.loads`) |
+| `qt/campo.py` | conjunto de campo guardado por `(tamanho, mtime)` |
+| `qt/tabela.py` | alinhamento resolvido uma vez por coluna |
+| `ui/busy.py` | as três threads novas declaradas em `FORA_DO_REGISTRO` com o motivo |
+| `detection/hybrid.py` | `detect_diagrams_rendering_page` |
+
+Suíte (`caissa`): `ui/audit/capture.aguardar_a_folha` e o uso dela em `bloqueio`, `quadros`,
+`capture`, `comandos`, `execucao`, `fita`, `teclado`, `texto_pintado`; `bloqueio --sabotar`;
+a operação `rasterizar pagina a 300 DPI (render_pdf_page)` vira **referência** (medida e
+publicada, fora de `viola` — ver 15.4).
+
+### 15.3 Portão
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # 3x
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17 --sabotar
+.venv\Scripts\python.exe -m caissa.ui.audit.quadros  --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # 3x
+```
+
+`bloqueio` — `bloqueio_20260916_060952/061002/061012.json`, **PASSOU × 3**. Pior travamento por
+operação nas três invocações (ms; o «frio» é a 1.ª execução):
+
+| operação | pior | frio | §14 |
+|---|---|---|---:|
+| abrir PDF (load_pdf, 1.ª página) | 3,6 / 5,9 / 4,8 | 2,9 / 5,9 / 4,8 | 170 |
+| virar para a página 41 | 1,9 / 1,7 / 2,3 | 1,9 / 1,7 / 1,1 | ~70 |
+| virar para a página 42 | 2,8 / 2,5 / 4,0 | 0,7 / 1,9 / 1,4 | ~70 |
+| virar para a página 121 | 4,1 / 2,0 / 2,3 | 1,6 / 2,0 / 2,3 | ~70 |
+| aba Dataset: mostrar e carregar | 6,3 / 6,6 / 5,6 | 2,0 / 2,3 / 4,4 | 70 |
+| aba Galeria: mostrar | 3,6 / 2,6 / 4,0 | 0,2 / 2,6 / 4,0 | 23 |
+| carregar índice da Galeria | 0,0 | 0,0 | 1 |
+| ajustar a página | 0,0 | 0,0 | 0 |
+| contar páginas | 0,0 | 0,0 | 0 |
+| *referência:* rasterizar 300 DPI direto | 57,9 / 55,2 / 61,2 | — | 46 |
+
+**Sabotagem** (`--sabotar` = `rasterizar_ao_fundo=False`, tudo na thread da janela):
+`bloqueio_sabotagem_20260916_054722.json`, **REPROVOU, 7 operações** — abrir 143 ms, virar
+99–112 ms, Galeria 47,6/35,5, Dataset 31,2. O portão acusa.
+
+`quadros` — `fps_20260916_054955/054957/055000.json` (mais `061026`, a última): zoom
+**414,9 / 346,1 / 365,6 fps @ p95** (piso 70), pan 629,6 / 550,4 / 563,4, juntos 441,7 / 388,4 /
+399,7. Era 75–82 (§14). O quadro medido é o provisório quando o zoom acaba de mudar; a nítida
+chega por sinal ~15 ms depois (uma redução por passo, só o último zoom espera).
+
+Também rerodados sem regressão: `teclado` (PASSOU em todos os arranjos,
+`teclado_20260916_061059.json`), `comandos` (PASSOU, `comandos_20260916_061108.json`).
+
+Cópias dos relatórios do portão (os três `bloqueio`, a sabotagem e o `fps` final) em
+`docs/quality/ui/c17/*passo15*.json`; `benchmarks/reports/` não é versionado.
+
+### 15.4 O que mudou no portão, e por quê
+
+A operação *«rasterizar pagina a 300 DPI (render_pdf_page)»* chamava `render_pdf_page` **direto
+na thread da janela**: era o custo bruto, posto na lista no ciclo 1 para atribuir a virada de
+página. O produto não a chama mais nessa thread — e um portão da thread da interface que
+reprovasse por uma função que a interface não chama estaria medindo outra coisa. Ela continua
+medida e publicada (`referencia: true`, coluna «ref» na tabela) porque é o que o filho paga; sai
+de `viola` e de `violam_o_portao`. Teste em `tests/unit/ui/test_medicao.py`.
+
+`bloqueio` e as demais auditorias esperam a folha (`aguardar_a_folha`) **sob o vigia**: sem isso
+«virar página» mediria só o pedido (2 ms) e a chegada da folha cairia na operação seguinte.
+
+### 15.5 Achados que ficam
+
+1. **Uma `QThread` não é «fora da thread da interface» em Python.** Só é quando o que roda nela
+   solta o GIL — numpy e OpenCV soltam, PyMuPDF e o `csv`+python-chess não. Toda medição de
+   bloqueio deste projeto que atribuiu custo a «Qt (toolkit)» ou «builtins (C)» dentro de
+   `processEvents` precisa ser lida com isso em mente: parte daquele tempo era espera pelo GIL.
+2. **O intervalo de troca do interpretador é um parâmetro de interface.** 5 ms (padrão) é bom
+   para lote; 0,1 ms custa nada de vazão medível aqui e tira 50 ms de travamento.
+3. **A folha de estilo não é o custo da aba Dataset** (13,8 → 13,2 ms sem as regras de
+   `::item`; 9,5 sem folha nenhuma). Os ~14 ms de Qt para mostrar a aba com a tabela cheia são o
+   `QTreeWidget` (2,6 ms sem ele) — cabeçalho pintado 6× por troca (3 pares hide/show) e a pintura
+   das células. Fica abaixo do piso com 0 Python concorrente; é o item que sobra para quem quiser
+   margem (item aberto, não bloqueante).
+4. **`spawn` reimporta o `__main__`**: todo script que construa `JanelaPrincipal` com a bandeira
+   ligada precisa do `if __name__ == "__main__"` — sem ele o filho abre outra janela e outro filho
+   (aconteceu no primeiro roteiro de perfil). Os arnês e o `app_pyqt` já o têm; o bundle tem
+   `mp.freeze_support()`. **O bundle não foi reconstruído neste passo** — conferir na próxima
+   construção que o filho nasce dentro do `.exe`.
+5. O item C16 «`bloqueio` reprovado» fecha; Q6 da SPEC (o que vale para 13 e 14 até o 15 fechar)
+   deixa de ter objeto.
+
+### 15.6 Testes
+
+Tronco (Python 3.10, `.venv` do tronco): `tests/test_processo_de_trabalho.py` (novo, 6: em linha;
+no filho de verdade — resultado volta, PID difere, a página do filho é igual à de
+`render_pdf_page`, **150 ms de Python no filho não param a thread principal por mais de 40 ms**;
+sem `spawn` possível cai para a linha), `tests/test_qt_painel_do_pdf.py::RasterizacaoAoFundoTests`
+(5: volta antes da folha e a folha chega por sinal; a anterior fica na tela; virar duas vezes
+mostra só a última; PDF quebrado não troca o livro; em linha a folha está ao voltar),
+`tests/test_app_pyqt.py::VisorTests` (+4: em linha nítida na hora; quadro provisório até a nítida;
+zoom que passou é descartado; `preparar_folha` prevê o enquadramento),
+`tests/test_qt_trabalho.py::CederAInterfaceTests`. `conftest.trabalho_em_linha` (sessão).
+Catraca de `qt/janela.py` 1.905 → 1.944 com o motivo em `test_packaging`. Suíte inteira:
+**4.507 passed**, 3 falhas pré-existentes (15.0). Suíte da `caissa`: `tests/unit/ui/test_medicao.py`
++1 (a referência não decide o veredito).
+
+### 15.7 Saída
+
+Tronco: `8d9b02f` sobre `8b61a3e` (os 25 caminhos de 15.2). Suíte: este §15, a linha do
+roadmap, `caissa/ui/audit/*` e `test_medicao.py`; relatórios em `benchmarks/reports/ui/c17/`.
+**Desfazer:** `qt/painel_do_pdf.RASTERIZAR_AO_FUNDO = False` (o visor volta ao que era: tudo em
+linha) — o `bloqueio` volta a reprovar nas 7, que é a sabotagem.

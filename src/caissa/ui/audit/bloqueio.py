@@ -718,6 +718,29 @@ def _escoar_de(aplicacao: Any) -> Callable[[], None]:
     return escoar
 
 
+REFERENCIA = "rasterizar pagina a 300 DPI (render_pdf_page)"
+"""A operação que **não é da interface**: o custo bruto de rasterizar uma página, chamado direto.
+
+Está na lista desde o ciclo 1 para dizer quanto custa a conta que a virada de página paga; desde
+o passo 15 da OCR_UI essa conta roda numa `Tarefa`, e o produto **nunca** a chama na thread da
+janela. Ela continua medida e publicada -- é o que a thread de trabalho gasta --, mas não decide
+`viola`: um portão da thread da interface que reprovasse por uma função que a interface não
+chama estaria medindo outra coisa. `referencia: true` na linha dela."""
+
+
+def _aguardar_a_folha(janela: Any) -> None:
+    """Espera a rasterização ao fundo entregar, **sob o vigia** (passo 15).
+
+    Sem isto a operação "virar página" mediria só o pedido -- 2 ms -- e a chegada da folha (a
+    conversão para `QPixmap`, `mostrar_pagina`, `_pagina_apareceu`) cairia na janela da operação
+    seguinte, atribuída a quem não a causou. `aguardar_pagina` roda a linha de eventos, então os
+    pulsos do vigia continuam chegando e a chegada é medida onde pertence.
+    """
+    from caissa.ui.audit.capture import aguardar_a_folha
+
+    aguardar_a_folha(janela)
+
+
 def _operacoes(
     janela: Any, pdf: Path, *, paginas: Sequence[int]
 ) -> list[tuple[str, Callable[[], object]]]:
@@ -732,19 +755,21 @@ def _operacoes(
     indice_do_dataset = _indice_da_aba(janela, "dataset")
     indice_da_galeria = _indice_da_aba(janela, "galeria")
 
+    def abrir() -> None:
+        janela.abrir_pdf(pdf)
+        _aguardar_a_folha(janela)
+
+    def virar(pagina: int) -> None:
+        janela.pdf.ir_para_pagina(pagina)
+        _aguardar_a_folha(janela)
+
     lista: list[tuple[str, Callable[[], object]]] = [
         ("contar paginas do PDF", lambda: get_pdf_page_count(pdf)),
-        ("abrir PDF (load_pdf, 1a pagina a 300 DPI)", lambda: janela.abrir_pdf(pdf)),
-        (
-            "rasterizar pagina a 300 DPI (render_pdf_page)",
-            lambda: render_pdf_page(pdf, paginas[0], dpi=300),
-        ),
+        ("abrir PDF (load_pdf, 1a pagina a 300 DPI)", abrir),
+        (REFERENCIA, lambda: render_pdf_page(pdf, paginas[0], dpi=300)),
     ]
     lista += [
-        (
-            f"virar para a pagina {pagina + 1} (ir_para_pagina)",
-            lambda p=pagina: janela.pdf.ir_para_pagina(p),
-        )
+        (f"virar para a pagina {pagina + 1} (ir_para_pagina)", lambda p=pagina: virar(p))
         for pagina in paginas
     ]
     lista += [
@@ -790,8 +815,14 @@ def medir(
     execucoes: int = 3,
     perfilar: bool = True,
     caminho_do_tronco: Path = TRONCO,
+    sabotar: bool = False,
 ) -> dict[str, Any]:
     """Roda as operações do tronco sob o vigia, `execucoes` vezes, e devolve o relatório.
+
+    `sabotar` constrói a janela com `rasterizar_ao_fundo=False` -- rasterização, contagem, CSV e
+    detecção na thread da janela, que é como o tronco era antes do passo 15 da OCR_UI. É a
+    sabotagem do roadmap ("renderizar na thread de UI: o `bloqueio` tem de acusar"); um portão
+    que passasse assim não estaria medindo a thread.
 
     Três execuções pela carta dos críticos (§6). **O portão olha o pior travamento de todas as
     execuções, e a mediana é publicada ao lado dele** -- e a inversão foi paga caro.
@@ -842,7 +873,8 @@ def medir(
     # sessão de quem o roda.
     temporaria = tempfile.TemporaryDirectory()
     estado = estado_de_medicao(Path(temporaria.name))
-    janela = JanelaPrincipal(caminho_do_estado=estado)
+    extras: dict[str, Any] = {"rasterizar_ao_fundo": False} if sabotar else {}
+    janela = JanelaPrincipal(caminho_do_estado=estado, **extras)
     janela.resize(1280, 800)
     janela.show()
     escoar()
@@ -860,7 +892,7 @@ def medir(
     vigia.desligar()
 
     def _nova_janela() -> Any:
-        nova = JanelaPrincipal(caminho_do_estado=estado)  # ver a nota acima
+        nova = JanelaPrincipal(caminho_do_estado=estado, **extras)  # ver a nota acima
         nova.resize(1280, 800)
         nova.show()
         return nova
@@ -925,6 +957,7 @@ def medir(
             else "desligada (--sem-perfil)",
         },
         "amostra": {"pdf": str(pdf), "paginas_base_1": [p + 1 for p in paginas]},
+        "sabotagem": "rasterizar_ao_fundo=False (tudo na thread da janela)" if sabotar else "",
         "operacoes": linhas,
         "violam_o_portao": [linha["operacao"] for linha in violam],
         "veredito": "REPROVOU" if violam else "PASSOU",
@@ -1037,7 +1070,8 @@ def _consolidar(
         "travamentos_mediana": _mediana(
             [float(medicao.resumo.travamentos) for medicao in medicoes]
         ),
-        "viola": pior_ms > piso_ms,
+        "viola": pior_ms > piso_ms and nome != REFERENCIA,
+        "referencia": nome == REFERENCIA,
         "excesso_ms": max(0.0, pior_ms - piso_ms),
         "pilha_do_pior": list(pior[0].pilha) if pior else [],
         "atribuicao": atribuicao or {},
@@ -1054,7 +1088,7 @@ def tabela(relatorio: dict[str, Any]) -> str:
         f"{'mediana':>9}{'travas':>8}  veredito",
     ]
     for linha in relatorio["operacoes"]:
-        marca = "!!" if linha["viola"] else "ok"
+        marca = "!!" if linha["viola"] else ("ref" if linha.get("referencia") else "ok")
         linhas.append(
             # **A coluna imprime o `pior_ms`, que e quem decide `viola`** (F9-C2). Ela imprimia
             # `pior_ms_mediana` enquanto o veredito ja olhava o pior: a aba Dataset saia com
@@ -1062,7 +1096,7 @@ def tabela(relatorio: dict[str, Any]) -> str:
             f"  {marca:<3}{linha['operacao'][:44]:<46}{linha['pior_ms']:>10.1f}"
             f"{linha['pior_ms_frio']:>10.1f}{linha['pior_ms_mediana']:>9.1f}"
             f"{linha['travamentos_mediana']:>8.0f}  "
-            f"{'VIOLA' if linha['viola'] else 'dentro'}"
+            f"{'VIOLA' if linha['viola'] else ('referencia' if linha.get('referencia') else 'dentro')}"
         )
     if relatorio["violam_o_portao"]:
         linhas.append("")
@@ -1162,6 +1196,11 @@ def main(argv: list[str] | None = None) -> int:
         help="onde gravar o relatorio. Obrigatorio: este portao nao escolhe pasta por voce.",
     )
     parser.add_argument("--tronco", type=Path, default=TRONCO)
+    parser.add_argument(
+        "--sabotar",
+        action="store_true",
+        help="janela com rasterizar_ao_fundo=False: tudo na thread da interface. O portao tem de reprovar.",
+    )
     args = parser.parse_args(argv)
 
     relatorio = medir(
@@ -1171,10 +1210,11 @@ def main(argv: list[str] | None = None) -> int:
         execucoes=args.execucoes,
         perfilar=not args.sem_perfil,
         caminho_do_tronco=args.tronco,
+        sabotar=args.sabotar,
     )
     args.saida.mkdir(parents=True, exist_ok=True)
     marca = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    alvo = args.saida / f"bloqueio_{marca}.json"
+    alvo = args.saida / f"bloqueio_{'sabotagem_' if args.sabotar else ''}{marca}.json"
     alvo.write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(tabela(relatorio))

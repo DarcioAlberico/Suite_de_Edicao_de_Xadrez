@@ -1109,7 +1109,7 @@ def auditar(
     from PyQt6.QtCore import QT_VERSION_STR
     from PyQt6.QtWidgets import QApplication
 
-    from caissa.ui.audit.capture import estado_de_medicao
+    from caissa.ui.audit.capture import aguardar_a_folha, estado_de_medicao
 
     aplicacao = QApplication.instance() or QApplication(sys.argv)
     # **Estado próprio, e não o `data/app_tkinter_state.json` do tronco** (F9-C10). Ver
@@ -1126,6 +1126,7 @@ def auditar(
     if pdf is not None and pdf.exists():
         try:
             janela.abrir_pdf(pdf)
+            aguardar_a_folha(janela)
         except Exception as exc:
             print(f"  (livro {pdf.name} não abriu: {exc})", file=sys.stderr)
         for _ in range(4):
