@@ -1621,7 +1621,7 @@ CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independente
 | `qt/trilho.py` (novo) | `TrilhoDoLivro`: lista em `IconMode` vertical com altura de item declarada, miniaturas pelo processo de trabalho (uma por vez, visíveis primeiro, `_visiveis` pela barra e não por `indexAt`), botões do catálogo, barra de progresso, resumo |
 | `qt/importador_de_livro.py` (novo) | a guarda da suíte (como `exportador_de_livro`), a `Ponte` importador↔trilho, o registro no `BusyRegistry` (cancelável, progresso por página), `estados_do_trilho` |
 | `ui/comandos.py`, `ui/menu.py` | `importar_livro`, `cancelar_importacao` (Arquivo), `trilho` (interruptor) e `primeira_duvidosa` (Ver); todos neutros — a ênfase única continua `ler_melhor` |
-| `qt/janela.py` | o trilho à esquerda da coluna do livro; `livro = importador_de_livro.montar(...)`; quatro comandos; 1.944 → 1.983 linhas (catraca com o motivo) |
+| `qt/janela.py` | o trilho à esquerda da coluna do livro; `livro = importador_de_livro.montar(...)`; quatro comandos; 1.944 → 1.984 linhas (catraca com o motivo) |
 | `ui/busy.py`, `docs/ARCHITECTURE.md` | a thread da miniatura declarada; 18 threads |
 | testes | `test_qt_trilho.py` (10), `test_qt_janela.py` (+3), `test_ui_comandos.py` (rótulos divergentes) |
 
@@ -1678,7 +1678,7 @@ set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
 
 ### 17.6 Saída
 
-Tronco: ramo `passo-17-trilho` (commit próprio sobre `a3bf4c5`), **não fundido**. Suíte:
+Tronco: ramo `passo-17-trilho`, commit `10aac70` sobre `a3bf4c5`, **não fundido** (o checkout volta a `religa-as-decisoes-orfas`). Suíte:
 `ingest/pdf/importer.py`, `ui/trilho.py`, `ui/views/importacao.py`, `ui/audit/percurso.py`,
 testes, este §17 e a linha do roadmap. **Desfazer:** o ramo não se funde; na suíte,
 `keep_partial` é opcional e desligado por padrão.
