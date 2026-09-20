@@ -1965,3 +1965,33 @@ Suíte: `tools/f4_field_failures.py --barrados` (`barrados.json/.md`, `ficha_0b.
 `tools/aplicar_0b.py`, `docs/quality/0b/` (tabela, ficha, propostas e os 20 recortes em JPEG; os PNG
 ficam em `benchmarks/reports/f4_barrados`, fora do git), este §19 e a linha do roadmap. Tronco:
 inalterado. **Desfazer:** apagar `docs/quality/0b/`; nada foi gravado no conjunto de campo.
+
+### 19.5 As 18 confirmadas e gravadas — o passo 8 volta a ter população (2026-09-20, mais tarde)
+
+O usuário conferiu as 18 propostas contra as páginas: 16 valiam; em **b08** e **b09** (Koblenz p50) o
+segundo leitor errou a cor de um bispo (g4 e e7 são pretos) e a leitura foi corrigida. As 18 entraram
+no conjunto de campo por `tools/aplicar_0b.py --gravar` — tronco `0fbb908`, `data/field_set.jsonl`:
+115 diagramas, **114 com placement** (o único sem é o do Yusupov p11 que o detector não casa).
+
+O portão do passo 8, rodado sobre o conjunto novo (`diagram_confidence_gate.py --runs 3`, 3 execuções
+idênticas, ~2 min):
+
+```
+casados com posição anotada: 114 (exatos 104 régua corrigida; negativos: 10)
+AUROC fora da dobra (por livro): 0,899   constante 0,500   min_confidence sozinho: 0,966
+ECE 0,011   Brier 0,019 (constante 0,080)
+  fonte          n=18 neg=1    scan-hachurado n=21 neg=5    scan-puro n=44 neg=4    vetorial n=31 neg=0
+portão: AUROC ≥ 0,90 ✗ · ECE ≤ 0,03 ✓ → REPROVOU
+--sabotar ruido: AUROC 0,206 → REPROVOU
+```
+
+O que mudou de verdade: **a sabotagem passou a ser distinguível** (0,899 real contra 0,206 com ruído; em
+§4 eram 0,02 e 0,12, indistinguíveis) — o instrumento agora mede. O que não mudou: o portão fica
+vermelho, e por um motivo que os números explicam — com 10 negativos o modelo de dez sinais (0,899)
+fica **abaixo** de `min_confidence` sozinho (0,966): é ajuste demais para população de menos. A alavanca
+continua a do 0b, os ≥ 20 errados que faltam em páginas novas; enquanto isso, nada muda no produto
+(`default_confidence()` segue `None`, a fila e o âmbar seguem em `min_confidence` — que, medido, é o
+melhor sinal disponível).
+
+**Saída:** tronco `0fbb908` (conjunto de campo); suíte: `docs/quality/0b/propostas_0b.json` com as 18
+confirmadas, este §19.5. **Desfazer:** `git -C ChessVisionOFF_Puro revert 0fbb908`.
