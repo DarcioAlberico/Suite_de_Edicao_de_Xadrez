@@ -1,8 +1,8 @@
 {
   "variante": "padrao",
   "nome": "Caissa",
-  "mb": 297.0,
-  "arquivos": 1307,
+  "mb": 297.3,
+  "arquivos": 1305,
   "maiores": [
     {
       "nome": "cv2",
@@ -70,8 +70,8 @@
     "ok": false
   },
   "teto_do_instalador_mb": 150.0,
-  "disco_livre_gb_antes": 31.08,
-  "disco_livre_gb_depois": 31.08,
-  "data": "2026-09-14",
+  "disco_livre_gb_antes": 21.7,
+  "disco_livre_gb_depois": 21.69,
+  "data": "2026-09-20",
   "interpretador": "3.11.9"
 }

@@ -1,6 +1,6 @@
 # Avisos de terceiros - Caissa Studio
 
-Gerado em 2026-09-14 por `packaging/coletar_licencas.py`, a partir dos
+Gerado em 2026-09-20 por `packaging/coletar_licencas.py`, a partir dos
 metadados das distribuicoes instaladas -- nao de memoria.
 
 O binario do Caissa Studio e uma obra combinada sob **AGPL-3.0-or-later** (ver
