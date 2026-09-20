@@ -274,7 +274,11 @@ Nada. Os bloqueantes anteriores foram eliminados: o “8 + 6” tem origem, a fa
 
 > Objeto: a árvore de trabalho dos dois repositórios com os passos A1–A10, B4, B7, C1, C7 e o
 > relatório `OCR_UI_REPORT_C2.md`, antes do commit. Os dois reprovaram o ciclo 1 (Claude 7
-> bloqueantes, Codex 6); o que mudou por cada item está em `OCR_UI_REPORT_C2.md` §0.1.
+> bloqueantes, Codex 6); o que mudou por cada item está em `OCR_UI_REPORT_C2.md` §0.1. **Ciclo 2
+> (sobre os commits 8de189f/a921641): os dois APROVARAM.** As dívidas não bloqueantes do Claude
+> (`test_arquitetura` por ordem, frase ao reimportar, pasta de recursos por livro, booleanos do
+> `paralelo`) foram fechadas no commit seguinte; `bloqueio` com folga e A2 com portão de aceitação
+> ficam para a fase 2.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 7 bloqueantes)
 
@@ -539,3 +543,122 @@ CICLO: 1
 ## O que especificamente precisa mudar para eu aprovar
 
 A1, A3, B4 e B7 precisam passar seus portões e sabotagens; os fallbacks silenciosos precisam desaparecer; e todas as métricas numéricas precisam ser reproduzidas com três execuções. Só depois disso o relatório deve ser atualizado para refletir exatamente o código vigente.
+
+## Crítico Claude — ciclo 2 (APROVADO; tronco 8de189f, suíte a921641)
+
+# Veredito do crítico — fase 1 do OCR/UI ciclo 2 — CICLO 2
+
+VEREDITO: APROVADO
+CICLO: 2
+
+Objeto: tronco `8de189f` (19:24) e suíte `a921641` (19:25), árvores limpas (`c2/tronco_status.txt`
+vazio; `c2/suite_status.txt` só `?? uv.lock`, fora do commit como pedido); diffs `git diff HEAD~1`
+em `c2/suite.diff` (9.926 l.) e `c2/tronco.diff` (3.399 l.); `docs/quality/OCR_UI_REPORT_C2.md` §0.1–0.3.
+
+## Conferências feitas
+
+| bloqueante do c1 / item | comando ou arquivo:linha | confere? | nota |
+|---|---|---|---|
+| 1 subconjunto | `export/book.py:367-376, 449-462` `_covers_exactly`; `qt/importador_de_livro.py documento_para` (== exatas); `c2/prova_reuso.py` → `prova_reuso.out` | sim | 3 importadas + `pages=[0]` → **1 página no EPUB, reimportou** (aviso no log); páginas exatas → **não reimporta**, 3 diagramas; `test_a_result_of_more_pages_than_asked_is_not_written_as_it_is` passa |
+| 2 imagens | `views/importacao.py:32-46, 141` (`asset_dir` de processo, `atexit`); `book.py:377-388` `_images_on_disk`; `prova_reuso.out`; `percurso --fluxo livro` | sim | documento sem imagens em disco → reimporta (aviso); `imagens_no_epub=13` no Aagaard, EPUB 1.312.420 bytes |
+| 3 trocar de livro | `qt/janela.py:1021-1025` (cancela + frase), `importador_de_livro.py:129-151` (`_pdf_importado`, descarta com frase, parcial cancelado não vai à fila); `paralelo --outro-livro` → `c2/paralelo_outro.log` | sim | PASSOU: `resultado_descartado=True, trilho_sem_estados_do_anterior=True, fila_nao_e_do_anterior=True, revisao_no_livro_novo=True`; `--sabotar sem_descarte` → **REPROVOU** (`resultado_descartado=False`); `test_o_resultado_de_outro_livro_e_descartado`, `test_o_parcial_cancelado_nao_vai_a_fila_de_revisao` passam |
+| 4 decisões apagadas | `ocr/review.py:280-322` `carry_over`; `views/revisao_de_texto.py:392-439` | sim | `test_decisions_taken_before_survive_a_fresh_import_result` (lê o arquivo de decisões em `tmp_path`: 1 → 2 entradas, `KEEP_IMAGE`+`ACCEPT`; parcial cancelado recusado) passa |
+| 5 «não gravadas» após gravar | `ui/editor_model.py:92-97, 345-361` (`unsaved_hand_edit`, `mark_saved`, `has_unsaved_hand_edits`); `painel_de_resultado.py:832, 1159`; `page_results.py:116, 170, 194, 244` | sim | `c2/livro.log`: **0** ocorrências de "Correções não gravadas" depois do `salvar` (c1: 1); `test_gravar_a_correcao_e_fechar_nao_pergunta` passa; xfail estrito da sabotagem continua XFAIL |
+| 6 portão que se aprovava | `ui/audit/percurso.py:248-252, 431-451` (sem `record`; `ok` exige `fonte == "janela"`) | sim | `--sabotar sem_gancho` → **REPROVOU** no passo 5 (`decisao.ok=False`, nota nomeia o gancho); sem sabotagem PASSOU, `fonte=janela` |
+| 7 relatório | §0.2 (tabela de invariantes), §0.3, l.741 (40), l.791 (408), l.934 (`Hea!` corrigido), `uv.lock` fora | sim, com ressalvas | ver não bloqueantes 1–3 |
+| A1 sem monkeypatch (Codex) | `config.py:153-167` `RECALL_EM_VIGOR`/`recall_em_vigor`; `board_detection.py:858`, `hybrid.py:645`; `recall.py:100-115` | sim | `validate_detection --variant raw --variant baseline --runs 1` (`c2/validate_detection.log`): raw **0,9478/0,9732**, baseline **0,9913/1,0000** — o arnês por `ContextVar` mede o mesmo; `test_recall_pack` 23 passed |
+| B4 sabotagem `passo_b4` | `fusion.py:94, 141-146, 299-304, 231, 436, 450, 510, 521`; `ocr_service.py` (`config.fusion` → `FusionConfig`) | sim, remedido | `bench_sol --strata native --filter real:` na árvore commitada (`c2/bench_b4_on.log`/`off.log`): ligado **0,0140 / 0,9296 / 19**; desligado **0,0149 / 0,9083 / 25** — idêntico ao §0.2, e agora medido no código commitado (o `on` da integração terminou 18:06:20 e `fusion.py`/`ocr_service.py` mudaram 18:05:34/18:07:17 — só o interruptor; a remedição fecha a dúvida) |
+| `record()` com lock | `diagram_decisions.py:284-327` (`O_CREAT|O_EXCL`, stale 60 s, timeout 10 s) | sim | — |
+| `documento_para` que falha é dito | `views/exportacao.py:385-392` | sim | rodapé + log |
+| `gravar_decisao` → `None` é dito | `painel_de_resultado.py:1195-1201`; DPI da leitura (`params_of`) | sim | — |
+| testes tocados | suíte 16 arquivos (`c2/pytest_suite.txt`) **265 passed**; tronco 10 arquivos (`c2/pytest_tronco.txt`) **410 passed, 8 xfailed**; `test_packaging` 36 passed com `LIMITE=1998` = `wc -l` | sim | — |
+| catraca de modais | `tests/test_ui_retorno_modal.py` (LIMITE 47, MODAIS_DE_DECISAO 15, motivo no docstring) | sim | passa |
+| `bloqueio` | §0.2: 14,8 / 16,2 / 14,5 ms (c21: 6,6) | registrado, não remedi | ver não bloqueante 4 |
+
+## Defeitos bloqueantes
+
+Nenhum. Os sete do ciclo 1 estão fechados no código, com teste ou arnês que reprova quando o
+comportamento antigo volta (sabotagens `sem_gancho`, `sem_descarte` executadas por mim), e os três
+números que a Carta §6 manda remedir (recall raw/baseline, B4 on/off) reproduzem ao milésimo.
+
+## Defeitos não bloqueantes
+
+1. **`test_arquitetura::test_o_arnes_de_auditoria_importa_sem_qt[*]` reprova por ordem** quando
+   qualquer teste que carrega PyQt6 roda antes no mesmo processo: `pytest tests/unit/ui` com
+   `.venv-pack` → **15 failed, 294 passed** (`c2/pytest_ui.txt`); sozinho 19 passed. O arquivo não
+   mudou nesta fase (é pré-existente e só aparece porque a integração rodou a suíte inteira **com**
+   Qt no caminho — o comando do roadmap §0 não o põe). O §0.2 diz "15 failed" na 1.ª corrida e
+   "3.824 passed" na 2.ª sem explicar o que mudou entre as duas; a invariante como o roadmap a define
+   (sem `.venv-pack`) não está reportada. Registrar a regra ("esse teste corre em processo próprio")
+   ou pôr o teste em subprocesso.
+2. A corrida do tronco do §0.2 (19:22, `integ/pytest_tronco2.log`) teve **3** vermelhos, e o terceiro
+   era `test_packaging::test_a_janela_nao_volta_a_crescer` (1.998 > 1.992) — a catraca foi subida
+   depois e o commit passa (36 passed); o §0.2 diz "3 failed … pré-existentes + catraca de modais",
+   que era a corrida das 17:42. A invariante do commit não foi rodada depois da última edição.
+3. `export_book` que **recusa** o `document=` (subconjunto, imagens ausentes) só avisa no log
+   (`book.py:371, 383`): a pessoa pediu "exportar" esperando segundos e recebe minutos de OCR sem
+   frase no rodapé. `documento_para` que **falha** é dito; o que é **recusado** não.
+4. `bloqueio` 6,6 → ~15 ms (2 de 3 PASSOU, 1 viola por 0,2 ms): custo real de C7 (`abas.abrir` na
+   thread da janela), honestamente registrado "no limite" — fica como dívida nomeada para a fase 2.
+5. `_pasta_de_recursos()` é **uma** pasta por processo para todas as importações: chaves
+   `diagrama-p31-0001.png` colidem entre livros com as mesmas páginas; uma exportação em curso
+   sobre o resultado antigo lê arquivos que a importação seguinte sobrescreve (caso raro: exportar
+   enquanto se importa outro livro; a tranca não o impede).
+6. `ImportadorDoLivro._concluiu` ainda diz "Importação cancelada: N página(s) … podem ser
+   exportadas" quando o cancelamento foi por troca de livro — a ponte descarta logo a seguir com a
+   frase certa; duas frases contraditórias no rodapé em 1 s.
+7. `paralelo._relatorio`: `all(detalhes["troca_de_livro"].values())` inclui os nomes dos livros
+   (strings, sempre verdadeiras) — funciona, mas um campo booleano novo esquecido não reprovaria.
+8. Mantidos do c1 (não bloqueantes, admitidos no §0.3): A2 sem portão de aceitação (leituras
+   raster barradas pelo `field_eval` viram `Diagram` desenhado); `_anchor_mismatch` sem
+   `side_to_move_source`; `figurine_min_margin=0,25` sem medição; `test_field_eval`/`AccentTests`
+   vermelhos pré-existentes.
+
+## O que falta
+
+Nada para a fase 1 valer como fechada. Para a fase 2 levar: o item 1 (regra ou subprocesso para
+`test_arquitetura`), o 3 (frase no rodapé quando a exportação reimporta), o 4 (`bloqueio` com
+folga, já no roadmap C2), e a lista do §0.3.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Nada mais — aprovado. Por quê (Regra 5): cada bloqueante do ciclo 1 tem agora (a) o código corrigido
+que li, (b) um teste ou arnês que reprova o comportamento antigo e que eu executei, e (c) os
+portões numéricos remedidos por mim no commit (`validate_detection` raw/baseline, `bench_sol` B4
+on/off, `percurso --fluxo livro` com decisão da janela e 13 imagens, `paralelo` com troca de livro).
+O que resta são dívidas nomeadas, nenhuma das quais faz o produto dar resultado errado em silêncio.
+
+## Crítico Codex — ciclo 2 (APROVADO)
+
+VEREDITO: APROVADO  
+CICLO: 2
+
+## Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| A1 | `recall.py:101-116`; `test_recall_pack.py:148-158` | Sim | `ContextVar` com `set/reset`; 23 testes passaram, incluindo isolamento entre threads. |
+| A3 | `exportacao.py:382-393`; `importacao.py:33-46,128-142`; `book.py:367-473` | Sim | Falha é emitida no rodapé/log; `asset_dir`, cobertura exata e imagens em disco estão protegidos. |
+| B4 | `fusion.py:108-146,287-304`; `ocr_service.py:100-105,1014-1018` | Sim | `FusionConfig.passo_b4=False` chega via `SOL_CONFIG`; teste de sabotagem passou. 19 testes de fusão passaram. |
+| B7 | `OCR_UI_ROADMAP_C2.md:290`; `test_glyph_postchain.py` | Sim | O portão de `=` foi honestamente reescrito como não mensurável no corpus; permanece teste sintético real. |
+| Invariantes | `OCR_UI_REPORT_C2.md:96-110` | Sim | §0.2 registra comandos, números, sabotagens e falhas abertas. |
+| Segunda lista do §0.1 | `importador_de_livro.py:129-180`; `percurso.py:423-452`; `painel_de_resultado.py:1183-1200` | Sim | Descarte de livro errado, carry-over, gate não autoaprovável, DPI correto e falha de registro sinalizada. |
+| Detecção do tronco | `test_board_detection_recall.py`, `test_detection.py` | Sim | 95 testes + 14 subtestes passaram. |
+
+## Defeitos bloqueantes
+
+Nenhum. Os seis bloqueantes do ciclo 1 foram corrigidos no código commitado e possuem cobertura correspondente. A aprovação segue a Regra 5 da Carta.
+
+## Defeitos não bloqueantes
+
+- Suítes dependentes de `tempfile` não puderam rodar neste sandbox sem diretório temporário gravável; as verificações em memória e os testes sem temporário passaram.
+- Há `uv.lock` e `.claude/` não rastreados, fora dos commits revisados.
+- `=` ainda não tem corpus rotulado; isso está explicitamente declarado como trabalho humano futuro, não mascarado como métrica.
+
+## O que falta
+
+Nada para fechar a fase 1.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Nada. A fase 1 está aprovada porque os bloqueantes foram encerrados, as sabotagens agora derrubam os portões quando apropriado, e o relatório distingue claramente o que foi medido do que permanece aberto.

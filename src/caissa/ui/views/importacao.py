@@ -30,6 +30,11 @@ from caissa.ingest.pdf.importer import ImportResult
 
 logger = logging.getLogger(__name__)
 
+def _nome_seguro(nome: str) -> str:
+    """Uma subpasta por livro: dois livros com as mesmas páginas não partilham ``p31-0001.png``."""
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in nome)[:80] or "livro"
+
+
 @functools.lru_cache(maxsize=1)
 def _pasta_de_recursos() -> Path:
     """One temporary folder per process for the images the window's import extracts.
@@ -138,7 +143,7 @@ class ImportadorDoLivro(QObject):
                     # document can be exported as it is (passo A3) instead of read again;
                     # without it every image resource would have ``path=None`` and the
                     # EPUB would silently drop them.
-                    asset_dir=_pasta_de_recursos(),
+                    asset_dir=_pasta_de_recursos() / _nome_seguro(pdf_path.stem),
                 ),
             )
         except Exception as exc:  # a thread não pode derrubar a janela

@@ -313,7 +313,7 @@ def _relatorio(
         and bool(detalhes.get("corrigida"))
         and bool(detalhes.get("abas_habilitadas_durante"))
         and bool(detalhes.get("editor_habilitado_durante"))
-        and all(detalhes.get("troca_de_livro", {"ok": True}).values())
+        and all(v for v in detalhes.get("troca_de_livro", {"ok": True}).values() if isinstance(v, bool))
     )
     return {
         "portao": (

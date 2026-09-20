@@ -428,6 +428,15 @@ class ExportadorDeLivro(QObject):
         except Exception as exc:
             self._falhou.emit(str(exc))
             return
+        if self._documento is not None and getattr(resultado, "import_report", None) is not getattr(
+            self._documento, "report", None
+        ):
+            # `export_book` recusou o documento em mãos (páginas diferentes das pedidas, ou
+            # imagens fora do disco) e importou de novo -- dito, não só no log.
+            self.estado.emit(
+                "A importação já feita não serviu a esta exportação (páginas ou imagens "
+                "diferentes): o livro foi importado de novo."
+            )
         self._acabou.emit(resultado)
 
     def _mostrar_progresso(self, fase: str, feito: int, total: int) -> None:

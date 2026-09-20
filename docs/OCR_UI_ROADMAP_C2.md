@@ -17,7 +17,9 @@
   `.venv-pack`).
 - **Invariantes depois de todo passo:** `pytest tests -q -p no:cacheprovider --ignore=tests\
   integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` (e este à
-  parte); testes do tronco; `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json`
+  parte) — com `PYTHONPATH=.venv-pack\Lib\site-packages` para os `test_*_view.py` (que importam
+  PyQt6 no topo) e, nesse caso, `tests\unit\ui\test_arquitetura.py` **à parte** (afirma que nenhum
+  binding de Qt está em `sys.modules`, o que é falso por ordem depois dos testes de janela); testes do tronco; `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json`
   (0 silenciosas, 0/9 controles) quando o passo toca `caissa.ocr`; `git status --short` só com os
   caminhos do passo.
 - **Commits por caminho nomeado**, nunca `git add -A` (outra sessão trabalha neste checkout).

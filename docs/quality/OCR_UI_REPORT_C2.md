@@ -84,6 +84,15 @@ O crítico Claude reprovou o mesmo ciclo por sete itens (`OCR_UI_ANALISE_C2_CRIT
   medem o código como está — pdf-scan 0,0172 / 0,9007 / 18, idêntico ao "árvore final" do WP1.
 - `uv.lock` (`??`, 04:38) não é desta fase e fica fora do commit.
 
+**Ciclo 2 da crítica (sobre os commits):** Claude e Codex **APROVARAM** (`OCR_UI_ANALISE_C2_CRITICAS.md`).
+Do que o Claude deixou como não bloqueante, fechado no commit seguinte: a exportação diz no rodapé
+quando recusou o documento em mãos e reimportou; a pasta de recursos da importação da janela é por
+livro (`p31-0001.png` de dois livros não colidem); o veredito do `paralelo` só soma booleanos; a
+regra do `test_arquitetura` (rodar à parte com `.venv-pack`) entrou nas invariantes do roadmap.
+Ficam para a fase 2: `bloqueio` com folga (C2), A2 com portão de aceitação (a leitura raster que o
+`field_eval` barra vira `Diagram` desenhado — hoje só o alt text avisa), `figurine_min_margin`
+calibrado (B6).
+
 - `ocr/page.py _to_page_space` reconstrói a palavra com `dataclasses.replace` — o `margin` do
   leitor de glifos (WP5) passa a chegar à fusão (WP1 lê `getattr(word, "margin", None)`) em regiões
   fora da origem.
