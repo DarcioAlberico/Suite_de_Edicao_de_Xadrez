@@ -342,6 +342,8 @@ def importar(
     origem, destino = Path(origem).resolve(), Path(destino).resolve()
     if origem == destino:
         raise ValueError("origem e destino sao a mesma pasta")
+    if not origem.is_dir():
+        raise ValueError(f"a origem nao existe ou nao e uma pasta: {origem}")
     relatorio = Relatorio(gravar=gravar, substituir=frozenset(substituir))
     relatorio.diz(f"{'GRAVANDO' if gravar else 'RASCUNHO'}: {origem} -> {destino}")
     for item in itens:

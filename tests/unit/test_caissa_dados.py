@@ -135,3 +135,8 @@ def test_tessdata_por_livro_substitui_mas_so_onde_ha_tessdata(raizes: tuple[Path
 def test_mesma_pasta_e_erro(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="mesma pasta"):
         caissa_dados.importar(tmp_path, tmp_path)
+
+
+def test_origem_inexistente_e_erro(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="nao existe"):
+        caissa_dados.importar(tmp_path / "nada", tmp_path)

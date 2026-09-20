@@ -64,6 +64,16 @@ do `installer.iss` apaga `_internal` exatamente por isso, deixando estas quatro 
 manda olhar quando a janela nao abre, e uma pasta que so existe depois do problema e uma
 instrucao que nao se pode seguir."""
 
+PASTAS_GUARDADAS = (*PASTAS_DO_USUARIO, "rotulagem")
+"""O que o build **poe de lado e devolve** em volta do PyInstaller.
+
+`--noconfirm` apaga `dist/Caissa/` inteiro antes de gravar o novo -- inclusive as pastas
+que este mesmo arquivo declara como do usuario. Na maquina de quem desenvolve, o `dist/`
+e a instalacao de trabalho: 5 GB de dataset importado do tronco, o `runtime/` com a roda
+de torch, o projeto de rotulagem. Reconstruir o bundle nao pode custar isso; e a mesma regra
+de `_project_root` (reinstalar nao apaga rotulo), aplicada ao build. As pastas vao para
+`dist/_guardado/` antes e voltam depois, no lugar das vazias que o build recria."""
+
 FOLGA_MINIMA_GB = 6.0
 """Quanto o build precisa de folga para comecar. Nao e o tamanho do bundle: o PyInstaller
 grava `build/` (analise, arquivos intermediarios) e `dist/` ao mesmo tempo, e a soma
@@ -82,12 +92,12 @@ logger = logging.getLogger("caissa.build")
 # --------------------------------------------------------------------------- #
 # medicao
 # --------------------------------------------------------------------------- #
-def medir_pasta(pasta: Path) -> tuple[float, int]:
-    """MB e numero de arquivos."""
+def medir_pasta(pasta: Path, *, excluir: tuple[str, ...] = ()) -> tuple[float, int]:
+    """MB e numero de arquivos. `excluir`: pastas de primeiro nivel que nao contam."""
     total = 0
     quantos = 0
     for arquivo in pasta.rglob("*"):
-        if arquivo.is_file():
+        if arquivo.is_file() and arquivo.relative_to(pasta).parts[0] not in excluir:
             total += arquivo.stat().st_size
             quantos += 1
     return total / (1024 * 1024), quantos
@@ -204,6 +214,42 @@ def medir_modulos(tronco: Path) -> int:
 # --------------------------------------------------------------------------- #
 # build
 # --------------------------------------------------------------------------- #
+def guardar_pastas_do_usuario(saida: Path) -> Path | None:
+    """Move as `PASTAS_GUARDADAS` de `saida` para `dist/_guardado/` e devolve essa pasta.
+
+    `None` quando nao ha o que guardar (primeiro build). Move em vez de copiar: sao gigabytes,
+    e o `rename` na mesma unidade e instantaneo. Um `_guardado/` que ja exista de um build
+    interrompido nao e apagado -- o que esta la e trabalho de alguem -- e a pasta nova ganha
+    um sufixo.
+    """
+    presentes = [nome for nome in PASTAS_GUARDADAS if (saida / nome).exists()]
+    if not presentes:
+        return None
+    guardado = saida.parent / "_guardado"
+    sufixo = 1
+    while guardado.exists():
+        sufixo += 1
+        guardado = saida.parent / f"_guardado-{sufixo}"
+    guardado.mkdir(parents=True)
+    for nome in presentes:
+        shutil.move(str(saida / nome), str(guardado / nome))
+    logger.info("Pastas do usuario guardadas em %s: %s", guardado, ", ".join(presentes))
+    return guardado
+
+
+def devolver_pastas_do_usuario(saida: Path, guardado: Path | None) -> None:
+    """Poe de volta o que `guardar_pastas_do_usuario` tirou, no lugar das pastas vazias novas."""
+    if guardado is None:
+        return
+    for pasta in sorted(guardado.iterdir()):
+        alvo = saida / pasta.name
+        if alvo.exists():
+            shutil.rmtree(alvo)  # a vazia (com LEIA-ME) que o build acabou de criar
+        shutil.move(str(pasta), str(alvo))
+    guardado.rmdir()
+    logger.info("Pastas do usuario devolvidas a %s.", saida)
+
+
 def preparar_pastas_do_usuario(saida: Path) -> None:
     """Cria as pastas gravaveis e um `LEIA-ME.txt` em `models/` explicando o vazio."""
     for nome in PASTAS_DO_USUARIO:
@@ -606,26 +652,35 @@ def build(  # noqa: PLR0911 - oito saidas, e cada uma e um portao com motivo pro
         "Rodando: %s (CAISSA_COM_TORCH=%s)", " ".join(comando), ambiente["CAISSA_COM_TORCH"]
     )
 
-    resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
-    if resultado.returncode != 0:
-        logger.error("PyInstaller falhou com codigo %d.", resultado.returncode)
-        return resultado.returncode, None
-
     saida = PROJETO / "dist" / ("Caissa-com-torch" if com_torch else "Caissa")
-    if not saida.exists():
-        logger.error("O build terminou sem erro mas %s nao existe.", saida)
-        return 1, None
+    guardado = guardar_pastas_do_usuario(saida)
+    try:
+        resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
+        if resultado.returncode != 0:
+            logger.error("PyInstaller falhou com codigo %d.", resultado.returncode)
+            return resultado.returncode, None
 
-    codigo = conferir_extensoes_nativas(saida)
-    if codigo != 0:
-        return codigo, saida
+        if not saida.exists():
+            logger.error("O build terminou sem erro mas %s nao existe.", saida)
+            return 1, None
 
-    codigo = conferir_licencas_do_bundle(saida)
-    if codigo != 0:
-        return codigo, saida
+        codigo = conferir_extensoes_nativas(saida)
+        if codigo != 0:
+            return codigo, saida
 
-    preparar_pastas_do_usuario(saida)
-    return 0, saida
+        codigo = conferir_licencas_do_bundle(saida)
+        if codigo != 0:
+            return codigo, saida
+
+        preparar_pastas_do_usuario(saida)
+        return 0, saida
+    finally:
+        # Volta mesmo quando o build falha: a dist/ pode ter ficado pela metade, mas o
+        # dataset e o runtime do usuario nao ficam em `_guardado/` esperando alguem lembrar.
+        if saida.exists():
+            devolver_pastas_do_usuario(saida, guardado)
+        elif guardado is not None:
+            logger.warning("dist/ nao existe; as pastas do usuario ficaram em %s.", guardado)
 
 
 # --------------------------------------------------------------------------- #
@@ -724,8 +779,13 @@ def compilar_instalador(saida: Path, *, com_torch: bool) -> dict[str, Any]:
 def gravar_metricas(
     saida: Path, *, com_torch: bool, instalador: dict[str, Any], livre_antes: float
 ) -> dict[str, Any]:
-    """Grava `packaging/bundle.json`. Cada numero saiu do disco nesta execucao."""
-    mb, arquivos = medir_pasta(saida)
+    """Grava `packaging/bundle.json`. Cada numero saiu do disco nesta execucao.
+
+    Mede o que **se distribui**: as pastas do usuario (dataset, runtime, pesos) voltam para a
+    `dist/` no fim do build e nao sao o bundle -- sem excluir, um build na maquina de
+    desenvolvimento mediria 10 GB onde o instalador leva 297 MB.
+    """
+    mb, arquivos = medir_pasta(saida, excluir=PASTAS_GUARDADAS)
     dados = {
         "variante": "com-torch" if com_torch else "padrao",
         "nome": saida.name,
