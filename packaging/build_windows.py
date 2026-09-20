@@ -214,25 +214,74 @@ def medir_modulos(tronco: Path) -> int:
 # --------------------------------------------------------------------------- #
 # build
 # --------------------------------------------------------------------------- #
+class ProgramaAbertoError(RuntimeError):
+    """O `Caissa.exe` da `dist/` esta rodando: nada pode ser movido ou apagado debaixo dele."""
+
+
+def programa_aberto(saida: Path) -> bool:
+    """Ha um processo com o executavel desta `dist/` em execucao?
+
+    `Get-Process` pelo PowerShell, porque o `wmic` saiu do Windows 11; a comparacao e pelo
+    caminho do executavel, para um `Caissa.exe` instalado em outro lugar nao bloquear o build
+    desta pasta.
+    """
+    if os.name != "nt":
+        return False
+    powershell = shutil.which("powershell") or shutil.which("pwsh")
+    if powershell is None:
+        return False
+    try:
+        saida_bruta = subprocess.run(  # noqa: S603 - executavel resolvido por `which`, argumentos fixos
+            [powershell, "-NoProfile", "-Command",
+             "(Get-Process -Name Caissa -ErrorAction SilentlyContinue).Path"],
+            capture_output=True, text=True, check=False, timeout=30,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+    alvo = str(saida.resolve()).lower()
+    return any(alvo in linha.strip().lower() for linha in saida_bruta.splitlines())
+
+
 def guardar_pastas_do_usuario(saida: Path) -> Path | None:
     """Move as `PASTAS_GUARDADAS` de `saida` para `dist/_guardado/` e devolve essa pasta.
 
-    `None` quando nao ha o que guardar (primeiro build). Move em vez de copiar: sao gigabytes,
-    e o `rename` na mesma unidade e instantaneo. Um `_guardado/` que ja exista de um build
-    interrompido nao e apagado -- o que esta la e trabalho de alguem -- e a pasta nova ganha
-    um sufixo.
+    `None` quando nao ha o que guardar (primeiro build). **Move por `rename`, e so por
+    `rename`.** `shutil.move` cai em copiar-e-apagar quando o rename falha -- e foi assim que
+    um build com o `Caissa.exe` aberto copiou 5 GB de `data/` e depois apagou metade da
+    original ate bater no `.sqlite` que o programa segurava (2026-09-20). O rename na mesma
+    unidade e instantaneo e atomico: ou a pasta inteira muda de lugar ou nada muda. Se um
+    falhar, os que ja foram voltam e o build para com o motivo.
+
+    Um `_guardado/` que ja exista de um build interrompido nao e apagado -- o que esta la e
+    trabalho de alguem -- e a pasta nova ganha um sufixo.
     """
     presentes = [nome for nome in PASTAS_GUARDADAS if (saida / nome).exists()]
     if not presentes:
         return None
+    if programa_aberto(saida):
+        raise ProgramaAbertoError(
+            f"{saida / 'Caissa.exe'} esta aberto. Feche o programa antes de reconstruir o "
+            "bundle: o PyInstaller apaga a dist/ inteira e o build move as pastas do usuario."
+        )
     guardado = saida.parent / "_guardado"
     sufixo = 1
     while guardado.exists():
         sufixo += 1
         guardado = saida.parent / f"_guardado-{sufixo}"
     guardado.mkdir(parents=True)
+    movidas: list[str] = []
     for nome in presentes:
-        shutil.move(str(saida / nome), str(guardado / nome))
+        try:
+            (saida / nome).rename(guardado / nome)
+        except OSError as erro:
+            for volta in movidas:
+                (guardado / volta).rename(saida / volta)
+            guardado.rmdir()
+            raise ProgramaAbertoError(
+                f"nao consegui mover {saida / nome} ({erro}); algum arquivo dela esta aberto. "
+                "Nada foi copiado nem apagado."
+            ) from erro
+        movidas.append(nome)
     logger.info("Pastas do usuario guardadas em %s: %s", guardado, ", ".join(presentes))
     return guardado
 
@@ -653,7 +702,11 @@ def build(  # noqa: PLR0911 - oito saidas, e cada uma e um portao com motivo pro
     )
 
     saida = PROJETO / "dist" / ("Caissa-com-torch" if com_torch else "Caissa")
-    guardado = guardar_pastas_do_usuario(saida)
+    try:
+        guardado = guardar_pastas_do_usuario(saida)
+    except ProgramaAbertoError as erro:
+        logger.error("%s", erro)
+        return 2, None
     try:
         resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
         if resultado.returncode != 0:
