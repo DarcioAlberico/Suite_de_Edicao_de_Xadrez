@@ -65,14 +65,10 @@ manda olhar quando a janela nao abre, e uma pasta que so existe depois do proble
 instrucao que nao se pode seguir."""
 
 PASTAS_GUARDADAS = (*PASTAS_DO_USUARIO, "rotulagem")
-"""O que o build **poe de lado e devolve** em volta do PyInstaller.
-
-`--noconfirm` apaga `dist/Caissa/` inteiro antes de gravar o novo -- inclusive as pastas
-que este mesmo arquivo declara como do usuario. Na maquina de quem desenvolve, o `dist/`
-e a instalacao de trabalho: 5 GB de dataset importado do tronco, o `runtime/` com a roda
-de torch, o projeto de rotulagem. Reconstruir o bundle nao pode custar isso; e a mesma regra
-de `_project_root` (reinstalar nao apaga rotulo), aplicada ao build. As pastas vao para
-`dist/_guardado/` antes e voltam depois, no lugar das vazias que o build recria."""
+"""O que **nao e o bundle** dentro de `dist/Caissa/`: o build nao toca nestas pastas
+(`instalar_bundle` troca so `PARTES_DO_BUNDLE`) e a medicao de tamanho as exclui. Na maquina
+de quem desenvolve a `dist/` e a instalacao de trabalho -- 5 GB de dataset, o `runtime/` com
+a roda de torch, o projeto de rotulagem -- e reconstruir o bundle nao pode custar nada disso."""
 
 FOLGA_MINIMA_GB = 6.0
 """Quanto o build precisa de folga para comecar. Nao e o tamanho do bundle: o PyInstaller
@@ -242,61 +238,38 @@ def programa_aberto(saida: Path) -> bool:
     return any(alvo in linha.strip().lower() for linha in saida_bruta.splitlines())
 
 
-def guardar_pastas_do_usuario(saida: Path) -> Path | None:
-    """Move as `PASTAS_GUARDADAS` de `saida` para `dist/_guardado/` e devolve essa pasta.
+PASTA_DE_MONTAGEM = "_build"
+"""`dist/_build/`: onde o PyInstaller grava, para nunca escrever em cima da `dist/Caissa/`."""
 
-    `None` quando nao ha o que guardar (primeiro build). **Move por `rename`, e so por
-    `rename`.** `shutil.move` cai em copiar-e-apagar quando o rename falha -- e foi assim que
-    um build com o `Caissa.exe` aberto copiou 5 GB de `data/` e depois apagou metade da
-    original ate bater no `.sqlite` que o programa segurava (2026-09-20). O rename na mesma
-    unidade e instantaneo e atomico: ou a pasta inteira muda de lugar ou nada muda. Se um
-    falhar, os que ja foram voltam e o build para com o motivo.
+PARTES_DO_BUNDLE = ("_internal", "Caissa.exe", "CaissaPrimeiraExecucao.exe")
+"""O que o build **substitui** na instalacao. Tudo o mais em `dist/Caissa/` e do usuario."""
 
-    Um `_guardado/` que ja exista de um build interrompido nao e apagado -- o que esta la e
-    trabalho de alguem -- e a pasta nova ganha um sufixo.
+
+def instalar_bundle(novo: Path, saida: Path) -> None:
+    """Poe o bundle recem-montado em `saida` trocando so as `PARTES_DO_BUNDLE`.
+
+    **O build nunca move as pastas do usuario.** A versao anterior guardava `data/`, `models/`
+    e `runtime/` em `dist/_guardado/` enquanto o PyInstaller apagava a `dist/` inteira -- e um
+    `rename` de `data/` falha sempre que um Explorer ou o VS Code segura a pasta, o que na
+    maquina de desenvolvimento e o estado normal. Montar em `dist/_build/` e trocar so o
+    `_internal/` e os dois `.exe` e o mesmo contrato do `[InstallDelete]` do `installer.iss`:
+    reinstalar substitui o programa e deixa o resto em paz.
     """
-    presentes = [nome for nome in PASTAS_GUARDADAS if (saida / nome).exists()]
-    if not presentes:
-        return None
-    if programa_aberto(saida):
-        raise ProgramaAbertoError(
-            f"{saida / 'Caissa.exe'} esta aberto. Feche o programa antes de reconstruir o "
-            "bundle: o PyInstaller apaga a dist/ inteira e o build move as pastas do usuario."
-        )
-    guardado = saida.parent / "_guardado"
-    sufixo = 1
-    while guardado.exists():
-        sufixo += 1
-        guardado = saida.parent / f"_guardado-{sufixo}"
-    guardado.mkdir(parents=True)
-    movidas: list[str] = []
-    for nome in presentes:
-        try:
-            (saida / nome).rename(guardado / nome)
-        except OSError as erro:
-            for volta in movidas:
-                (guardado / volta).rename(saida / volta)
-            guardado.rmdir()
-            raise ProgramaAbertoError(
-                f"nao consegui mover {saida / nome} ({erro}); algum arquivo dela esta aberto. "
-                "Nada foi copiado nem apagado."
-            ) from erro
-        movidas.append(nome)
-    logger.info("Pastas do usuario guardadas em %s: %s", guardado, ", ".join(presentes))
-    return guardado
-
-
-def devolver_pastas_do_usuario(saida: Path, guardado: Path | None) -> None:
-    """Poe de volta o que `guardar_pastas_do_usuario` tirou, no lugar das pastas vazias novas."""
-    if guardado is None:
-        return
-    for pasta in sorted(guardado.iterdir()):
-        alvo = saida / pasta.name
-        if alvo.exists():
-            shutil.rmtree(alvo)  # a vazia (com LEIA-ME) que o build acabou de criar
-        shutil.move(str(pasta), str(alvo))
-    guardado.rmdir()
-    logger.info("Pastas do usuario devolvidas a %s.", saida)
+    saida.mkdir(parents=True, exist_ok=True)
+    for nome in PARTES_DO_BUNDLE:
+        origem = novo / nome
+        if not origem.exists():
+            continue
+        alvo = saida / nome
+        if alvo.is_dir():
+            shutil.rmtree(alvo)
+        elif alvo.exists():
+            alvo.unlink()
+        origem.rename(alvo)
+    sobras = [item.name for item in novo.iterdir()]
+    if sobras:
+        logger.warning("O PyInstaller gerou partes fora de PARTES_DO_BUNDLE, ignoradas: %s", sobras)
+    shutil.rmtree(novo.parent, ignore_errors=True)
 
 
 def preparar_pastas_do_usuario(saida: Path) -> None:
@@ -694,46 +667,47 @@ def build(  # noqa: PLR0911 - oito saidas, e cada uma e um portao com motivo pro
     ambiente["CAISSA_COM_TORCH"] = "1" if com_torch else "0"
     ambiente["CAISSA_TRONCO"] = str(tronco)
 
-    comando = [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm"]
+    montagem = PROJETO / "dist" / PASTA_DE_MONTAGEM
+    comando = [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm",
+               "--distpath", str(montagem)]
     if limpar:
         comando.append("--clean")
     logger.info(
         "Rodando: %s (CAISSA_COM_TORCH=%s)", " ".join(comando), ambiente["CAISSA_COM_TORCH"]
     )
 
-    saida = PROJETO / "dist" / ("Caissa-com-torch" if com_torch else "Caissa")
-    try:
-        guardado = guardar_pastas_do_usuario(saida)
-    except ProgramaAbertoError as erro:
-        logger.error("%s", erro)
+    nome = "Caissa-com-torch" if com_torch else "Caissa"
+    saida = PROJETO / "dist" / nome
+    if programa_aberto(saida):
+        logger.error(
+            "%s esta aberto. Feche o programa antes de reconstruir: o build troca o _internal/ "
+            "e os .exe que ele esta usando.", saida / "Caissa.exe",
+        )
         return 2, None
-    try:
-        resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
-        if resultado.returncode != 0:
-            logger.error("PyInstaller falhou com codigo %d.", resultado.returncode)
-            return resultado.returncode, None
+    shutil.rmtree(montagem, ignore_errors=True)
 
-        if not saida.exists():
-            logger.error("O build terminou sem erro mas %s nao existe.", saida)
-            return 1, None
+    resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
+    if resultado.returncode != 0:
+        logger.error("PyInstaller falhou com codigo %d.", resultado.returncode)
+        return resultado.returncode, None
 
-        codigo = conferir_extensoes_nativas(saida)
-        if codigo != 0:
-            return codigo, saida
+    novo = montagem / nome
+    if not novo.exists():
+        logger.error("O build terminou sem erro mas %s nao existe.", novo)
+        return 1, None
+    instalar_bundle(novo, saida)
+    logger.info("Bundle instalado em %s (so %s trocados).", saida, ", ".join(PARTES_DO_BUNDLE))
 
-        codigo = conferir_licencas_do_bundle(saida)
-        if codigo != 0:
-            return codigo, saida
+    codigo = conferir_extensoes_nativas(saida)
+    if codigo != 0:
+        return codigo, saida
 
-        preparar_pastas_do_usuario(saida)
-        return 0, saida
-    finally:
-        # Volta mesmo quando o build falha: a dist/ pode ter ficado pela metade, mas o
-        # dataset e o runtime do usuario nao ficam em `_guardado/` esperando alguem lembrar.
-        if saida.exists():
-            devolver_pastas_do_usuario(saida, guardado)
-        elif guardado is not None:
-            logger.warning("dist/ nao existe; as pastas do usuario ficaram em %s.", guardado)
+    codigo = conferir_licencas_do_bundle(saida)
+    if codigo != 0:
+        return codigo, saida
+
+    preparar_pastas_do_usuario(saida)
+    return 0, saida
 
 
 # --------------------------------------------------------------------------- #
