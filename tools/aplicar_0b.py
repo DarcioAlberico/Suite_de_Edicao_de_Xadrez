@@ -1,6 +1,6 @@
 """Grava no conjunto de campo as propostas do passo 0b que um humano **confirmou**.
 
-``benchmarks/reports/f4_barrados/propostas_0b.json`` (feito a partir de
+``docs/quality/0b/propostas_0b.json`` (feito a partir de
 ``tools/f4_field_failures.py --barrados``) tem uma FEN proposta por diagrama casado sem
 placement — leitura de um segundo leitor, não do modelo. Nada disso é verdade até alguém
 conferir o recorte contra a página e trocar ``"confirmado": false`` por ``true``. Este
@@ -34,7 +34,8 @@ from caissa.vision.classify.cvoff import cvoff_root, ensure_cvoff_on_path  # noq
 
 ensure_cvoff_on_path()
 
-PROPOSTAS = REPO_ROOT / "benchmarks" / "reports" / "f4_barrados" / "propostas_0b.json"
+PROPOSTAS = REPO_ROOT / "docs" / "quality" / "0b" / "propostas_0b.json"
+"""A cópia versionada — é nela que o anotador edita; a de `benchmarks/reports` é a saída crua."""
 TOLERANCIA_PT = 0.5
 NOTA = "FEN do passo 0b (proposta conferida por humano)"
 

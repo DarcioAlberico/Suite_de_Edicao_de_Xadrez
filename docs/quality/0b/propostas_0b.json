@@ -209,15 +209,14 @@
       "leitura_do_modelo": "3rr1k1/pp3pbn/6p1/2b5/3p1Bb1/3BN3/PBPK1RPP/R1B3B1",
       "motivo_do_portao": "reparo",
       "min_confidence": 0.0019,
-      "proposta": "3rr1k1/pp3pbp/6p1/2p5/3n1PBq/3PN3/PPPQ1RBP/R1B3K1",
-      "confianca_do_leitor": "alta",
-      "duvida": "g4 bispo branco, h4 dama preta, g7 bispo preto, d2 dama branca",
+      "proposta": "3rr1k1/pp3pbp/6p1/2p5/3n1Pbq/3PN3/PPPQ1RBP/R1B3K1",
+      "confianca_do_leitor": "confirmada pelo usuário",
+      "duvida": "g4 bispo PRETO (corrigido pelo usuário 2026-09-20; a 1.ª leitura o tinha branco), h4 dama preta, g7 bispo preto, d2 dama branca",
       "casas_em_que_difere_do_modelo": [
         "h7",
         "c5",
         "d4",
         "f4",
-        "g4",
         "h4",
         "d3",
         "b2",
@@ -226,7 +225,7 @@
         "g1"
       ],
       "modelo_certo_se_a_proposta_valer": false,
-      "confirmado": false
+      "confirmado": true
     },
     {
       "n": 9,
@@ -245,9 +244,9 @@
       "leitura_do_modelo": "5rR1/3kPp1R/p1p5/1p2P3/6n1/1BP1B1Q1/PB3B1K/R4R2",
       "motivo_do_portao": "reparo",
       "min_confidence": 0.1893,
-      "proposta": "r4rk1/3qBppp/p1p5/1p2P3/6b1/1BP1B1Q1/PP3P1P/R4RK1",
-      "confianca_do_leitor": "alta",
-      "duvida": "e7 bispo branco (contorno fino), g4 bispo preto",
+      "proposta": "r4rk1/3qbppp/p1p5/1p2P3/6b1/1BP1B1Q1/PP3P1P/R4RK1",
+      "confianca_do_leitor": "confirmada pelo usuário",
+      "duvida": "e7 bispo PRETO (corrigido pelo usuário 2026-09-20; a 1.ª leitura o tinha branco), g4 bispo preto; última fileira R4RK1 — rei g1, h1 vazia",
       "casas_em_que_difere_do_modelo": [
         "a8",
         "g8",
@@ -262,7 +261,7 @@
         "g1"
       ],
       "modelo_certo_se_a_proposta_valer": false,
-      "confirmado": false
+      "confirmado": true
     },
     {
       "n": 12,
