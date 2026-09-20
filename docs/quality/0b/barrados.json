@@ -1,0 +1,1816 @@
+{
+  "generated_at": "2026-09-20T02:51:57",
+  "accept_threshold": 0.8,
+  "n": 20,
+  "barrados": [
+    {
+      "n": 1,
+      "pdf": "Euwe, Kramer - Das Mittelspiel Band 7 (1958).pdf",
+      "page": 25,
+      "diagram": 0,
+      "regime": "scan-hachurado",
+      "note": "Stellung 32 (Steinitz-Tschigorin, Havanna 1892); so a caixa -- silhuetas do scan nao dao 64 casas confiaveis",
+      "crop": "b01_Euwe_Kramer_Das_Mittelspiel_Band_7_p25_d0.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.9792,
+      "mean_confidence": 0.9991,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "a5",
+          "index": 24,
+          "confidence": 0.9792,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.9792
+            },
+            {
+              "class": "b",
+              "p": 0.0206
+            },
+            {
+              "class": "empty",
+              "p": 0.0002
+            }
+          ]
+        },
+        {
+          "square": "a2",
+          "index": 48,
+          "confidence": 0.989,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.989
+            },
+            {
+              "class": "B",
+              "p": 0.011
+            },
+            {
+              "class": "b",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "c7",
+          "index": 10,
+          "confidence": 0.9893,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.9893
+            },
+            {
+              "class": "b",
+              "p": 0.0104
+            },
+            {
+              "class": "empty",
+              "p": 0.0003
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        105.33,
+        192.02,
+        254.5,
+        341.19
+      ],
+      "read_placement": "4rr1k/1ppb3p/2q3p1/p7/3n4/1BP1B3/PP3PP1/2K2Q1R",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 2,
+      "pdf": "Euwe, Kramer - Das Mittelspiel Band 7 (1958).pdf",
+      "page": 25,
+      "diagram": 1,
+      "regime": "scan-hachurado",
+      "note": "Stellung 33; so a caixa",
+      "crop": "b02_Euwe_Kramer_Das_Mittelspiel_Band_7_p25_d1.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.85,
+      "mean_confidence": 0.9963,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "d2",
+          "index": 51,
+          "confidence": 0.85,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "Q",
+              "p": 0.85
+            },
+            {
+              "class": "K",
+              "p": 0.1488
+            },
+            {
+              "class": "B",
+              "p": 0.0008
+            }
+          ]
+        },
+        {
+          "square": "b2",
+          "index": 49,
+          "confidence": 0.9537,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9537
+            },
+            {
+              "class": "B",
+              "p": 0.0458
+            },
+            {
+              "class": "empty",
+              "p": 0.0002
+            }
+          ]
+        },
+        {
+          "square": "a7",
+          "index": 8,
+          "confidence": 0.9823,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.9823
+            },
+            {
+              "class": "empty",
+              "p": 0.0079
+            },
+            {
+              "class": "b",
+              "p": 0.0066
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        105.66,
+        540.41,
+        254.17,
+        690.23
+      ],
+      "read_placement": "r4rk1/p1nbb2p/3p2p1/2p1pPP1/1q1nP3/2N1B1N1/PP1Q4/2KR1B1R",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 3,
+      "pdf": "Euwe, Kramer - Das Mittelspiel Band 7 (1958).pdf",
+      "page": 25,
+      "diagram": 2,
+      "regime": "scan-hachurado",
+      "note": "Stellung 34; so a caixa",
+      "crop": "b03_Euwe_Kramer_Das_Mittelspiel_Band_7_p25_d2.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.9715,
+      "mean_confidence": 0.9993,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "d2",
+          "index": 51,
+          "confidence": 0.9715,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "Q",
+              "p": 0.9715
+            },
+            {
+              "class": "K",
+              "p": 0.0246
+            },
+            {
+              "class": "B",
+              "p": 0.0034
+            }
+          ]
+        },
+        {
+          "square": "f5",
+          "index": 29,
+          "confidence": 0.9908,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 0.9908
+            },
+            {
+              "class": "P",
+              "p": 0.0075
+            },
+            {
+              "class": "B",
+              "p": 0.0013
+            }
+          ]
+        },
+        {
+          "square": "a2",
+          "index": 48,
+          "confidence": 0.9977,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9977
+            },
+            {
+              "class": "B",
+              "p": 0.0023
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        342.5,
+        320.91,
+        491.67,
+        470.4
+      ],
+      "read_placement": "r1bqrnk1/5pb1/p1pBp1p1/3pP1Np/5P1P/8/PPPQB1P1/2KR3R",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 4,
+      "pdf": "Euwe, Kramer - Das Mittelspiel Band 7 (1958).pdf",
+      "page": 40,
+      "diagram": 1,
+      "regime": "scan-hachurado",
+      "note": "so a caixa: hachura densa, e o diagrama fica em 0,0006",
+      "crop": "b04_Euwe_Kramer_Das_Mittelspiel_Band_7_p40_d1.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "casa fraca",
+      "verdict": "sem FEN",
+      "min_confidence": 0.5731,
+      "mean_confidence": 0.9915,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "c6",
+          "index": 18,
+          "confidence": 0.5731,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 0.5731
+            },
+            {
+              "class": "P",
+              "p": 0.4241
+            },
+            {
+              "class": "K",
+              "p": 0.0011
+            }
+          ]
+        },
+        {
+          "square": "g8",
+          "index": 6,
+          "confidence": 0.8881,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "k",
+              "p": 0.8881
+            },
+            {
+              "class": "K",
+              "p": 0.1119
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "g7",
+          "index": 14,
+          "confidence": 0.9979,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.9979
+            },
+            {
+              "class": "b",
+              "p": 0.0021
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        88.0,
+        599.94,
+        234.22,
+        746.49
+      ],
+      "read_placement": "r2qr1k1/pb1nbppp/1p3n2/3p1BB1/2pP3P/2N1PN2/PPQ2PP1/2KR3R",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 5,
+      "pdf": "GALLAGHER - Winning With the King's Gambit.pdf",
+      "page": 124,
+      "diagram": 0,
+      "regime": "scan-puro",
+      "note": "diagrama 127; o rascunho pegou a pagina inteira",
+      "crop": "b05_GALLAGHER_Winning_With_the_King_s__p124_d0.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.9998,
+      "mean_confidence": 1.0,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "h8",
+          "index": 7,
+          "confidence": 0.9998,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "r",
+              "p": 0.9998
+            },
+            {
+              "class": "R",
+              "p": 0.0002
+            },
+            {
+              "class": "b",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "a3",
+          "index": 40,
+          "confidence": 0.9999,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9999
+            },
+            {
+              "class": "B",
+              "p": 0.0001
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "b2",
+          "index": 49,
+          "confidence": 0.9999,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9999
+            },
+            {
+              "class": "B",
+              "p": 0.0001
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        199.0,
+        125.0,
+        315.0,
+        245.0
+      ],
+      "read_placement": "r3k2r/pp1bqpn1/1n1P4/2p1P1p1/2B1NpP1/P7/1P1NQ3/R3K1R1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 6,
+      "pdf": "Koblenz - El dominio del arte de la combinacion (1978).pdf",
+      "page": 30,
+      "diagram": 0,
+      "regime": "scan-puro",
+      "note": "Analisis de Lovenfisch; so a caixa -- nesta fonte nao separei branco de preto com seguranca",
+      "crop": "b06_Koblenz_El_dominio_del_arte_de_la__p30_d0.png",
+      "exported": false,
+      "legal": false,
+      "above_gate": false,
+      "reason": "ilegal",
+      "verdict": "sem FEN",
+      "min_confidence": 0.3409,
+      "mean_confidence": 0.8897,
+      "repaired_squares": [
+        "b7"
+      ],
+      "weakest": [
+        {
+          "square": "a8",
+          "index": 0,
+          "confidence": 0.3409,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "r",
+              "p": 0.3409
+            },
+            {
+              "class": "empty",
+              "p": 0.3079
+            },
+            {
+              "class": "P",
+              "p": 0.2152
+            }
+          ]
+        },
+        {
+          "square": "b7",
+          "index": 9,
+          "confidence": 0.362,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.4708
+            },
+            {
+              "class": "p",
+              "p": 0.362
+            },
+            {
+              "class": "empty",
+              "p": 0.1458
+            }
+          ]
+        },
+        {
+          "square": "c2",
+          "index": 50,
+          "confidence": 0.3953,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 0.3953
+            },
+            {
+              "class": "B",
+              "p": 0.1856
+            },
+            {
+              "class": "P",
+              "p": 0.1608
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        60.87,
+        226.45,
+        214.99,
+        380.25
+      ],
+      "read_placement": "r4rQ1/1p3ppp/2pQ1nb1/6B1/2PP4/7R/PPR2PPK/4B1R1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 7,
+      "pdf": "Koblenz - El dominio del arte de la combinacion (1978).pdf",
+      "page": 30,
+      "diagram": 1,
+      "regime": "scan-puro",
+      "note": "Tartakower-Reti; so a caixa, mesmo motivo",
+      "crop": "b07_Koblenz_El_dominio_del_arte_de_la__p30_d1.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "sem FEN",
+      "min_confidence": 0.0295,
+      "mean_confidence": 0.8964,
+      "repaired_squares": [
+        "g7",
+        "h1"
+      ],
+      "weakest": [
+        {
+          "square": "g7",
+          "index": 14,
+          "confidence": 0.0295,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 0.2908
+            },
+            {
+              "class": "R",
+              "p": 0.1773
+            },
+            {
+              "class": "Q",
+              "p": 0.1088
+            }
+          ]
+        },
+        {
+          "square": "g6",
+          "index": 22,
+          "confidence": 0.2438,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 0.2438
+            },
+            {
+              "class": "K",
+              "p": 0.2176
+            },
+            {
+              "class": "N",
+              "p": 0.1919
+            }
+          ]
+        },
+        {
+          "square": "h1",
+          "index": 63,
+          "confidence": 0.358,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.6331
+            },
+            {
+              "class": "empty",
+              "p": 0.358
+            },
+            {
+              "class": "p",
+              "p": 0.0043
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        245.75,
+        183.91,
+        401.52,
+        337.38
+      ],
+      "read_placement": "3R4/6k1/4Q1R1/4p3/6p1/4NK2/PPB4P/8",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 8,
+      "pdf": "Koblenz - El dominio del arte de la combinacion (1978).pdf",
+      "page": 50,
+      "diagram": 0,
+      "regime": "scan-puro",
+      "note": "Bilek-Barcza, Budapest 1961; so a caixa",
+      "crop": "b08_Koblenz_El_dominio_del_arte_de_la__p50_d0.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "sem FEN",
+      "min_confidence": 0.0019,
+      "mean_confidence": 0.8906,
+      "repaired_squares": [
+        "g8"
+      ],
+      "weakest": [
+        {
+          "square": "g8",
+          "index": 6,
+          "confidence": 0.0019,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.9589
+            },
+            {
+              "class": "empty",
+              "p": 0.0249
+            },
+            {
+              "class": "Q",
+              "p": 0.0059
+            }
+          ]
+        },
+        {
+          "square": "h7",
+          "index": 15,
+          "confidence": 0.2896,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "n",
+              "p": 0.2896
+            },
+            {
+              "class": "empty",
+              "p": 0.2499
+            },
+            {
+              "class": "r",
+              "p": 0.2447
+            }
+          ]
+        },
+        {
+          "square": "g1",
+          "index": 62,
+          "confidence": 0.4042,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "B",
+              "p": 0.4042
+            },
+            {
+              "class": "empty",
+              "p": 0.3576
+            },
+            {
+              "class": "Q",
+              "p": 0.108
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        61.52,
+        324.29,
+        214.01,
+        475.8
+      ],
+      "read_placement": "3rr1k1/pp3pbn/6p1/2b5/3p1Bb1/3BN3/PBPK1RPP/R1B3B1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 9,
+      "pdf": "Koblenz - El dominio del arte de la combinacion (1978).pdf",
+      "page": 50,
+      "diagram": 1,
+      "regime": "scan-puro",
+      "note": "Schultz-Dal, Berlin 1956; so a caixa",
+      "crop": "b09_Koblenz_El_dominio_del_arte_de_la__p50_d1.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "sem FEN",
+      "min_confidence": 0.1893,
+      "mean_confidence": 0.8585,
+      "repaired_squares": [
+        "d7",
+        "h2",
+        "g1"
+      ],
+      "weakest": [
+        {
+          "square": "d7",
+          "index": 11,
+          "confidence": 0.1893,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "q",
+              "p": 0.4661
+            },
+            {
+              "class": "Q",
+              "p": 0.2266
+            },
+            {
+              "class": "k",
+              "p": 0.1893
+            }
+          ]
+        },
+        {
+          "square": "g4",
+          "index": 38,
+          "confidence": 0.246,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "n",
+              "p": 0.246
+            },
+            {
+              "class": "R",
+              "p": 0.2121
+            },
+            {
+              "class": "b",
+              "p": 0.1662
+            }
+          ]
+        },
+        {
+          "square": "h2",
+          "index": 55,
+          "confidence": 0.2524,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.4582
+            },
+            {
+              "class": "K",
+              "p": 0.2524
+            },
+            {
+              "class": "empty",
+              "p": 0.2295
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        248.04,
+        181.61,
+        403.15,
+        340.32
+      ],
+      "read_placement": "5rR1/3kPp1R/p1p5/1p2P3/6n1/1BP1B1Q1/PB3B1K/R4R2",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 10,
+      "pdf": "Levenfis - Cartea sahistului inceparator (1962).pdf",
+      "page": 150,
+      "diagram": 0,
+      "regime": "scan-hachurado",
+      "note": "diagrama 228, siciliana scheveningen",
+      "crop": "b10_Levenfis_Cartea_sahistului_incepar_p150_d0.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "errado",
+      "min_confidence": 0.0683,
+      "mean_confidence": 0.95,
+      "repaired_squares": [
+        "e8",
+        "g1"
+      ],
+      "weakest": [
+        {
+          "square": "g1",
+          "index": 62,
+          "confidence": 0.0683,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.822
+            },
+            {
+              "class": "Q",
+              "p": 0.0683
+            },
+            {
+              "class": "empty",
+              "p": 0.0582
+            }
+          ]
+        },
+        {
+          "square": "e8",
+          "index": 4,
+          "confidence": 0.4104,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.5643
+            },
+            {
+              "class": "k",
+              "p": 0.4104
+            },
+            {
+              "class": "empty",
+              "p": 0.0231
+            }
+          ]
+        },
+        {
+          "square": "h8",
+          "index": 7,
+          "confidence": 0.559,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "b",
+              "p": 0.559
+            },
+            {
+              "class": "r",
+              "p": 0.4243
+            },
+            {
+              "class": "p",
+              "p": 0.0093
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        45.13,
+        196.89,
+        184.79,
+        335.89
+      ],
+      "read_placement": "r1bqk2b/pp2bppp/2nppn2/8/3NP3/2K5/PPP1BPPP/R1BQ1RQ1",
+      "truth_placement": "r1bqk2r/pp2bppp/2nppn2/8/3NP3/2N5/PPP1BPPP/R1BQ1RK1",
+      "n_wrong_squares": 3,
+      "wrong_squares": [
+        "h8",
+        "c3",
+        "g1"
+      ]
+    },
+    {
+      "n": 11,
+      "pdf": "Levenfis - Cartea sahistului inceparator (1962).pdf",
+      "page": 150,
+      "diagram": 1,
+      "regime": "scan-hachurado",
+      "note": "diagrama 229; o modelo troca rei e dama de casa (d1/g1) e fica em 0,108",
+      "crop": "b11_Levenfis_Cartea_sahistului_incepar_p150_d1.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "certo",
+      "min_confidence": 0.3016,
+      "mean_confidence": 0.9632,
+      "repaired_squares": [
+        "c3"
+      ],
+      "weakest": [
+        {
+          "square": "c3",
+          "index": 42,
+          "confidence": 0.3016,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.5501
+            },
+            {
+              "class": "N",
+              "p": 0.3016
+            },
+            {
+              "class": "B",
+              "p": 0.1113
+            }
+          ]
+        },
+        {
+          "square": "d1",
+          "index": 59,
+          "confidence": 0.6319,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "Q",
+              "p": 0.6319
+            },
+            {
+              "class": "K",
+              "p": 0.3143
+            },
+            {
+              "class": "empty",
+              "p": 0.0381
+            }
+          ]
+        },
+        {
+          "square": "g1",
+          "index": 62,
+          "confidence": 0.6899,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.6899
+            },
+            {
+              "class": "Q",
+              "p": 0.2322
+            },
+            {
+              "class": "empty",
+              "p": 0.0572
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        212.59,
+        103.02,
+        354.21,
+        243.33
+      ],
+      "read_placement": "r1bq1rk1/pp2ppbp/2np1np1/8/3NP3/2N1B3/PPP1BPPP/R2Q1RK1",
+      "truth_placement": "r1bq1rk1/pp2ppbp/2np1np1/8/3NP3/2N1B3/PPP1BPPP/R2Q1RK1",
+      "n_wrong_squares": 0,
+      "wrong_squares": []
+    },
+    {
+      "n": 12,
+      "pdf": "Niemeijer - Zwarte Magie 100 zwarte dame‑problemen (1945).pdf",
+      "page": 20,
+      "diagram": 0,
+      "regime": "scan-hachurado",
+      "note": "No. 61 (Ebben); so a caixa -- problema de mate, scan hachurado",
+      "crop": "b12_Niemeijer_Zwarte_Magie_100_zwarte__p20_d0.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "casa fraca",
+      "verdict": "sem FEN",
+      "min_confidence": 0.3698,
+      "mean_confidence": 0.9309,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "a3",
+          "index": 40,
+          "confidence": 0.3698,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.3698
+            },
+            {
+              "class": "empty",
+              "p": 0.2985
+            },
+            {
+              "class": "K",
+              "p": 0.1915
+            }
+          ]
+        },
+        {
+          "square": "g7",
+          "index": 14,
+          "confidence": 0.4576,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.4576
+            },
+            {
+              "class": "B",
+              "p": 0.2497
+            },
+            {
+              "class": "empty",
+              "p": 0.1155
+            }
+          ]
+        },
+        {
+          "square": "g3",
+          "index": 46,
+          "confidence": 0.5463,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 0.5463
+            },
+            {
+              "class": "P",
+              "p": 0.1814
+            },
+            {
+              "class": "p",
+              "p": 0.1001
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        108.0,
+        241.0,
+        385.0,
+        518.0
+      ],
+      "read_placement": "2b5/1KR3P1/4P3/pN1k1pP1/1p4P1/P7/3PP1p1/7q",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 13,
+      "pdf": "Niemeijer - Zwarte Magie 100 zwarte dame‑problemen (1945).pdf",
+      "page": 20,
+      "diagram": 1,
+      "regime": "scan-hachurado",
+      "note": "No. 62 (de Jong); so a caixa",
+      "crop": "b13_Niemeijer_Zwarte_Magie_100_zwarte__p20_d1.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "casa fraca",
+      "verdict": "sem FEN",
+      "min_confidence": 0.3474,
+      "mean_confidence": 0.9534,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "a6",
+          "index": 16,
+          "confidence": 0.3474,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.3474
+            },
+            {
+              "class": "k",
+              "p": 0.1943
+            },
+            {
+              "class": "empty",
+              "p": 0.1754
+            }
+          ]
+        },
+        {
+          "square": "h4",
+          "index": 39,
+          "confidence": 0.4782,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.4782
+            },
+            {
+              "class": "empty",
+              "p": 0.1779
+            },
+            {
+              "class": "P",
+              "p": 0.1692
+            }
+          ]
+        },
+        {
+          "square": "b5",
+          "index": 25,
+          "confidence": 0.6714,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "B",
+              "p": 0.6714
+            },
+            {
+              "class": "b",
+              "p": 0.1515
+            },
+            {
+              "class": "P",
+              "p": 0.1352
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        395.57,
+        244.41,
+        672.69,
+        521.53
+      ],
+      "read_placement": "5Rb1/4P3/KP6/1B1kq1P1/7p/p2N4/4P3/3Q1N2",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 14,
+      "pdf": "Niemeijer - Zwarte Magie 100 zwarte dame‑problemen (1945).pdf",
+      "page": 20,
+      "diagram": 2,
+      "regime": "scan-hachurado",
+      "note": "No. 63 (Drese); so a caixa",
+      "crop": "b14_Niemeijer_Zwarte_Magie_100_zwarte__p20_d2.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "sem FEN",
+      "min_confidence": 0.1347,
+      "mean_confidence": 0.9172,
+      "repaired_squares": [
+        "b8",
+        "h1"
+      ],
+      "weakest": [
+        {
+          "square": "b8",
+          "index": 1,
+          "confidence": 0.1347,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "R",
+              "p": 0.56
+            },
+            {
+              "class": "K",
+              "p": 0.1347
+            },
+            {
+              "class": "empty",
+              "p": 0.1256
+            }
+          ]
+        },
+        {
+          "square": "h1",
+          "index": 63,
+          "confidence": 0.1754,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.4161
+            },
+            {
+              "class": "R",
+              "p": 0.1754
+            },
+            {
+              "class": "b",
+              "p": 0.1536
+            }
+          ]
+        },
+        {
+          "square": "a5",
+          "index": 24,
+          "confidence": 0.4429,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 0.4429
+            },
+            {
+              "class": "empty",
+              "p": 0.239
+            },
+            {
+              "class": "P",
+              "p": 0.1046
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        108.0,
+        693.0,
+        385.0,
+        970.0
+      ],
+      "read_placement": "1K6/p7/p1PkppP1/R4Bp1/7P/5Qp1/1B3bp1/6qR",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 15,
+      "pdf": "Niemeijer - Zwarte Magie 100 zwarte dame‑problemen (1945).pdf",
+      "page": 20,
+      "diagram": 3,
+      "regime": "scan-hachurado",
+      "note": "No. 64 (Kraemer); so a caixa",
+      "crop": "b15_Niemeijer_Zwarte_Magie_100_zwarte__p20_d3.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "casa fraca",
+      "verdict": "sem FEN",
+      "min_confidence": 0.495,
+      "mean_confidence": 0.9671,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "h7",
+          "index": 15,
+          "confidence": 0.495,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.495
+            },
+            {
+              "class": "k",
+              "p": 0.4533
+            },
+            {
+              "class": "empty",
+              "p": 0.051
+            }
+          ]
+        },
+        {
+          "square": "b6",
+          "index": 17,
+          "confidence": 0.5757,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "p",
+              "p": 0.5757
+            },
+            {
+              "class": "b",
+              "p": 0.2254
+            },
+            {
+              "class": "empty",
+              "p": 0.0662
+            }
+          ]
+        },
+        {
+          "square": "e3",
+          "index": 44,
+          "confidence": 0.5913,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 0.5913
+            },
+            {
+              "class": "R",
+              "p": 0.1206
+            },
+            {
+              "class": "K",
+              "p": 0.1008
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        395.0,
+        693.0,
+        672.0,
+        970.0
+      ],
+      "read_placement": "8/2p4K/1p2N2P/6pk/1p1bp1p1/3B2P1/1r1p4/q7",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 16,
+      "pdf": "Reinfeld_1001_Sacrificios_y_Combinaciones_Brillantes_1977.pdf",
+      "page": 40,
+      "diagram": 5,
+      "regime": "scan-puro",
+      "note": "exercicio 198, coluna direita/linha 3",
+      "crop": "b16_Reinfeld_1001_Sacrificios_y_Combin_p40_d5.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.9572,
+      "mean_confidence": 0.9991,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "a2",
+          "index": 48,
+          "confidence": 0.9572,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9572
+            },
+            {
+              "class": "B",
+              "p": 0.0428
+            },
+            {
+              "class": "R",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "b2",
+          "index": 49,
+          "confidence": 0.9898,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9898
+            },
+            {
+              "class": "B",
+              "p": 0.0102
+            },
+            {
+              "class": "R",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "d4",
+          "index": 35,
+          "confidence": 0.9985,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9985
+            },
+            {
+              "class": "B",
+              "p": 0.0015
+            },
+            {
+              "class": "empty",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        162.5,
+        335.0,
+        278.6,
+        450.8
+      ],
+      "read_placement": "r1bbr1k1/p2n1ppp/1p1Bp3/3q3Q/3PNP2/3B4/PP4PP/2R2R1K",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 17,
+      "pdf": "Reinfeld_1001_Sacrificios_y_Combinaciones_Brillantes_1977.pdf",
+      "page": 150,
+      "diagram": 5,
+      "regime": "scan-puro",
+      "note": "exercicio 784, coluna direita/linha 2",
+      "crop": "b17_Reinfeld_1001_Sacrificios_y_Combin_p150_d5.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 0.9808,
+      "mean_confidence": 0.9995,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "a2",
+          "index": 48,
+          "confidence": 0.9808,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9808
+            },
+            {
+              "class": "B",
+              "p": 0.0192
+            },
+            {
+              "class": "R",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "b2",
+          "index": 49,
+          "confidence": 0.9953,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.9953
+            },
+            {
+              "class": "B",
+              "p": 0.0047
+            },
+            {
+              "class": "R",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "c2",
+          "index": 50,
+          "confidence": 0.996,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "P",
+              "p": 0.996
+            },
+            {
+              "class": "B",
+              "p": 0.004
+            },
+            {
+              "class": "R",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        160.0,
+        191.7,
+        276.8,
+        307.5
+      ],
+      "read_placement": "r3k2r/ppp2ppp/1bn1b1q1/6NN/2pp4/8/PPP2PPP/R1BQR1K1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 18,
+      "pdf": "Stefaniu - Problematica Deschideriliol in sah (1992).pdf",
+      "page": 100,
+      "diagram": 0,
+      "regime": "scan-hachurado",
+      "note": "so a caixa: no scan hachurado nao consegui separar b7 e f1 com seguranca, e o diagrama fica muito abaixo do gate",
+      "crop": "b18_Stefaniu_Problematica_Deschiderili_p100_d0.png",
+      "exported": false,
+      "legal": true,
+      "above_gate": false,
+      "reason": "reparo",
+      "verdict": "sem FEN",
+      "min_confidence": 0.0021,
+      "mean_confidence": 0.9214,
+      "repaired_squares": [
+        "f8",
+        "d5",
+        "a1",
+        "d1",
+        "e1"
+      ],
+      "weakest": [
+        {
+          "square": "e1",
+          "index": 60,
+          "confidence": 0.0021,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "k",
+              "p": 0.991
+            },
+            {
+              "class": "K",
+              "p": 0.0067
+            },
+            {
+              "class": "empty",
+              "p": 0.0021
+            }
+          ]
+        },
+        {
+          "square": "d1",
+          "index": 59,
+          "confidence": 0.146,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.816
+            },
+            {
+              "class": "Q",
+              "p": 0.146
+            },
+            {
+              "class": "empty",
+              "p": 0.0301
+            }
+          ]
+        },
+        {
+          "square": "d5",
+          "index": 27,
+          "confidence": 0.217,
+          "repaired": true,
+          "top3": [
+            {
+              "class": "K",
+              "p": 0.429
+            },
+            {
+              "class": "n",
+              "p": 0.3168
+            },
+            {
+              "class": "N",
+              "p": 0.217
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        42.21,
+        73.95,
+        182.25,
+        211.7
+      ],
+      "read_placement": "r2qkbnr/pb3ppp/np1p4/1K1Np3/4PB2/8/PPP2PPP/R2Q1b1R",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 19,
+      "pdf": "📚Yusupov Artur. Build Up Your Chess (all volumes).pdf",
+      "page": 11,
+      "diagram": 0,
+      "regime": "scan-puro",
+      "note": "",
+      "crop": "b19_Yusupov_Artur_Build_Up_Your_Chess__p11_d0.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 1.0,
+      "mean_confidence": 1.0,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "d1",
+          "index": 59,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 1.0
+            },
+            {
+              "class": "B",
+              "p": 0.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "h5",
+          "index": 31,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 1.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            },
+            {
+              "class": "p",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "h3",
+          "index": 47,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 1.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            },
+            {
+              "class": "p",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        36.0,
+        235.96,
+        172.47,
+        372.76
+      ],
+      "read_placement": "6k1/8/p7/r1r2Pp1/3R2Pp/1p6/1P4P1/3R2K1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    },
+    {
+      "n": 20,
+      "pdf": "📚Yusupov Artur. Build Up Your Chess (all volumes).pdf",
+      "page": 11,
+      "diagram": 1,
+      "regime": "scan-puro",
+      "note": "",
+      "crop": "b20_Yusupov_Artur_Build_Up_Your_Chess__p11_d1.png",
+      "exported": true,
+      "legal": true,
+      "above_gate": true,
+      "reason": "exportado",
+      "verdict": "sem FEN",
+      "min_confidence": 1.0,
+      "mean_confidence": 1.0,
+      "repaired_squares": [],
+      "weakest": [
+        {
+          "square": "d1",
+          "index": 59,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 1.0
+            },
+            {
+              "class": "B",
+              "p": 0.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "e1",
+          "index": 60,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "R",
+              "p": 1.0
+            },
+            {
+              "class": "B",
+              "p": 0.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            }
+          ]
+        },
+        {
+          "square": "e2",
+          "index": 52,
+          "confidence": 1.0,
+          "repaired": false,
+          "top3": [
+            {
+              "class": "empty",
+              "p": 1.0
+            },
+            {
+              "class": "p",
+              "p": 0.0
+            },
+            {
+              "class": "P",
+              "p": 0.0
+            }
+          ]
+        }
+      ],
+      "annotated_bbox": [
+        35.35,
+        446.4,
+        174.11,
+        584.84
+      ],
+      "read_placement": "r2r2k1/pb6/1p2pQ2/n1qP4/2P5/8/P4PPP/3RR1K1",
+      "truth_placement": "",
+      "n_wrong_squares": null,
+      "wrong_squares": []
+    }
+  ]
+}

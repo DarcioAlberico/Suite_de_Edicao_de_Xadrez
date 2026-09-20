@@ -1884,3 +1884,84 @@ passo 17 pelo critério de Q4 — portões e `percurso` verdes). Suíte: `ui/aud
 divisor é um widget do painel (`PainelDeResultado.divisor`); a tinta volta à confiança trocando
 `tinta_do_diagrama` pela chamada antiga; os dois estados novos das caixas só aparecem com
 `doubtful`/`edited` marcados.
+
+---
+
+## §19 — Passo 9, tarefa 1: os barrados nomeados, e o rascunho do passo 0b (2026-09-20)
+
+### 19.0 Em uma tela
+
+Todos os passos sem dependência humana estão executados (§18). O que restava do passo 9 sem
+depender de 0b era a **tarefa 1** — o diagnóstico: para cada diagrama casado que o portão de
+exportação barra, certo ou errado pela anotação e o motivo do bloqueio. `tools/f4_field_failures.py`
+ganhou `--barrados` e responde com 20 linhas (`barrados.md`): **12 barrados** (1 ilegal, 7 por
+reparo, 4 por casa fraca) e mais **8 exportados sem FEN** — dos 19 sem placement do §4.1, 18 foram
+casados; o 19.º o detector não casa (recall 114/115).
+
+Só **2** dos 12 barrados têm veredito (os dois do Levenfis p150: 1 certo, 1 errado — os de §4.1);
+os outros **10 são "sem FEN"**. O diagnóstico do passo 9 termina, portanto, onde o §4 já dizia: **a
+alavanca é anotar.** Para encurtar essa anotação, este passo entrega o rascunho do 0b: uma
+leitura visual independente (segundo leitor, não o modelo, recorte por recorte e ampliação nas
+casas em dúvida) dos 18 casados sem FEN, em `docs/quality/0b/propostas_0b.{json,md}`, com a casa em
+que cada proposta difere do modelo e a dúvida escrita. **Nada disso entrou no conjunto de campo**:
+cada entrada tem `confirmado: false`, e `tools/aplicar_0b.py` só grava as que um humano virar para
+`true` (rascunho por padrão, `--gravar` escreve; casa pela bbox anotada, nunca sobrescreve placement).
+
+```
+.venv\Scripts\python.exe tools\f4_field_failures.py --barrados --out benchmarks\reports\f4_barrados   # 1 min
+.venv\Scripts\python.exe tools\aplicar_0b.py            # 0 aplicáveis, 18 pendentes (nada gravado)
+.venv\Scripts\python.exe tools\aplicar_0b.py --gravar   # depois de confirmar as entradas
+```
+
+### 19.1 A tabela (barrados.md, régua da anotação — a correção de `field_corrections.json` não se aplica aqui)
+
+| motivo | certo | errado | sem FEN | onde |
+|---|---|---|---|---|
+| reparo | 1 | 1 | 5 | Levenfis p150 ×2, Koblenz p30/p50 ×3, Niemeijer p20, Stefaniu p100 |
+| casa fraca | 0 | 0 | 4 | Euwe p40 (0,573), Niemeijer p20 ×3 (0,35–0,50) |
+| ilegal | 0 | 0 | 1 | Koblenz p30 |
+| exportado (sem FEN) | — | — | 8 | Euwe p25 ×3, Gallagher p124, Reinfeld p40/p150, Yusupov p11 ×2 |
+
+### 19.2 O que a leitura visual diz — se as propostas valerem
+
+| | modelo certo | modelo errado |
+|---|---|---|
+| exportados sem FEN (8) | 8 | 0 |
+| barrados sem FEN (10) | 2 (Euwe p40, Niemeijer p20 d1 — casa fraca) | 8 |
+
+- Os 8 exportados são todos iguais à leitura (Euwe/Reinfeld/Yusupov/Gallagher, fontes limpas ou
+  hachura leve): a exportação não perde nada aqui, e `conditional_exact` continua 1,0 nesse
+  estrato se as propostas valerem.
+- Dos 10 barrados sem FEN, **8 estão errados** — e não por uma casa: os quatro do Koblenz
+  (`El dominio del arte de la combinación`, fonte em que as pretas têm traço grosso e as brancas
+  contorno fino) diferem em 8–11 casas cada, com dama/rei/bispo trocados de cor. O Niemeijer erra
+  1 casa em dois deles (cavalo lido como peão em g6/h6) e 8 no primeiro. O Stefaniu p100 erra b5
+  (rei por cavalo) e deixa e1 vazia. **O portão barrou bem 8 de 10** — os dois certos barrados são
+  os de casa fraca (0,573 e 0,347).
+- Uma dúvida declarada: Stefaniu p100 **f1** — a tinta é a do bispo preto de b7, mas as pretas
+  já têm bispos em f8 e b7; pela lógica da partida é o bispo branco. É a mesma dúvida que o
+  anotador escreveu na nota; fica marcada `média` e para a página decidir.
+
+**Consequência para o passo 8.** Com as propostas confirmadas, os negativos do conjunto de campo
+passam de 2 para **10** (8 + 2) em 114 casados — ainda longe dos ≥ 30 do 0b, e concentrados em
+dois livros (Koblenz 4, Niemeijer 3). Um modelo de dez sinais continua sem população; o que muda é
+que a discriminação por `min_confidence` passa a ter algo a separar (os 8 errados barrados estão
+entre 0,002 e 0,50; os 2 certos barrados em 0,35 e 0,57 — sobreposição em Niemeijer). Os ≥ 20
+errados que faltam continuam sendo o trabalho humano do 0b: páginas novas pela fila da aba
+Dataset por menor `min_confidence`, de livros que ainda não estão no conjunto.
+
+### 19.3 Sabotagem
+
+A sabotagem do passo 9 (trocar 3 anotações por FEN errada → `conditional_exact` cai) só faz
+sentido com FEN anotada, e o portão do passo 9 espera o passo 8; nenhum portão novo foi declarado
+aqui. O que se pode provar já: `aplicar_0b.py` **recusa** sobrescrever placement existente (rodado
+duas vezes numa cópia, a 2.ª recusa as 2 gravadas), recusa bbox sem par único e FEN inválida, e sem
+`--gravar` não toca no arquivo — o `git status` do tronco fica limpo em `data/` depois de todas as
+corridas deste passo.
+
+### 19.4 Saída
+
+Suíte: `tools/f4_field_failures.py --barrados` (`barrados.json/.md`, `ficha_0b.md`),
+`tools/aplicar_0b.py`, `docs/quality/0b/` (tabela, ficha, propostas e os 20 recortes em JPEG; os PNG
+ficam em `benchmarks/reports/f4_barrados`, fora do git), este §19 e a linha do roadmap. Tronco:
+inalterado. **Desfazer:** apagar `docs/quality/0b/`; nada foi gravado no conjunto de campo.

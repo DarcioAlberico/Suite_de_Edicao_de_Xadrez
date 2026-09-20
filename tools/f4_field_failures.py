@@ -24,9 +24,19 @@ Measurement rules of ``docs/quality/CORPUS.md`` 5 apply: this runs the trunk's o
 ``field_eval`` matching rule (IoU >= 0,5 on PDF points, greedy), never trains on the
 field set, and names the stratum.
 
+``--barrados`` (OCR_UI_ROADMAP passo 9, tarefa 1) adds the *other* population: every
+matched diagram the export gate **barred** -- illegal, repaired (a repair caps
+``min_confidence`` at 0,5 by construction, ``decode.py``) or a weak square without
+repair -- and every matched diagram whose annotation has **no placement** (18 of the 19 of
+``OCR_UI_REPORT_C1.md`` §4.1 are matched; the human work of passo 0b).  Each gets its crop, the
+read FEN, the reason it was barred and, when the annotation allows, whether it was
+right.  ``barrados.json`` / ``barrados.md`` are the table the roadmap asks for;
+``ficha_0b.md`` lists what the annotator still has to write.
+
 Usage::
 
     .venv/Scripts/python.exe tools/f4_field_failures.py --variant recall-pack
+    .venv/Scripts/python.exe tools/f4_field_failures.py --barrados --out benchmarks/reports/f4_barrados
 """
 
 from __future__ import annotations
@@ -95,6 +105,74 @@ def _top3(probs: Any, index: int) -> list[dict[str, Any]]:
     return [{"class": PIECE_CLASSES[int(k)], "p": round(float(row[int(k)]), 4)} for k in order]
 
 
+def _weakest(got: Any, limit: int = 3) -> list[dict[str, Any]]:
+    """The ``limit`` least confident squares of a read board, with the model's top-3."""
+    confs = [float(v) for v in (got.square_confidences or [])]
+    order = sorted(range(len(confs)), key=lambda i: confs[i])[:limit]
+    return [{"square": square_name(i), "index": i, "confidence": round(confs[i], 4),
+             "repaired": i in (got.changed_squares or []), "top3": _top3(got.probs, i)}
+            for i in order]
+
+
+def _block_reason(got: Any, legal: bool, above: bool) -> str:
+    """Why the export gate barred a board -- the three causes the roadmap names."""
+    if not legal:
+        return "ilegal"
+    if not above and got.changed_squares:
+        return "reparo"
+    if not above:
+        return "casa fraca"
+    return "exportado"
+
+
+def _verdict(read: str, truth: str) -> str:
+    if not truth:
+        return "sem FEN"
+    return "certo" if read == truth else "errado"
+
+
+def _write_barrados(out: Path, barred: list[dict[str, Any]]) -> None:
+    """``barrados.md`` (the table) and ``ficha_0b.md`` (what the annotator owes)."""
+    lines = ["# Diagramas casados e barrados pelo portão de exportação", "",
+             "| n | livro | p. | motivo | veredito | min_conf | reparos | casas erradas "
+             "| recorte |", "|---|---|---|---|---|---|---|---|---|"]
+    for b in barred:
+        wrong = b["n_wrong_squares"] if b["n_wrong_squares"] is not None else "—"
+        lines.append(
+            f"| {b['n']} | {b['pdf'][:40]} | {b['page']} | {b['reason']} | {b['verdict']} | "
+            f"{b['min_confidence']:.3f} | {', '.join(b['repaired_squares']) or '—'} | "
+            f"{wrong} | `{b['crop']}` |")
+    by_reason: dict[str, dict[str, int]] = {}
+    for b in barred:
+        counts = by_reason.setdefault(b["reason"], {})
+        counts[b["verdict"]] = counts.get(b["verdict"], 0) + 1
+    lines += ["", "## Por motivo × veredito", "", "| motivo | certo | errado | sem FEN |",
+              "|---|---|---|---|"]
+    for reason, counts in sorted(by_reason.items()):
+        lines.append(f"| {reason} | {counts.get('certo', 0)} | {counts.get('errado', 0)} | "
+                     f"{counts.get('sem FEN', 0)} |")
+    (out / "barrados.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    owed = [b for b in barred if b["verdict"] == "sem FEN"]
+    ficha = ["# Ficha do passo 0b — diagramas casados sem FEN anotada", "",
+             "A leitura do modelo está ao lado **só para orientar**: a verdade é o que a página "
+             "mostra, conferida no recorte, e entra pelo painel de campo do tronco "
+             "(`Anotar página`).", ""]
+    for b in owed:
+        weak = "; ".join(
+            f"{w['square']} {w['confidence']:.2f} " + "/".join(t["class"] for t in w["top3"])
+            for w in b["weakest"])
+        repaired = ", ".join(b["repaired_squares"]) or "nenhum"
+        ficha += [f"## {b['n']:02d} — {b['pdf']} p. {b['page']} "
+                  f"(diagrama {b['diagram']}, {b['regime']})", "",
+                  f"- recorte: `{b['crop']}`  bbox anotada: {b['annotated_bbox']}",
+                  f"- leitura do modelo: `{b['read_placement']}` "
+                  f"(min_conf {b['min_confidence']:.3f}, motivo: {b['reason']}, reparos: {repaired})",
+                  f"- casas mais fracas: {weak}",
+                  f"- nota da anotação: {b['note'] or '—'}", ""]
+    (out / "ficha_0b.md").write_text("\n".join(ficha) + "\n", encoding="utf-8")
+
+
 def _variant(name: str) -> Any:
     import contextlib
 
@@ -116,6 +194,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--pages", action="store_true", help="Also dump the full page with both bboxes drawn.")
     parser.add_argument("--tag", default="")
+    parser.add_argument("--barrados", action="store_true",
+                        help="Also dump every matched diagram the gate barred, and every one without annotated FEN.")
     args = parser.parse_args(argv)
 
     import cv2
@@ -145,6 +225,7 @@ def main(argv: list[str] | None = None) -> int:
     failures: list[dict[str, Any]] = []
     misses: list[dict[str, Any]] = []
     unmeasured: list[dict[str, Any]] = []
+    barred: list[dict[str, Any]] = []
     totals: dict[str, Any] = {}
     per_regime: dict[str, dict[str, int]] = {}
     per_book: dict[str, dict[str, int]] = {}
@@ -182,6 +263,30 @@ def main(argv: list[str] | None = None) -> int:
                 legal = got.is_fatal is not True
                 above = got.min_confidence >= ACCEPT_MIN_CONFIDENCE
                 exported = legal and above
+                if args.barrados and (not exported or not annotated.placement):
+                    bn = len(barred) + 1
+                    bcrop = f"b{bn:02d}_{_slug(page.pdf)}_p{page.page}_d{index}.png"
+                    if got.board_rgb is not None:
+                        cv2.imwrite(str(out / bcrop),
+                                    cv2.cvtColor(got.board_rgb, cv2.COLOR_RGB2BGR))
+                    bdiff = (_diff_squares(got.placement, annotated.placement)
+                             if annotated.placement else None)
+                    barred.append({
+                        "n": bn, "pdf": page.pdf, "page": page.page, "diagram": index,
+                        "regime": page.regime, "note": annotated.note, "crop": bcrop,
+                        "exported": exported, "legal": legal, "above_gate": above,
+                        "reason": _block_reason(got, legal, above),
+                        "verdict": _verdict(got.placement, annotated.placement),
+                        "min_confidence": round(float(got.min_confidence), 4),
+                        "mean_confidence": round(float(got.mean_confidence), 4),
+                        "repaired_squares": [square_name(sq) for sq in (got.changed_squares or [])],
+                        "weakest": _weakest(got),
+                        "annotated_bbox": [round(v, 2) for v in annotated.bbox],
+                        "read_placement": got.placement,
+                        "truth_placement": annotated.placement,
+                        "n_wrong_squares": len(bdiff) if bdiff is not None else None,
+                        "wrong_squares": [square_name(sq) for sq in bdiff] if bdiff else [],
+                    })
                 if not annotated.placement:
                     unmeasured.append({"pdf": page.pdf, "page": page.page, "regime": page.regime,
                                        "exported": exported, "read": got.placement})
@@ -283,6 +388,12 @@ def main(argv: list[str] | None = None) -> int:
         "unmeasured_matched": unmeasured,
     }
     (out / "failures.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    if args.barrados:
+        (out / "barrados.json").write_text(
+            json.dumps({"generated_at": payload["generated_at"], "accept_threshold": ACCEPT_MIN_CONFIDENCE,
+                        "n": len(barred), "barrados": barred}, indent=2, ensure_ascii=False),
+            encoding="utf-8")
+        _write_barrados(out, barred)
 
     print(f"variant={args.variant} refine={args.refine}")
     print(f"  annotated {totals['annotated']}  matched {totals['matched']}  recall {totals['detection_recall']:.4f}"
@@ -296,6 +407,12 @@ def main(argv: list[str] | None = None) -> int:
         flag = "EXPORTED" if item["exported"] else "blocked  "
         print(f"   [{item['n']:02d}] {flag} {item['pdf'][:46]:<46} p{item['page']:<4}"
               f" wrong={item['n_wrong_squares']} minconf={item['min_confidence']:.3f} {item['regime']}")
+    if args.barrados:
+        print(f"  barred-or-unannotated matched diagrams dumped: {len(barred)}")
+        for b in barred:
+            print(f"   [b{b['n']:02d}] {b['reason']:<10} {b['verdict']:<7} {b['pdf'][:40]:<40}"
+                  f" p{b['page']:<4} minconf={b['min_confidence']:.3f}"
+                  f" reparos={len(b['repaired_squares'])} {b['regime']}")
     print(f"\ndump -> {out}")
     return 0
 
