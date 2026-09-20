@@ -35,7 +35,8 @@ import chess
 from caissa.core.model import Diagram, GameScore, MoveNode, Paragraph
 from caissa.core.model.inline import plain_text
 from caissa.core.model.provenance import Provenance
-from caissa.notation.legality_repair import RepairReport, repair_movetext
+from caissa.ingest.pdf.captions import move_start
+from caissa.notation.legality_repair import RepairReport, repair_movetext, split_tail
 from caissa.ocr.notation.movetext import MoveRun, move_runs
 
 __all__ = ["GamesReport", "attach_games", "game_from_paragraph", "is_invention"]
@@ -45,6 +46,11 @@ _NUMBER = re.compile(r"^\d{1,3}\s*(?:\.{1,3}|…)?$")
 EMPTY_BOARD = "8/8/8/8/8/8/8/8"
 #: A line needs at least this many legal moves in a row to be called a game.
 MIN_CHAINED_MOVES = 2
+#: Why a column stayed ``Movetext`` instead of becoming a game, for the report
+#: and for the paragraph's provenance note (OCR_UI_ROADMAP_C2 passo A5, X1).
+NO_ANCHOR_REASON = "sem diagrama âncora acima da coluna"
+SIDE_MISMATCH_REASON = "a numeração do primeiro lance contradiz o lado a jogar do diagrama"
+NUMBER_MISMATCH_REASON = "o número do primeiro lance não continua a posição da âncora"
 #: What a printed move token *says*: the piece, the destination, whether it
 #: takes, the promotion — the parts a repair may not change.  ``1d4`` and
 #: ``d4`` agree; ``♖g6`` and ``Bg6`` do not, nor do ``Nxe5`` and ``Ne5`` (a
@@ -55,9 +61,12 @@ _CORE = re.compile(
     r"(?:=?(?P<promo>[QRBN]))?$"
 )
 _CASTLING = re.compile(r"^[O0]-[O0](?:-[O0])?$")
-#: A move number the OCR glued to its move (``1d4``, ``20g3``): the tokenizer
-#: of the main line would drop the token; a space puts it back.
-_GLUED_NUMBER = re.compile(r"(?<![\w.])(\d{1,3}\.{0,3})(?=[a-hKQRBN♔♕♖♗♘])")
+#: A move number the OCR glued to its move (``1d4``, ``20g3``, ``5.O-O``): the
+#: tokenizer of the main line would drop the token; a space puts it back.  The
+#: castling form is spelled out (``O-O`` / ``0-0`` with any dash) so that a
+#: decimal such as ``5.0`` is left alone.
+_GLUED_NUMBER = re.compile(
+    r"(?<![\w.])(\d{1,3}\.{0,3})(?=[a-hKQRBN♔♕♖♗♘]|[Oo0][-‐‑‒–—−][Oo0])")
 _FIGURINE = dict(zip("♔♕♖♗♘", "KQRBN", strict=True))
 
 
@@ -72,6 +81,9 @@ class GamesReport:
     kept_no_position: int = 0
     kept_no_chain: int = 0
     kept_short: int = 0
+    #: The column's first move number contradicts the anchor (side or number):
+    #: kept as ``Movetext``, never replayed from a board the page did not give it.
+    kept_anchor_mismatch: int = 0
 
     def counters(self) -> dict[str, int]:
         return {
@@ -80,6 +92,7 @@ class GamesReport:
             "movetext_kept_no_position": self.kept_no_position,
             "movetext_kept_no_chain": self.kept_no_chain,
             "movetext_kept_short": self.kept_short,
+            "movetext_kept_anchor_mismatch": self.kept_anchor_mismatch,
         }
 
 
@@ -116,7 +129,9 @@ def _after(fen_before: str, san: str) -> str:
 
 def _core(token: str) -> tuple[str, str, bool, str] | None:
     """``(piece, destination, takes, promotion)`` of a move token; ``None`` when not one."""
-    token = token.strip("()[]{}!?+#.,;: ").replace("х", "x")
+    # The annotation tail comes off through the one alphabet (passo A4):
+    # ``Nf6±`` and ``Nf6`` say the same move.
+    token = split_tail(token)[0].strip("+# ").replace("х", "x")
     if _CASTLING.match(token):
         return ("O", token.replace("0", "O"), False, "")
     match = _CORE.match(token)
@@ -197,6 +212,9 @@ def game_from_paragraph(
     run = _trunk(text, notation_lang=notation_lang)
     if run is None:
         return None, "short"
+    mismatch = _anchor_mismatch(text.split(), run.start, start_fen)
+    if mismatch is not None:
+        return None, mismatch
     report = repair_movetext(run.text, start_fen=start_fen)
     moves = _accepted(report)
     if len(moves) < MIN_CHAINED_MOVES:
@@ -226,6 +244,37 @@ def game_from_paragraph(
     return score, "game"
 
 
+def _anchor_mismatch(tokens: list[str], start: int, start_fen: str) -> str | None:
+    """X1 (analysis §7.1): the column's own numbering against the anchor.
+
+    The page says which side moves first (``22...`` is Black, ``23 ♘c4`` is
+    White) and from which move; the anchor's FEN says the same things.  When
+    they disagree the anchor is not this column's board -- legal moves from the
+    wrong diagram are the worst outcome, plausible and displaced -- so the
+    column stays ``Movetext`` with the reason.  The move number is checked
+    only when the anchor carries one (a game's end, or a diagram whose FEN was
+    numbered); a recognised diagram's ``1`` says nothing.
+    """
+    if start >= len(tokens):
+        return None
+    opening = tokens[start]
+    if start and _NUMBER.match(tokens[start - 1]):
+        opening = f"{tokens[start - 1]} {opening}"
+    numbering = move_start(opening)
+    if numbering is None:
+        return None
+    number, black = numbering
+    try:
+        board = chess.Board(start_fen)
+    except ValueError:
+        return None
+    if black != (board.turn == chess.BLACK):
+        return "side_mismatch"
+    if board.fullmove_number > 1 and number != board.fullmove_number:
+        return "number_mismatch"
+    return None
+
+
 @dataclass(frozen=True)
 class _Anchor:
     """A position on the page and where it sits: a read diagram, or a game's end."""
@@ -246,17 +295,21 @@ def _box_of(block: Any) -> tuple[int | None, tuple[float, float, float, float] |
     )
 
 
-def _position_for(group: list[Paragraph], anchors: list[_Anchor]) -> str | None:
-    """The position the column continues from.
+def _position_for(group: list[Paragraph], anchors: list[_Anchor]) -> tuple[str | None, str]:
+    """The position the column continues from, or ``(None, why)``.
 
     By geometry when the page gives it: the nearest anchor whose bottom is
     above the column's first line and whose x-range overlaps it — the
     importer lists a page's diagrams before its text, so reading order alone
-    would hand the left column the right column's board.  Without boxes, the
-    last anchor in reading order.
+    would hand the left column the right column's board.  A column **with** a
+    box and no anchor above it gets no position at all (passo A5, X1): the
+    last diagram in reading order used to stand in, and a game replayed from
+    a board the page never put over the column is the invention this pass
+    exists to refuse.  Only blocks without boxes (no page geometry at all)
+    still take the last anchor before them.
     """
     if not anchors:
-        return None
+        return None, NO_ANCHOR_REASON
     page, box = _box_of(group[0])
     if box is not None:
         x0, top, x1, _bottom = box
@@ -268,9 +321,12 @@ def _position_for(group: list[Paragraph], anchors: list[_Anchor]) -> str | None:
             and a.box[3] <= top + 5
             and max(a.box[0], x0) < min(a.box[2], x1)
         ]
-        if above:
-            return max(above, key=lambda a: a.box[3]).fen  # type: ignore[index]
-    return anchors[-1].fen
+        if not above:
+            return None, NO_ANCHOR_REASON
+        nearest = max(above, key=lambda a: a.box[3])  # type: ignore[index]
+        return nearest.fen, "" if nearest.fen else NO_ANCHOR_REASON
+    last = anchors[-1]
+    return last.fen, "" if last.fen else NO_ANCHOR_REASON
 
 
 def attach_games(
@@ -307,21 +363,28 @@ def attach_games(
         index += len(group)
         report.movetext_seen += len(group)
         joined = _joined(group)
-        fen = _position_for(group, anchors)
+        fen, why = _position_for(group, anchors)
         if fen is None and _opens_at_move_one(plain_text(joined.content)):
             # A game printed from its first move needs no diagram.
-            fen = chess.STARTING_FEN
+            fen, why = chess.STARTING_FEN, ""
         if fen is None:
             report.kept_no_position += len(group)
-            out.extend(group)
+            out.extend(_noted(group, why))
             continue
         score, reason = game_from_paragraph(joined, fen, notation_lang=notation_lang)
         if score is None:
             if reason == "short":
                 report.kept_short += len(group)
+                out.extend(group)
+            elif reason in ("side_mismatch", "number_mismatch"):
+                report.kept_anchor_mismatch += len(group)
+                out.extend(_noted(
+                    group,
+                    SIDE_MISMATCH_REASON if reason == "side_mismatch" else NUMBER_MISMATCH_REASON,
+                ))
             else:
                 report.kept_no_chain += len(group)
-            out.extend(group)
+                out.extend(group)
             continue
         report.games += 1
         report.moves += _length(score)
@@ -338,6 +401,23 @@ _MOVE_ONE = re.compile(r"^1(?!\d)\s*\.?\s*(?=[a-hKQRBN♔♕♖♗♘O0])")
 def _opens_at_move_one(text: str) -> bool:
     """Whether the column starts at move 1 (``1 d4``, ``1.e4``, ``1d4``)."""
     return _MOVE_ONE.match(text.strip()) is not None
+
+
+def _noted(group: list[Paragraph], why: str) -> list[Paragraph]:
+    """The column as it was, with ``why`` on the first paragraph's provenance.
+
+    A ``Movetext`` column that did not become a game says so where the
+    reviewer looks; the text itself is untouched.  A paragraph without
+    provenance, or whose note is already taken, is passed through as is.
+    """
+    if not why or not group:
+        return group
+    first = group[0]
+    provenance = getattr(first, "provenance", None)
+    if provenance is None or getattr(provenance, "note", None):
+        return group
+    return [replace(first, provenance=replace(provenance, note=f"lances não reproduzidos: {why}")),
+            *group[1:]]
 
 
 def _joined(group: list[Paragraph]) -> Paragraph:

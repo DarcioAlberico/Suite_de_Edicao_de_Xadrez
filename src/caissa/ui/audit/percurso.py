@@ -18,13 +18,27 @@ ações -- o portão reprova. É a prova de que a sincronia é o que faz o recor
 das páginas montadas e confere o parcial (páginas montadas, `canceled`, estados no trilho); a
 segunda vai até o fim e é a que segue para a correção e a exportação.
 
+**O fluxo `livro` afirma conteúdo, e não só existência (OCR_UI ciclo 2, A2 e A3).** O passo 2
+exige **diagramas ≥ 1** no relatório da importação -- o Aagaard é raster, e antes do A2 a
+importação do produto só via diagramas vetoriais e dizia "nada para rever". O passo 5 corrige a
+posição (uma FEN diferente da lida, aplicada pelo campo FEN antes de gravar -- a preparação não
+conta; o gesto de corrigir uma casa é o fluxo `casa`) e afirma que a **decisão foi gravada**
+(`caissa.ocr.diagram_decisions`: FEN gravada ≠ FEN lida). O passo 6 abre o EPUB gravado e exige
+o `Diagram` com a FEN corrigida. As decisões do arnês vão para a pasta temporária
+(`DIAGRAM_DECISIONS_DIR`), nunca para `labeling/`. Quando o gancho do tronco
+(`qt/decisoes_de_diagrama.py`) não gravou, o arnês grava a decisão pela API e diz isso na nota.
+Sabotagens: `--sabotar sem_decisao` exporta sem aplicar a decisão (a pasta de decisões é
+trocada por uma vazia antes de exportar), `--sabotar sem_gancho` desliga o gancho do tronco que
+grava a decisão (o passo 5 tem de reprovar sozinho) e `--sabotar sem_raster` importa com
+`detect_raster_diagrams=False` -- as duas reprovam.
+
 **Por que um PDF pequeno.** A importação lê a camada de texto e roda OCR onde ela falta; num
 scan de 289 páginas isso são horas, e o arnês mede o percurso, não o OCR. `--paginas` limita a
 importação a um intervalo (base 1); o padrão são as 8 primeiras.
 
     set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
     .venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "%PDF%" ^
-        --paginas 31-38 --saida benchmarks\reports\ui\c19
+        --paginas 31-38 --saida benchmarks\reports\ui\c19 [--sabotar sem_decisao|sem_raster]
     .venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "%PDF%" ^
         --pagina 41 --saida benchmarks\reports\ui\c21 [--sabotar sem_sincronia]
 """
@@ -80,6 +94,12 @@ class Percurso:
     cancelamento: dict[str, Any] = field(default_factory=dict)
     exportado: str = ""
     notas: list[str] = field(default_factory=list)
+    diagramas: dict[str, Any] = field(default_factory=dict)
+    """A2: o que a importação contou -- `ok` exige diagramas ≥ 1 no livro raster."""
+    decisao: dict[str, Any] = field(default_factory=dict)
+    """A3, passo 5: a decisão gravada -- `ok` exige FEN gravada ≠ FEN lida."""
+    conteudo: dict[str, Any] = field(default_factory=dict)
+    """A3, passo 6: o que o EPUB gravado contém -- `ok` exige o `Diagram` com a FEN corrigida."""
 
     def passou(self) -> bool:
         return (
@@ -87,6 +107,9 @@ class Percurso:
             and all(a.ok and a.comando for a in self.acoes)
             and bool(self.exportado)
             and bool(self.cancelamento.get("ok"))
+            and bool(self.diagramas.get("ok"))
+            and bool(self.decisao.get("ok"))
+            and bool(self.conteudo.get("ok"))
         )
 
 
@@ -114,12 +137,92 @@ def _esperar(aplicacao: Any, condicao: Any, *, limite_s: float) -> float:
     return (time.perf_counter() - inicio) * 1000.0
 
 
-def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
+def _fen_lida(item: Any) -> str:
+    """A FEN completa que a máquina leu para um `RecognizedDiagram` (placement + lado)."""
+    from chess_diagram_ocr.semantics import compose_fen
+
+    return compose_fen(str(item.placement).split(" ")[0], str(item.side_to_move) != "b")
+
+
+def _retangulo_em_pontos(item: Any, dpi: float) -> tuple[float, float, float, float] | None:
+    """Onde o diagrama está, em pontos do PDF: `bbox_pdf`, ou o `quad` em pixels × 72/DPI."""
+    try:
+        from chess_diagram_ocr.qt.decisoes_de_diagrama import retangulo_em_pontos
+
+        return retangulo_em_pontos(item, dpi)
+    except ImportError:
+        pass
+    bbox = getattr(item, "bbox_pdf", None)
+    if bbox is not None:
+        x0, y0, x1, y1 = (float(v) for v in bbox)
+        return (x0, y0, x1, y1)
+    quad = getattr(item, "quad", None)
+    if not quad or not dpi:
+        return None
+    escala = 72.0 / float(dpi)
+    xs = [float(ponto[0]) * escala for ponto in quad]
+    ys = [float(ponto[1]) * escala for ponto in quad]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _fen_corrigida(fen_lida: str) -> str:
+    """Uma FEN **diferente** da lida, para o passo 5 gravar uma correção de verdade.
+
+    A posição girada 180° (o mesmo `_girar_180` do painel); se ela coincidir com a lida (posição
+    simétrica), troca-se o lado a jogar. Nos dois casos a FEN muda -- é isso que o portão afirma.
+    """
+    from chess_diagram_ocr.qt.painel_de_resultado import _girar_180
+    from chess_diagram_ocr.semantics import compose_fen
+
+    campos = fen_lida.split(" ")
+    placement, lado = campos[0], (campos[1] if len(campos) > 1 else "w")
+    girada = _girar_180(placement)
+    if girada != placement:
+        return compose_fen(girada, lado != "b")
+    return compose_fen(placement, lado == "b")
+
+
+def _decisao_gravada(pdf: Path, pagina: int, fen_lida: str) -> Any:
+    """A decisão da página cuja FEN difere da lida, ou `None` (o que o passo 5 espera)."""
+    from caissa.ocr.diagram_decisions import DiagramDecisions
+
+    decisoes = DiagramDecisions.for_pdf(pdf)
+    if decisoes is None:
+        return None
+    for decisao in decisoes.for_page(pagina):
+        if decisao.fen != fen_lida:
+            return decisao
+    return None
+
+
+def _diagramas_do_epub(caminho: Path) -> list[dict[str, Any]]:
+    """Os diagramas do EPUB gravado, lidos de volta (`export/fidelity.py` sabe ler EPUB)."""
+    from caissa.core.model import Diagram
+    from caissa.export.epub import read_epub
+
+    documento = read_epub(caminho, use_sidecar=True)
+    saida: list[dict[str, Any]] = []
+    for bloco in documento.body:
+        if not isinstance(bloco, Diagram):
+            continue
+        fonte = bloco.source
+        saida.append(
+            {
+                "pagina": None if fonte is None else fonte.page_index,
+                "fen": bloco.fen,
+                "verificado": bool(bloco.provenance and bloco.provenance.verified_by_human),
+            }
+        )
+    return saida
+
+
+def medir(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
     pdf: Path,
     *,
     paginas: str = "1-8",
     caminho_do_tronco: Path = TRONCO,
     limite_s: float = 900.0,
+    sabotar: str = "",
 ) -> dict[str, Any]:
     _preparar(caminho_do_tronco)
     from chess_diagram_ocr.qt.plataforma import politica_de_escala
@@ -128,6 +231,7 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
     from chess_diagram_ocr.qt.janela import JanelaPrincipal
     from PyQt6.QtWidgets import QApplication
 
+    from caissa.ocr.diagram_decisions import ENV_ROOT
     from caissa.ui.audit.capture import aguardar_a_folha, estado_de_medicao
 
     aplicacao = QApplication.instance() or QApplication(sys.argv)
@@ -136,8 +240,27 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
     # **Tudo que a janela grava vai para a pasta temporária**: o estado (a razão de
     # `estado_de_medicao`), o dataset -- o passo 5 chama `salvar`, e a primeira execução deste
     # arnês gravou uma amostra de verdade em `data/labels.csv` e um PNG em `data/samples/` do
-    # tronco, revertidos à mão --, a galeria e os estudos. Um portão que escreve no acervo de
-    # quem o roda não é um portão.
+    # tronco, revertidos à mão --, a galeria e os estudos, e (A3) as decisões de diagrama, que
+    # o gancho do tronco e a exportação leem pela variável de ambiente. Um portão que escreve
+    # no acervo de quem o roda não é um portão.
+    raiz_anterior = os.environ.get(ENV_ROOT)
+    os.environ[ENV_ROOT] = str(pasta / "diagramas")
+    if sabotar == "sem_gancho":
+        # A sabotagem do A3 no elo do tronco: o gancho que grava a decisão vira um não-faz-nada
+        # -- o portão tem de reprovar no passo 5, sem o arnês consertar por ele.
+        from chess_diagram_ocr.qt import decisoes_de_diagrama as _dd
+
+        _dd.gravar_decisao = lambda *args, **kwargs: None  # type: ignore[assignment]
+    if sabotar == "sem_raster":
+        # A sabotagem do A2: a importação do produto sem a via raster -- o Aagaard volta a
+        # render 0 diagramas e "nada para rever".
+        import functools
+
+        from caissa.ui.views import importacao as _importacao
+
+        _importacao.PdfImportOptions = functools.partial(  # type: ignore[attr-defined]
+            _importacao.PdfImportOptions, detect_raster_diagrams=False
+        )
     janela = JanelaPrincipal(  # caminho_do_estado: o de medição, nunca o da sessão de quem roda
         caminho_do_estado=estado_de_medicao(pasta),
         csv_de_rotulos=pasta / "labels.csv",
@@ -150,6 +273,8 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
         aplicacao.processEvents()
 
     percurso = Percurso()
+    if sabotar:
+        percurso.notas.append(f"sabotagem: {sabotar}")
 
     def acao(
         nome: str, comando: str, fazer: Any, pronto: Any, *, limite: float = limite_s
@@ -233,6 +358,23 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
     percurso.notas.append(
         f"{len(marcas)} página(s) com estado no trilho; duvidosas: {duvidosas[:10]}"
     )
+    # A2: um livro raster tem de render diagramas na importação do produto (antes: 0).
+    resultado = janela.livro.resultado
+    contadores = dict(getattr(getattr(resultado, "report", None), "counters", {}) or {})
+    por_pagina: dict[int, int] = {}
+    if resultado is not None:
+        from caissa.core.model import Diagram
+
+        for bloco in resultado.document.body:
+            if isinstance(bloco, Diagram) and bloco.source is not None:
+                indice_da_pagina = int(bloco.source.page_index or 0)
+                por_pagina[indice_da_pagina] = por_pagina.get(indice_da_pagina, 0) + 1
+    percurso.diagramas = {
+        "total": int(contadores.get("diagrams", 0)),
+        "lidos": int(contadores.get("diagrams_read", 0)),
+        "por_pagina": {str(k + 1): v for k, v in sorted(por_pagina.items())},
+        "ok": int(contadores.get("diagrams", 0)) >= 1,
+    }
 
     # 3. ir à primeira duvidosa
     if duvidosas:
@@ -260,13 +402,55 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
             lambda: janela._tarefa is None and len(janela._itens) > 0,
             limite=300.0,
         )
-        # 5. gravar a correção (a leitura como está, ou o que a pessoa corrigiu no editor)
+        # 5. gravar a correção. **A correção é preparação e não conta**: o arnês põe no campo
+        # FEN uma posição diferente da lida e a aplica (o gesto de corrigir uma casa é o fluxo
+        # `casa`); a ação é o `salvar`, e o que ela tem de produzir é a decisão gravada.
+        pagina_lida = janela.pdf.page_index
+        lida = _fen_lida(janela._itens[0]) if janela._itens else ""
+        corrigida = _fen_corrigida(lida) if lida else ""
+        percurso.decisao = {"fen_lida": lida, "fen_corrigida": corrigida, "ok": False}
+        if corrigida:
+            janela.painel.campo_fen.setText(corrigida)
+            janela.painel.aplicar_fen()
+            if corrigida.split(" ")[1] != lida.split(" ")[1]:
+                janela.painel.modelo.set_side(corrigida.split(" ")[1])
+            for _ in range(3):
+                aplicacao.processEvents()
+            # A confirmação de posição ilegal é uma caixa modal, que num script sem tela trava
+            # para sempre: o arnês responde o que a pessoa responderia -- "sim, gravar".
+            janela.painel._confirmar_ilegal = lambda _alvo: True  # type: ignore[method-assign]
+
+        def _gravada() -> bool:
+            return _decisao_gravada(pdf, pagina_lida, lida) is not None
+
         acao(
             "gravar a correção",
             "salvar",
             lambda: janela.painel.salvar_atual(),
-            lambda: True,
+            _gravada,
+            limite=30.0,
         )
+        if corrigida and not _gravada():
+            # O gancho do tronco (`qt/decisoes_de_diagrama.py`) não gravou. O arnês **não**
+            # conserta: era o que a 1.ª versão fazia (gravava pela API e marcava a ação como ok)
+            # e o crítico chamou de portão que se aprova sozinho -- anti-padrão 1 no elo mais
+            # frágil. A ação fica reprovada e a nota diz de quem é a falta.
+            percurso.notas.append(
+                "o gancho do tronco não gravou a decisão (qt/decisoes_de_diagrama.gravar_decisao); "
+                "o passo 5 reprova"
+            )
+        gravada = _decisao_gravada(pdf, pagina_lida, lida)
+        if gravada is not None:
+            percurso.decisao.update(
+                {
+                    "fen_gravada": gravada.fen,
+                    "fonte": gravada.source,
+                    "pagina": pagina_lida + 1,
+                    # Só a janela conta: uma decisão de outra fonte (o arnês, um teste) não
+                    # prova que o gesto da pessoa chega ao livro.
+                    "ok": gravada.fen != lida and gravada.source == "janela",
+                }
+            )
     else:
         percurso.notas.append(
             "a página duvidosa não tem caixa de diagrama: os passos 4 e 5 não se aplicam"
@@ -284,6 +468,9 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
     if exportador is None:
         percurso.notas.append("sem exportador de livro: a suíte não está ao alcance")
     else:
+        if sabotar == "sem_decisao":
+            # Exportar **sem aplicar** a decisão: a pasta de decisões passa a ser uma vazia.
+            os.environ[ENV_ROOT] = str(pasta / "diagramas-vazia")
         acao(
             "exportar o livro",
             "exportar_epub",
@@ -292,13 +479,44 @@ def medir(  # noqa: PLR0915 - um percurso, do começo ao fim
         )
         if destino.exists():
             percurso.exportado = f"{destino.name} ({destino.stat().st_size} bytes)"
+            # A3: o EPUB tem de conter o `Diagram` com a FEN corrigida -- existir não basta.
+            esperada = percurso.decisao.get("fen_gravada", "")
+            try:
+                diagramas = _diagramas_do_epub(destino)
+            except Exception as exc:  # noqa: BLE001 - o EPUB que não abre é reprovação, com o motivo
+                diagramas = []
+                percurso.notas.append(f"o EPUB gravado não pôde ser lido: {exc}")
+            com_a_fen = [d for d in diagramas if esperada and d["fen"] == esperada]
+            # E as imagens das páginas: o crítico provou um EPUB de 8 kB sem imagem nenhuma
+            # quando o documento reaproveitado não tinha os recursos em disco (A3).
+            imagens = _imagens_do_epub(destino)
+            percurso.conteudo = {
+                "diagramas_no_epub": len(diagramas),
+                "fen_esperada": esperada,
+                "com_a_fen_corrigida": len(com_a_fen),
+                "verificados": sum(1 for d in diagramas if d["verificado"]),
+                "imagens_no_epub": imagens,
+                "ok": bool(com_a_fen) and imagens >= 1,
+            }
 
     janela.close()
     janela.deleteLater()
     for _ in range(6):
         aplicacao.processEvents()
+    if raiz_anterior is None:
+        os.environ.pop(ENV_ROOT, None)
+    else:
+        os.environ[ENV_ROOT] = raiz_anterior
     temporaria.cleanup()
-    return _relatorio(pdf, paginas, percurso)
+    return _relatorio(pdf, paginas, percurso, sabotar)
+
+
+def _imagens_do_epub(caminho: Path) -> int:
+    """Quantas imagens (PNG/JPEG) o EPUB embala -- as páginas e figuras do livro."""
+    import zipfile
+
+    with zipfile.ZipFile(caminho) as z:
+        return sum(1 for n in z.namelist() if n.lower().endswith((".png", ".jpg", ".jpeg")))
 
 
 def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
@@ -610,16 +828,22 @@ def tabela_da_casa(relatorio: dict[str, Any]) -> str:
     return "\n".join(linhas)
 
 
-def _relatorio(pdf: Path, paginas: str, percurso: Percurso) -> dict[str, Any]:
+def _relatorio(pdf: Path, paginas: str, percurso: Percurso, sabotar: str = "") -> dict[str, Any]:
     return {
         "portao": (
             "OCR_UI passo 17 -- abrir → primeira duvidosa → corrigir → exportar em <= "
-            f"{TETO_DE_ACOES} acoes; cancelar a 30 % devolve 30 % das paginas"
+            f"{TETO_DE_ACOES} acoes; cancelar a 30 % devolve 30 % das paginas; "
+            "C2 A2: diagramas >= 1 na importacao; C2 A3: decisao gravada (FEN != lida) e o "
+            "EPUB traz o Diagram corrigido"
         ),
         "quando": datetime.now(UTC).isoformat(timespec="seconds"),
         "amostra": {"pdf": str(pdf), "paginas": paginas},
+        "sabotagem": sabotar,
         "acoes": [asdict(a) for a in percurso.acoes],
         "cancelamento": percurso.cancelamento,
+        "diagramas": percurso.diagramas,
+        "decisao": percurso.decisao,
+        "conteudo": percurso.conteudo,
         "exportado": percurso.exportado,
         "notas": percurso.notas,
         "veredito": "PASSOU" if percurso.passou() else "REPROVOU",
@@ -643,6 +867,16 @@ def tabela(relatorio: dict[str, Any]) -> str:
     if c:
         linhas.append("")
         linhas.append("  cancelamento a 30 %: " + ", ".join(f"{k}={v}" for k, v in c.items()))
+    for chave, titulo in (
+        ("diagramas", "diagramas na importacao (A2)"),
+        ("decisao", "decisao gravada (A3)"),
+        ("conteudo", "conteudo do EPUB (A3)"),
+    ):
+        valores = relatorio.get(chave) or {}
+        if valores:
+            linhas.append(f"  {titulo}: " + ", ".join(f"{k}={v}" for k, v in valores.items()))
+    if relatorio.get("sabotagem"):
+        linhas.append(f"  sabotagem: {relatorio['sabotagem']}")
     if relatorio["exportado"]:
         linhas.append(f"  exportado: {relatorio['exportado']}")
     linhas.extend(f"  nota: {nota}" for nota in relatorio["notas"])
@@ -665,7 +899,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pagina", type=int, default=41, help="[casa] a pagina com diagrama (base 1)"
     )
-    parser.add_argument("--sabotar", choices=("", "sem_sincronia"), default="", help="[casa]")
+    parser.add_argument(
+        "--sabotar",
+        choices=("", "sem_sincronia", "sem_decisao", "sem_raster", "sem_gancho"),
+        default="",
+        help="[casa] sem_sincronia; [livro] sem_decisao (exporta sem aplicar), sem_raster",
+    )
     parser.add_argument("--saida", type=Path, required=True)
     parser.add_argument("--tronco", type=Path, default=TRONCO)
     parser.add_argument("--limite-s", type=float, default=900.0)
@@ -684,11 +923,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nRelatorio: {alvo}")
         return 0 if relatorio["veredito"] == "PASSOU" else 1
 
+    if args.sabotar == "sem_sincronia":
+        parser.error("--sabotar sem_sincronia é do fluxo casa")
     relatorio = medir(
-        args.pdf, paginas=args.paginas, caminho_do_tronco=args.tronco, limite_s=args.limite_s
+        args.pdf, paginas=args.paginas, caminho_do_tronco=args.tronco, limite_s=args.limite_s,
+        sabotar=args.sabotar,
     )
     args.saida.mkdir(parents=True, exist_ok=True)
-    alvo = args.saida / f"percurso_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
+    nome = "percurso" + (f"_sabotado_{args.sabotar}" if args.sabotar else "")
+    alvo = args.saida / f"{nome}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
     alvo.write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")
     print(tabela(relatorio))
     print(f"\nRelatorio: {alvo}")

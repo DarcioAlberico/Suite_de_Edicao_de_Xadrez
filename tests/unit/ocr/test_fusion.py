@@ -164,3 +164,207 @@ def test_an_abstained_anchor_comes_out_of_the_fusion_as_review_at_most():
     ], lang="eng", never_anchor=frozenset({"mock_b", "mock_c"}))
     assert fused is not None
     assert fused.decision.decision is not Decision.ACCEPTED
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP_C2 passo B4: what counts as support; dashes; prefixes
+# --------------------------------------------------------------------------- #
+
+
+def _glyph_words(text: str, confidences, *, engine: str = "glyph", variant: str = "glyph",
+                 margins=None) -> OcrResult:
+    """Secondary readings laid out on the anchor's pitch, optionally with the
+    glyph reader's ``margin`` on each word (the attribute the fusion reads
+    with ``getattr``)."""
+    from dataclasses import dataclass
+
+    @dataclass(frozen=True, slots=True)
+    class MarginWord(OcrWord):
+        margin: float | None = None
+
+    tokens = text.split()
+    confs = list(confidences) if not isinstance(confidences, float) else [confidences] * len(tokens)
+    margins = list(margins) if margins is not None else [None] * len(tokens)
+    words = tuple(
+        MarginWord(text=tok, box=BBox(60.0 * n, 0.0, 50.0, 20.0), confidence=confs[n],
+                   word_index=n, margin=margins[n])
+        for n, tok in enumerate(tokens))
+    return OcrResult(engine=engine, lang="eng",
+                     lines=(OcrLine(words=words, box=BBox.union_of([w.box for w in words])),),
+                     meta={"variant": variant})
+
+
+def test_a_rank_without_a_piece_is_not_support_for_the_anchor():
+    """``8c4`` passes the multilingual shape and, counted as a move, made the
+    anchor unreplaceable at any confidence (analysis §4.4).  With the page's
+    language it is a look-alike; without one (the sabotage) it still counts."""
+    from caissa.ocr.fusion import _supported
+
+    assert not _supported("8c4", ("eng",))
+    assert not _supported("2c7", ("eng",))
+    assert not _supported("De2", ("eng",))
+    assert _supported("De2", ("por",))
+    assert _supported("R8c4", ("eng",))
+    assert _supported("Nf3", ("por",)), "international SAN is printed in every language"
+    assert _supported("8c4", ()), "sabotage: without a language the count is what it was"
+    assert _supported("De2", ())
+
+
+def test_a_dash_read_as_a_long_dash_keeps_the_move_and_the_fusion_leaves_it():
+    """Dvoretsky p17 (analysis §4.4): Tesseract read the hyphen of ``b2-b4,``
+    as ``b2—b4,``; not a move, so the fusion traded it for the glyph reader's
+    truncated ``b4,`` and destroyed two correct moves."""
+    from caissa.ocr.fusion import _supported
+
+    for dash in "-–—‒−":
+        assert _supported(f"b2{dash}b4,", ("eng",)), repr(dash)
+    tess = result_of("21. b2—b4, Kc6", [0.9, 0.55, 0.9])
+    glyph = _glyph_words("21 b4, Kc6", [1.0, 0.99, 0.99])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text == "21. b2—b4, Kc6"
+    assert fused.changed == 0
+
+
+def test_the_figurine_cut_ignores_an_opening_bracket_and_a_lost_leading_digit():
+    """``(17...2c7`` × ``(17...♗c7``: the ``(`` blocked the swap.  ``17...Ae5``
+    × ``7...♘e5``: the glyph reader lost the ``1``; the anchor keeps it."""
+    from caissa.ocr.fusion import _figurine_cut, _keep_number_prefix
+
+    assert _figurine_cut("(17...2c7", "(17...♗c7") == 1
+    assert _figurine_cut("(17...2c7", "17...♗c7") == 1
+    assert _figurine_cut("17...Ae5", "7...♘e5") == 1
+    assert _figurine_cut("17...Ae5", "27...♘e5") is None, "a different number is a different move"
+    assert _keep_number_prefix("17...Ae5", "7...♘e5") == "17...♘e5"
+    assert _keep_number_prefix("(17...2c7", "17...♗c7") == "(17...♗c7"
+    assert _keep_number_prefix("(17...2c7", "(17...♗c7") == "(17...♗c7"
+    tess = result_of("(17...2c7 18.Nd4", [0.6, 0.9])
+    glyph = _glyph_words("(17...♗c7 18.♘d4", [0.98, 0.98])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text.split()[0] == "(17...♗c7"
+    tess = result_of("17...Ae5 18.Nd4", [0.6, 0.9])
+    glyph = _glyph_words("7...♘e5 18.♘d4", [0.98, 0.98])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text.split()[0] == "17...♘e5"
+
+
+def test_two_independent_secondaries_outweigh_a_barely_read_anchor():
+    """Anchor ``e5`` at 0,21 (a pawn move, so not a cipher) against ``♘e5``
+    from the glyph reader *and* the figurine model: agreement between two
+    engines, not two variants of one (the SOL-6 vote that was rejected)."""
+    tess = result_of("17... e5 18.Nd4", [0.9, 0.21, 0.9])
+    glyph = _glyph_words("17... ♘e5 18.♘d4", [1.0, 1.0, 0.98])
+    figurine = _glyph_words("17... ♘e5 18.Nd4", [0.97, 0.97, 0.97],
+                            engine="tesseract_figurine", variant="original")
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision()),
+                             (figurine, 0.85, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph", "tesseract_figurine"}))
+    assert fused is not None
+    assert fused.result.text.split()[1] == "♘e5"
+    assert fused.tokens[1].alternative == "e5"
+    # The same two readings from one engine's two variants are not independent.
+    glyph_b = _glyph_words("17... ♘e5 18.♘d4", [1.0, 1.0, 0.98], variant="glyph_b")
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision()),
+                             (glyph_b, 0.85, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text.split()[1] == "e5"
+    # And an anchor that read its token is not outweighed.
+    confident = result_of("17... e5 18.Nd4", [0.9, 0.80, 0.9])
+    fused = fuse_candidates([(confident, 0.8, decision()), (glyph, 0.9, decision()),
+                             (figurine, 0.85, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph", "tesseract_figurine"}))
+    assert fused is not None
+    assert fused.result.text.split()[1] == "e5"
+
+
+def test_a_glyph_reading_with_a_thin_margin_does_not_swap_the_look_alike():
+    """``margin`` (WP5's ``GlyphWord``) is a second criterion: 0,80 of
+    confidence with the runner-up at 0,75 is a coin toss."""
+    tess = result_of("36... Hea! 2h6", [0.9, 0.6, 0.85])
+    sure = _glyph_words("36 ♖e8! ♗h6", [1.0, 0.95, 0.95], margins=[1.0, 0.9, 0.9])
+    fused = fuse_candidates([(tess, 0.8, decision()), (sure, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None and fused.result.text == "36... ♖e8! ♗h6"
+    thin = _glyph_words("36 ♖e8! ♗h6", [1.0, 0.95, 0.95], margins=[1.0, 0.05, 0.9])
+    fused = fuse_candidates([(tess, 0.8, decision()), (thin, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None and fused.result.text == "36... Hea! ♗h6"
+    assert fused.tokens[1].readings[1].margin == 0.05
+    without = _glyph_words("36 ♖e8! ♗h6", [1.0, 0.95, 0.95])
+    fused = fuse_candidates([(tess, 0.8, decision()), (without, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None and fused.result.text == "36... ♖e8! ♗h6", "no margin: confidence alone"
+
+
+def test_measure_evidence_counts_the_unsupported_moves_apart():
+    from caissa.ocr.decision import DecisionPolicy, measure_evidence
+    from caissa.ocr.lexicon import is_unsupported_move
+
+    assert is_unsupported_move("8c4", ("eng",))
+    assert not is_unsupported_move("8c4", ())
+    assert not is_unsupported_move("Nf3", ("eng",))
+    result = result_of("22. Nf3 8c4 23. De2 exd5", 0.9)
+    evidence, _ = measure_evidence(result, None, DecisionPolicy(), langs=("eng",))
+    assert evidence.mangled_moves == 2
+    assert evidence.as_dict()["mangled_moves"] == 2
+    evidence, _ = measure_evidence(result, None, DecisionPolicy(), langs=())
+    assert evidence.mangled_moves == 0, "sabotage: without a language nothing is unsupported"
+
+
+def test_a_supported_but_truncated_reading_does_not_replace_long_notation():
+    """Secrets of Chess Training p872 (measured with the post-chain glyph
+    reader of WP5): the anchor ``...h7—h5—h4.`` is not a move token (three
+    squares), the glyph reader's ``h5–h4.`` is -- because it dropped a square.
+    Shorter is not better; the anchor stays."""
+    from caissa.ocr.fusion import _truncates_long_notation
+
+    assert _truncates_long_notation("...h7—h5—h4.", "h5–h4.")
+    assert _truncates_long_notation("b2—b4,", "b4,")
+    assert not _truncates_long_notation("ofa", "of"), "prose is judged as before"
+    assert not _truncates_long_notation("Hea!", "♖e8!")
+    tess = result_of("as ...h7—h5—h4. Of", [0.9, 0.82, 0.9])
+    glyph = _glyph_words("as h5–h4. Of", [0.99, 0.94, 0.99])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}))
+    assert fused is not None
+    assert fused.result.text == "as ...h7—h5—h4. Of"
+
+
+def test_the_passo_b4_switch_off_brings_the_old_string_matching_back():
+    """The sabotage of passo B4 (``FusionConfig.passo_b4=False``): the same three
+    cases the step fixed come out the old way -- a long dash makes ``b2—b4`` open
+    to the truncated ``b4,``, an opening bracket blocks the figurine swap, and
+    two agreeing secondaries never outrank a weak anchor.  This is what
+    ``SOL_CONFIG='{"fusion": {"passo_b4": false}}'`` does in ``bench_sol``."""
+    from caissa.ocr.fusion import FusionConfig
+
+    off = FusionConfig(passo_b4=False)
+    tess = result_of("21. b2—b4, Kc6", [0.9, 0.55, 0.9])
+    glyph = _glyph_words("21 b4, Kc6", [1.0, 0.99, 0.99])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}), config=off)
+    assert fused is not None and fused.result.text != "21. b2—b4, Kc6"
+    tess = result_of("(17...2c7 18.Nd4", [0.6, 0.9])
+    glyph = _glyph_words("(17...♗c7 18.♘d4", [0.98, 0.98])
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph"}), config=off)
+    assert fused is not None and fused.result.text.split()[0] == "(17...2c7"
+    tess = result_of("17... e5 18.Nd4", [0.9, 0.21, 0.9])
+    glyph = _glyph_words("17... ♘e5 18.♘d4", [1.0, 1.0, 0.98])
+    figurine = _glyph_words("17... ♘e5 18.Nd4", [0.97, 0.97, 0.97],
+                            engine="tesseract_figurine", variant="original")
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision()),
+                             (figurine, 0.85, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph", "tesseract_figurine"}), config=off)
+    assert fused is not None and fused.result.text.split()[1] == "e5"
+    # And the switch is per call: the default config right after is unaffected.
+    fused = fuse_candidates([(tess, 0.8, decision()), (glyph, 0.9, decision()),
+                             (figurine, 0.85, decision())], lang="eng",
+                            never_anchor=frozenset({"glyph", "tesseract_figurine"}))
+    assert fused is not None and fused.result.text.split()[1] == "♘e5"

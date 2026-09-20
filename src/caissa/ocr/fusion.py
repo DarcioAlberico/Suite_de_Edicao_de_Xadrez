@@ -59,14 +59,18 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
 
+from caissa.notation.nag_table import MOVE_SUFFIX_CHARS
+
 from .decision import Decision, RegionDecision, decide
-from .lexicon import dictionary_hit_rate, is_move_token, normalise_lang
+from .lexicon import PIECE_LETTERS_BY_LANG, dictionary_hit_rate, is_move_token, normalise_lang
 from .quality import levenshtein
 from .types import BBox, OcrLine, OcrResult, OcrWord
 
@@ -76,13 +80,19 @@ _TRUSTED_ENGINES = frozenset({"pdf_text_layer"})
 _FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
 #: Longest look-alike cluster a damaged layer leaves for one figurine.
 _MAX_CLUSTER = 5
-_MARKS = ".,;:!?+#"
+#: Sentence punctuation and the annotation tail a move may carry
+#: (:data:`caissa.notation.nag_table.MOVE_SUFFIX_CHARS`, passo A4).
+_MARKS = ".,;:" + MOVE_SUFFIX_CHARS
 #: Engines whose figurine readings are letter-guarded (see ``fuse_candidates``).
 _LETTER_GUARDED = frozenset({"tesseract_figurine"})
-#: Piece letters per Tesseract language, as the books of that language print them.
-_PIECE_LETTERS = {"eng": "KQRBN", "por": "RDTBC", "spa": "RDTAC", "deu": "KDTLS",
-                  "fra": "RDTFC", "ita": "RDTAC", "nld": "KDTLP", "ron": "RDTNC",
-                  "rus": "КФЛСКП"}
+#: Piece letters per Tesseract language, as the books of that language print
+#: them -- the table now lives in :mod:`caissa.ocr.lexicon` (passo B4), where
+#: :func:`~caissa.ocr.lexicon.is_move_token` reads it too.
+_PIECE_LETTERS = PIECE_LETTERS_BY_LANG
+#: Leading brackets a token may carry into a comparison (``(17...♗c7``).
+_OPENERS = "(["
+_B4 = ContextVar("fusion_passo_b4", default=True)
+"""Whether the string repairs of passo B4 are on for the fusion running in this context."""
 
 
 #: A move number glued to a move: digits then dots or a space.  A bare
@@ -117,6 +127,23 @@ class FusionConfig:
     #: its glyphs, a trailing comma included, which is why it sits below the
     #: anchor trust level: the anchor already agrees on the square.
     figurine_min_confidence: float = 0.70
+    #: A glyph reading that carries a ``margin`` (the classifier's ``1 - p2/p1``)
+    #: replaces the anchor's look-alike only at or above this margin as well:
+    #: 0,80 of confidence with a runner-up at 0,75 is a coin toss, not a
+    #: figurine.  Readings without a margin are judged on confidence alone.
+    figurine_min_margin: float = 0.25
+    #: Below this anchor confidence two *independent* secondary sources that
+    #: agree on a supported reading may replace it (passo B4): the anchor
+    #: read ``e5`` at 0,21 where the glyph reader and the figurine model both
+    #: read ``♘e5``.  A different hypothesis from the rejected SOL-6 vote,
+    #: which was between noisy variants of the same engine.
+    weak_anchor_confidence: float = 0.35
+    #: The sabotage switch of passo B4 (``SOL_CONFIG='{"fusion": {"passo_b4": false}}'``):
+    #: off, the fusion matches strings the way it did before -- a dash in a
+    #: move is not support, an opening bracket or a lost digit blocks the
+    #: look-alike → figurine swap, and two agreeing secondaries never outrank
+    #: a weak anchor.  It exists so the gate can be made to fail on purpose.
+    passo_b4: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +152,12 @@ class Reading:
     text: str
     confidence: float
     box: BBox
+    #: The glyph reader's margin (``GlyphWord.margin``), when the word has one.
+    margin: float | None = None
+
+    @property
+    def engine(self) -> str:
+        return self.source.rsplit("/", 1)[-1]
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,6 +216,25 @@ def _fold(text: str) -> str:
     return "".join(c for c in decomposed if not unicodedata.combining(c))
 
 
+#: Long algebraic notation: two squares joined by a dash (``h7-h5``), after
+#: the dashes are folded.  ``...h7—h5—h4`` is one token of it.
+_LONG_NOTATION = re.compile(r"[a-h][1-8]-[a-h][1-8]")
+_DASH_FOLD = str.maketrans({d: "-" for d in "‐‑‒–—―−"})
+
+
+def _truncates_long_notation(anchor: str, other: str) -> bool:
+    """``other`` is a proper piece of an anchor that holds long notation:
+    ``h5–h4.`` for ``...h7—h5—h4.``, ``f4`` for ``f4—-f5``.  A reading that is
+    supported *because* it is shorter (the glyph reader dropped the first
+    square and the dash) is not a better reading of the same ink.
+    """
+    if not _B4.get():
+        return False   # the guard is passo B4's too; the sabotage takes it away
+    a = _fold(anchor.translate(_DASH_FOLD)).strip(_MARKS)
+    b = _fold(other.translate(_DASH_FOLD)).strip(_MARKS)
+    return bool(b) and b != a and b in a and _LONG_NOTATION.search(a) is not None
+
+
 def _has_diacritics(text: str) -> bool:
     return any(unicodedata.combining(c) for c in unicodedata.normalize("NFD", text))
 
@@ -239,6 +291,26 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
                     letter_guarded: frozenset[str] = _LETTER_GUARDED) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
+    The thin outer layer: it pins the passo B4 switch of ``config`` to this
+    context (:data:`_B4`, read by the string helpers that take no config) and
+    hands over to :func:`_fuse_candidates`, which holds the algorithm.
+    """
+    cfg = config or FusionConfig()
+    token = _B4.set(cfg.passo_b4)
+    try:
+        return _fuse_candidates(candidates, lang=lang, image=image, config=cfg,
+                                never_anchor=never_anchor, letter_guarded=letter_guarded)
+    finally:
+        _B4.reset(token)
+
+
+def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]], *,
+                    lang: str = "", image: NDArray[np.uint8] | None = None,
+                    config: FusionConfig | None = None,
+                    never_anchor: frozenset[str] = frozenset(),
+                    letter_guarded: frozenset[str] = _LETTER_GUARDED) -> FusedRegion | None:
+    """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
+
     ``never_anchor`` names engines that only ever supply alternatives — the
     figurine reader, whose prose is worse than the line engines' and whose
     value is the tokens the anchor could not read.  ``letter_guarded`` names
@@ -281,7 +353,8 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
                 continue
             for wi, other_word in _pair_words(line, partner, cfg).items():
                 slots[slot_index[(li, wi)]].append(
-                    Reading(name, other_word.text, other_word.confidence, other_word.box))
+                    Reading(name, other_word.text, other_word.confidence, other_word.box,
+                            margin=getattr(other_word, "margin", None)))
 
     secondary = frozenset(_source_of(r) for r, _, _ in usable if r.engine in never_anchor)
     guarded = frozenset(_source_of(r) for r, _, _ in usable if r.engine in letter_guarded)
@@ -357,16 +430,26 @@ def _supported(text: str, langs: tuple[str, ...]) -> bool:
     an evaluation mark after it (``Bg6—+``): both are the printed form, and
     a candidate that lost the number or the dash must not outrank them.
     """
-    core = text.strip(".,;:!?()\"'—–-+#")
+    core = text.strip(_MARKS + "()\"'—–")
     if not core:
         return False
+    if not _B4.get() and any(dash in core for dash in "–—‒−"):
+        return False   # the old alphabet: ``b2—b4`` was not a move
     if _MOVE_NUMBER.match(text.strip()):
         # A bare move number (``38``, ``36...``, ``12.``) is the printed form
         # too: a misaligned candidate must not turn it into a move (measured
         # 2026-09-14 with a second engine: ``38`` → ``g5`` is an invention).
         return True
     prefix = _NUMBER_PREFIX.match(core)
-    if is_move_token(core) or (prefix and is_move_token(core[prefix.end():].strip(".,;:!?—–-+#"))):
+    # ``langs`` reaches the move test (passo B4): ``8c4`` and ``De2`` on an
+    # English page are look-alikes, not support, and an anchor that has only
+    # that for support is open to a supported alternative.
+    # The sabotage switch also takes the language out of the move test: the
+    # old ``is_move_token`` was the union of eight languages plus rank-only
+    # tokens, so ``2c7`` counted as support and was never replaced.
+    move_langs = langs if _B4.get() else ()
+    if is_move_token(core, move_langs) or (
+            prefix and is_move_token(core[prefix.end():].strip(_MARKS + "—–"), move_langs)):
         return True
     hit, judged = dictionary_hit_rate(core, langs)
     return bool(judged) and hit > 0
@@ -374,7 +457,8 @@ def _supported(text: str, langs: tuple[str, ...]) -> bool:
 
 def _piece_letter_start(anchor: str, piece_letters: str) -> bool:
     """The anchor is a move that starts with a piece letter of the language
-    (a glued move number allowed): ``Nf3``, ``22...Bf8`` in an English book."""
+    (a glued move number allowed): ``Nf3``, ``22...Bf8`` in an English book.
+    """
     prefix = _NUMBER_PREFIX.match(anchor)
     core = anchor[prefix.end():] if prefix else anchor
     return bool(core) and core[0] in piece_letters
@@ -382,17 +466,29 @@ def _piece_letter_start(anchor: str, piece_letters: str) -> bool:
 
 def _keep_number_prefix(anchor: str, other: str) -> str:
     """``2.25`` replaced by ``2g5`` becomes ``2.g5``: the anchor's move-number
-    formatting survives when the replacement carries the same digits bare."""
+    formatting survives when the replacement carries the same digits bare;
+    ``17...Ae5`` replaced by ``7...♘e5`` becomes ``17...♘e5`` (the glyph
+    reader lost the first digit, the anchor kept it); a bracket the anchor
+    opened (``(17...``) stays open.
+    """
+    lead = anchor[:len(anchor) - len(anchor.lstrip(_OPENERS))]
+    anchor, other = anchor[len(lead):], other.lstrip(_OPENERS)
     prefix = _NUMBER_PREFIX.match(anchor)
-    if not prefix or not prefix.group(0).rstrip(" ").endswith("."):
-        return other
+    if not prefix:
+        return lead + other
     digits = prefix.group(1)
+    other_prefix = _NUMBER_PREFIX.match(other)
+    if (other_prefix and other_prefix.group(1) != digits
+            and digits.endswith(other_prefix.group(1))):
+        return lead + prefix.group(0) + other[other_prefix.end():]
+    if not prefix.group(0).rstrip(" ").endswith("."):
+        return lead + other
     if other.startswith(digits) and len(other) > len(digits) and other[len(digits)] not in ". ":
-        return prefix.group(0).rstrip(" ") + other[len(digits):]
-    return other
+        return lead + prefix.group(0).rstrip(" ") + other[len(digits):]
+    return lead + other
 
 
-def _restyled(anchor: "Reading", chosen: "Reading") -> "Reading":
+def _restyled(anchor: Reading, chosen: Reading) -> Reading:
     text = _keep_number_prefix(anchor.text, chosen.text)
     return chosen if text == chosen.text else Reading(chosen.source, text, chosen.confidence, chosen.box)
 
@@ -409,14 +505,22 @@ def _figurine_cut(anchor: str, other: str) -> int | None:
     digit or letter tolerated, ``Hea!`` → ``♖e8!``), the alternative a move
     token, and the anchor *not* already a figurine.
     """
+    # ``(17...2c7`` and ``(17...♗c7``: a bracket the page opened before the
+    # move is not part of the cipher (passo B4).
+    if _B4.get():
+        anchor, other = anchor.lstrip(_OPENERS), other.lstrip(_OPENERS)
     # ``22...♗f8`` and ``22...28``: a move number glued to the move is the
-    # same cipher one prefix later.  Both must carry the same prefix.
+    # same cipher one prefix later.  Both must carry a prefix, and the
+    # secondary's digits must be the anchor's or a suffix of them (``17...``
+    # against ``7...``: the glyph reader lost the first digit, not the move).
     prefix_a = _NUMBER_PREFIX.match(anchor)
     prefix_b = _NUMBER_PREFIX.match(other)
     if (prefix_a is None) != (prefix_b is None):
         return None
     if prefix_a is not None and prefix_b is not None:
-        if prefix_a.group(1) != prefix_b.group(1):
+        same = (prefix_a.group(1).endswith(prefix_b.group(1)) if _B4.get()
+                else prefix_a.group(1) == prefix_b.group(1))
+        if not same:
             return None
         anchor, other = anchor[prefix_a.end():], other[prefix_b.end():]
     if not other or other[0] not in _FIGURINES or not anchor or anchor[0] in _FIGURINES:
@@ -448,6 +552,33 @@ def _figurine_cut(anchor: str, other: str) -> int | None:
     return None
 
 
+def _margin_clears(reading: Reading, cfg: FusionConfig) -> bool:
+    """A reading without a margin is judged on confidence alone; one with a
+    margin (the glyph reader's) must clear ``figurine_min_margin`` too.
+    """
+    return reading.margin is None or reading.margin >= cfg.figurine_min_margin
+
+
+def _independent_agreement(readings: Sequence[Reading], secondary: frozenset[str],
+                           langs: tuple[str, ...], cfg: FusionConfig) -> Reading | None:
+    """The reading two secondary sources of *different engines* agree on,
+    when it is a supported token they both read confidently; else ``None``.
+    """
+    groups: dict[str, list[Reading]] = {}
+    for reading in readings[1:]:
+        if (reading.source in secondary and reading.confidence >= cfg.figurine_min_confidence
+                and _margin_clears(reading, cfg)):
+            groups.setdefault(_fold(reading.text.rstrip(_MARKS)), []).append(reading)
+    anchor_key = _fold(readings[0].text.rstrip(_MARKS))
+    for key, group in groups.items():
+        if key == anchor_key or len({reading.engine for reading in group}) < 2:
+            continue
+        best = max(group, key=lambda reading: reading.confidence)
+        if _supported(best.text, langs):
+            return best
+    return None
+
+
 def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[str, float],
             langs: tuple[str, ...], diacritic_lang: bool, at_line_end: bool,
             trusted: bool, *, secondary: frozenset[str] = frozenset(),
@@ -458,13 +589,25 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
         return anchor, "", False
 
     # A glyph source's figurine, where the anchor has the look-alike: the
-    # one replacement a secondary source may make on its own evidence.
+    # one replacement a secondary source may make on its own evidence.  A
+    # reading that carries the classifier's margin must clear it too.
     for reading in readings[1:]:
         if (reading.source in secondary and reading.confidence >= cfg.figurine_min_confidence
+                and _margin_clears(reading, cfg)
                 and _figurine_fix(anchor.text, reading.text)
                 and not (reading.source in guarded
                          and _piece_letter_start(anchor.text, piece_letters))):
             return _restyled(anchor, reading), anchor.text, False
+
+    # Two independent secondary sources (different engines) that agree on a
+    # supported reading outweigh an anchor that barely read its own token
+    # (passo B4): ``e5`` at 0,21 against ``♘e5`` from the glyph reader and
+    # from the figurine model.  Never over a piece letter of the language.
+    if cfg.passo_b4 and anchor.confidence < cfg.weak_anchor_confidence and not _piece_letter_start(
+            anchor.text, piece_letters):
+        agreed = _independent_agreement(readings, secondary, langs, cfg)
+        if agreed is not None:
+            return _restyled(anchor, agreed), anchor.text, False
 
     primary = [r for r in readings if r.source not in secondary]
     distinct: dict[str, list[Reading]] = {}
@@ -479,7 +622,13 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
                 or anchor.confidence >= cfg.anchor_trust_confidence:
             return anchor, "", False
         for reading in extra:
-            if _supported(reading.text, langs) and reading.confidence >= anchor.confidence - 0.10:
+            # Judged in the anchor's numbering (``2g5`` under ``2.25`` is
+            # ``2.g5``, a move; a bare ``2g5`` is a rank with no piece), and
+            # a glyph reading with a thin margin is no evidence here either.
+            if (_supported(_keep_number_prefix(anchor.text, reading.text), langs)
+                    and reading.confidence >= anchor.confidence - 0.10
+                    and _margin_clears(reading, cfg)
+                    and not _truncates_long_notation(anchor.text, reading.text)):
                 return _restyled(anchor, reading), anchor.text, False
         return anchor, extra[0].text, True
 
@@ -524,7 +673,9 @@ def _choose(readings: Sequence[Reading], cfg: FusionConfig, source_scores: dict[
     # The anchor is a nonword the engine itself doubted: a supported, at
     # least as confident alternative may replace it.
     candidates = [(sc, t, r) for sc, t, r in others
-                  if _supported(t, langs) and r.confidence >= anchor.confidence - 0.10]
+                  if _supported(_keep_number_prefix(anchor.text, t), langs)
+                  and r.confidence >= anchor.confidence - 0.10
+                  and not _truncates_long_notation(anchor.text, t)]
     if not candidates:
         return anchor, others[0][1] if others else "", bool(others)
     best_score, best_text, best_reading = candidates[0]

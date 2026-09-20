@@ -330,16 +330,25 @@ class PainelDeRevisaoDeTexto(QWidget):
         if caminho:
             self.abrir(Path(caminho))
 
-    def abrir(self, pdf: Path) -> None:
-        """Open the book; a queue saved for it earlier comes back with its log."""
+    def abrir(self, pdf: Path, *, page_count: int | None = None) -> None:
+        """Open the book; a queue saved for it earlier comes back with its log.
+
+        The window passes ``page_count`` (it already has it) so this tab does not
+        reopen the PDF on the interface thread -- the heavy opening that
+        ``caissa.ui.audit.bloqueio`` caught lived in the labelling tab, which
+        defers it until shown.
+        """
         self.pdf = pdf
-        try:
-            with open_pdf(pdf) as doc:
-                self.page_count = doc.page_count
-        except Exception as exc:  # noqa: BLE001 - said in the status, not raised at the window
-            self.page_count = 0
-            self._set_status(f"Não abriu {pdf.name}: {exc}")
-            return
+        if page_count is not None:
+            self.page_count = int(page_count)
+        else:
+            try:
+                with open_pdf(pdf) as doc:
+                    self.page_count = doc.page_count
+            except Exception as exc:  # noqa: BLE001 - said in the status, not raised at the window
+                self.page_count = 0
+                self._set_status(f"Não abriu {pdf.name}: {exc}")
+                return
         self.doc_label.setText(f"{pdf.name} · {self.page_count} páginas")
         salva = self._fila_path()
         self.queue = None
@@ -380,12 +389,44 @@ class PainelDeRevisaoDeTexto(QWidget):
     def importador_cancelar(self) -> None:
         self.importador.cancelar()
 
+    def receber_importacao(self, result: Any, *, pdf: Path | str | None = None) -> bool:
+        """Take an ``ImportResult`` produced elsewhere and build the queue from it.
+
+        OCR_UI ciclo 2, passo C7: the window's own import (the page rail's *Importar*)
+        already ran the OCR; this tab used to run it a second time to get its
+        queue. Now the trunk hands the result over and the OCR runs once per book.
+        ``pdf`` names the book the result belongs to; if it is not the one open
+        here, it is opened first (a saved queue for it is superseded by the
+        fresh result). ``False`` when nothing could be taken (no result, no PDF).
+        """
+        if result is None or getattr(result, "report", None) is None:
+            return False
+        if getattr(result.report, "canceled", False):
+            # A cancelled import is half a book: it serves the page rail, not this
+            # queue, which would replace the book's queue with a partial one.
+            self._set_status("Importação cancelada: a fila de dúvidas não foi substituída.")
+            return False
+        alvo = Path(pdf) if pdf is not None else None
+        if alvo is not None and alvo != self.pdf:
+            self.abrir(alvo)
+        if self.pdf is None:
+            return False
+        self._importado(result)
+        return True
+
     def _importado(self, result: Any) -> None:
         if self.pdf is None:
             return
+        anterior = self.queue
         self.queue = ReviewQueue.from_import(
             result.report, document=self.pdf.stem, reviewer=self.revisor, blind=self._cega
         )
+        # The decisions already taken on this book (loaded from its file, or
+        # taken in this session) come along: the regions they settled were
+        # applied on the import and are not in the new queue, and ``gravar``
+        # writes what the queue knows (C7; critic, fase 1 ciclo 1).
+        if anterior is not None and anterior.items and anterior.items[0].document == self.pdf.stem:
+            self.queue.carry_over(anterior)
         self.current = None
         self._fill_table()
         self.cartao.limpar()

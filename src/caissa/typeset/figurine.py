@@ -39,14 +39,21 @@ import re
 from dataclasses import dataclass, field
 from typing import Iterable, Literal, Mapping, Sequence
 
+from caissa.core.chess.notation_tables import (
+    NotationError,
+    piece_for_letter,
+    piece_letter,
+    to_language,
+)
+
 from .fonts import LoadedFont, UNICODE_PIECES, load_font
 from .outlines import Outline, format_number
 
 __all__ = [
     "FigurineMetrics",
     "FigurineRun",
-    "LANGUAGE_LETTERS",
     "SAN_LETTERS",
+    "language_letter",
     "PIECE_LETTERS",
     "SanMove",
     "figurine_svg",
@@ -58,19 +65,26 @@ __all__ = [
     "translate_san",
 ]
 
-# SAN piece letters by language. A book read in Portuguese writes Cf3 where an English
-# one writes Nf3, and the IR keeps the English form as canonical (SPEC §5.5), so this is
-# the table that renders it in the reader's language.
-LANGUAGE_LETTERS: dict[str, dict[str, str]] = {
-    "en": {"K": "K", "Q": "Q", "R": "R", "B": "B", "N": "N", "P": "P"},
-    "pt": {"K": "R", "Q": "D", "R": "T", "B": "B", "N": "C", "P": "P"},
-    "es": {"K": "R", "Q": "D", "R": "T", "B": "A", "N": "C", "P": "P"},
-    "de": {"K": "K", "Q": "D", "R": "T", "B": "L", "N": "S", "P": "B"},
-    "fr": {"K": "R", "Q": "D", "R": "T", "B": "F", "N": "C", "P": "P"},
-    "it": {"K": "R", "Q": "D", "R": "T", "B": "A", "N": "C", "P": "P"},
-    "nl": {"K": "K", "Q": "D", "R": "T", "B": "L", "N": "P", "P": "O"},
-    "ru": {"K": "К", "Q": "Ф", "R": "Л", "B": "С", "N": "Ко", "P": "П"},
-}
+# SAN piece letters by language live in one place -- ``caissa.core.chess.notation_tables``
+# (ADR-0008). This module used to carry its own copy, and the copy disagreed with the
+# canonical table (Russian king ``К`` for ``Кр``, knight ``Ко`` for ``К``); the LaTeX
+# side printed the wrong letters because of it (OCR_UI_ROADMAP_C2 A6).
+def language_letter(letter: str, language: str) -> str:
+    """The reader's letter for an English SAN piece letter, from the canonical table.
+
+    ``N`` becomes ``C`` in Portuguese, ``S`` in German and ``К`` in Russian. A letter
+    that names no piece, and a language with no table, fall back to the English letter
+    rather than raising: this is called while a page is being set, and a blank is the
+    one failure a reader cannot recover from.
+    """
+    piece = piece_for_letter(letter, "en")
+    if piece is None:
+        return letter
+    try:
+        return piece_letter(piece, language)
+    except NotationError:
+        return piece_letter(piece, "en")
+
 
 PIECE_LETTERS = "KQRBN"
 
@@ -462,19 +476,24 @@ def translate_san(san: str, language: str) -> str:
     ``Nf3`` becomes ``Cf3`` in Portuguese and ``Sf3`` in German, from the same input --
     the reason SPEC §5.5 keeps a move as an object rather than as text.
     """
-    table = LANGUAGE_LETTERS.get(language, LANGUAGE_LETTERS["en"])
+    try:
+        return to_language(san, language)
+    except NotationError:
+        pass
+    # The canonical parser refused the token (an evaluation glued to the move, a
+    # language it has no table for); set the letters from the same table by hand.
     move = parse_san(san)
     if move is None:
         return san
     if move.is_castle:
         return f"{move.castle}{move.suffix}"
-    out = table.get(move.piece, move.piece) if move.piece else ""
+    out = language_letter(move.piece, language) if move.piece else ""
     out += move.disambiguation
     if move.capture:
         out += "x"
     out += move.target
     if move.promotion:
-        out += "=" + table.get(move.promotion, move.promotion)
+        out += "=" + language_letter(move.promotion, language)
     return out + move.suffix
 
 
@@ -520,8 +539,7 @@ def san_to_figurine_runs(
     def piece_run(letter: str) -> None:
         fen_letter = letter.upper() if colour == "w" else letter.lower()
         if available is not None and fen_letter not in available:
-            table = LANGUAGE_LETTERS.get(fallback_language, LANGUAGE_LETTERS["en"])
-            runs.append(FigurineRun("text", table.get(letter, letter)))
+            runs.append(FigurineRun("text", language_letter(letter, fallback_language)))
         else:
             runs.append(FigurineRun("piece", fen_letter))
 

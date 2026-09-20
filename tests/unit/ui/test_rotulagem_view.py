@@ -121,6 +121,35 @@ def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     painel.close()
 
 
+def test_abrir_selects_the_book_without_writing_the_project(app, tmp_path: Path):
+    """OCR_UI ciclo 2, passo C7: the window opens one book and this tab follows it.
+    Merely looking at a book must not enrol it in ``labeling/``: the project file is
+    written only by *Abrir PDF…* (``gravar=True``) or by the first label decided."""
+    pymupdf = pytest.importorskip("pymupdf")
+    from caissa.ui.views.rotulagem import PainelDeRotulagem, abrir_projeto
+
+    pdf = tmp_path / "Livro Y.pdf"
+    doc = pymupdf.open()
+    doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    project = abrir_projeto(tmp_path / "proj", revisor="ana")
+    project.save()
+    arquivo = tmp_path / "proj" / "project.json"
+    antes = arquivo.read_text(encoding="utf-8")
+    painel = PainelDeRotulagem(projeto=project)
+    painel.show()
+    app.processEvents()
+    assert painel.abrir(pdf) == "Livro Y"
+    assert painel.document == "Livro Y"
+    assert painel.doc_box.currentText() == "Livro Y"
+    assert "Livro Y" in project.documents
+    assert arquivo.read_text(encoding="utf-8") == antes, "looking at a book wrote the project"
+    painel.abrir(pdf, gravar=True)
+    assert "Livro Y" in arquivo.read_text(encoding="utf-8")
+    painel.close()
+
+
 class _QueueFakeService:
     """A service whose every region is ``REVIEW`` with one weak word — enough
     for the queue to have something to rank — and page 2 clean."""

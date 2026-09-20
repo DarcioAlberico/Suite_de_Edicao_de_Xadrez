@@ -697,11 +697,44 @@ class PainelDeRotulagem(QWidget):
         caminho, _f = QFileDialog.getOpenFileName(self, "PDF digitalizado", "", "PDF (*.pdf)")
         if not caminho:
             return
+        self.abrir(Path(caminho), gravar=True)
+
+    def abrir(self, pdf: Path | str, *, gravar: bool = False, page_count: int | None = None) -> str:  # noqa: ARG002 - the window's count; this bench reads its own
+        """Open ``pdf`` in the bench: add it to the project (if new) and select it.
+
+        OCR_UI ciclo 2, passo C7: the window opens one book and every tab follows
+        it; this is what the trunk calls from ``_abriu_livro``. The project is
+        **not** written unless ``gravar`` is set (the *Abrir PDF…* button does):
+        merely looking at a book must not enrol it in ``labeling/`` -- the first
+        label decided on it saves the project, and the book with it.
+        """
+        caminho = Path(pdf)
+        novo = caminho.stem not in self.project.documents
         book = self.project.add_document(caminho)
-        self.project.save()
-        self.doc_box.clear()
-        self.doc_box.addItems(sorted(self.project.documents))
+        if gravar:
+            self.project.save()
+        if novo or self.doc_box.count() != len(self.project.documents):
+            self.doc_box.clear()
+            self.doc_box.addItems(sorted(self.project.documents))
+        if not self.isVisible():
+            # Selecting the document fingerprints the whole PDF (SHA-256) and
+            # renders a page -- 150-200 ms on the window thread, measured by
+            # ``caissa.ui.audit.bloqueio`` when the window's *abrir PDF* landed
+            # here.  A hidden tab defers that until it is shown.
+            self._abrir_pendente = book
+            self.document = book
+            self.doc_box.setCurrentText(book)
+            return book
+        self._abrir_pendente = None
         self._select_document(book)
+        return book
+
+    def showEvent(self, event: Any) -> None:  # noqa: N802 - Qt name
+        super().showEvent(event)
+        pendente = getattr(self, "_abrir_pendente", None)
+        if pendente is not None:
+            self._abrir_pendente = None
+            self._select_document(pendente)
 
     def _select_document(self, book: str) -> None:
         if book not in self.project.documents:

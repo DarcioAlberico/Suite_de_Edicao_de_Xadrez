@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from caissa.core.model import (
+    ConfidenceBand,
     Diagram,
     Heading,
     ImageBlock,
@@ -503,6 +504,69 @@ def test_the_contest_is_off_by_option_and_absent_on_a_healthy_layer(pdf_file, mo
     path, fake_ocr, calls = _contest_fixture(pdf_file, monkeypatch, healthy)
     result = import_pdf(path, PdfImportOptions(ocr=fake_ocr, detect_diagrams=False))
     assert calls == [] and result.report.pages[0].source == "text-layer"
+
+
+def _accepted_text_blocks(result) -> list:
+    """Text blocks on pages nothing marked for review -- what the rail calls clean."""
+    flagged = {item.page_index for item in result.report.review_items}
+    return [
+        b for b in result.document.body
+        if isinstance(b, Paragraph) and b.provenance is not None
+        and b.provenance.page_index not in flagged
+    ]
+
+
+@pytest.mark.parametrize(
+    ("shape", "fragment"),
+    [
+        ("raises", "o provedor falhou"),
+        ("none", "não emitiu texto"),
+        ("empty", "texto vazio"),
+    ],
+)
+def test_a_contested_layer_whose_ocr_says_nothing_is_never_the_layer_again(
+    pdf_file, monkeypatch, shape: str, fragment: str
+) -> None:
+    """OCR_UI ciclo 2, passo A8 (análise §7.2): an accused layer whose contest came back
+    empty used to return as ``text-layer`` at the layer's own confidence.  Now the page
+    keeps its prose but goes to review, at a doubtful confidence, and the report names it.
+    """
+    # A verdict that kept the layer at its full confidence while accusing the notation:
+    # what used to come back untouched when the contest had nothing to say.
+    path, _, _ = _contest_fixture(pdf_file, monkeypatch, _damaged_verdict(confidence=0.98))
+    baseline = import_pdf(path, PdfImportOptions(ocr=lambda *a: None, detect_diagrams=False,
+                                                 ocr_contests_text_layer=False))
+    assert baseline.report.pages[0].source == "text-layer"
+    assert baseline.report.pages[0].confidence == 0.98
+    accepted_before = _accepted_text_blocks(baseline)
+    assert accepted_before, "the normal round accepts the layer's text"
+
+    def provider(_page, frame, _verdict):
+        if shape == "raises":
+            raise RuntimeError("motor caiu")
+        if shape == "none":
+            return None
+        return PageText(frame=frame, lines=(), source="tesseract")
+
+    result = import_pdf(path, PdfImportOptions(ocr=provider, detect_diagrams=False))
+    page = result.report.pages[0]
+    assert page.source == "text-layer/review"
+    assert page.confidence <= 0.6
+    assert fragment in page.verdict
+    assert len(_accepted_text_blocks(result)) < len(accepted_before), (
+        "the sabotaged round must not accept as much text as the normal one"
+    )
+    assert any("página 1" in n and "para revisão" in n for n in result.report.notes)
+    review = [i for i in result.report.review_items if i.page_index == 0]
+    assert review
+    assert review[0].decision == "review"
+    assert any(fragment in r for r in review[0].reasons)
+    # The prose is still there -- doubtful, not dropped.
+    assert any(isinstance(b, Paragraph) for b in result.document.body)
+    assert all(
+        b.provenance.band in (ConfidenceBand.DOUBTFUL, ConfidenceBand.UNRELIABLE)
+        for b in result.document.body if isinstance(b, Paragraph) and b.provenance is not None
+    )
 
 
 def test_the_importer_keeps_the_book_cipher_next_to_the_books_models(pdf_file, monkeypatch,

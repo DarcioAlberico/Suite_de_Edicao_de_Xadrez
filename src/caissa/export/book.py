@@ -21,28 +21,33 @@ is not a deliverable.
 
 from __future__ import annotations
 
+import logging
 import re
 import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
-from caissa.core.model import Document, MetadataEntry
+from caissa.core.model import Document, MetadataEntry, ResourceKind
 from caissa.export.base import ExportError, ExportOptions, ExportResult
 from caissa.ingest.pdf import (
     ImportCanceled,
     ImportReport,
+    ImportResult,
     PdfImportOptions,
     open_pdf,
 )
 from caissa.ingest.pdf.importer import PdfImporter
+
+LOGGER = logging.getLogger(__name__)
 
 __all__ = [
     "BOOK_FORMATS",
     "BookExportResult",
     "PageRangeError",
     "ProgressHook",
+    "apply_diagram_decisions",
     "default_output_path",
     "describe_pages",
     "export_book",
@@ -211,6 +216,8 @@ class BookExportResult:
     """The OCR regions the import could not settle, one line each, one-based page first."""
     decisions_applied: int = 0
     """Regions the reviewer had settled (OCR_UI_ROADMAP passo 14), applied on import."""
+    diagram_decisions_applied: int = 0
+    """Positions the reviewer had corrected (OCR_UI ciclo 2, passo A3), applied on import."""
 
     @property
     def pages(self) -> str:
@@ -235,6 +242,10 @@ class BookExportResult:
             parts.append(f"{len(degraded.warnings)} propriedade(s) aproximada(s) no {label}")
         if self.decisions_applied:
             parts.append(f"{self.decisions_applied} decisão(ões) do revisor aplicada(s)")
+        if self.diagram_decisions_applied:
+            parts.append(
+                f"{self.diagram_decisions_applied} posição(ões) corrigida(s) pelo revisor"
+            )
         if self.warnings:
             parts.append(
                 f"OCR: {'restam ' if self.decisions_applied else ''}"
@@ -254,6 +265,7 @@ def export_book(
     export_options: ExportOptions | None = None,
     progress: ProgressHook | None = None,
     should_cancel: Callable[[], bool] | None = None,
+    document: Document | ImportResult | None = None,
 ) -> BookExportResult:
     """Import the pages asked for and write them as one EPUB or DOCX.
 
@@ -271,10 +283,24 @@ def export_book(
             ``asset_dir`` too when it is ``None``: the images of the pages
             (figures, scanned pages, abstained OCR regions) are extracted to
             a temporary folder for the exporter to package, and dropped
-            after the write.
+            after the write.  ``review_decisions`` and ``diagram_decisions``
+            left ``None`` are loaded from the book's files under the
+            labelling project (what the reviewer settled in the text-review
+            window and in the diagram panel -- OCR_UI passo 14 and ciclo 2
+            passo A3).
         export_options: Overrides for the write.
         progress: ``(phase, done, total)`` as the work advances.
         should_cancel: Polled between pages of the import.
+        document: A :class:`~caissa.core.model.Document` -- or the whole
+            :class:`~caissa.ingest.pdf.ImportResult`, whose report then
+            travels into the result -- already in hand (the window's
+            *Importar o livro*, OCR_UI ciclo 2 passo A3): the import is
+            skipped and the document is written as it is, so the book is
+            read once.  The caller is responsible for it covering ``pages``
+            -- the trunk's ``Ponte.documento_para`` only hands one over when
+            the pages asked for are within the pages imported and the import
+            was not cancelled.  Images the document references must still be
+            on disk (its ``asset_dir``).
 
     Returns:
         The result with both reports.
@@ -300,6 +326,7 @@ def export_book(
             progress=progress,
             should_cancel=should_cancel,
             scratch=Path(scratch),
+            document=document,
         )
 
 
@@ -315,6 +342,7 @@ def _export_book(
     progress: ProgressHook | None,
     should_cancel: Callable[[], bool] | None,
     scratch: Path,
+    document: Document | ImportResult | None = None,
 ) -> BookExportResult:
     with open_pdf(source) as pdf:
         page_count = pdf.page_count
@@ -336,22 +364,57 @@ def _export_book(
             if progress is not None:
                 progress("importando", done, total)
 
-        options = replace(
-            import_options or PdfImportOptions(),
-            pages=indices,
-            progress=import_progress,
-            should_cancel=should_cancel,
-        )
-        if enable_ocr is not None:
-            options.enable_ocr = enable_ocr
-        if options.asset_dir is None:
-            options.asset_dir = scratch / "assets"
-        if options.review_decisions is None:
-            # What the reviewer settled in the text-review window, when anything.
-            from caissa.ocr.review import ReviewDecisions
+        if document is not None and not _covers_exactly(document, indices, page_count):
+            # The ready document is written as it is: a book of three pages asked for
+            # as "page 1" must not come out with the three.  A bare ``Document`` has no
+            # page list, so it only qualifies for the whole book.
+            LOGGER.warning(
+                "%s: o documento pronto não é exatamente as páginas pedidas; a exportação reimporta.",
+                source.name,
+            )
+            document = None
+        if document is not None and not _images_on_disk(
+            document.document if isinstance(document, ImportResult) else document
+        ):
+            # The window's import without an ``asset_dir`` (or one whose files
+            # are gone) has image resources with no file behind them; the EPUB
+            # would drop those pages' images and call it a success.  Say so and
+            # read the book again instead of writing a hollow one.
+            LOGGER.warning(
+                "%s: o documento pronto não tem as imagens em disco; a exportação reimporta.",
+                source.name,
+            )
+            document = None
+        if document is not None:
+            # Passo A3: the book was read once already; write what is in hand --
+            # with the positions the reviewer corrected *after* that import
+            # applied to it, or the correction made in the window would be the
+            # one thing an export of the window's own document left out.
+            imported = (
+                document
+                if isinstance(document, ImportResult)
+                else ImportResult(document=document, report=ImportReport())
+            )
+            decisions = import_options.diagram_decisions if import_options is not None else None
+            if decisions is None:
+                from caissa.ocr.diagram_decisions import DiagramDecisions
 
-            options.review_decisions = ReviewDecisions.for_pdf(source)
-        imported = PdfImporter(pdf, options).run()
+                decisions = DiagramDecisions.for_pdf(source)
+            if decisions is not None:
+                imported = apply_diagram_decisions(imported, decisions)
+            if progress is not None:
+                progress("importando", 1, 1)
+        else:
+            options = _import_options(
+                source,
+                import_options,
+                indices,
+                enable_ocr=enable_ocr,
+                progress=import_progress,
+                should_cancel=should_cancel,
+                scratch=scratch,
+            )
+            imported = PdfImporter(pdf, options).run()
 
     if should_cancel is not None and should_cancel():
         raise ImportCanceled("Exportação cancelada antes da gravação; nada foi escrito.")
@@ -377,7 +440,132 @@ def _export_book(
         export_result=written,
         warnings=warnings,
         decisions_applied=int(imported.report.counters.get("review_decisions_applied", 0)),
+        diagram_decisions_applied=int(
+            imported.report.counters.get("diagram_decisions_applied", 0)
+        ),
     )
+
+
+def _covers_exactly(
+    document: Document | ImportResult, indices: Sequence[int], page_count: int
+) -> bool:
+    """Whether the ready document is exactly the pages asked for (passo A3).
+
+    An :class:`ImportResult` says which pages it built (``report.pages``); a
+    bare :class:`Document` says nothing, so it only qualifies when the export
+    asks for the whole book.
+    """
+    wanted = {int(i) for i in indices}
+    if isinstance(document, ImportResult):
+        built = {int(p.index) for p in getattr(document.report, "pages", ())}
+        return bool(wanted) and built == wanted
+    return wanted == set(range(page_count))
+
+
+def _images_on_disk(document: Document) -> bool:
+    """Whether every image resource the document references is a file on disk (passo A3)."""
+    for resource in getattr(document, "resources", ()):
+        if getattr(resource, "kind", None) is not ResourceKind.IMAGE:
+            continue
+        path = getattr(resource, "path", None)
+        if not path or not Path(path).is_file():
+            return False
+    return True
+
+
+def _import_options(
+    source: Path,
+    base: PdfImportOptions | None,
+    indices: Sequence[int],
+    *,
+    enable_ocr: bool | None,
+    progress: Callable[[int, int], None],
+    should_cancel: Callable[[], bool] | None,
+    scratch: Path,
+) -> PdfImportOptions:
+    """The import options of one export: the caller's, completed with what the export sets.
+
+    ``review_decisions`` and ``diagram_decisions`` left ``None`` are loaded
+    from the book's files under the labelling project, so the export sees the
+    book as the reviewer left it (OCR_UI passo 14; ciclo 2 passo A3).
+    """
+    options = replace(
+        base or PdfImportOptions(),
+        pages=indices,
+        progress=progress,
+        should_cancel=should_cancel,
+    )
+    if enable_ocr is not None:
+        options.enable_ocr = enable_ocr
+    if options.asset_dir is None:
+        options.asset_dir = scratch / "assets"
+    if options.review_decisions is None:
+        # What the reviewer settled in the text-review window, when anything.
+        from caissa.ocr.review import ReviewDecisions
+
+        options.review_decisions = ReviewDecisions.for_pdf(source)
+    if options.diagram_decisions is None:
+        # And the positions corrected in the diagram panel (passo A3).
+        from caissa.ocr.diagram_decisions import DiagramDecisions
+
+        options.diagram_decisions = DiagramDecisions.for_pdf(source)
+    return options
+
+
+def apply_diagram_decisions(imported: ImportResult, decisions: Any) -> ImportResult:
+    """The import with the reviewer's positions applied to its top-level diagrams (passo A3).
+
+    The importer applies :class:`~caissa.ocr.diagram_decisions.DiagramDecisions`
+    while it builds the nodes; this is the same rule for a document that was
+    built **before** the decision existed -- the window's import, corrected
+    and saved afterwards, then exported from memory.  A diagram whose
+    ``source`` places it on a page is matched by IoU ≥ 0,5 like the importer
+    does; the machine's reading stays in ``recognition.fen`` and the warning,
+    the provenance and the counter (``diagram_decisions_applied``) say what
+    happened.  A decision already applied on import is not counted twice.
+    """
+    from caissa.core.model import Diagram, SourceKind
+
+    applied = 0
+    body: list[Any] = []
+    for block in imported.document.body:
+        if not isinstance(block, Diagram) or block.source is None or block.source.rect is None:
+            body.append(block)
+            continue
+        rect = block.source.rect
+        box = (rect.x, rect.y, rect.x + rect.width, rect.y + rect.height)
+        decision = decisions.match(int(block.source.page_index or 0), box)
+        if decision is None or block.fen == decision.fen:
+            body.append(block)
+            continue
+        applied += 1
+        who = f" ({decision.reviewer})" if decision.reviewer else ""
+        note = f"corrigido pelo revisor{who} em {decision.decided_at or 'data desconhecida'}"
+        recognition = block.recognition
+        if recognition is not None:
+            recognition = replace(recognition, warnings=(*recognition.warnings, note))
+        provenance = block.provenance
+        if provenance is not None:
+            provenance = replace(
+                provenance, verified_by_human=True, kind=SourceKind.HUMAN, confidence=1.0
+            )
+        body.append(
+            replace(
+                block,
+                fen=decision.fen,
+                recognition=recognition,
+                provenance=provenance,
+                stipulation="Brancas jogam" if decision.side == "w" else "Pretas jogam",
+                side_to_move_indicator=True,
+            )
+        )
+    if not applied:
+        return imported
+    report = imported.report
+    report.counters["diagram_decisions_applied"] = (
+        int(report.counters.get("diagram_decisions_applied", 0)) + applied
+    )
+    return ImportResult(document=replace(imported.document, body=tuple(body)), report=report)
 
 
 def _stamp_selection(document: Document, indices: Sequence[int], page_count: int) -> Document:

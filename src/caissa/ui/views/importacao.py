@@ -16,6 +16,7 @@ enquanto a importação anda, em vez de esperar o fim.
 
 from __future__ import annotations
 
+import functools
 import logging
 import threading
 from pathlib import Path
@@ -28,6 +29,21 @@ from caissa.ingest.pdf import PdfImportOptions, import_pdf
 from caissa.ingest.pdf.importer import ImportResult
 
 logger = logging.getLogger(__name__)
+
+@functools.lru_cache(maxsize=1)
+def _pasta_de_recursos() -> Path:
+    """One temporary folder per process for the images the window's import extracts.
+
+    Kept until the process ends (``atexit``): the export of the same book reuses the
+    document in memory and needs the files to still be there.
+    """
+    import atexit
+    import shutil
+    import tempfile
+
+    pasta = Path(tempfile.mkdtemp(prefix="caissa-importacao-"))
+    atexit.register(shutil.rmtree, pasta, True)
+    return pasta
 
 __all__ = ["ImportadorDoLivro"]
 
@@ -118,6 +134,11 @@ class ImportadorDoLivro(QObject):
                     should_cancel=cancelar.is_set,
                     keep_partial=True,
                     review_decisions=ReviewDecisions.for_pdf(pdf_path),
+                    # The images of the pages go to a folder of this process, so the
+                    # document can be exported as it is (passo A3) instead of read again;
+                    # without it every image resource would have ``path=None`` and the
+                    # EPUB would silently drop them.
+                    asset_dir=_pasta_de_recursos(),
                 ),
             )
         except Exception as exc:  # a thread não pode derrubar a janela

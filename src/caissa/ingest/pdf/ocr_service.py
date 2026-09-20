@@ -99,6 +99,10 @@ class OcrServiceConfig:
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
     #: Fuse the candidates of a region token by token (Sol §SOL-6).
     fuse: bool = True
+    #: Keyword overrides for :class:`caissa.ocr.fusion.FusionConfig` (the fusion's
+    #: thresholds and the passo B4 sabotage switch); ``SOL_CONFIG='{"fusion":
+    #: {"passo_b4": false}}'`` in ``bench_sol`` reaches here.
+    fusion: dict[str, Any] = field(default_factory=dict)
     #: Replay movetext regions for legality (Sol §SOL-8).
     validate_notation: bool = True
     #: Sol §SOL-7: on a region that reads as movetext, add Tesseract's
@@ -1005,11 +1009,12 @@ class OcrService:
         result, decision, fusion = best.result, best.decision, {}
         if cfg.fuse and len(candidates) > 1:
             try:
-                from caissa.ocr.fusion import fuse_candidates
+                from caissa.ocr.fusion import FusionConfig, fuse_candidates
 
                 fused = fuse_candidates(
                     [(c.result, c.score, c.decision) for c in candidates],
                     lang=task.lang, image=task.image if task.pdf_page is None else None,
+                    config=FusionConfig(**self.config.fusion) if self.config.fusion else None,
                     never_anchor=frozenset(never_anchor))
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()

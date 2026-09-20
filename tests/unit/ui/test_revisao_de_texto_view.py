@@ -278,6 +278,29 @@ def _scanned_pdf(path: Path) -> Path:
     return path
 
 
+def test_the_panel_takes_an_import_result_from_the_window_without_running_ocr(app, pdf, tmp_path):
+    """OCR_UI ciclo 2, passo C7: the window's own import hands its ``ImportResult`` over
+    and the queue is built from it -- this tab's importer never starts."""
+    from caissa.ui.views.revisao_de_texto import PainelDeRevisaoDeTexto
+
+    painel = PainelDeRevisaoDeTexto(revisor="ana", cega=blind_guard(()), pasta=tmp_path / "proj")
+    painel.show()
+    app.processEvents()
+    assert painel.pdf is None
+    assert not painel.receber_importacao(None, pdf=pdf), "nothing to take"
+    assert painel.receber_importacao(SimpleNamespace(report=_report()), pdf=pdf)
+    app.processEvents()
+    assert painel.pdf == pdf, "the result's book is opened here"
+    assert painel.queue is not None
+    assert painel.table.rowCount() == 3
+    assert not painel.importador.rodando, "the tab did not run the OCR a second time"
+    assert "3 região(ões) em dúvida" in painel.status.text()
+    # The same book again: no reopen, the queue is rebuilt from the fresh result.
+    assert painel.receber_importacao(SimpleNamespace(report=_report(pages=(0, 0, 0))), pdf=pdf)
+    assert {i.page_index for i in painel.queue.items} == {0}
+    painel.close()
+
+
 def test_the_import_runs_in_a_thread_and_fills_the_queue(app, tmp_path):
     import time
 
@@ -303,4 +326,38 @@ def test_the_import_runs_in_a_thread_and_fills_the_queue(app, tmp_path):
     assert [i.text for i in painel.queue.items] == ["the r0ok belongs"]
     assert painel.btn_importar.isEnabled()
     assert painel.table.rowCount() == 1
+    painel.close()
+
+
+def test_decisions_taken_before_survive_a_fresh_import_result(app, pdf, tmp_path):
+    """Critic, fase 1 ciclo 1: the rail's import handed over a result built with the earlier
+    decisions applied, the tab rebuilt its queue from scratch, and the next ``gravar`` wrote
+    the decisions file *without* them.  Now the earlier decisions come along."""
+    from caissa.ocr.review import ReviewDecisions
+
+    painel = _panel(app, pdf, tmp_path)
+    first_key = painel.current.key
+    assert painel.decide(Action.KEEP_IMAGE)
+    app.processEvents()
+    destino = painel.gravar(quiet=True)
+    assert destino is not None
+    assert len(ReviewDecisions.load(destino)) == 1
+    # The rail imports again: the decided region was applied, so the fresh report
+    # lists only the two still pending (a report with no abstained region).
+    fresh = _report()
+    fresh.review_items = [i for i in fresh.review_items if i.decision != "abstained"]
+    assert painel.receber_importacao(SimpleNamespace(report=fresh), pdf=pdf)
+    app.processEvents()
+    assert painel.table.rowCount() == 2, "the two pending ones; the decided one is not listed"
+    assert painel.decide(Action.ACCEPT)
+    app.processEvents()
+    painel.gravar(quiet=True)
+    saved = ReviewDecisions.load(destino)
+    assert len(saved) == 2, "the earlier decision was carried over, not overwritten"
+    assert {e.action for e in saved.entries} == {Action.KEEP_IMAGE, Action.ACCEPT}
+    assert first_key != painel.current.key if painel.current else True
+    # A cancelled (partial) result never replaces the queue.
+    partial = _report()
+    partial.canceled = True
+    assert not painel.receber_importacao(SimpleNamespace(report=partial), pdf=pdf)
     painel.close()

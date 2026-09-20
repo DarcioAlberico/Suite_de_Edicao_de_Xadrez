@@ -39,6 +39,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from caissa.notation.nag_table import move_suffix_class
+
 from .cipher import CIPHER_SLOT, _MOVE_BODY, _MOVE_NUMBER, _piece_letters
 
 __all__ = ["MoveRun", "longest_run", "move_runs"]
@@ -51,8 +53,10 @@ _BOOKKEEPING = frozenset({
     "!?", "?!", "(", ")", "[", "]",
 })
 
-#: Castling, in the spellings a PDF actually emits.
-_CASTLING = re.compile(r"^[O0oО]\s?-\s?[O0oО](?:\s?-\s?[O0oО])?[+#!?]{0,3}$")
+#: Castling, in the spellings a PDF actually emits; the tail is the annotation
+#: alphabet of :mod:`caissa.notation.nag_table` (passo A4).
+_CASTLING = re.compile(
+    rf"^[O0oО]\s?-\s?[O0oО](?:\s?-\s?[O0oО])?[{move_suffix_class()}]{{0,3}}$")
 
 #: An ellipsis standing in for Black's move: ``1...Rh6``, ``1 ... Rh6``.
 _ELLIPSIS = re.compile(r"^\.{2,4}$|^…$")
@@ -99,12 +103,15 @@ def _is_move(token: str, native: frozenset[str]) -> bool:
     stripped = token.strip("(),;:.")
     if not stripped:
         return False
-    if _CASTLING.match(stripped):
+    # The move number comes off before anything else: ``5.O-O`` is a castling
+    # with its number glued on (passo A5), exactly as ``5.Nf3`` is a knight move.
+    unnumbered = _MOVE_NUMBER.sub("", stripped)
+    if _CASTLING.match(unnumbered):
         return True
-    body = _MOVE_BODY.search(_MOVE_NUMBER.sub("", stripped))
+    body = _MOVE_BODY.search(unnumbered)
     if body is None:
         return False
-    prefix = _MOVE_NUMBER.sub("", stripped)[:body.start()]
+    prefix = unnumbered[:body.start()]
     if not prefix:
         return True                       # a pawn move
     return prefix in native or prefix == CIPHER_SLOT or len(prefix) == 1

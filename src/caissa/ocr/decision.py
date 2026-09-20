@@ -43,7 +43,13 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from .lexicon import dictionary_hit_rate, is_move_token, tokenize
+from .lexicon import (
+    dictionary_hit_rate,
+    is_mangled_move,
+    is_move_token,
+    is_unsupported_move,
+    tokenize,
+)
 from .types import OcrResult, OcrWord, RegionKind
 
 __all__ = [
@@ -130,6 +136,10 @@ class Evidence:
     short_token_share: float = 0.0
     mean_token_length: float = 0.0
     word_tokens: int = 0
+    #: Move-shaped tokens whose piece slot the page's language cannot produce
+    #: (``8c4``, ``Hea!``, ``De2`` on an English page): notation whose glyph
+    #: did not survive, counted apart from the moves (passo B4).
+    mangled_moves: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -146,6 +156,7 @@ class Evidence:
             "short_token_share": round(self.short_token_share, 3),
             "mean_token_length": round(self.mean_token_length, 2),
             "word_tokens": self.word_tokens,
+            "mangled_moves": self.mangled_moves,
         }
 
 
@@ -231,6 +242,10 @@ def measure_evidence(result: OcrResult, image: NDArray[np.uint8] | None,
 
     tokens = tokenize(result.text)
     move_count = sum(1 for t in tokens if is_move_token(t))
+    # A rank without a piece, or a piece letter the language does not print,
+    # is a mangled move, not a move: the language-aware count (passo B4).
+    mangled_count = sum(
+        1 for t in tokens if is_mangled_move(t, langs) or is_unsupported_move(t, langs))
     _, judged = dictionary_hit_rate(result.text, langs)
     hit_rate, _ = dictionary_hit_rate(result.text, langs)
     dictionary_words = round(hit_rate * judged)
@@ -282,6 +297,7 @@ def measure_evidence(result: OcrResult, image: NDArray[np.uint8] | None,
         geometry_outliers=outliers, low_confidence_share=low_share,
         move_token_confidence=move_conf, short_token_share=short_share,
         mean_token_length=mean_length, word_tokens=len(word_tokens),
+        mangled_moves=mangled_count,
     ), tuple(flagged)
 
 

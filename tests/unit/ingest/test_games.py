@@ -70,6 +70,9 @@ def test_a_repaired_into_another_move_ends_the_chain_instead_of_inventing():
 def test_a_line_that_does_not_start_from_the_position_is_kept():
     kept, why = game_from_paragraph(_movetext("21 Rxf4 Nxe5 22 Rxd4 Rg8"), FEN)
     assert kept is None
+    assert why == "side_mismatch", "21 is White's move; the diagram has Black to move (X1)"
+    kept, why = game_from_paragraph(_movetext("19... Rxf4 20 Rxd4 Rg8"), FEN)
+    assert kept is None
     assert why == "no_chain"
     short, why = game_from_paragraph(_movetext("Black is fine."), FEN)
     assert short is None
@@ -124,6 +127,12 @@ def test_a_printed_capture_onto_an_empty_square_ends_the_chain():
     before_13 = "r2qr1k1/p2n1pbp/bp1p1np1/2pP4/8/P1N2NP1/1PQ1PPBP/R1B1R1K1 w - - 0 13"
     score, why = game_from_paragraph(_movetext("14 ♘xe5 ♖xe5 15 e4 ♖e8"), before_13)
     assert score is None
+    assert why == "number_mismatch", "the anchor is numbered 13; the column starts at 14 (X1)"
+    # With the anchor's number unknown (a recognised diagram says ``1``), the
+    # board is the judge: the printed capture onto an empty e5 ends the chain.
+    unnumbered = before_13.rsplit(" ", 1)[0] + " 1"
+    score, why = game_from_paragraph(_movetext("14 ♘xe5 ♖xe5 15 e4 ♖e8"), unnumbered)
+    assert score is None
     assert why == "no_chain"
     after_13 = "r2qr1k1/p4pbp/bp1p1np1/2pPn3/8/P1N2NPP/1PQ1PPB1/R1B1R1K1 w - - 1 14"
     score, why = game_from_paragraph(_movetext("14 ♘xe5 ♖xe5 15 e4 ♖e8"), after_13)
@@ -173,3 +182,81 @@ def test_the_column_takes_the_board_above_it_not_the_last_one_in_reading_order()
         [_diagram(FEN), _diagram(other), _movetext("19... g5! 20 g3")], report=GamesReport()
     )
     assert isinstance(kept[-1], Paragraph), "from the right board 19... g5 is not legal"
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP_C2 passo A5 / X1: the anchor is explicit, the number is evidence
+# --------------------------------------------------------------------------- #
+
+RUY_8 = "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7 6.Re1 b5 7.Bb3 d6 8.c3 O-O"
+
+
+def test_castling_with_its_number_glued_chains_through():
+    """§5.3 measured 8 moves and ``[não reproduzidos: Be7]``; with ``5. O-O`` it was 16."""
+    score, why = game_from_paragraph(_movetext(RUY_8), chess.STARTING_FEN)
+    assert why == "game"
+    assert len(_sans(score)) == 16
+    assert "O-O" in _sans(score)
+    last = score
+    while last.children:
+        last = last.children[0]
+    assert not last.comment_after
+
+
+def test_a_column_with_a_box_and_no_board_above_it_gets_no_position():
+    """The last diagram in reading order no longer stands in: with page
+    geometry, a column that no readable board sits over stays ``Movetext``
+    and says why (``sem diagrama âncora``)."""
+    board = _at(_diagram(FEN), 320, 80, 200, 200)          # right column
+    column = [
+        _at(_movetext("19... g5! 20 g3"), 70, 300),         # left column
+        _at(_movetext("20... gxf4 21 gxf4"), 70, 314),
+    ]
+    report = GamesReport()
+    out = attach_games([board, *column], report=report)
+    assert report.games == 0
+    assert report.kept_no_position == 2
+    assert all(isinstance(b, Paragraph) for b in out[1:])
+    assert "sem diagrama âncora" in out[1].provenance.note
+    assert out[2].provenance.note is None, "only the first paragraph of the column is noted"
+
+
+def test_the_numbering_of_the_column_must_agree_with_the_anchor():
+    # The diagram says White to move (a caption, or the default); the column
+    # opens with Black's 19th.  Not this board: kept, with the reason.
+    white_to_move = FEN.replace(" b ", " w ")
+    blocks = [_diagram(white_to_move), _movetext("19... g5! 20 g3 gxf4")]
+    report = GamesReport()
+    out = attach_games(blocks, report=report)
+    assert report.games == 0
+    assert report.kept_anchor_mismatch == 1
+    assert report.counters()["movetext_kept_anchor_mismatch"] == 1
+    assert "contradiz o lado" in out[1].provenance.note
+    # A game's end is a numbered anchor: the column under it must continue it.
+    blocks = [
+        _diagram(FEN),
+        _movetext("19... g5! 20 g3 gxf4"),
+        Paragraph(content=(Text(content="prose between"),)),
+        _movetext("23 gxf4 Rg8"),
+    ]
+    report = GamesReport()
+    out = attach_games(blocks, report=report)
+    assert report.games == 1 and report.kept_anchor_mismatch == 1
+    assert isinstance(out[-1], Paragraph)
+    assert "não continua" in out[-1].provenance.note
+
+
+def test_swapped_anchors_yield_no_game(monkeypatch):
+    """The sabotage of ``games_gate.py --sabotar ancora`` in miniature: two
+    readable boards exchange FENs and no column may chain from the wrong one."""
+    other = "8/6k1/3b4/1R1p4/1PpPr1p1/2P3n1/3B2K1/6N1 b - - 0 19"
+    left = _at(_diagram(other), 60, 80, 200, 200)           # was FEN
+    right = _at(_diagram(FEN), 320, 80, 200, 200)           # was other
+    column = [
+        _at(_movetext("19... g5! 20 g3"), 70, 300),
+        _at(_movetext("20... gxf4 21 gxf4"), 70, 314),
+    ]
+    report = GamesReport()
+    out = attach_games([left, right, *column], report=report)
+    assert report.games == 0
+    assert all(isinstance(b, Paragraph) for b in out[2:])

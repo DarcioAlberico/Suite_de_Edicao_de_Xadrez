@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -276,6 +276,50 @@ class ReviewQueue:
             return (f"página {item.page_index + 1} está na partição cega: "
                     "a leitura não pode ser aceita nem corrigida aqui (ela mede o OCR).")
         return ""
+
+    def carry_over(self, previous: ReviewQueue | None) -> int:
+        """Keep the decisions of ``previous`` (the same book, an earlier queue) in this one.
+
+        OCR_UI ciclo 2, passo C7: the window's import hands its result to the
+        review tab, which rebuilds the queue from it.  A region decided before
+        was applied on that import and is not in the new ``review_items`` -- so
+        a queue built from scratch would have no trace of it, and the next
+        ``gravar`` would write the decisions file **without** it.  The earlier
+        decisions come along here: an item of ``previous`` that was decided is
+        matched to the new items by page and rectangle (IoU ≥ 0,5) and its log
+        entries re-keyed; one that has no counterpart is appended, decided, so
+        :meth:`decisions` still sees it.  Returns how many decisions came over.
+        """
+        if previous is None or not previous.log:
+            return 0
+        decided = previous.decided()
+        if not decided:
+            return 0
+        by_key = {item.key: item for item in self.items}
+        carried = 0
+        rekey: dict[str, str] = {}
+        for key, _entry in decided.items():
+            try:
+                old = previous._item(key)
+            except KeyError:
+                continue
+            match = next(
+                (item for item in self.items
+                 if item.page_index == old.page_index and _iou(item.rect, old.rect) >= 0.5),
+                None,
+            )
+            if match is not None:
+                rekey[key] = match.key
+            else:
+                new_key = key if key not in by_key else f"{key}:anterior"
+                rekey[key] = new_key
+                self.items.append(replace(old, key=new_key))
+                by_key[new_key] = self.items[-1]
+            carried += 1
+        for entry in previous.log:
+            if entry.key in rekey:
+                self.log.append(replace(entry, key=rekey[entry.key]))
+        return carried
 
     def decided(self) -> dict[str, AuditEntry]:
         """The last non-skip decision per item."""

@@ -53,6 +53,7 @@ from caissa.core.model import (
     Text,
     inline_children,
 )
+from caissa.notation.nag_table import NAG_BY_CODE
 
 __all__ = [
     "NAG_SYMBOLS",
@@ -68,51 +69,28 @@ __all__ = [
 ]
 
 
+_PGN_ONLY_NAGS: Mapping[int, str] = {
+    8: "□",  # singular move: the same box as $7
+    11: "=",  # equal, quiet position
+    12: "=",  # equal, active position
+}
+"""PGN NAGs with a printed form that :mod:`caissa.notation.nag_table` has no row for.
+
+Only the codes; when the table gains them these entries lose to it.
+"""
+
 NAG_SYMBOLS: Mapping[int, str] = {
-    1: "!",
-    2: "?",
-    3: "!!",
-    4: "??",
-    5: "!?",
-    6: "?!",
-    7: "□",  # forced move (only move)
-    8: "□",
-    10: "=",
-    11: "=",
-    12: "=",
-    13: "∞",  # unclear
-    14: "⩲",  # White is slightly better
-    15: "⩱",  # Black is slightly better
-    16: "±",
-    17: "∓",
-    18: "+−",
-    19: "−+",
-    22: "⨁",  # zugzwang
-    23: "⨁",
-    32: "⟳",  # development advantage
-    33: "⟳",
-    36: "↑",  # initiative
-    37: "↑",
-    40: "→",  # attack
-    41: "→",
-    44: "=∞",  # compensation
-    45: "=∞",
-    132: "⇆",  # counterplay
-    133: "⇆",
-    138: "⨁",  # time pressure
-    139: "⨁",
-    140: "∆",  # with the idea
-    141: "∇",
-    142: "⌓",  # better is
-    143: "<=",
-    145: "RR",
-    146: "N",  # novelty
+    **_PGN_ONLY_NAGS,
+    **{int(code[1:]): nag.glyph for code, nag in NAG_BY_CODE.items()},
 }
 """PGN Numeric Annotation Glyphs and the characters a publisher sets for them.
 
-Only the glyphs that have a conventional printed form are listed. A NAG with no
-entry renders as ``$n``, which is both honest and searchable -- silently
-dropping it would lose the annotator's judgement.
+Derived from :data:`caissa.notation.nag_table.NAG_BY_CODE` (OCR_UI_ROADMAP_C2
+A6) so the exported book and the import tokenizer agree on the glyph: ``$22``
+is the zugzwang circle ``⨀`` and ``$138`` the time-pressure ``⨁``, never the
+same sign for both. Only the glyphs that have a conventional printed form are
+listed. A NAG with no entry renders as ``$n``, which is both honest and
+searchable -- silently dropping it would lose the annotator's judgement.
 """
 
 _FIGURINE_WHITE: Mapping[str, str] = {

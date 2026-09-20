@@ -21,7 +21,9 @@ Three things it does that the detection harness does not:
 
 Variants::
 
-    baseline           trunk detection, unchanged
+    baseline           trunk detection as it ships -- since OCR_UI cycle 2 step A1 this
+                       is the recall pack (`config.DEFAULT_RECALL`), so it equals recall-pack
+    raw                the detector with every recovery off (the pre-A1 baseline)
     recall-pack        the three recoveries of caissa.vision.detect.recall (what ships)
     recall-pack+refine recall-pack plus RecognitionOptions.refine_detected_boards
 
@@ -111,6 +113,8 @@ def _variant(name: str) -> Any:
 
     if name == "baseline":
         return contextlib.nullcontext()
+    if name == "raw":
+        return recall_pack(scales=(), rescue_squares=False, embedded_floor=None)
     return recall_pack()
 
 
@@ -140,7 +144,7 @@ def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path) -> tup
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--variant", action="append", default=[],
-                        choices=("baseline", "recall-pack", "recall-pack+refine"))
+                        choices=("baseline", "raw", "recall-pack", "recall-pack+refine"))
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--max-boards", type=int, default=12)

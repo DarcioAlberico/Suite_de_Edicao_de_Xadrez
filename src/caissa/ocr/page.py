@@ -61,7 +61,7 @@ from .layout.analyze import (
     analyze_page,
     lines_from_pdf_page,
 )
-from .types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind
+from .types import BBox, OcrChar, OcrLine, OcrResult, RegionKind
 
 __all__ = [
     "PageConfig",
@@ -667,23 +667,22 @@ class PageRecognizer:
         dx, dy = origin
         if dx == 0.0 and dy == 0.0:
             return result
+        # ``replace`` keeps the word's own type: the glyph reader's word
+        # carries a ``margin`` the fusion reads, and rebuilding an ``OcrWord``
+        # field by field used to drop it for every region off the origin
+        # (OCR_UI_ROADMAP_C2 passo B7).
         lines = tuple(
             OcrLine(
                 words=tuple(
-                    OcrWord(
-                        text=w.text,
+                    replace(
+                        w,
                         box=w.box.translated(dx, dy),
-                        confidence=w.confidence,
                         chars=tuple(
                             OcrChar(text=c.text,
                                     box=c.box.translated(dx, dy),
                                     confidence=c.confidence,
                                     inherited_confidence=c.inherited_confidence)
                             for c in w.chars),
-                        block_index=w.block_index,
-                        paragraph_index=w.paragraph_index,
-                        line_index=w.line_index,
-                        word_index=w.word_index,
                     )
                     for w in line.words),
                 box=line.box.translated(dx, dy),

@@ -74,7 +74,14 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from caissa.notation.nag_table import move_suffix_class  # noqa: E402
 from caissa.ocr.lexicon import mangled_move_ratio, normalise_lang  # noqa: E402
+
+#: The annotation tail a move may carry (``Nf6±``, ``Rad8⩲``): one alphabet,
+#: :data:`caissa.notation.nag_table.MOVE_SUFFIX_CHARS`, shared with the readers
+#: it measures (OCR_UI_ROADMAP_C2 passo A4) -- an instrument that stopped at
+#: ``!?`` could not see a move the page annotated.
+_SUFFIX = move_suffix_class()
 
 #: CORPUS.md §0.  Copyrighted material; it never leaves this machine.
 CORPUS_DIR = Path(__import__("os").environ.get(
@@ -290,7 +297,7 @@ def report_verdicts() -> dict[str, Any]:
 #: Deliberately permissive about the promotion letter, because an engine that
 #: mangles the piece glyph mangles the promotion glyph the same way.
 _MOVE_TAIL = re.compile(
-    r"(?:[a-h]?[1-8]?[x:×-]?[a-h][1-8](?:=[A-Za-z])?[+#!?]{0,3})$")
+    rf"(?:[a-h]?[1-8]?[x:×-]?[a-h][1-8](?:=[A-Za-z])?[{_SUFFIX}]{{0,3}})$")
 
 #: A move number glued to the move — ``4.Kd3``, ``1...Nf6``.  Not part of the
 #: piece glyph, and counting it would penalise both engines for nothing.
@@ -416,7 +423,7 @@ CONTEST_PAGES: list[tuple[str, str, str, list[int], bool]] = [
 ]
 
 _PIECE_MOVE = re.compile(r"^(?:\d{1,3}\.{1,3})?([KQRBNP♔♕♖♗♘♙])([a-h]?[1-8]?[x:×]?[a-h][1-8])"
-                         r"(?:=[A-Za-z])?[+#!?]{0,3}$")
+                         rf"(?:=[A-Za-z])?[{_SUFFIX}]{{0,3}}$")
 
 
 def _piece_moves(text: str) -> Counter[str]:

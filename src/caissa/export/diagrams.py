@@ -238,6 +238,63 @@ class RenderedDiagram:
         return self.height_mm / self.width_mm if self.width_mm else 1.0
 
 
+_EMPTY_PLACEMENT = "8/8/8/8/8/8/8/8"
+"""The placement of the importer's provisional board (``ingest.pdf.importer._EMPTY_BOARD``).
+
+Compared, not imported: the importer pulls in the whole OCR front and this
+module is loaded by every exporter.
+"""
+
+_UNKNOWN_SIDE_SOURCES = frozenset({"default"})
+"""``RecognitionResult.side_to_move_source`` values that mean nobody read the side."""
+
+
+def _reading_status(node: Diagram | InlineDiagram) -> tuple[bool, bool, float | None]:
+    """Say what the alt text may assert about a diagram (OCR_UI_ROADMAP_C2 A9).
+
+    The importer builds a :class:`Diagram` with an empty board when the reader
+    located a diagram it could not read, and writes ``"default"`` into
+    ``side_to_move_source`` when nothing said whose move it is. An alt text that
+    then enumerates "tabuleiro vazio, jogam as brancas" tells a screen-reader
+    user two things nobody read. A hand-written node -- ``RecognitionPath.MANUAL``
+    with no reading -- and a node a human verified are trusted as written, an
+    empty board included: only the importer's placeholder is a non-reading.
+
+    Args:
+        node: The diagram node.
+
+    Returns:
+        ``(position_unknown, side_unknown, confidence)``: whether the position was
+        not recognised, whether the side to move has no origin, and the machine's
+        overall confidence when there was a machine reading.
+    """
+    fen = (node.fen or "").strip()
+    fields = fen.split()
+    placement = fields[0] if fields else ""
+    recognition = getattr(node, "recognition", None)
+    verified = bool(getattr(node, "verified_by_human", False))
+    path = str(getattr(recognition, "path", "manual") or "manual")
+    machine_read = recognition is not None and path != "manual"
+    confidence = getattr(recognition, "overall_confidence", None) if machine_read else None
+    source = getattr(recognition, "side_to_move_source", None)
+
+    trusted = verified or not machine_read
+    position_unknown = (placement == _EMPTY_PLACEMENT and not trusted) or not placement
+    if not trusted and not confidence:
+        position_unknown = True
+
+    side_field = fields[1] if len(fields) >= 2 and fields[1] in ("w", "b") else None
+    if side_field is None:
+        side_unknown = True
+    elif verified:
+        side_unknown = False
+    elif source in _UNKNOWN_SIDE_SOURCES:
+        side_unknown = True
+    else:
+        side_unknown = machine_read and source is None
+    return position_unknown, side_unknown, confidence
+
+
 def diagram_alt_text(node: Diagram | InlineDiagram) -> str:
     """Build an accessible description of a position.
 
@@ -245,6 +302,11 @@ def diagram_alt_text(node: Diagram | InlineDiagram) -> str:
     not a description. This names the stipulation when the node has one, then
     every piece and its square, so a screen-reader user gets the position rather
     than the fact that a position exists.
+
+    It never asserts what was not read (OCR_UI_ROADMAP_C2 A9): a diagram the
+    importer located but could not read says "posição não reconhecida", a side
+    nobody recorded says "lado a jogar desconhecido", and the machine's
+    confidence is quoted when there is one.
 
     Args:
         node: The diagram node.
@@ -258,6 +320,7 @@ def diagram_alt_text(node: Diagram | InlineDiagram) -> str:
 
     fen = (node.fen or "").strip()
     placement = fen.split(" ")[0] if fen else ""
+    position_unknown, side_unknown, confidence = _reading_status(node)
     parts: list[str] = []
     stipulation = getattr(node, "stipulation", None)
     if stipulation:
@@ -278,13 +341,26 @@ def diagram_alt_text(node: Diagram | InlineDiagram) -> str:
                 pieces.append(f"{name} em {'abcdefgh'[file_index]}{rank}")
             file_index += 1
 
-    side = "brancas" if _side_to_move(fen) == "w" else "pretas"
     head = "Diagrama de xadrez" if isinstance(node, Diagram) else "Diagrama de xadrez em miniatura"
-    parts.append(f"{head}, jogam as {side}")
-    if pieces:
-        parts.append("; ".join(pieces))
+    if side_unknown:
+        parts.append(f"{head}, lado a jogar desconhecido")
     else:
-        parts.append("tabuleiro vazio")
+        side = "brancas" if _side_to_move(fen) == "w" else "pretas"
+        parts.append(f"{head}, jogam as {side}")
+    if position_unknown:
+        notice = "posição não reconhecida"
+        if confidence is not None:
+            notice += f" (confiança da leitura: {confidence:.0%})"
+        parts.append(notice)
+        if pieces:
+            parts.append("leitura provisória: " + "; ".join(pieces))
+    else:
+        if confidence is not None:
+            parts.append(f"leitura automática com confiança de {confidence:.0%}")
+        if pieces:
+            parts.append("; ".join(pieces))
+        else:
+            parts.append("tabuleiro vazio")
     return ". ".join(parts) + "."
 
 
@@ -343,8 +419,12 @@ class DiagramRenderer:
         """
         style, width_mm = self._style_for(node)
         marks = tuple(self._marks_for(node))
+        alt_text = diagram_alt_text(node)
         key = (
             node.fen,
+            # The description depends on the reading's provenance, not only on
+            # the FEN: two nodes with the same board must not share a wrong one.
+            alt_text,
             style.font,
             str(style.theme),
             round(style.width_mm, 4),
@@ -379,7 +459,7 @@ class DiagramRenderer:
             svg=svg_text,
             width_mm=style.width_mm,
             height_mm=layout_height,
-            alt_text=diagram_alt_text(node),
+            alt_text=alt_text,
             fen=node.fen,
             orientation=style.orientation,
         )

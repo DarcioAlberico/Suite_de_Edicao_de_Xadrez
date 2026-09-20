@@ -11,7 +11,11 @@ what produced ``field_20260822_s99.json``, and reports ``detection_recall`` and
 
 The change under test is supplied as ``--variant``; ``baseline`` applies nothing
 and exists to prove the harness reproduces the published number on this machine
-before anything is compared to it.
+before anything is compared to it.  Since OCR_UI cycle 2 step A1 the trunk ships
+the F3 recall pack as its default (``chess_diagram_ocr.config.DEFAULT_RECALL``),
+so ``baseline`` and ``recall-pack`` are the same call and must print the same
+row (0,9913 / 1,0000); ``raw`` is the detector with every recovery off (the old
+baseline, 0,9478 / 0,9732) and is the sabotage that proves the gate can fail.
 
 Run it in the trunk's own environment so the number is comparable:
     ChessVisionOFF_Puro/.venv/Scripts/python.exe benchmarks/validate_detection.py \\
@@ -55,12 +59,16 @@ def downscaled_search(scale: float) -> Iterator[None]:
 
     original = bd._extract_candidate_quads
 
-    def patched(image_rgb: Any, rejected: Any = None, checker_floor: Any = bd.MIN_CHECKER_CONTRAST) -> Any:
+    def patched(
+        image_rgb: Any, rejected: Any = None, checker_floor: Any = bd.MIN_CHECKER_CONTRAST, _recall: Any = None
+    ) -> Any:
         height, width = image_rgb.shape[:2]
         small = cv2.resize(
             image_rgb, (max(1, int(width * scale)), max(1, int(height * scale))), interpolation=cv2.INTER_AREA
         )
-        found = original(small, rejected, checker_floor)
+        # The raw pass (`recall=None`): this variant is the record of half-scale *replacing*
+        # the search, and the recall pack on top of it would measure something else.
+        found = original(small, rejected, checker_floor, None)
         out = []
         for quad, score, bbox in found:
             back = np.asarray(quad, dtype=np.float32) / scale
@@ -88,7 +96,10 @@ VARIANTS: dict[str, Any] = {
     # not ship, however cheap it is.
     "downscale-0.75": lambda: downscaled_search(0.75),
     "downscale-0.5": lambda: downscaled_search(0.5),
-    # The three recoveries of `caissa.vision.detect.recall`, each measurable alone.
+    # The three recoveries of the trunk's `RecallOptions`, each measurable alone; the
+    # variants other than `recall-pack` are forced by the harness of
+    # `caissa.vision.detect.recall.recall_pack` because `field_eval` has no `recall=`.
+    "raw": lambda: _pack(scales=(), rescue_squares=False, embedded_floor=None),
     "multiscale": lambda: _pack(rescue_squares=False, embedded_floor=None),
     "square-rescue": lambda: _pack(scales=(), embedded_floor=None),
     "embedded-floor": lambda: _pack(scales=(), rescue_squares=False),

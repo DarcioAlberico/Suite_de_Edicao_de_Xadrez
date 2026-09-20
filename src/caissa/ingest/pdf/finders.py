@@ -1,12 +1,16 @@
 """Diagram finders the importer can be handed: the raster route (F3 vias B/C + F4).
 
-The importer's default finder is the vector detector (F3-A), which costs two
+The importer's default finder was the vector detector (F3-A), which costs two
 milliseconds a page and reads exactly -- but only on vector PDFs set with a
 chess font or drawn as paths.  Thirty-two of the forty-six books in the
-reference collection are scans or carry raster diagrams, and for those the
+reference collection are scans or carry raster diagrams (the Aagaard came out
+of the product's import with 0 diagrams -- ``OCR_UI_ANALISE_C2.md`` §3.2), so
+since OCR_UI ciclo 2 passo A2 the importer's default is :func:`combined_finder`
+(``PdfImportOptions.detect_raster_diagrams``), and for the raster books the
 trunk's detector (``chess_diagram_ocr.detection``, field recall 0,9913 with
-the F3 recall pack) and the F4 batched classifier (0,0903 s per diagram on the
-GPU) are the route.  This module wraps them in the importer's
+the F3 recall pack -- the trunk's own default since OCR_UI cycle 2 step A1)
+and the F4 batched classifier (0,0903 s per diagram on the GPU) are the
+route.  This module wraps them in the importer's
 :data:`~caissa.ingest.pdf.importer.DiagramFinder` shape.
 
 Kept out of ``importer.py`` on purpose: it imports the trunk, ``torch`` and
@@ -27,12 +31,24 @@ from typing import Any, Final
 
 import numpy as np
 
-from caissa.core.model import RecognitionPath
+from caissa.core.model import FenCandidate, RecognitionPath, SquareRepair
 from caissa.ingest.pdf.geometry import PageFrame
-from caissa.ingest.pdf.importer import DiagramFinder, DiagramHit, vector_diagram_finder
+from caissa.ingest.pdf.importer import (
+    DiagramFinder,
+    DiagramHit,
+    square_confidences_from_holes,
+    vector_diagram_finder,
+)
 from caissa.ingest.pdf.textlayer import PageText
 
-__all__ = ["combined_finder", "fill_holes", "inferred_font_finder", "raster_diagram_finder"]
+__all__ = [
+    "combined_finder",
+    "fill_holes",
+    "inferred_font_finder",
+    "raster_diagram_finder",
+    "shared_classifier",
+    "signal_from_prediction",
+]
 
 LOGGER = logging.getLogger("caissa.ingest.pdf.finders")
 
@@ -62,6 +78,168 @@ def _render_rgb(page: Any, dpi: int) -> np.ndarray:
     return buffer[:, :, :3].copy() if pix.n == _RGBA else buffer.copy()
 
 
+def shared_classifier() -> Any:
+    """The process's one square classifier, or ``None`` with the reason logged.
+
+    OCR_UI ciclo 2, passo A2: the finders borrowed a fresh ``load_classifier()``
+    each -- three loads for one ``combined_finder`` -- while
+    :func:`caissa.vision.classify.residency.acquire_square_classifier`, the
+    ADR-0004 way of sharing the VRAM budget with the window's own reads, had
+    no caller.  Now every finder that needs the model asks here: the residency
+    manager loads it once per process and keeps it (pinned); when the manager
+    cannot (no registration, a budget rule), the plain loader is the fallback;
+    when nothing can load it (no weights, no torch) the finder locates the
+    boards and leaves them unread, and the warning says why.
+    """
+    try:
+        from caissa.vision.classify.residency import shared_square_classifier
+
+        return shared_square_classifier()
+    except Exception as first:  # noqa: BLE001 - the plain loader is the second chance
+        try:
+            from caissa.vision.classify.batched import load_classifier
+
+            return load_classifier()
+        except Exception as second:  # noqa: BLE001 - no weights, no GPU: locate only, say so
+            LOGGER.warning(
+                "Classificador indisponível; diagramas serão localizados sem leitura "
+                "(residência: %s; carga direta: %s)", first, second,
+            )
+            return None
+
+
+def _model_hash(classifier: Any) -> str:
+    """Fingerprint of the weights behind ``classifier`` (passo C1).
+
+    A classifier borrowed through
+    :func:`~caissa.vision.classify.residency.acquire_square_classifier` carries
+    it as ``model_hash``; one from ``load_classifier()`` does not, and then the
+    production checkpoint's fingerprint is the honest answer, because that is
+    the only file ``load_classifier()`` loads.  ``""`` when nothing can be
+    read -- a report must not die for failing to identify itself.
+    """
+    known = getattr(classifier, "model_hash", "")
+    if known:
+        return str(known)
+    try:
+        from chess_diagram_ocr.checkpoint import (
+            checkpoint_fingerprint,  # type: ignore[import-not-found]
+        )
+        from chess_diagram_ocr.config import DEFAULT_MODEL_PATH  # type: ignore[import-not-found]
+
+        from caissa.vision.classify.cvoff import trunk_model_path
+
+        path = DEFAULT_MODEL_PATH if DEFAULT_MODEL_PATH.exists() else trunk_model_path()
+        return checkpoint_fingerprint(path)
+    except Exception:  # noqa: BLE001 - identity is a courtesy, never a failure
+        return ""
+
+
+#: Runner-up alternatives are offered for at most this many uncertain squares.
+_MAX_RUNNER_UPS: Final = 3
+_SQUARES: Final = 64
+_FILES: Final = 8
+#: The trunk's ``config.PIECE_CLASSES``, in the order the classifier's
+#: probabilities use.  Copied so the signal can be unpacked without importing
+#: the trunk; ``tests/unit/ingest/test_diagram_signal.py`` pins it equal.
+PIECE_CLASSES: Final = ("empty", "P", "N", "B", "R", "Q", "K", "p", "n", "b", "r", "q", "k")
+
+
+def a1_index_from_reading_index(index: int) -> int:
+    """``fen_utils.square_from_reading_index`` without the trunk: 0 = ``a8`` -> 56."""
+    if not 0 <= index < _SQUARES:
+        raise ValueError(f"índice de casa fora de 0..63: {index}")
+    return (_FILES - 1 - index // _FILES) * _FILES + index % _FILES
+
+
+def square_name_from_reading_index(index: int) -> str:
+    """``fen_utils.square_name`` without the trunk: 0 = ``a8``, 63 = ``h1``."""
+    if not 0 <= index < _SQUARES:
+        raise ValueError(f"índice de casa fora de 0..63: {index}")
+    return f"{'abcdefgh'[index % _FILES]}{_FILES - index // _FILES}"
+
+
+def signal_from_prediction(oriented: Any, *, model_hash: str = "") -> dict[str, Any]:
+    """The contract §1.2 fields of a :class:`DiagramHit` from one ``OrientedPrediction``.
+
+    The trunk's ``BoardPrediction`` numbers squares in **reading order** (0 =
+    ``a8``); the IR numbers them from ``a1``
+    (``RecognitionResult.per_square_confidence``), so every index goes through
+    ``fen_utils.square_from_reading_index``.  What is carried:
+
+    * ``square_confidences`` -- the probability of the chosen class per square;
+    * ``repairs`` -- ``decode.changed_squares`` as :class:`SquareRepair`, with
+      the classifier's confidence in what it had read;
+    * ``alternatives`` -- the discarded orientation when the policy called the
+      choice ambiguous (so the reader can *compare the two*), then the
+      runner-up piece on the least certain squares, one candidate each;
+    * ``orientation_ambiguous`` / ``orientation_reason`` -- the policy's verdict.
+
+    A prediction without the per-square distribution (a stub, an older trunk)
+    yields the orientation fields only and empty tuples for the rest.
+    """
+    prediction = oriented.prediction
+    orientation = {
+        "model_hash": model_hash,
+        "orientation_ambiguous": bool(getattr(oriented, "ambiguous", False)),
+        "orientation_reason": str(getattr(oriented, "reason", "") or ""),
+    }
+    raw = getattr(prediction, "square_confidences", None)
+    if raw is None:
+        return orientation
+    reading = [float(v) for v in raw]
+    if len(reading) != _SQUARES:
+        return orientation
+    by_a1 = [0.0] * _SQUARES
+    for index, value in enumerate(reading):
+        by_a1[a1_index_from_reading_index(index)] = value
+
+    def _letter(class_index: int) -> str:
+        name = PIECE_CLASSES[int(class_index)] if 0 <= int(class_index) < len(PIECE_CLASSES) else ""
+        return "" if name == "empty" else name
+
+    repairs: list[SquareRepair] = []
+    decode = getattr(prediction, "decode", None)
+    if decode is not None:
+        for square, before, after in getattr(decode, "changed_squares", ()):
+            repairs.append(
+                SquareRepair(
+                    square=square_name_from_reading_index(int(square)),
+                    recognised=_letter(before),
+                    repaired=_letter(after),
+                    reason="decodificação com restrições de legalidade",
+                    confidence_before=float(prediction.probs[int(square), int(before)]),
+                )
+            )
+
+    alternatives: list[FenCandidate] = []
+    other = getattr(oriented, "alternative", None)
+    if other is not None and bool(getattr(oriented, "ambiguous", False)):
+        alternatives.append(
+            FenCandidate(
+                fen=f"{other.fen_board} w - - 0 1",
+                score=float(other.min_confidence),
+                legal=not bool(getattr(getattr(other, "position", None), "is_fatal", False)),
+            )
+        )
+    rows = [list(_expand(row)) for row in prediction.fen_board.split("/")]
+    if len(rows) == _FILES and all(len(row) == _FILES for row in rows):
+        for square in list(getattr(prediction, "uncertain_squares", ()))[:_MAX_RUNNER_UPS]:
+            second, probability = prediction.runner_up(int(square))
+            board = [row[:] for row in rows]
+            board[int(square) // _FILES][int(square) % _FILES] = _letter(second) or "."
+            alternatives.append(
+                FenCandidate(fen=f"{_placement(board)} w - - 0 1", score=float(probability))
+            )
+
+    return {
+        **orientation,
+        "square_confidences": tuple(by_a1),
+        "repairs": tuple(repairs),
+        "alternatives": tuple(alternatives),
+    }
+
+
 def raster_diagram_finder(
     *,
     classify: bool = True,
@@ -88,19 +266,11 @@ def raster_diagram_finder(
     def _classifier() -> Any:
         if state["classifier"] is None and classify and not state["tried"]:
             state["tried"] = True
-            try:
-                from caissa.vision.classify.batched import load_classifier
-
-                state["classifier"] = load_classifier()
-            except Exception as exc:  # noqa: BLE001 - no weights, no GPU: locate only, say so
-                LOGGER.warning(
-                    "Classificador indisponível; diagramas serão localizados sem leitura: %s", exc
-                )
+            state["classifier"] = shared_classifier()
         return state["classifier"]
 
     def finder(page: Any, frame: PageFrame, _text: PageText) -> list[DiagramHit]:
         from caissa.vision.classify.cvoff import ensure_cvoff_on_path
-        from caissa.vision.detect.recall import recall_pack
 
         ensure_cvoff_on_path()
         from chess_diagram_ocr.detection import detect_diagrams  # type: ignore[import-not-found]
@@ -108,8 +278,11 @@ def raster_diagram_finder(
         started = time.perf_counter()
         rgb = _render_rgb(page, dpi)
         try:
-            with recall_pack():
-                candidates = detect_diagrams(page, rgb, max_boards=max_boards)
+            # The F3 recall pack (multi-scale, square rescue, embedded floor) is the
+            # trunk's own default since OCR_UI cycle 2 step A1 (`config.DEFAULT_RECALL`):
+            # the window and this finder now run the same function with the same options,
+            # and nothing is monkeypatched around the call any more.
+            candidates = detect_diagrams(page, rgb, max_boards=max_boards)
         except Exception as exc:  # noqa: BLE001 - a detector crash is a note, not a lost page
             LOGGER.warning("Detector raster falhou na página %d: %s", frame.index, exc)
             return []
@@ -128,18 +301,21 @@ def raster_diagram_finder(
                 oriented = ()
 
         hits: list[DiagramHit] = []
+        model_hash = _model_hash(model) if oriented else ""
         for index, candidate in enumerate(candidates):
             x0, y0, x1, y1 = candidate.bbox_pdf
             fen: str | None = None
             confidence = float(getattr(candidate, "detector_score", 0.0) or 0.0)
             path = RecognitionPath.GEOMETRIC
             white_bottom = True
+            signal: dict[str, Any] = {}
             if index < len(oriented):
                 prediction = oriented[index].prediction
                 fen = f"{prediction.fen_board} w - - 0 1"
                 confidence = float(prediction.min_confidence)
                 path = RecognitionPath.NEURAL
                 white_bottom = int(getattr(oriented[index], "rotation", 0)) == 0
+                signal = signal_from_prediction(oriented[index], model_hash=model_hash)
             hits.append(
                 DiagramHit(
                     box=(float(x0), float(y0), float(x1), float(y1)),
@@ -148,6 +324,7 @@ def raster_diagram_finder(
                     path=path,
                     method=str(getattr(candidate, "source", "raster")),
                     orientation_white=white_bottom,
+                    **signal,
                 )
             )
         LOGGER.debug(
@@ -196,14 +373,7 @@ def inferred_font_finder(
     def _classifier() -> Any:
         if state["classifier"] is None and not state["tried"]:
             state["tried"] = True
-            try:
-                from caissa.vision.classify.batched import load_classifier
-
-                state["classifier"] = load_classifier()
-            except Exception as exc:  # noqa: BLE001 - no weights: locate only, say so
-                LOGGER.warning(
-                    "Classificador indisponível; tabuleiros em fonte desconhecida ficam sem "
-                    "leitura: %s", exc)
+            state["classifier"] = shared_classifier()
         return state["classifier"]
 
     def finder(page: Any, frame: PageFrame, _text: PageText) -> list[DiagramHit]:
@@ -231,16 +401,24 @@ def inferred_font_finder(
                                frame.index, exc)
                 oriented = ()
         hits: list[DiagramHit] = []
+        model_hash = _model_hash(model) if oriented else ""
         for index, lattice in enumerate(lattices):
             x0, y0, x1, y1 = lattice.rect_pdf
             fen: str | None = None
             confidence = 0.0
             white_bottom = True
+            signal: dict[str, Any] = {}
             if index < len(oriented):
                 prediction = oriented[index].prediction
                 fen = f"{prediction.fen_board} w - - 0 1"
                 confidence = min(confidence_cap, float(prediction.min_confidence))
                 white_bottom = int(getattr(oriented[index], "rotation", 0)) == 0
+                signal = signal_from_prediction(oriented[index], model_hash=model_hash)
+                # The cap applies per square too: no cell of an inferred read
+                # may claim more than the route can (passo 10).
+                signal["square_confidences"] = tuple(
+                    min(confidence_cap, value) for value in signal.get("square_confidences", ())
+                )
             hits.append(DiagramHit(
                 box=(float(x0), float(y0), float(x1), float(y1)),
                 fen=fen,
@@ -249,6 +427,7 @@ def inferred_font_finder(
                 method=f"fonte fora do catálogo {lattice.font_name} ({lattice.font_size:.1f} pt): "
                        f"reticulado 8x8 renderizado e classificado",
                 orientation_white=white_bottom,
+                **signal,
             ))
         return hits
 
@@ -310,14 +489,20 @@ def fill_holes(hit: DiagramHit, classified_placement: str) -> DiagramHit | None:
             filled += 1
     from dataclasses import replace
 
+    confidence = min(INFERRED_CONFIDENCE_CAP, hit.confidence)
     return replace(
         hit,
         fen=f"{_placement(exact)} {' '.join(hit.fen.split()[1:])}".strip(),
-        confidence=min(INFERRED_CONFIDENCE_CAP, hit.confidence),
+        confidence=confidence,
         path=RecognitionPath.VECTOR_INFERRED,
         method=f"{hit.method}; {len(holes)} casa(s) ausentes na camada de texto lidas pelo "
                f"classificador ({filled} com peça)",
         holes=(),
+        # Passo C1: the filled cells were classified, not decoded -- they keep
+        # the capped confidence (below the 0,9 doubt line); the rest stays exact.
+        square_confidences=square_confidences_from_holes(
+            hit.holes, hit.orientation_white, hole_value=confidence
+        ),
     )
 
 
@@ -339,12 +524,7 @@ def combined_finder(
     def _classifier() -> Any:
         if state["classifier"] is None and not state["tried"]:
             state["tried"] = True
-            try:
-                from caissa.vision.classify.batched import load_classifier
-
-                state["classifier"] = load_classifier()
-            except Exception as exc:  # noqa: BLE001 - no weights: the holes stay empty, say so
-                LOGGER.warning("Classificador indisponível; casas ausentes ficam vazias: %s", exc)
+            state["classifier"] = shared_classifier()
         return state["classifier"]
 
     def refine(page: Any, frame: PageFrame, hits: list[DiagramHit]) -> list[DiagramHit]:

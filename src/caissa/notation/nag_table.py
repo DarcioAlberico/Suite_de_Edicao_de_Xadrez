@@ -232,6 +232,29 @@ SYMBOLIC_GLYPHS: tuple[str, ...] = tuple(glyph for glyph in SEARCHABLE_GLYPHS if
 #: Glifos que so valem colados no fim de um lance.
 SUFFIX_GLYPHS: tuple[str, ...] = tuple(nag.glyph for nag in NAG_TABLE if nag.suffix_only)
 
+#: **A cauda de anotacao de um lance, como alfabeto** -- todo ponto de codigo
+#: que pode vir colado ao fim de um lance sem fazer parte dele: os glifos que
+#: o tokenizador procura, todos os apelidos de fonte de livro e as quatro
+#: marcas ASCII (`!`, `?`, xeque e mate). Fonte unica (OCR_UI_ROADMAP_C2
+#: passo A4): o reparador de legalidade, o lexico do OCR, a fusao, a cifra,
+#: o extrator de lances e os instrumentos derivam daqui o que aceitam depois
+#: da casa de destino, e um teste levanta se algum deles tiver um ponto de
+#: codigo fora desta tabela. `⩲` (U+2A72) esta aqui; `⧲` (U+29F2, "quadrado
+#: barrado") nunca esteve na tabela e era o que os alfabetos antigos tinham.
+#:
+#: E a **cauda** que este alfabeto alarga -- nunca o alfabeto de substituicao
+#: da cifra nem a letra da peca (anti-padrao 5 do roadmap).
+MOVE_SUFFIX_CHARS: str = "".join(dict.fromkeys(
+    "".join(SEARCHABLE_GLYPHS) + "".join(BOOK_SYMBOL_ALIASES) + "!?+#"))
+
+
+def move_suffix_class() -> str:
+    """O corpo de uma classe de regex com :data:`MOVE_SUFFIX_CHARS`, escapado.
+
+    Para `[{move_suffix_class()}]{{0,3}}` no fim de um padrao de lance.
+    """
+    return "".join(re.escape(ch) for ch in MOVE_SUFFIX_CHARS)
+
 #: O que pode terminar um lance em SAN. E o que a espiada-atras do sufixo
 #: exige: `12.Nf4N` tem `4` antes do `N`, e `2.Nf3 Nc6` tem um espaco.
 _MOVE_END_CLASS = "[a-h1-8QRBNO#+=]"

@@ -209,9 +209,10 @@ só o caminho offline foi exercitado).
 
 ### 4.4 ~~F2 — unificar a ingestão de PDF~~ — **FEITO**, ver `F2_REPORT.md`
 `src/caissa/ingest/pdf/` (nove módulos, 5.754 linhas, 166 testes). `import_pdf(caminho)`
-devolve um `Document` com proveniência em cada nó; `PdfImportOptions.diagram_finder`
-recebe `combined_finder()` para ligar o detector do tronco e o classificador F4 (911
-diagramas lidos em 552 páginas do acervo); `PdfImportOptions.ocr` recebe um
+devolve um `Document` com proveniência em cada nó; o detector do tronco e o classificador F4
+(`combined_finder()`, 911 diagramas lidos em 552 páginas do acervo) são o finder **padrão**
+desde o OCR_UI ciclo 2 passo A2 (`PdfImportOptions.detect_raster_diagrams=False` volta à via
+vetorial só); `PdfImportOptions.ocr` recebe um
 `OcrProvider` para as páginas que o nível 0 rejeita.
 
 **Não era "limpeza interna, sem lacuna visível".** Ligar a cadeia inteira achou cinco

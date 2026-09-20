@@ -95,12 +95,20 @@ def _dump(document, target: Path) -> None:
 
 
 def run_book(
-    path: Path, pages: list[int], *, dump_dir: Path | None, finder: object = None
+    path: Path,
+    pages: list[int],
+    *,
+    dump_dir: Path | None,
+    finder: object = None,
+    raster: bool = True,
 ) -> dict[str, object]:
     started = time.perf_counter()
     with open_pdf(path) as doc:
         page_count = doc.page_count
-        result = import_pdf(doc, PdfImportOptions(pages=pages, diagram_finder=finder))  # type: ignore[arg-type]
+        result = import_pdf(
+            doc,
+            PdfImportOptions(pages=pages, diagram_finder=finder, detect_raster_diagrams=raster),  # type: ignore[arg-type]
+        )
     elapsed = time.perf_counter() - started
     report = result.report
     suspicious, boundaries = _continuity(result.document)
@@ -149,9 +157,18 @@ def main() -> int:
     parser.add_argument(
         "--raster",
         action="store_true",
-        help="liga a via raster (detector do tronco + classificador F4 na GPU) além da vetorial",
+        help="passa combined_finder() explicitamente (é o padrão do produto desde o OCR_UI "
+        "ciclo 2, passo A2; a opção fica pelo registro)",
+    )
+    parser.add_argument(
+        "--vetorial",
+        action="store_true",
+        help="só a via vetorial (detect_raster_diagrams=False): o padrão de antes do passo A2, "
+        "para medir o custo da via raster por página",
     )
     args = parser.parse_args()
+    if args.raster and args.vetorial:
+        parser.error("--raster e --vetorial se excluem")
     finder = None
     if args.raster:
         from caissa.ingest.pdf.finders import combined_finder
@@ -172,7 +189,7 @@ def main() -> int:
         with open_pdf(book) as doc:
             pages = _pages_arg(args.pages, doc.page_count, args.sample)
         try:
-            row = run_book(book, pages, dump_dir=dump_dir, finder=finder)
+            row = run_book(book, pages, dump_dir=dump_dir, finder=finder, raster=not args.vetorial)
         except Exception as exc:  # noqa: BLE001 - a crash is a finding, recorded and continued
             row = {"book": book.name, "error": f"{type(exc).__name__}: {exc}"}
         rows.append(row)
@@ -185,7 +202,7 @@ def main() -> int:
                 "generated": stamp,
                 "sample": args.sample,
                 "pages": args.pages,
-                "raster": args.raster,
+                "raster": not args.vetorial,
                 "books": rows,
             },
             ensure_ascii=False,

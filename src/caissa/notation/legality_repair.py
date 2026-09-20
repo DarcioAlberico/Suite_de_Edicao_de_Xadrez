@@ -57,21 +57,25 @@ import chess
 
 from .languages import (
     DETECTABLE,
+    LOCALES,
     Detection,
     detect_language,
     from_language,
     get_locale,
 )
+from .nag_table import BOOK_SYMBOL_ALIASES, MOVE_SUFFIX_CHARS, SEARCHABLE_GLYPHS
 
 __all__ = [
     "CONFUSIONS",
     "LegalityRepairer",
     "RepairReport",
     "RepairedMove",
+    "Skipped",
     "Unresolved",
     "canonical_castling",
     "repair_movetext",
     "split_numbering",
+    "split_tail",
 ]
 
 
@@ -142,15 +146,107 @@ CONFUSIONS: Final[Mapping[str, tuple[str, ...]]] = {
 #: Every dash a PDF ever put between the two ``O`` of a castling move.
 _DASHES: Final[str] = "-‐‑‒–—―−­_"
 
+#: Sentence punctuation a page leaves glued to a move: not annotation, not
+#: part of the move.
+_PUNCTUATION: Final[str] = ".,;:)]}"
+
 #: Evaluation glyphs and editorial marks that ride along at the end of a move
 #: and are not part of it.  Kept out of the repair entirely -- they belong to
-#: :mod:`caissa.notation.nag_table`, which already owns the full table.
-_TRAILING_JUNK: Final[str] = "!?∞±∓⧱⧲□→↑⇆©.,;:)]}"
+#: :mod:`caissa.notation.nag_table`, which owns the full table and is the one
+#: source of this alphabet (:data:`~caissa.notation.nag_table.MOVE_SUFFIX_CHARS`,
+#: OCR_UI_ROADMAP_C2 passo A4).  The check and mate marks are left *in* the
+#: core: the board re-derives them, and stripping them here would make every
+#: checking move look "repaired".
+_TRAILING_JUNK: Final[str] = (
+    "".join(ch for ch in MOVE_SUFFIX_CHARS if ch not in "+#") + _PUNCTUATION
+)
+
+#: Spelled-out check and mate marks every locale declares (``ch``, ``†``,
+#: ``xeque``, ``matt``, ``++``…), longest first, each with the ASCII mark it
+#: means.  Only the marks that are *not* already ``+``/``#`` are listed.
+_CHECK_ALIASES: Final[tuple[tuple[str, str], ...]] = tuple(
+    sorted(
+        (
+            (alias, mark)
+            for alias, mark in {
+                **{alias: "+" for loc in LOCALES.values() for alias in loc.check_aliases},
+                **{alias: "#" for loc in LOCALES.values() for alias in loc.mate_aliases},
+            }.items()
+            if alias not in ("+", "#")
+        ),
+        key=lambda pair: (-len(pair[0]), pair[0]),
+    )
+)
+
+#: What must precede a spelled-out check mark for it to be one: the rank of
+#: the target square, a promotion piece, or the last ``O`` of a castling.
+_BEFORE_CHECK_RE: Final[re.Pattern[str]] = re.compile(r"(?:[1-8]|=[A-Za-z♔-♟]|[OoО0])$")
+
+#: Evaluation symbols that *begin* with a check-like character (``+-``,
+#: ``+/-``, ``+=``, ``+–``): a tail that starts with one of them is an
+#: evaluation, not a check mark followed by junk.
+_EVAL_WITH_MARK: Final[tuple[str, ...]] = tuple(
+    sorted(
+        {
+            symbol
+            for symbol in (*SEARCHABLE_GLYPHS, *BOOK_SYMBOL_ALIASES)
+            if len(symbol) > 1 and symbol[0] in "+#" and symbol != "++"
+        },
+        key=len,
+        reverse=True,
+    )
+)
 
 _CASTLING_RE: Final[re.Pattern[str]] = re.compile(
     rf"^[0OoQОоС]\s*[{re.escape(_DASHES)}]\s*"
     rf"[0OoQОоС](?:\s*[{re.escape(_DASHES)}]\s*[0OoQОоС])?$"
 )
+
+#: Castling without the dashes (``OO``, ``OOO``), as the locales declare it.
+_CASTLING_ALIAS_RE: Final[re.Pattern[str]] = re.compile(r"^[OoО]{2,3}$")
+_CASTLING_ALIASES: Final[frozenset[str]] = frozenset(
+    alias.upper()
+    for loc in LOCALES.values()
+    for alias in loc.castling_aliases
+    if _CASTLING_ALIAS_RE.match(alias)
+)
+
+
+def _fold_check_alias(body: str) -> tuple[str, str]:
+    """``("Qxe4", "+")`` for ``Qxe4ch`` / ``Qxe4†``; ``(body, "")`` otherwise."""
+    lowered = body.casefold()
+    for alias, mark in _CHECK_ALIASES:
+        if lowered.endswith(alias.casefold()) and len(body) > len(alias):
+            rest = body[: -len(alias)]
+            if _BEFORE_CHECK_RE.search(rest):
+                return rest, mark
+    return body, ""
+
+
+def split_tail(token: str) -> tuple[str, str]:
+    """``(core, suffix)``: the move without its decoration, and its annotation.
+
+    The core keeps the check or mate mark (``Nf3+``) and folds a spelled-out
+    one into it (``Nf3ch``, ``Qxe4†``, ``Qf7++`` → ``Nf3+``, ``Qxe4+``,
+    ``Qf7#``).  The suffix is everything else that trailed the move, in the
+    alphabet of :data:`~caissa.notation.nag_table.MOVE_SUFFIX_CHARS` --
+    ``±``, ``⩲``, ``!?``, ``²`` -- with sentence punctuation dropped.  It is
+    what :attr:`RepairedMove.suffix` carries for the NAG pass.
+    """
+    core = token.strip().strip("()[]{}")
+    body = core.rstrip(_TRAILING_JUNK + "+#")
+    tail = core[len(body):]
+    body, mark = _fold_check_alias(body)
+    if not mark and not tail.startswith(_EVAL_WITH_MARK):
+        for alias, alias_mark in _CHECK_ALIASES:
+            if tail.startswith(alias) and alias.strip("+#") == "":
+                mark, tail = alias_mark, tail[len(alias):]
+                break
+        else:
+            if tail[:1] in ("+", "#"):
+                mark, tail = tail[0], tail[1:]
+    suffix = "".join(ch for ch in tail if ch not in _PUNCTUATION)
+    return body + mark, suffix
 
 #: ``1.e4``, ``1 . e4``, ``1...e4``, ``12…Qd8``, ``1)e4`` -- a move number glued
 #: to the move that follows it.  Group 3 is what is left over, and is empty when
@@ -168,6 +264,9 @@ def canonical_castling(token: str) -> str | None:
     ``О``/``о`` that Russian books print.
     """
     core = token.strip().rstrip(_TRAILING_JUNK + "+#").strip()
+    if _CASTLING_ALIAS_RE.match(core) and core.upper().replace("О", "O") in _CASTLING_ALIASES:
+        # ``OO`` / ``OOO``: the dashless spelling the locales declare.
+        return "O-O-O" if len(core) == 3 else "O-O"
     if not _CASTLING_RE.match(core):
         return None
     parts = [p for p in re.split(f"[{re.escape(_DASHES)}]", core) if p.strip()]
@@ -246,6 +345,13 @@ class RepairedMove:
     repairs: tuple[str, ...] = ()
     """Human-readable notes, one per transformation applied, in order."""
 
+    suffix: str = ""
+    """The annotation that trailed the move on the page (``±``, ``⩲``, ``!?``,
+    ``²``…), separated from it: the alphabet of
+    :data:`~caissa.notation.nag_table.MOVE_SUFFIX_CHARS`, punctuation dropped,
+    check and mate marks excluded (those are the board's).  Empty when the
+    move stood alone.  The NAG pass reads it; the repair never does."""
+
     @property
     def was_repaired(self) -> bool:
         return bool(self.repairs)
@@ -261,6 +367,23 @@ class Unresolved:
     reason: str
     near_misses: tuple[str, ...] = ()
     """Legal moves that were close but not close enough, for the review panel."""
+
+
+@dataclass(frozen=True)
+class Skipped:
+    """A token stepped over as prose **between two accepted moves**.
+
+    The replay skips what does not look like a move rather than failing on it,
+    so that a caption or an ECO code does not truncate a game.  A token skipped
+    between two moves is the one case where that silence can hide a loss -- a
+    move whose shape the reader did not recognise -- and so it is recorded
+    here instead of vanishing (OCR_UI_ROADMAP_C2 §1.3).
+    """
+
+    raw: str
+    ply: int
+    """Plies accepted before the token: the move it would have been."""
+    reason: str
 
 
 @dataclass(frozen=True)
@@ -291,6 +414,8 @@ class RepairReport:
     replayed_to_end: bool = False
     final_fen: str = ""
     tokens_seen: int = 0
+    skipped: tuple[Skipped, ...] = ()
+    """Tokens stepped over as prose between two accepted moves, in order."""
 
     @property
     def repaired_count(self) -> int:
@@ -334,8 +459,16 @@ _RESULTS: Final[frozenset[str]] = frozenset(
 #: The rule it encodes is the same and is worth restating -- **a move needs a
 #: rank digit** -- because that single requirement is what keeps ``Cada``,
 #: ``chances`` and ``brancas`` from ever reaching the board.
+#:
+#: The tail class is the annotation alphabet of :mod:`caissa.notation.nag_table`
+#: plus every dash of :data:`_DASHES` (long notation prints ``e2—e4``) and the
+#: capture and promotion marks.  The promotion aliases (``b8(Q``, ``b8/Q``) are
+#: *not* in it -- ``e4/e5`` in a sentence must stay prose -- they are read
+#: through the English locale first (see :func:`_is_move_like`).
 _MOVE_SHAPE: Final[re.Pattern[str]] = re.compile(
-    r"^[\w♔-♟?][\w♔-♟.\-+#=!?:×∞±∓⧱⧲□]{1,9}$",
+    r"^[\w♔-♟?][\w♔-♟."
+    + "".join(re.escape(ch) for ch in _DASHES + "+#=:×" + MOVE_SUFFIX_CHARS)
+    + r"]{1,9}$",
     re.UNICODE,
 )
 
@@ -359,8 +492,18 @@ def _is_move_like(token: str) -> bool:
     """
     if canonical_castling(token) is not None:
         return True
-    core = token.strip().strip("()[]{}").rstrip(_TRAILING_JUNK)
-    if not core or not _MOVE_SHAPE.match(core):
+    core = split_tail(token)[0]
+    if not core:
+        return False
+    # ``b8(Q)``, ``b8/Q``: the promotion aliases of the English locale, read as
+    # ``b8=Q`` before the shape test so the alias characters never widen it --
+    # ``e4/e5`` in a sentence is prose (``/`` is in the tail alphabet through
+    # ``+/-``, which is why the alias has to be resolved, not tolerated).
+    english = from_language(core, "en")
+    if english is None and any(ch in "/(" for ch in core):
+        return False
+    core = english or core
+    if not _MOVE_SHAPE.match(core):
         return False
     if not any(char.isalpha() or char in "♔♕♖♗♘♙♚♛♜♝♞♟" for char in core):
         return False
@@ -379,6 +522,7 @@ class _Attempt:
 
     moves: list[RepairedMove] = field(default_factory=list)
     unresolved: list[Unresolved] = field(default_factory=list)
+    skipped: list[Skipped] = field(default_factory=list)
     final_fen: str = ""
 
     @property
@@ -470,6 +614,7 @@ class LegalityRepairer:
             replayed_to_end=not best.unresolved and len(best.moves) > 0,
             final_fen=best.final_fen or start_fen,
             tokens_seen=len(tokens),
+            skipped=tuple(best.skipped),
         )
 
     def repair_token(self, token: str, board: chess.Board, *, locale: str | None = None) -> str | None:
@@ -547,6 +692,10 @@ class LegalityRepairer:
         attempt = _Attempt(locale=locale, prior=prior)
         ply = 0
         pending_number: int | None = None
+        #: Prose skipped since the last accepted move; it becomes
+        #: :attr:`_Attempt.skipped` only if another move follows, so that the
+        #: sentence after the last move of a game is not "between two moves".
+        pending_skips: list[Skipped] = []
 
         for token in tokens:
             if self._is_numbering(token):
@@ -557,7 +706,10 @@ class LegalityRepairer:
             if not _is_move_like(token):
                 # Prose, a caption, an ECO code: skipped, not failed.  Only a
                 # token that *looks* like a move and still cannot be resolved
-                # stops the replay.
+                # stops the replay.  Between two moves the skip is recorded.
+                if attempt.moves:
+                    pending_skips.append(
+                        Skipped(raw=token, ply=ply, reason="not shaped like a move"))
                 continue
 
             resolved = self._resolve(token, board, locale)
@@ -577,6 +729,8 @@ class LegalityRepairer:
                 break
 
             san, confidence, repairs = resolved
+            attempt.skipped.extend(pending_skips)
+            pending_skips = []
             attempt.moves.append(
                 RepairedMove(
                     raw=token,
@@ -586,6 +740,7 @@ class LegalityRepairer:
                     number=pending_number,
                     confidence=confidence,
                     repairs=repairs,
+                    suffix=split_tail(token)[1],
                 )
             )
             board.push_san(san)
@@ -673,8 +828,8 @@ class LegalityRepairer:
 
     @staticmethod
     def _core(token: str) -> str:
-        """The token without leading/trailing decoration."""
-        return token.strip().strip("()[]{}").rstrip(_TRAILING_JUNK).strip()
+        """The token without leading/trailing decoration -- see :func:`split_tail`."""
+        return split_tail(token)[0].strip()
 
     def _hypotheses(
         self, token: str, locale: str | None
@@ -749,6 +904,20 @@ class LegalityRepairer:
         # rewritten by it.
         folded = unicodedata.normalize("NFKC", core)
         yield from emit(folded, 0.99, ("Unicode NFKC folding",))
+
+        # Long notation with a typographic dash (``e2—e4``, ``Ng1–f3``): the
+        # same move :mod:`chess` reads with the ASCII hyphen.  The dash list is
+        # the one castling already accepts.
+        if any(ch in _DASHES and ch != "-" for ch in core):
+            dashed = "".join("-" if ch in _DASHES else ch for ch in core)
+            yield from emit(dashed, 0.99, (f"dash normalised: {core} -> {dashed}",))
+
+        # The English locale's own aliases -- ``b8(Q)``, ``b8/Q``, ``OO`` --
+        # read through the locale table so the repairer and the languages
+        # module agree on what a promotion or a castling may look like.
+        english = from_language(core, "en")
+        if english is not None and english != core:
+            yield from emit(english, 0.97, (f"notation alias: {core} -> {english}",))
 
         if locale is not None:
             translated = from_language(core, locale)
