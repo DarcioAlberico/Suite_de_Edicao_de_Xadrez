@@ -125,6 +125,22 @@ def main(argv: list[str] | None = None) -> int:
 
         return assistente.main(argumentos)
 
+    if "--importar-acervo" in argumentos:
+        # `Caissa.exe --importar-acervo <raiz>`: traz o dataset, a galeria, os indices e os
+        # pesos de outra instalacao (o tronco, um pendrive) para a pasta deste .exe, sem
+        # apagar nada daqui. `--rascunho` so mostra. O resto dos argumentos vai ao modulo.
+        posicao = argumentos.index("--importar-acervo")
+        if posicao + 1 >= len(argumentos):
+            sys.stderr.write("--importar-acervo precisa da pasta de origem" + chr(10))
+            return 2
+        origem = argumentos[posicao + 1]
+        restantes = argumentos[:posicao] + argumentos[posicao + 2 :]
+        gravar = [] if "--rascunho" in restantes else ["--gravar"]
+        restantes = [a for a in restantes if a != "--rascunho"]
+        import caissa_dados
+
+        return caissa_dados.main(["--de", origem, *gravar, *restantes])
+
     if not os.environ.get("CAISSA_SEM_CHECAGEM"):
         faltando = _faltam_obrigatorios()
         if faltando and _avisar_e_oferecer(faltando):
