@@ -882,6 +882,21 @@ def _dialogo_de_atalhos(sala: _Sala) -> list[tuple[str, Any]]:
     return [("JanelaDeAtalhos (Ver | Atalhos)", JanelaDeAtalhos(sala.janela))]
 
 
+def _dialogo_de_configuracoes(sala: _Sala) -> list[tuple[str, Any]]:
+    """Ferramentas ▸ Configurações…: uma aba por seção de `settings.Settings`.
+
+    Sem `ao_salvar`, o botão Salvar só fecha -- o arnês não grava preferência de ninguém.
+    """
+    from chess_diagram_ocr.qt.dialogo_de_configuracoes import DialogoDeConfiguracoes
+
+    return [
+        (
+            "DialogoDeConfiguracoes (Ferramentas | Configurações…)",
+            DialogoDeConfiguracoes(sala.janela),
+        )
+    ]
+
+
 def _dialogo_de_estatisticas(sala: _Sala) -> list[tuple[str, Any]]:
     from chess_diagram_ocr.qt.painel_do_dataset import JanelaDeEstatisticas
 
@@ -938,6 +953,7 @@ def _controlador_de_treino(sala: _Sala) -> list[tuple[str, Any]]:
 RECEITAS: dict[str, Any] = {
     "ControladorDeTreino": _controlador_de_treino,
     "DialogoDeBases": _dialogo_de_bases,
+    "DialogoDeConfiguracoes": _dialogo_de_configuracoes,
     "DialogoDeEscopo": _dialogo_de_escopo,
     "DialogoDePartidas": _dialogo_de_partidas_da_base,
     "DialogoDeTreino": _dialogo_de_treino,

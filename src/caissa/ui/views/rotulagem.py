@@ -26,6 +26,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -1534,6 +1535,22 @@ class DialogoDaFila(QDialog):
         self.painel._score_pages()
 
 
+def _preferencias_de_treino() -> Any:
+    """`settings.training` do tronco, ou os padrões da suíte quando o tronco não está ao alcance.
+
+    Devolve um objeto com `ocr_iterations`, `ocr_learning_rate` e `ocr_negatives`. O tronco
+    é opcional para este módulo (a vista roda nos testes da suíte sem ele), e os números de
+    fallback são os mesmos que `TrainingSettings` declara -- o diálogo abre igual nos dois casos.
+    """
+    try:
+        from chess_diagram_ocr.settings import load_settings
+    except ImportError:
+        return SimpleNamespace(
+            ocr_iterations=2000, ocr_learning_rate=0.001, ocr_negatives=RECOMMENDED_NEGATIVES
+        )
+    return load_settings().training
+
+
 class DialogoDeTreino(QDialog):
     """*Treinar…* — o ajuste fino, por padrão para o livro aberto (ROTULAGEM.md §7a)."""
 
@@ -1592,11 +1609,15 @@ class DialogoDeTreino(QDialog):
         self.iterations = QSpinBox(self)
         self.iterations.setRange(100, 50000)
         self.iterations.setSingleStep(100)
-        self.iterations.setValue(2000)
+        # Os padrões dos três controles vêm de `data/settings.json` do tronco (Ferramentas ▸
+        # Configurações…): o que a pessoa fixa lá é o que este diálogo abre mostrando; mudar
+        # aqui vale só para este treino.
+        treino = _preferencias_de_treino()
+        self.iterations.setValue(treino.ocr_iterations)
         self.iterations.setAccessibleName("Iterações")
         linha.addWidget(self.iterations)
         linha.addWidget(QLabel("taxa", self))
-        self.rate = QLineEdit("0.001", self)
+        self.rate = QLineEdit(f"{treino.ocr_learning_rate:g}", self)
         self.rate.setAccessibleName("Taxa de aprendizado")
         self.rate.setFixedWidth(70)
         linha.addWidget(self.rate)
@@ -1612,7 +1633,7 @@ class DialogoDeTreino(QDialog):
         self.negatives = QSpinBox(self)
         self.negatives.setRange(0, 5000)
         self.negatives.setSingleStep(20)
-        self.negatives.setValue(RECOMMENDED_NEGATIVES)
+        self.negatives.setValue(treino.ocr_negatives)
         self.negatives.setAccessibleName("Negativos")
         self.negatives.setToolTip(
             "Linhas de prosa do livro re-renderizadas sob foto, ruído, manchas e fax, "
