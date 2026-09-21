@@ -124,16 +124,81 @@ def _slice(report: Any) -> dict[str, Any]:
         "pages", "annotated", "detected", "matched", "false_positives", "detection_recall",
         "detection_precision", "legal", "above_gate", "exported", "export_rate", "comparable",
         "exact", "conditional_exact", "exported_comparable", "exported_exact", "exported_wrong",
-        "field_exact", "repaired_squares", "repaired_diagrams", "seconds", "seconds_per_diagram",
+        "field_exact", "repaired_squares", "repaired_diagrams", "next_move_checked",
+        "next_move_replayed", "next_move_repaired", "next_move_repaired_exact",
+        "next_move_repaired_wrong", "next_move_ambiguous", "colour_repaired",
+        "colour_repaired_squares", "colour_repaired_exact", "colour_repaired_wrong",
+        "seconds", "seconds_per_diagram",
     )
     return {key: data[key] for key in keep if key in data}
 
 
-def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path) -> tuple[dict[str, Any], Any]:
+def _profile_calibrator(path: Path | None, sabotage: str = "") -> Any:
+    """A colour calibrator taken from one profile file for every PDF (C5 measurement), or the
+    default resolver (the profile stored per book) when no path is given.  ``cor_trocada``
+    swaps the white and black samples of whatever calibrator is resolved."""
+    from chess_diagram_ocr.cor_por_livro import CalibradorDeCor, calibrador_do_livro
+
+    fixed = None
+    if path is not None:
+        import json
+
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        fixed = CalibradorDeCor.from_dict(data.get("colour") if "colour" in data else data)
+
+    def resolve(pdf_source: Any) -> Any:
+        calibrador = fixed if fixed is not None else calibrador_do_livro(pdf_source)
+        if calibrador is not None and sabotage == "cor_trocada":
+            return CalibradorDeCor(brancas=calibrador.pretas, pretas=calibrador.brancas,
+                                   diagramas=calibrador.diagramas, medida=calibrador.medida)
+        return calibrador
+
+    return resolve if (path is not None or sabotage == "cor_trocada") else None
+
+
+@contextlib.contextmanager
+def _sabotage(name: str):
+    """C11 sabotage ``lance_vizinho``: every diagram of a page gets the *next* diagram's line
+    of moves (cyclic); a page with one diagram keeps its own.  A next-move signal that still
+    repairs under this feeds on coincidence, and the gate must say so."""
+    if name != "lance_vizinho":
+        yield
+        return
+    import dataclasses
+
+    from chess_diagram_ocr import service as trunk_service
+
+    original = trunk_service.contexts_for_pdf_page
+
+    def rotated(*args: Any, **kwargs: Any) -> Any:
+        contexts = list(original(*args, **kwargs))
+        if len(contexts) < 2:
+            return contexts
+        lines = [getattr(c, "first_moves_text", "") if c is not None else "" for c in contexts]
+        numbers = [getattr(c, "first_move_number", None) if c is not None else None for c in contexts]
+        out = []
+        for index, context in enumerate(contexts):
+            source = (index + 1) % len(contexts)
+            if context is None:
+                out.append(None)
+                continue
+            out.append(dataclasses.replace(
+                context, first_moves_text=lines[source], first_move_number=numbers[source]))
+        return out
+
+    trunk_service.contexts_for_pdf_page = rotated
+    try:
+        yield
+    finally:
+        trunk_service.contexts_for_pdf_page = original
+
+
+def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path,
+             sabotage: str = "") -> tuple[dict[str, Any], Any]:
     from chess_diagram_ocr.field_eval import evaluate_field
 
     started = time.perf_counter()
-    with _variant(variant):
+    with _variant(variant), _sabotage(sabotage):
         report = evaluate_field(pages, options=options, pdf_dir=pdf_dir)
     elapsed = time.perf_counter() - started
     row = _slice(report)
@@ -152,6 +217,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--corrections", action="store_true", help="Also report with the proven-error overlay.")
     parser.add_argument("--tag", default="")
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "benchmarks" / "reports")
+    parser.add_argument("--sabotar", default="", choices=("", "sem_lance", "lance_vizinho", "sem_cor",
+                                                            "cor_trocada", "sem_evidencia"),
+                        help="C11: sem_lance desliga o lance seguinte (RecognitionOptions.next_move); "
+                             "lance_vizinho dá a cada diagrama a linha de lances do diagrama vizinho. "
+                             "C5: sem_cor desliga o calibrador de cor; cor_trocada troca as amostras "
+                             "brancas pelas pretas no perfil do livro (os protótipos embaralhados). "
+                             "sem_evidencia desliga os dois (o antes da fase 3).")
+    parser.add_argument("--perfil", type=Path, default=None,
+                        help="C5: um perfil de livro (JSON de caissa.ocr.book_profile) a usar em todo "
+                             "PDF da medição, em vez do perfil gravado por livro.")
     args = parser.parse_args(argv)
     variants = args.variant or ["recall-pack"]
     if args.runs < 3:
@@ -179,12 +254,15 @@ def main(argv: list[str] | None = None) -> int:
         options = RecognitionOptions(
             model_path=Path(model), max_boards=args.max_boards, dpi=args.dpi,
             refine_detected_boards=refine,
+            next_move=args.sabotar not in ("sem_lance", "sem_evidencia"),
+            colour=args.sabotar not in ("sem_cor", "sem_evidencia"),
+            colour_calibrator=_profile_calibrator(args.perfil, args.sabotar),
         )
         for ruler, pages, hit in rulers:
             runs = []
             reports = []
             for _ in range(args.runs):
-                row, report = run_once(pages, options, detection, root / "PDF")
+                row, report = run_once(pages, options, detection, root / "PDF", args.sabotar)
                 runs.append(row)
                 reports.append(report)
             drift = {key for row in runs for key in INVARIANT_KEYS if row[key] != runs[0][key]}
@@ -198,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
             chosen["wall_s_all"] = [row["wall_s"] for row in runs]
             chosen["runs"] = args.runs
             chosen["variant"] = variant
+            chosen["sabotage"] = args.sabotar
             chosen["ruler"] = ruler
             chosen["model"] = str(model)
             chosen["corrections_applied"] = [

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -46,13 +46,20 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from caissa.ingest.pdf.geometry import PageFrame
-from caissa.ingest.pdf.textlayer import PageText, TextLine, TextSpan
+from caissa.ingest.pdf.geometry import PageFrame, RectT
+from caissa.ingest.pdf.textlayer import (
+    CIPHER_ORIGIN,
+    FIGURINE_MODEL_ORIGIN,
+    PageText,
+    TextLine,
+    TextSpan,
+)
 from caissa.ocr.arbiter import SCALE_OF, ArbitrationOutcome, RegionTask
 from caissa.ocr.cancel import OcrCanceled, check_cancel
 from caissa.ocr.decision import Decision, RegionDecision
 from caissa.ocr.engines.base import OcrEngine
 from caissa.ocr.engines.pdf_text_layer import TextLayerVerdict
+from caissa.ocr.notation.book_cipher import STYLE_ANY, body_size_of, size_class
 from caissa.ocr.page import PageConfig, PageOutcome, PageRecognizer, PageTask, RegionOutcome
 from caissa.ocr.portfolio import Portfolio, PortfolioConfig, Variant, build_portfolio
 from caissa.ocr.types import BBox, OcrLine, OcrResult, RegionKind
@@ -72,6 +79,7 @@ LOGGER = logging.getLogger("caissa.ingest.pdf.ocr_service")
 _DECISION_RANK = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 0}
 #: Engine name the fine-tuned figurine model's readings carry in the fusion.
 FIGURINE_ENGINE = "tesseract_figurine"
+assert FIGURINE_ENGINE == FIGURINE_MODEL_ORIGIN, "the span's figurine origin names this engine"
 #: The movetext-profile strips of passo B2, under their own name so they never anchor.
 STRIPS_ENGINE = "tesseract_strips"
 assert STRIPS_ENGINE in SCALE_OF, "the strips are Tesseract readings: they borrow its scale"
@@ -230,6 +238,22 @@ class OcrServiceConfig:
     #: below this score is not worth the variants either (noise is noise
     #: on every image).  In between, the portfolio earns its cost.
     min_score_for_variants: float = 0.15
+    #: OCR_UI ciclo 2, passo B10: the book cipher settles a symbol per
+    #: *style* — the size class of the line the symbol was seen on, against
+    #: the page's body size (:func:`caissa.ocr.notation.book_cipher.size_class`)
+    #: — before it settles the style-less row, so a look-alike the main line
+    #: and the small-type variations use for two different figurines proves
+    #: in each.  ``False`` keys every observation to the style-less row (the
+    #: table of before).
+    cipher_style: bool = True
+    #: B10: a row whose last ``cipher_window`` pages agree is proven for the
+    #: pages that follow even when an earlier page contradicted it (a window
+    #: of pages, because the swaps of one page are one burst).  ``0`` is the
+    #: table of before: a contradiction counts for ever.
+    cipher_window: int = 6
+    #: B10: the row's piece is the majority of its evidence, not the first
+    #: swap seen.  ``False`` is the version-1 rule -- the sabotage.
+    cipher_majority: bool = True
 
 
 # --------------------------------------------------------------------------- #
@@ -445,11 +469,21 @@ class PageRecognition:
 
     def to_page_text(self, frame: PageFrame) -> PageText:
         """The importer's shape: one line per OCR line, with the span
-        carrying confidence, engine and the review flag."""
+        carrying confidence, engine and the review flag.
+
+        A word that carries a figurine gets a span of its own, with the
+        engine that put the figurine there — the glyph reader, the book's
+        figurine model, or the cipher (an inference, not a reading) — and
+        that word's confidence (OCR_UI ciclo 2, B10/G7).  Before this the
+        line collapsed into one span with the line's worst confidence and the
+        origin of a figurine survived only in the trace; the reviewer could
+        not tell a figurine read at 0,99 from one the cipher inferred.
+        """
         lines: list[TextLine] = []
         scale = frame.scale_for(self.dpi)
         for region in self.emitted:
             review = region.decision.decision is Decision.REVIEW
+            origins = _figurine_origins(region)
             for index, line in enumerate(region.result.lines):
                 text = line.text
                 if not text.strip() or _is_board_coordinates(text):
@@ -459,10 +493,8 @@ class PageRecognition:
                 size = (line.font_size / scale) if line.font_size else (box[3] - box[1])
                 lines.append(TextLine(
                     box=box,
-                    spans=(TextSpan(text=text, box=box, size=size, baseline=box[3],
-                                    confidence=float(line.confidence),
-                                    engine=region.engine, review=review,
-                                    verified=region.verified),),
+                    spans=_line_spans(line, text, box, size, region, review, origins, frame,
+                                      self.dpi),
                     block_index=(int(line.block_index) if line.block_index >= 0
                                  else region.reading_order * 1000 + index),
                 ))
@@ -700,6 +732,10 @@ class OcrService:
         portfolio: Portfolio | None = None
         regions: list[RegionRecognition] = []
 
+        # B10: the page's body size, so a region (and a token) can say whether
+        # it is set in the body face, in small type or in display type.
+        body_size = body_size_of(
+            line.font_size for r in outcome.regions for line in r.result.lines)
         for region_outcome in outcome.regions:
             check_cancel()
             base = self._candidate("original", region_outcome)
@@ -724,7 +760,8 @@ class OcrService:
                         if c is not None])
             for extra in self._run_readings(readings):
                 candidates.extend(extra)
-            regions.append(self._settle(region_outcome, candidates, task, recognizer))
+            regions.append(self._settle(region_outcome, candidates, task, recognizer,
+                                        body_size=body_size))
 
         # A page where every region died inside the engine is not "a page
         # with nothing to read": it is a setup fault (a tessdata folder
@@ -1271,11 +1308,22 @@ class OcrService:
                           decision=decision, score=score, outcome=arbitration, secondary=True)]
 
     def _settle(self, region_outcome: RegionOutcome, candidates: list[Candidate],
-                task: PageTask, recognizer: PageRecognizer | None = None) -> RegionRecognition:
-        """Pick the best candidate, fuse, validate, and record everything."""
+                task: PageTask, recognizer: PageRecognizer | None = None, *,
+                body_size: float = 0.0) -> RegionRecognition:
+        """Pick the best candidate, fuse, validate, and record everything.
+
+        ``body_size`` is the page's body line size (B10): with it the region
+        and each swapped token get a style for the book cipher; without it
+        every observation is style-less.
+        """
         cfg = self.config
         if recognizer is None:
             recognizer = self.recognizer_for(task.lang)
+        if not body_size:
+            body_size = body_size_of(line.font_size for line in region_outcome.result.lines)
+        region_style = (size_class(body_size_of(line.font_size
+                                                for line in region_outcome.result.lines),
+                                   body_size) if cfg.cipher_style else STYLE_ANY)
         # Who may hold the anchor seat.  The second opinions never do; and a
         # secondary engine (OCR_UI_ROADMAP passo 1: RapidOCR) does not where
         # the glyph reader sees figurines — measured on the SFC4 scans, it
@@ -1311,7 +1359,8 @@ class OcrService:
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
                     if self.book_cipher is not None:
-                        self._observe_glyph_swaps(fused, task.page_index, task.lang)
+                        self._observe_glyph_swaps(fused, task.page_index, task.lang,
+                                                  body_size=body_size if cfg.cipher_style else 0.0)
                     if (cfg.fusion_rescue and best.decision.decision is Decision.ABSTAINED
                             and decision.decision is Decision.ABSTAINED):
                         rescued = self._rescue_abstained(
@@ -1342,11 +1391,14 @@ class OcrService:
                 side_to_move=diagram.side_to_move if diagram else None,
                 notation_locale=context.notation_locale if context else None,
                 image=task.image if task.pdf_page is None else None,
-                book_cipher=book.proven() if book is not None else None)
+                book_cipher=(book.proven(style=region_style if cfg.cipher_style else None,
+                                         window=cfg.cipher_window, majority=cfg.cipher_majority)
+                             if book is not None else None))
             result, decision, legality = validated.result, validated.decision, validated.as_dict()
             if book is not None:
                 for symbol, piece, raw, san in validated.proven_pieces:
-                    book.observe(symbol, piece, page=task.page_index, raw=raw, san=san)
+                    book.observe(symbol, piece, page=task.page_index, raw=raw, san=san,
+                                 style=region_style, confidence=float(decision.score))
             if diagram is not None:
                 legality["diagram"] = list(diagram.box)
         return RegionRecognition(
@@ -1444,7 +1496,8 @@ class OcrService:
             decision.review_threshold, decision.reasons_pt + (reason,),
             decision.evidence, decision.flagged_words, True, decision.legality)
 
-    def _observe_glyph_swaps(self, fused: Any, page_index: int, lang: str) -> None:
+    def _observe_glyph_swaps(self, fused: Any, page_index: int, lang: str, *,
+                             body_size: float = 0.0) -> None:
         """Feed the book cipher the look-alike → figurine swaps the fusion made.
 
         Each swap (``Hea!`` → ``♖e8!``) is the glyph reader's visual proof, at
@@ -1453,6 +1506,10 @@ class OcrService:
         the table can demand more of them than of a legal replay.  A piece
         letter of the book's own language is never recorded as a symbol
         (SPEC R2.3): a table row ``R → B`` would rewrite a printed rook.
+
+        B10: each observation carries the *style* of the line the token sits
+        on (its size class against ``body_size``; style-less when ``0``) and
+        the confidence of the reading that made the swap.
         """
         from caissa.ocr.fusion import _FIGURINES, _NUMBER_PREFIX, _figurine_cut
         from caissa.ocr.notation.cipher import ENGLISH_PIECES, _piece_letters
@@ -1460,7 +1517,15 @@ class OcrService:
         letters = dict(zip("♔♕♖♗♘♙♚♛♜♝♞♟", "KQRBNPKQRBNP", strict=True))
         first = (lang or "").split("+")[0]
         guarded = _piece_letters(first) | frozenset(ENGLISH_PIECES)
-        for token in fused.tokens:
+        # The fused result's words are the tokens in order, line by line
+        # (``fusion._rebuild``): walking both together gives each token its line.
+        styles: list[str] = []
+        if body_size:
+            for line in fused.result.lines:
+                styles.extend([size_class(line.font_size, body_size)] * len(line.words))
+        if len(styles) != len(fused.tokens):
+            styles = [STYLE_ANY] * len(fused.tokens)
+        for token, style in zip(fused.tokens, styles, strict=True):
             if token.chosen_from == fused.anchor or not token.readings:
                 continue
             anchor = token.readings[0].text
@@ -1480,8 +1545,11 @@ class OcrService:
                     or any(ch in _FIGURINES for ch in symbol)
                     or (len(symbol) > 1 and all(ch.isalnum() for ch in symbol))):
                 continue
+            swap_confidence = max((r.confidence for r in token.readings
+                                   if r.source == token.chosen_from), default=token.confidence)
             self.book_cipher.observe(symbol, letters[core_c[0]], page=page_index,
-                                     raw=anchor, san=chosen, source="glyph")
+                                     raw=anchor, san=chosen, source="glyph", style=style,
+                                     confidence=float(swap_confidence))
 
     def _diagram_for(self, box_px: BBox, task: PageTask) -> DiagramRef | None:
         """The diagram a movetext region most plausibly continues from.
@@ -1512,6 +1580,79 @@ class OcrService:
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+
+
+_FIGURINE_CHARS = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
+
+
+def _figurine_origins(region: RegionRecognition) -> dict[str, str]:
+    """token text → engine that produced the figurine in it, for the region.
+
+    From the trace the fusion and the validation left in the result's meta:
+    ``fusion_tokens`` (``from`` = ``variant/engine`` of the winning reading)
+    and ``book_cipher_applied`` (raw → decoded, the cipher's rewrites).  A
+    token in both is the cipher's (:data:`~caissa.ingest.pdf.textlayer.CIPHER_ORIGIN`):
+    the cipher ran last.
+    """
+    origins: dict[str, str] = {}
+    meta = region.result.meta
+    for token in meta.get("fusion_tokens", ()) or ():
+        if not isinstance(token, Mapping):
+            continue
+        text = str(token.get("text", ""))
+        engine = str(token.get("from", "")).rsplit("/", 1)[-1]
+        if text and engine and any(ch in _FIGURINE_CHARS for ch in text):
+            origins[text] = engine
+    applied = meta.get("book_cipher_applied")
+    if isinstance(applied, Mapping):
+        for decoded in applied.values():
+            if any(ch in _FIGURINE_CHARS for ch in str(decoded)):
+                origins[str(decoded)] = CIPHER_ORIGIN
+    return origins
+
+
+def _line_spans(line: OcrLine, text: str, box: RectT, size: float, region: RegionRecognition,
+                review: bool, origins: Mapping[str, str], frame: PageFrame,
+                dpi: float) -> tuple[TextSpan, ...]:
+    """The spans of one OCR line: one, unless a word carries a figurine.
+
+    The figurine word becomes its own span with its own confidence and the
+    origin of the figurine (``figurine_origin``: the glyph reader, the
+    figurine model, or the cipher); the words around it keep the line's
+    span.  Every span keeps the region's ``engine`` -- the block's
+    provenance says who read the words (Sol §SOL-10), the glyph's says who
+    put the piece there.  Word boxes come from the OCR; the line box is what
+    the text-flow uses.
+    """
+    common = dict(size=size, baseline=box[3], review=review, verified=region.verified)
+    if not any(ch in _FIGURINE_CHARS for ch in text) or not line.words:
+        return (TextSpan(text=text, box=box, confidence=float(line.confidence),
+                         engine=region.engine, **common),)
+    spans: list[TextSpan] = []
+    buffer: list[str] = []
+    for word in line.words:
+        if not any(ch in _FIGURINE_CHARS for ch in word.text):
+            buffer.append(word.text)
+            continue
+        if buffer:
+            spans.append(TextSpan(text=" ".join(buffer) + " ", box=box,
+                                  confidence=float(line.confidence), engine=region.engine,
+                                  **common))
+            buffer = []
+        origin = origins.get(word.text, "")
+        if origin == region.engine:
+            origin = ""
+        px = (word.box.x0, word.box.y0, word.box.x1, word.box.y1)
+        spans.append(TextSpan(text=word.text + " ", box=frame.pixels_to_page(px, dpi),
+                              confidence=float(word.confidence), engine=region.engine,
+                              figurine_origin=origin, **common))
+    if buffer:
+        spans.append(TextSpan(text=" ".join(buffer), box=box, confidence=float(line.confidence),
+                              engine=region.engine, **common))
+    elif spans:
+        last = spans[-1]
+        spans[-1] = replace(last, text=last.text.rstrip())
+    return tuple(spans)
 
 
 def _to_gray(image: NDArray[Any]) -> NDArray[np.uint8]:

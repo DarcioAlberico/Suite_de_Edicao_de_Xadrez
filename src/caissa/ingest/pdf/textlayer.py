@@ -54,6 +54,9 @@ if TYPE_CHECKING:
     from caissa.ocr.types import OcrResult
 
 __all__ = [
+    "CIPHER_ORIGIN",
+    "FIGURINE_MODEL_ORIGIN",
+    "GLYPH_ORIGIN",
     "INFORMATOR_SYMBOLS",
     "FigurineMapper",
     "ImagePlacement",
@@ -66,6 +69,14 @@ __all__ = [
 ]
 
 LOGGER = logging.getLogger("caissa.ingest.pdf.text")
+
+#: The values of :attr:`TextSpan.figurine_origin` (OCR_UI ciclo 2, B10/G7):
+#: the glyph reader (its engine name, ``caissa.ocr.engines.glyph.ENGINE_NAME``),
+#: the book's fine-tuned figurine model (``ocr_service.FIGURINE_ENGINE``) --
+#: both *readings* of the page -- and the book cipher, an inference.
+GLYPH_ORIGIN: Final = "glyph"
+FIGURINE_MODEL_ORIGIN: Final = "tesseract_figurine"
+CIPHER_ORIGIN: Final = "cifra"
 
 # PyMuPDF span flag bits.
 _F_SUPERSCRIPT: Final = 1
@@ -168,6 +179,12 @@ class TextSpan:
         confidence: ``1.0`` for a text layer; the engine's value for OCR.
         engine: The OCR engine that read the span (Sol §SOL-10); empty for
             the text layer.
+        figurine_origin: Who put the figurine in the span (OCR_UI ciclo 2,
+            B10/G7): the glyph reader (``"glyph"``), the book's figurine
+            model, or the book cipher (``"cifra"``, an inference, not a
+            reading); empty when the region's own engine read it, or for
+            the text layer.  ``engine`` stays the engine that read the
+            *words* -- a block's provenance is the OCR's, not the reader's.
         review: The span comes from a region the OCR decision sent to
             review (Sol §SOL-2); the IR marks it and the reviewer sees it.
         verified: A person settled the region the span comes from
@@ -188,6 +205,7 @@ class TextSpan:
     baseline: float = 0.0
     confidence: float = 1.0
     engine: str = ""
+    figurine_origin: str = ""
     review: bool = False
     verified: bool = False
 

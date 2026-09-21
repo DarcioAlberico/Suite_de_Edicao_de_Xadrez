@@ -467,12 +467,23 @@ def _prose_cer(reference: str, hypothesis: str) -> float:
     return float(score_text(ref, hyp).cer)
 
 
-def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool) -> dict[int, str]:
+#: ``--sabotar`` for ``--what contest`` (ciclo 2, B10): each switches one
+#: mechanism of the book cipher off through ``PdfImportOptions.ocr_config``.
+CONTEST_SABOTAGES: dict[str, dict[str, Any]] = {
+    "cifra_estilo": {"cipher_style": False},
+    "cifra_janela": {"cipher_window": 0},
+    "cifra_primeira": {"cipher_majority": False},
+    "cifra_plana": {"cipher_style": False, "cipher_window": 0, "cipher_majority": False},
+}
+
+
+def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool,
+                ocr_config: dict[str, Any] | None = None) -> dict[int, str]:
     from caissa.core.model import Heading, Paragraph, plain_text
     from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
 
     options = PdfImportOptions(pages=pages, lang=lang, detect_diagrams=False,
-                               ocr_contests_text_layer=contest)
+                               ocr_contests_text_layer=contest, ocr_config=ocr_config)
     result = import_pdf(path, options)
     texts: dict[int, list[str]] = {p: [] for p in pages}
     for block in result.document.body:
@@ -485,12 +496,18 @@ def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool) -> di
     return {p: "\n".join(t) for p, t in texts.items()}, sources
 
 
-def report_contest() -> dict[str, Any]:
+def report_contest(sabotage: str = "") -> dict[str, Any]:
     from caissa.ocr.engines.tesseract import TesseractEngine
 
     if not TesseractEngine().available():
         print("Tesseract indisponível")
         return {}
+    ocr_config = CONTEST_SABOTAGES.get(sabotage)
+    if sabotage and ocr_config is None:
+        raise SystemExit(f"--sabotar {sabotage} não vale para --what contest "
+                         f"(vale: {', '.join(CONTEST_SABOTAGES)})")
+    if ocr_config:
+        print(f"SABOTAGEM {sabotage}: ocr_config={ocr_config}")
     out: dict[str, Any] = {}
     print(f"{'livro':30s} {'pág.':>5s} {'fonte':16s} {'lances c/ peça':>14s} "
           f"{'peça certa':>11s} {'só sem':>6s} {'só com':>6s} {'chars Δ':>8s} {'CER prosa':>9s}")
@@ -499,8 +516,8 @@ def report_contest() -> dict[str, Any]:
         if not path.is_file():
             print(f"{label:30s}  AUSENTE")
             continue
-        before, _ = _page_texts(path, pages, lang, contest=False)
-        after, sources = _page_texts(path, pages, lang, contest=True)
+        before, _ = _page_texts(path, pages, lang, contest=False, ocr_config=ocr_config)
+        after, sources = _page_texts(path, pages, lang, contest=True, ocr_config=ocr_config)
         totals = {"moves_before": 0, "correct_before": 0, "moves_after": 0,
                   "correct_after": 0, "only_before": 0, "only_after": 0, "chars_changed": 0,
                   "contested": 0, "prose_cer_sum": 0.0}
@@ -753,8 +770,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         "--what",
         choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "nags", "all"),
         default="books")
-    parser.add_argument("--sabotar", default="", choices=("", "nags"),
-                        help="--what nags: apaga os símbolos do texto de onde as partidas nascem")
+    parser.add_argument("--sabotar", default="", choices=("", "nags", *CONTEST_SABOTAGES),
+                        help="--what nags: apaga os símbolos do texto de onde as partidas nascem; "
+                             "--what contest: cifra_estilo / cifra_janela / cifra_primeira / "
+                             "cifra_plana desligam o estilo, a janela, a maioria ou os três na "
+                             "cifra do livro (B10)")
     parser.add_argument("--cap", type=int, default=60,
                         help="máximo de páginas amostradas por livro")
     parser.add_argument("--json", type=Path, default=None,
@@ -792,11 +812,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     if args.what in ("contest", "all"):
         if results:
             print()
-        results["contest"] = report_contest()
+        results["contest"] = report_contest(sabotage=args.sabotar if args.sabotar != "nags" else "")
     if args.what in ("nags", "all"):
         if results:
             print()
-        results["nags"] = report_nags(sabotage=args.sabotar)
+        results["nags"] = report_nags(sabotage=args.sabotar if args.sabotar == "nags" else "")
 
     print(f"\n{time.perf_counter() - started:.1f} s")
     if args.json is not None:

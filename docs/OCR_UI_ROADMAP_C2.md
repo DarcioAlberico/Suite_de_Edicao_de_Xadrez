@@ -7,6 +7,7 @@
 > `docs/quality/OCR_UI_REPORT_C2.md` (uma seção por passo, todo número com o comando ao lado).
 > Não substitui `OCR_UI_ROADMAP.md` (ciclo 1), cujas pendências humanas (0b, crítico C3) continuam.
 > **Fase 2** (§3) executada em 2026-09-20/21 — relatório `docs/quality/OCR_UI_REPORT_C2_FASE2.md`.
+> **Fase 3** (§3b) executada em 2026-09-21 — relatório `docs/quality/OCR_UI_REPORT_C2_FASE3.md`.
 
 ## 0. Regras que valem para todos os passos
 
@@ -461,12 +462,180 @@ crítica). Crítico Codex: ciclo 1 REPROVADO (5 bloqueantes), ciclo 2 **APROVADO
   (`coordinates=True`) → placement como impresso.
 - **Saída.** §C10.
 
-### Fase 3 e humano (inalterados)
+## 3b. Fase 3 — modelo e ciclo fechado (executada em 2026-09-21)
 
-- **Fase 3 — modelo e ciclo fechado:** C4 (mhsp + RandomStroke com ablação, 13), C5 (calibrador
-  de cor + perfil por livro, D6/X3), C6 (fechar o ciclo, X6), C11 (restrições do decodificador,
-  D8), A11 (sidecar de proveniência, X4), B10 (cifra com escopo, `figurine_set`, G6/G7).
-- **Humano:** 0b (≥ 20 errados), crítico visual C3, decisões do §10 da análise.
+Mesmo formato: **arquivos** · **briefing** · **portão** · **sabotagem** · **saída**. O relatório
+é `docs/quality/OCR_UI_REPORT_C2_FASE3.md` (uma seção por passo, número com comando ao lado).
+Construída por uma sessão só, com o treino da ablação (C4) correndo em segundo plano na GPU
+enquanto os outros passos eram medidos — o `s/MP` e o `s/diagrama` desta fase carregam essa
+contenção e são ditos com ela. Ordem executada: C4 (lançado primeiro, é o mais longo) → B10 →
+C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfil de um livro
+**não** o fazem sozinhos: são as decisões 2 e 4 do §10 da análise (§3b.7).
+
+### C4 — `mhsp` + `RandomStroke`, com ablação (alavanca 13; análise §3.4)
+
+- **Arquivos.** Tronco: `augment.py` (`RandomStroke`, `stroke()`, `AugmentConfig.stroke`/
+  `stroke_px`/`stroke_margin_px`, letra `e`, `from_letters`, `version_of_checkpoint`),
+  `training.py` (piso do cache por processo = `BOARDS_PER_CHUNK`), `cli/train.py` (`--augment
+  mhspe`), `ui/pedido_de_treino.py` + `qt/dialogos.py` (a janela retreina no regime do
+  checkpoint de produção, `TrainingRequest.augment`), `tests/test_augment.py` (+8),
+  `tests/test_training.py` (+1), `tests/test_configuracoes.py` (+1). Suíte:
+  `benchmarks/c4_ablation.py` (novo: treina cada variante do zero, mesma semente e partição,
+  `assign_splits=False`; histórico por época em `benchmarks/reports/c4_ablation/`),
+  `benchmarks/lab_gate.py` (`--rules`, colunas `helped`/`hurt`).
+- **Briefing.** `RandomStroke` engrossa ou afina a tinta por morfologia em `max_pool2d` (sem
+  `cv2` no `DataLoader`), só no interior da casa (anel de 3 px intacto: grade e hachura
+  vizinha não são glifo). **1 px, medido**: com 2 px a torre branca em casa hachurada do
+  Koblenz vira um bloco preto (fração clara dentro do glifo 0,84 → 0,34, mínimo 0,04) — a
+  proposta dizia «1–2 px» e o rótulo não sobrevive a 2. A ablação treina `aug0` × `mhsp` ×
+  `mhspe` × `e` do zero, 16 épocas, semente 42 (e 43/44 quando o tempo deu), sem tocar
+  `splits.csv`; o `.pt` de produção fica onde está.
+- **Portão.** `lab_gate --candidate … --runs 3 --unconstrained` (3× verde, sem regressão de
+  acurácia por casa nem de ilegais), `field_exact --model …` com `exported_wrong` ao lado, e
+  `f4_field_failures --model …` para as trocas X↔x. O que passou e o que não passou está em
+  §C4 do relatório; a troca do `.pt` é decisão da pessoa (§10.2). **Resultado (semente 42):
+  nenhuma variante domina** — laboratório a ±3 de 566, `mhsp` ≈ `aug0` no campo, `mhspe`/`e`
+  com um exportado-e-errado a mais; nada a trocar.
+- **Sabotagem.** `--augment i` sozinho (inversão **sem** troca de rótulo) tem de piorar a cor
+  — treinado na mesma grade. **Medido: não piorou** — a letra `i` inverte em 3 %, e a 3 % o
+  `c4_i_s42` é indistinguível do `aug0` (556 = 556 no teste; 4 casas de cor contra 5 no campo).
+  Vermelho no relatório; `i50` (`SABOTAGE_VARIANTS`, inversão em metade dos lotes) na fila.
+- **Saída.** §C4. **Achado que valeu a fase:** o cache do dataset por processo dividia 128 por
+  5 = 25 tabuleiros para uma janela de 64 do amostrador: cada casa reabria o PNG e a época
+  custava **10,1 min** (na GPU!); com o piso na janela, **3,2 min** (`loader_probe`, 400 lotes:
+  111 s → 35 s). O treino da janela herda o mesmo piso.
+
+### B10 — Cifra com escopo, `figurine_set`, proveniência do `PieceGlyph` (G6/G7; análise §5.7)
+
+- **Arquivos.** Suíte: `ocr/notation/book_cipher.py` (formato 2: evidência por peça e fonte,
+  **maioria** em vez da primeira observação, estilo por classe de tamanho da linha —
+  `size_class`/`body_size_of` —, janela de páginas, exemplos com confiança; lê o formato 1),
+  `ingest/pdf/ocr_service.py` (`cipher_style`/`cipher_window`/`cipher_majority`; o corpo da
+  página; `_observe_glyph_swaps` com estilo e confiança; `to_page_text` com um span por
+  palavra com figurina e a origem em `TextSpan.figurine_origin` — `glyph`, `tesseract_figurine`
+  ou `cifra`; o `engine` continua o OCR que leu as palavras), `ingest/pdf/importer.py`
+  (`PdfImportOptions.ocr_config`; `PieceGlyph` com `figurine_set` e proveniência própria),
+  `benchmarks/notation_integrity.py` (`--sabotar cifra_estilo|cifra_janela|cifra_primeira|
+  cifra_plana`), `tests/unit/ocr/test_book_cipher.py` (+6), `test_glyph_engine.py` (+1),
+  `tests/unit/ingest/test_figurine_provenance.py` (novo, 3).
+- **Portão.** `notation_integrity --what contest` nas oito páginas do Gaprindashvili, seis do
+  Aagaard e do Nunn, com as tabelas restauradas do mesmo instantâneo antes de cada corrida:
+  peça certa **914 → 917** (de 986), 157 → 157 (204), 363 → 363 (472); controles Dvoretsky e
+  Boleslávski 0 caracteres alterados.
+- **Sabotagem.** `--sabotar cifra_plana` (estilo, janela e maioria desligados) → **914**, o
+  antes. Uma a uma: estilo desligado 917, janela desligada 917, maioria desligada 917 — o ganho
+  precisa de **estilo ou janela** (cada um basta sozinho); a maioria não moveu nada nestas
+  páginas (§B10 do relatório diz isso, e por quê).
+- **Saída.** §B10. O `♕` do texto sai `♕` no DOCX/EPUB (antes `♛`), e a revisão distingue a
+  figurina lida (0,99) da inferida pela cifra (`Provenance.note`).
+
+### C11 — Restrições do decodificador e o lance seguinte (D8; análise §3.9)
+
+- **Arquivos.** Tronco: `decode.py` (`DecodeRules`/`CLASSIC_RULES`: bispos do mesmo lado em
+  casas da mesma cor contam como promovidos na conta de peões ausentes; reis adjacentes),
+  `inference.py` (`prediction_with_squares`), `evaluation.py` (`rules=`, `decode_rules` no
+  JSON), `lance_seguinte.py` (novo: `conferir`, `apply_next_move`), `pdf_text.py`
+  (`DiagramContext.first_moves_text`), `service.py` (`RecognitionOptions.next_move`,
+  `RecognizedDiagram.next_move*`, `gate_confidence`), `pdf_to_pgn.py` (o mesmo caminho na
+  exportação; `[OCRNextMove]`), `field_eval.py` (gate por `gate_confidence`; contadores
+  `next_move_*`), `tests/test_decode.py` (+8), `tests/test_lance_seguinte.py` (novo, 11),
+  `tests/test_field_eval.py` (+2). Suíte: `benchmarks/field_exact.py` (`--sabotar
+  sem_lance|lance_vizinho`), `tools/f4_field_failures.py` (`--sem-lance`, campos `next_move*`),
+  `vision/classify/confidence.py` (`DiagramSignals.next_move_replays`, fora do vetor ajustado).
+- **Briefing.** (a) as duas violações novas em `_find_violations`, a dos bispos condicionada
+  aos peões. (b) O primeiro lance impresso sob o diagrama é jogado na posição (`text.notacao.
+  validar`); se não fecha, as segundas opções das casas hesitantes (margem < 0,9) e a **outra
+  cor** de cada peça lida são tentadas (≤ 2 trocas), e a troca **única** que faz a linha fechar
+  até o 3.º lance impresso é adotada — uma linha de um lance só confirma, nunca troca. A casa
+  trocada fica com a confiança da matriz; o gate julga as outras (`gate_confidence`).
+- **Portão.** (a) `lab_gate --runs 3` produção: `--rules classic` 0,9770 (553/566, `helped` 0)
+  → C11 **0,9806** (555/566, `helped` 2, `hurt` 0), ilegais 0 nos dois. (b) `field_exact`:
+  `next_move_checked` **2** de 114 — o conjunto de campo tem dois diagramas com linha de lances
+  sob eles (livros de problemas e de exercícios) — `next_move_repaired` 0; `games_gate`
+  inalterado (população 0,04, como a análise previu). A mecânica fica pelos 11 testes.
+- **Sabotagem.** `lab_gate --rules classic` (o de antes); `field_exact --sabotar lance_vizinho`
+  (cada diagrama recebe a linha do vizinho) — **inerte** no campo pela mesma população de 2;
+  no teste, a linha do vizinho não troca nada (`test_the_neighbours_move_repairs_nothing`).
+- **Saída.** §C11.
+
+### C5 — Calibrador de cor por livro, dentro do perfil do livro (D6/X3; análise §3.7, §7.3)
+
+- **Arquivos.** Tronco: `cor_por_livro.py` (novo: `medir` — média de cinza dos 40 % centrais
+  da casa —, `CalibradorDeCor` com amostras **por peça e cor da casa** (`chave_da_amostra`,
+  `"Qe"`/`"Qc"`), `decidir` pelos extremos com margem de 10 níveis, só quando as duas cores se
+  separam aparada uma amostra de cada lado, `trocas_de_cor` quando o par `(X, x)` domina a
+  casa, `apply_colour` com a guarda
+  de legalidade, `calibrador_do_livro` lendo o perfil da suíte quando ela está importável),
+  `service.py` (`RecognitionOptions.colour`/`colour_calibrator`; `RecognizedDiagram.colour_*`,
+  `external_repairs`), `pdf_to_pgn.py` (`[OCRColour]`), `field_eval.py` (`colour_*`),
+  `tests/test_cor_por_livro.py` (novo, 14). Suíte: `ocr/book_profile.py` (novo: `BookProfile`
+  — identidade, `ocr_config`, `colour`, `history` — em `models/tessdata/livros/<slug>/
+  perfil.json` ao lado de `cipher.json`), `ingest/pdf/importer.py` (o perfil sob as opções
+  explícitas), `benchmarks/field_exact.py` (`--sabotar sem_cor|cor_trocada|sem_evidencia`,
+  `--perfil`), `tools/f4_field_failures.py` (`--sem-cor`, `--perfil`, campos `colour_*`).
+- **Briefing.** Medido nos recortes de campo antes de escrever: no Koblenz as pretas medem
+  81–154 e as brancas 148–219, e as cinco casas de cor erradas caem do lado certo; no Burgess
+  ≤ 48 × ≥ 137; no Niemeijer e no Stefaniu as cores se sobrepõem — ali o calibrador se
+  abstém. As amostras são as dos diagramas **corrigidos** do livro (C6); o tabuleiro não é
+  amostra de si (uma peça por lado e por cor de casa nunca chega ao mínimo de 5, e onde chegava
+  — os peões — a régua errou: Stefaniu p100 `b2 P→p`, seguro só pela guarda de legalidade).
+- **Portão.** `caissa.ocr.closing` no Koblenz, deixando um de fora de cada vez sobre os 22
+  diagramas corrigidos fora das páginas de campo: k = 6 e 12 → 0 trocas (as damas não chegam a
+  5 por cor de casa); k = 22 → **6 trocas, 6 certas** (casas de cor erradas 22 → 16; exatos 1 →
+  2). No campo (`field_exact`, perfil do Koblenz aprovado): exatos **103 → 106** (Koblenz 0/4 →
+  3/4, as quatro damas `q→Q` de p30/p50 trocadas), `exported_wrong` 3 → 3, `lab_gate` intacto
+  por construção (o calibrador roda no serviço, não em `evaluate_dataset`).
+- **Sabotagem.** `--sabotar sem_cor` → 103; `--sabotar cor_trocada` (as amostras brancas e
+  pretas do perfil trocadas) → §C5 do relatório.
+- **Saída.** §C5. Os três Koblenz exatos continuam **não exportados**: o decodificador também
+  reparou outras casas deles (S-132, «reparado nunca exporta», que o calibrador não toca).
+
+### C6 — Fechar o ciclo corrigir → medir → melhorar (X6; análise §7.6)
+
+- **Arquivos.** Suíte: `ocr/closing.py` (novo: `close_cycle`, `collect_text_pairs`,
+  `collect_diagram_truths`, `field_pages_of`, `default_blind_guard`; CLI `caissa-fechar-ciclo`
+  em `pyproject.toml`), `tests/unit/ocr/test_closing.py` (novo, 5).
+- **Briefing.** Um comando por livro: consome as correções de texto (fila de revisão e projeto
+  de rotulagem) num **manifesto de calibração** JSONL e as correções de diagramas
+  (`labels.csv` do tronco com procedimento humano, decisões da janela) no calibrador de cor;
+  retém o que a guarda cega diz e **as páginas do conjunto de campo** (o campo mede, nunca
+  alimenta); mede antes/depois (um de fora de cada vez); grava `model_identity`, hash dos
+  rótulos, hash do documento e commit; escreve `perfil.proposto.json` e só com `--aprovar` o
+  `perfil.json`.
+- **Portão.** Koblenz (§C5); o manifesto e o perfil gravados; `git status` limpo (os dois vivem
+  em `models/` e `labeling/`, ignorados).
+- **Sabotagem.** Decisão numa página cega → retida e contada (`test_a_blind_page_and_a_field_
+  page_contribute_nothing`, `test_text_corrections_become_calibration_pairs_minus_the_blind_
+  page`); a primeira versão do comando incluiu as duas amostras da p. 50 do Koblenz (página de
+  campo) no perfil — o campo teria medido a si mesmo; a regra das páginas de campo nasceu daí.
+- **Saída.** §C6.
+
+### A11 — Sidecar de proveniência (X4; análise §7.4)
+
+- **Arquivos.** Tronco: `proveniencia.py` (novo: `Cabecalho`, `registro`, `write_sidecar`,
+  `read_sidecar`, `verificar`, `ColisaoDeProveniencia`), `pdf_to_pgn.py` (`DiagramPosition.
+  bbox_pdf`/`image_hash`/`square_confidences`/`repairs`; `write_gated_pgn(provenance=)` grava
+  `<nome>.proveniencia.jsonl` e os dois PGNs apontam com `[ProvenanceFile]`/`[ProvenanceKey]`;
+  `ExportReport.provenance_path`), `export_checkpoint.py` (os campos novos no parcial),
+  `tests/test_proveniencia.py` (novo, 5). Suíte: `export/provenance.py` (novo: o mesmo sidecar
+  ao lado do EPUB/DOCX, a partir do IR — `Diagram.source`, `recognition`, `verified_by_human`,
+  `GameScore`), `export/book.py` (`BookExportResult.provenance_path`), `tests/unit/export/
+  test_provenance_sidecar.py` (novo, 3).
+- **Briefing.** Chave estável `p<página>:d<índice>` — a do `[Diagram]` e do A3 —, nunca a FEN;
+  o sidecar é aditivo (quem não o lê não perde nada do PGN); no IR a linha leva também o ULID.
+- **Portão.** Um item sintético exportado e relido volta inteiro (retângulo, hash do recorte,
+  64 confianças, reparos, decisão humana, modelo, perfil, veredito do gate).
+- **Sabotagem.** Dois diagramas com a mesma FEN em páginas diferentes com chave por FEN →
+  `ColisaoDeProveniencia`, com as duas páginas na mensagem; a chave normal os mantém dois.
+- **Saída.** §A11.
+
+### 3b.7 Humano (inalterado) e decisões que esta fase deixa
+
+- 0b (≥ 20 errados), crítico visual C3, e as decisões do §10 da análise que esta fase põe na
+  mesa com número: **§10.2** (trocar o `.pt` de produção pelo vencedor da ablação — §C4 do
+  relatório diz qual e com que margem), **§10.4** (o perfil por livro em `models/tessdata/
+  livros/<slug>/perfil.json`, ao lado da cifra, que o `--importar-acervo` do bundle já leva),
+  **§10.5** (o sidecar ao lado do PGN e do livro, `.proveniencia.jsonl`).
 
 ## 4. Mutações
 
@@ -500,3 +669,16 @@ crítica). Crítico Codex: ciclo 1 REPROVADO (5 bloqueantes), ciclo 2 **APROVADO
 | 2026-09-21 | B1 | **`_slice` por palavra** | Revisão do construtor: uma linha que o PSM 3 fundiu pela calha tem o centro numa das colunas e caía inteira nela, levando as palavras da outra como apoio da fusão. Medido: nenhum item muda | construtor |
 | 2026-09-21 | C9 | **reserva clara da região `#7c3aed` → `#8b5cf6`** e teste das reservas | Sem o tronco ninguém media as reservas: 2,99:1 sobre a folha, piso 3,0 | construtor |
 | 2026-09-21 | B3/C3 | **`CAISSA_FIGURINE_TESSDATA` só no `bench_sol`** | Com a variável no ambiente o `config` do tronco recusa o caminho e o classificador de diagramas não carrega — o portão do B3 (partidas sob diagramas) contava 0 partidas por isso, não pelos NAGs. Portões que precisam de diagramas lidos correm sem ela | construtor |
+| 2026-09-21 | C4 | **`RandomStroke` a 1 px, não «1–2 px»** (`AugmentConfig.stroke_px=(1, 1)`) | Medido em 36 casas reais do Koblenz, Burgess e Euwe antes de treinar: a dilatação de 2 px fecha o contorno das brancas (fração clara dentro do glifo 0,84 → 0,34, mínimo 0,04 — uma torre branca em casa hachurada vira um bloco preto) e a erosão de 2 px apaga as pretas (preenchimento mínimo 0,03). Com 1 px o contorno continua contorno (0,57, mínimo 0,20). Dois pixels trocariam o rótulo; teste com contorno sintético para os dois raios | construtor |
+| 2026-09-21 | C4 | **piso do cache por processo na janela do amostrador** (`training.Trainer.prepare`) | 128 ÷ 5 = 25 tabuleiros por worker para uma janela de 64: cada casa reabria o PNG. Medido nesta máquina (GPU): 10,1 min/época com 25, **3,2 min** com 64 (`loader_probe`, 400 lotes 111 s → 35 s). Sem isso a ablação de 4 variantes × 16 épocas custaria 11 h; com, 2 h. Teste `test_the_per_process_cache_never_drops_below_the_sampler_window` | construtor |
+| 2026-09-21 | C4 | **a janela retreina no regime do checkpoint** (`TrainingRequest.augment` ← `augment.version_of_checkpoint`) | A janela treinava sempre `AugmentConfig()` (análise §3.4): se o `.pt` de produção virar `mhspe`, o retreino da janela o devolveria ao genérico em silêncio. O regime é lido do checkpoint no clique; `from_letters` é a inversa de `AugmentConfig.version` | construtor |
+| 2026-09-21 | B10 | **a maioria não moveu nada; estilo ou janela movem +3** (914 → 917 no Gaprindashvili) | Cada mecanismo tem interruptor (`cipher_style`, `cipher_window`, `cipher_majority`) e sabotagem no `--what contest`: `cifra_plana` devolve 914; estilo só, janela só e maioria só dão 917 cada — o símbolo resgatado é provado tanto pelo estilo como pela janela. A maioria fica (as tabelas do corpus têm 13 linhas em que a primeira observação era a errada — `'it` Q×3 contra K×26 — e o formato 1 nunca as provaria), sem número a seu favor nestas páginas | construtor |
+| 2026-09-21 | C11 | **uma linha de um lance só confirma, nunca troca; a segunda opção só em casa hesitante (margem < 0,9), a cor em qualquer casa** (`lance_seguinte.MIN_LANCES_PARA_REPARO`, `MARGEM_HESITANTE`, `_candidatas`) | Na primeira versão a busca tentava a segunda opção de qualquer casa: com a matriz sintética do teste, uma casa **vazia a 0,99** virava dama porque o lance fecharia — e dois candidatos empatavam. A segunda opção de uma casa segura é ruído; a **cor** da mesma peça é o erro que o campo mede (10 de 27) e vale em qualquer casa. Testes `test_an_empty_confident_square_is_never_filled`, `test_a_confident_piece_may_only_change_colour` | construtor |
+| 2026-09-21 | C11 | **população 2 no campo**: `next_move_checked` 2 de 114, `lance_vizinho` inerte | O conjunto de campo é de livros de problemas e exercícios: dois diagramas têm linha de lances sob eles. O portão (b) não tem resolução no campo e o relatório o diz; a mecânica fica pelos 11 testes e o portão (a) pelo `lab_gate` (0,9770 → 0,9806, `helped` 2, `hurt` 0) | construtor |
+| 2026-09-21 | C5 | **amostras por peça e por cor da casa; extremos com margem de 10 e só com as cores separadas, aparada uma amostra de cada lado; mínimo 5; o tabuleiro não é amostra de si** (`cor_por_livro.chave_da_amostra`, `MARGEM`, `MINIMO_POR_COR`, `_aparadas`, `decidir`) | Cinco rodadas do «um de fora de cada vez» nos 22 Koblenz corrigidos, cada uma custou uma versão: (1) todas as peças juntas com quantis p5/p95 → 7 de 15 trocas erradas (um rei branco no p5 dos reis brancos é trocado por definição); (2) por tipo → um cavalo branco (crina escura, 159) e uma torre preta (ameias claras) trocados; (3) extremos com margem → um cavalo com **4** amostras; (4) por cor da casa → a torre branca a 151 em casa clara, abaixo da branca mais escura e **dentro** das pretas (136–224: as p. 46–48 imprimem as pretas hachuradas); (5) *como* separar, medido três vezes — extremos, mediana ± 2 MAD, aparada uma amostra de cada lado: as duas primeiras rodadas ainda tinham os tabuleiros da página de campo no conjunto (o erro de base da página, linha abaixo) e nelas o MAD calava as damas de casa clara; **com a retenção certa as três dão o mesmo 6/6** (`scratchpad/loo_variants.py`). Fica a aparada pelo teste sintético (uma hachurada não cala as outras; duas, a cor não separa) — por argumento, não por número. Final: **6 trocas, 6 certas** (k = 22); 0 com k = 6 ou 12. O próprio tabuleiro pediu `b2 P→p` no Stefaniu (peões brancos de casas escuras contra os de casas claras) — tirado | construtor |
+| 2026-09-21 | C6 | **as páginas do conjunto de campo são retidas como as cegas** (`closing.field_pages_of`) | A primeira aprovação do perfil do Koblenz levou as duas amostras da p. 50 — página de campo — e o `field_exact` teria medido o próprio perfil. A regra é a de `CORPUS.md` 5.3 no sentido inverso: o campo mede, nunca alimenta. O contador `diagrams_withheld` os soma às cegas | construtor |
+| 2026-09-21 | A11 | **um sidecar para os dois PGNs** (aceitos e revisão na mesma lista, com o veredito por linha) | Dois sidecars com a mesma chave seriam a colisão que `verificar` existe para acusar; o `.review.pgn` aponta para o mesmo arquivo. O teste de retomada (`test_resume_produces_the_same_pgn`) passou a normalizar o nome do sidecar — único header que difere entre `inteiro.pgn` e `retomado.pgn` | construtor |
+| 2026-09-21 | B10 | **a origem da figurina vai em `TextSpan.figurine_origin`, não em `engine`** | `test_a_scan_without_a_text_layer_is_read_by_default` (Sol §SOL-1) acusou a primeira versão na suíte inteira: com a origem no `engine`, um parágrafo do Flores Rios saía `glyph+tesseract+tesseract_figurine` e cinco linhas só de lances saíam `glyph`. A proveniência do bloco é do OCR que leu as palavras; quem pôs a peça é a do `PieceGlyph` (`note`). `test_figurine_provenance` reescrito: os cinco spans com `engine` `tesseract` e `figurine_origin` `"", glyph, "", cifra, ""` | construtor |
+| 2026-09-21 | C6 | **`source_page` do `labels.csv` é base 1; o fechamento o converte antes de reter** (`closing._page_index_of_label`) | A segunda aprovação do perfil do Koblenz ainda levava os dois tabuleiros da página de campo 50: o tronco grava a página como a janela mostra (base 1, `51`; `labels.pages_with_training_samples` subtrai um), e o campo, o manifesto cego e as decisões são base 0 — a retenção comparava `51` com `50`, retinha dois tabuleiros da p. 49 (índice) e deixava entrar os da página de campo. Apareceu ao listar as seis trocas do um-de-fora casa a casa (`p51 h4 Q→q` era o `p50 d0` do campo). Perfil apagado e aprovado de novo (152/150 amostras, 6 trocas, 6 certas), campo remedido; teste com o rótulo `13` contra a página de campo `13` | construtor |
+| 2026-09-21 | C4 | **a sabotagem `i` é inerte a 3 %; entra `i50`** (`c4_ablation.SABOTAGE_VARIANTS`) | `c4_i_s42` = `aug0` no teste (556/566) e no campo (4 casas de cor contra 5): a letra `i` sempre inverteu em 3 % dos lotes, e a 3 % em 16 épocas não há o que estragar. Uma sabotagem que não piora não prova o instrumento — fica vermelha no relatório, e a próxima (`i50`, metade dos lotes) está na fila | construtor |
+| 2026-09-21 | C4 | **nenhuma variante domina a uma semente; o `.pt` fica** | Laboratório: produção 555, `aug0` 556, `mhsp` 555, `mhspe` 553, `e` 554 de 566 (0 ilegais, `hurt` 0); campo: `mhsp` ≈ `aug0` (3 exportados-e-errados), `mhspe`/`e` 4. O 1 tabuleiro de validação (518 × 517 de 535) do `RandomStroke` não sobrevive ao teste nem ao campo. Os candidatos leem as damas do Koblenz porque 14 tabuleiros do livro entraram em `train` em 2026-09-20 — não é o aumento (o `aug0` também lê) e a comparação justa é candidato × candidato | construtor |

@@ -153,6 +153,10 @@ caissa-treinar = "caissa.ocr.training.cli:main"
 # Um PDF vira EPUB ou DOCX, inteiro ou por intervalo de paginas -- o mesmo
 # pipeline do dialogo "Exportar livro..." da janela (caissa.export.book).
 caissa-exportar = "caissa.export.cli:main"
+# Fecha o ciclo corrigir -> medir -> melhorar de um livro (OCR_UI ciclo 2, C6):
+# consome as correcoes fora da particao cega, escreve o manifesto de calibracao
+# e o perfil do livro (caissa.ocr.closing).
+caissa-fechar-ciclo = "caissa.ocr.closing:main"
 
 [project.urls]
 Documentation = "https://github.com/caissa-studio/caissa/tree/main/docs"

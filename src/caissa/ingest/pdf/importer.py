@@ -55,7 +55,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
-from caissa.core.chess.notation_tables import FIGURINE_BLACK, FIGURINE_WHITE, PieceType
+from caissa.core.chess.notation_tables import FIGURINE_BLACK, FIGURINE_WHITE, FigurineSet, PieceType
 from caissa.core.model import (
     Block,
     ConfidenceBand,
@@ -109,6 +109,9 @@ from caissa.ingest.pdf.paragraphs import (
     layout_page,
 )
 from caissa.ingest.pdf.textlayer import (
+    CIPHER_ORIGIN,
+    FIGURINE_MODEL_ORIGIN,
+    GLYPH_ORIGIN,
     FigurineMapper,
     ImagePlacement,
     PageText,
@@ -337,6 +340,13 @@ class PdfImportOptions:
     #: (:mod:`caissa.ocr.notation.book_cipher`).  ``False`` neither reads nor
     #: writes it.
     book_cipher: bool = True
+    #: OCR_UI ciclo 2, passo B10: field overrides for the
+    #: :class:`~caissa.ingest.pdf.ocr_service.OcrServiceConfig` the importer
+    #: builds (``{"cipher_style": False}``, ``{"workers": 1}``), the same
+    #: flat dict ``bench_sol``'s ``SOL_CONFIG`` takes, for the benchmarks that
+    #: go through the importer to switch one mechanism off.  ``None`` is the
+    #: production config.
+    ocr_config: Mapping[str, Any] | None = None
     #: OCR_UI_ROADMAP passo 11: a ``Movetext`` paragraph that follows a read
     #: diagram is replayed from its position and, when the main line chains,
     #: becomes a :class:`GameScore` with provenance per move
@@ -1033,6 +1043,19 @@ class PdfImporter:
             self.report.notes.append(table.describe_pt() + f" (lida de {path})")
         return table
 
+    def _book_profile(self) -> Any:
+        """The book's stored profile (C5/X3), or ``None``; a broken file is a note, not a stop."""
+        if self.document.path is None:
+            return None
+        try:
+            from caissa.ocr.book_profile import BookProfile, profile_path
+
+            path = profile_path(self.document.path)
+            return BookProfile.load(path, fingerprint=self.document.content_hash)
+        except Exception as exc:  # noqa: BLE001 - a broken profile must not stop an import
+            self.report.notes.append(f"perfil do livro ilegível: {exc}")
+            return None
+
     def _book_cipher_path(self) -> Path | None:
         if self.document.path is None:
             return None
@@ -1063,6 +1086,20 @@ class PdfImporter:
         from caissa.ingest.pdf.ocr_service import OcrServiceConfig
 
         config = OcrServiceConfig()
+        # C5/X3: the book's stored profile first (its settings are the book's), the
+        # caller's explicit overrides on top.
+        overrides: dict[str, Any] = {}
+        if self.options.book_models and self.document.path is not None:
+            profile = self._book_profile()
+            if profile is not None:
+                overrides.update(profile.ocr_config)
+                self.report.notes.append(profile.describe_pt())
+                self.report.counters["book_profile_closures"] = profile.closures
+        overrides.update(dict(self.options.ocr_config or {}))
+        for name, value in overrides.items():
+            if not hasattr(config, name):
+                raise ValueError(f"ocr_config: OcrServiceConfig não tem o campo {name!r}")
+            setattr(config, name, value)
         if not self.options.book_models or self.document.path is None:
             return config
         try:
@@ -1435,6 +1472,19 @@ class PdfImporter:
     def _inlines(self, draft: BlockDraft) -> tuple[Inline, ...]:
         out: list[Inline] = []
         images = list(draft.inline_images)
+        page = draft.first_page
+        report = self._page_reports.get(page)
+        ocr_page = report is not None and report.source in ("ocr", "text-layer+ocr")
+
+        def glyph_provenance(span: TextSpan, note: str) -> Provenance:
+            # B10/G7: the figurine's own provenance -- who read it (or inferred
+            # it) and how sure -- so the review tells a glyph read at 0,99 from
+            # one the cipher inferred.
+            kind = SourceKind.OCR if (span.engine or ocr_page) else SourceKind.PDF_TEXT_LAYER
+            return self._provenance(page, draft.boxes.get(page), float(span.confidence),
+                                    kind=kind, note=note, engine=span.engine or None,
+                                    verified=span.verified)
+
         for span in draft.spans:
             if span.text == _IMAGE_PLACEHOLDER:
                 if images:
@@ -1442,7 +1492,7 @@ class PdfImporter:
                     if node is not None:
                         out.append(node)
                 continue
-            out.extend(_span_inlines(span))
+            out.extend(_span_inlines(span, glyph_provenance))
         return tuple(out)
 
     def _diagram_node(self, entry: _DiagramEntry) -> Diagram:
@@ -1766,18 +1816,43 @@ def _run_props(span: TextSpan) -> RunProps:
     )
 
 
-def _span_inlines(span: TextSpan) -> list[Inline]:
+_WHITE_GLYPHS: Final[frozenset[str]] = frozenset(FIGURINE_WHITE.values())
+#: The origins whose figurine is a *reading* of the page, and the one whose
+#: figurine is an inference (``TextSpan.figurine_origin``).
+_FIGURINE_NOTES: Final[Mapping[str, str]] = {
+    GLYPH_ORIGIN: "figurina lida pelo leitor de glifos",
+    FIGURINE_MODEL_ORIGIN: "figurina lida pelo modelo de figurinas do livro",
+    CIPHER_ORIGIN: "figurina inferida pela cifra do livro (não lida na página)",
+}
+
+
+def _span_inlines(span: TextSpan,
+                  provenance: Callable[[TextSpan, str], Provenance | None] | None = None,
+                  ) -> list[Inline]:
     """A span as IR inlines: text runs, with figurines as :class:`PieceGlyph`.
 
     A Unicode chess symbol is a piece whichever font drew it -- the Chernev
     sets ``♕`` in MS Gothic next to Cambria text -- so every U+2654-U+265F
     becomes a glyph node, not only the letters a figurine font mapped.
+
+    OCR_UI ciclo 2, B10/G7: the glyph keeps the **set** it was printed in --
+    ``♕`` is the outline set, ``♛`` the solid one -- so the DOCX/EPUB prints
+    the piece the page shows (before, every glyph fell to the solid default
+    and an outline queen came out solid); and it carries a provenance of its
+    own, from ``provenance(span, note)``, that says whether the figurine was
+    read (glyph reader, figurine model, the region's OCR, text layer) or
+    inferred by the cipher -- ``span.figurine_origin``, or the span's engine
+    when the region's own OCR read it.
     """
     props = _run_props(span)
     if not span.figurine and not any(ch in _PIECE_OF_GLYPH for ch in span.text):
         return [Text(content=span.text, props=props)]
     out: list[Inline] = []
     buffer: list[str] = []
+    origin = span.figurine_origin or span.engine
+    note = _FIGURINE_NOTES.get(origin, "figurina da camada de texto" if not origin
+                               else f"figurina lida por {origin}")
+    glyph_provenance = provenance(span, note) if provenance is not None else None
     for ch in span.text:
         piece = _PIECE_OF_GLYPH.get(ch)
         if piece is None:
@@ -1786,7 +1861,10 @@ def _span_inlines(span: TextSpan) -> list[Inline]:
         if buffer:
             out.append(Text(content="".join(buffer), props=props))
             buffer = []
-        out.append(PieceGlyph(piece=piece, font_family=span.font or None, props=props))
+        out.append(PieceGlyph(
+            piece=piece,
+            figurine_set=FigurineSet.WHITE if ch in _WHITE_GLYPHS else FigurineSet.BLACK,
+            font_family=span.font or None, props=props, provenance=glyph_provenance))
     if buffer:
         out.append(Text(content="".join(buffer), props=props))
     return out

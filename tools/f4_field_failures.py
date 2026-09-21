@@ -196,6 +196,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tag", default="")
     parser.add_argument("--barrados", action="store_true",
                         help="Also dump every matched diagram the gate barred, and every one without annotated FEN.")
+    parser.add_argument("--sem-lance", action="store_true",
+                        help="C11: read without the next-move evidence (RecognitionOptions.next_move=False).")
+    parser.add_argument("--sem-cor", action="store_true",
+                        help="C5: read without the colour calibrator (RecognitionOptions.colour=False).")
+    parser.add_argument("--perfil", type=Path, default=None,
+                        help="C5: a book profile JSON whose colour calibrator is used for every PDF.")
+    parser.add_argument("--model", type=Path, default=None, help="Checkpoint under test; default is production.")
     args = parser.parse_args(argv)
 
     import cv2
@@ -206,14 +213,24 @@ def main(argv: list[str] | None = None) -> int:
 
     root = cvoff_root()
     pages = load_field_set(root / "data" / "field_set.jsonl")
-    model = Path(DEFAULT_MODEL_PATH)
+    model = args.model or Path(DEFAULT_MODEL_PATH)
     if not model.is_file():
         model = root / "models" / "piece_classifier.pt"
+    calibrator = None
+    if args.perfil is not None:
+        from chess_diagram_ocr.cor_por_livro import CalibradorDeCor
+
+        data = json.loads(Path(args.perfil).read_text(encoding="utf-8"))
+        fixed = CalibradorDeCor.from_dict(data.get("colour") if "colour" in data else data)
+        calibrator = lambda _pdf: fixed  # noqa: E731 - a resolver that ignores the PDF
     options = RecognitionOptions(
         model_path=model,
         max_boards=args.max_boards,
         dpi=args.dpi,
         refine_detected_boards=args.refine,
+        next_move=not args.sem_lance,
+        colour=not args.sem_cor,
+        colour_calibrator=calibrator,
     )
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -351,6 +368,12 @@ def main(argv: list[str] | None = None) -> int:
                     "rotation": got.rotation,
                     "orientation_reason": got.orientation_reason,
                     "repaired_squares": [square_name(s) for s in (got.changed_squares or [])],
+                    "next_move": getattr(got, "next_move", ""),
+                    "next_move_replays": getattr(got, "next_move_replays", None),
+                    "next_move_repairs": [square_name(s) for s in (getattr(got, "next_move_repairs", None) or [])],
+                    "next_move_reason": getattr(got, "next_move_reason", ""),
+                    "colour_repairs": [square_name(s) for s in (getattr(got, "colour_repairs", None) or [])],
+                    "colour_reason": getattr(got, "colour_reason", ""),
                     "iou": round(bbox_iou(annotated.bbox, got.bbox_pdf), 4) if got.bbox_pdf else None,
                     "annotated_bbox": [round(v, 2) for v in annotated.bbox],
                     "detected_bbox": [round(v, 2) for v in got.bbox_pdf] if got.bbox_pdf else None,

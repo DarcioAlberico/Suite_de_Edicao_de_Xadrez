@@ -190,6 +190,28 @@ def default_output_path(
     return pdf_path.with_name(stem + _EXTENSION[format_name])
 
 
+def _write_provenance(document: Document, written: Path, format_name: str,
+                      indices: Sequence[int], pdf_path: Path | str) -> Path | None:
+    """The sidecar beside the book; a failure is logged, never fatal (A11 is additive)."""
+    from caissa.export.provenance import write_sidecar
+
+    profile: dict[str, Any] = {}
+    try:
+        from caissa.ocr.book_profile import BookProfile
+
+        stored = BookProfile.for_pdf(Path(pdf_path))
+        if stored is not None:
+            profile = {"fingerprint": stored.fingerprint, "closures": stored.closures,
+                       "model_identity": stored.model_identity, "dataset_version": stored.dataset_version}
+    except Exception:  # noqa: BLE001 - the profile is a courtesy of the header
+        profile = {}
+    try:
+        return write_sidecar(document, written, format_name=format_name, pages=indices, profile=profile)
+    except Exception:  # noqa: BLE001 - additive: the book is written, the sidecar is not
+        LOGGER.warning("sidecar de proveniência não gravado ao lado de %s", written, exc_info=True)
+        return None
+
+
 def _check_format(format_name: str) -> None:
     if format_name not in BOOK_FORMATS:
         known = ", ".join(BOOK_FORMATS)
@@ -218,6 +240,9 @@ class BookExportResult:
     """Regions the reviewer had settled (OCR_UI_ROADMAP passo 14), applied on import."""
     diagram_decisions_applied: int = 0
     """Positions the reviewer had corrected (OCR_UI ciclo 2, passo A3), applied on import."""
+    provenance_path: Path | None = None
+    """The provenance sidecar written next to the book (ciclo 2, passo A11); ``None`` when
+    the write failed (the book is still there -- the sidecar is additive)."""
 
     @property
     def pages(self) -> str:
@@ -424,6 +449,8 @@ def _export_book(
     from caissa.export import export
 
     written = export(document, target, format_name, options=export_options)
+    # A11: the provenance the EPUB/DOCX cannot carry, next to it, keyed like the PGN's.
+    provenance_path = _write_provenance(document, written.path, format_name, indices, source)
     if progress is not None:
         progress("gravando", 1, 1)
     warnings = tuple(
@@ -443,6 +470,7 @@ def _export_book(
         diagram_decisions_applied=int(
             imported.report.counters.get("diagram_decisions_applied", 0)
         ),
+        provenance_path=provenance_path,
     )
 
 
