@@ -649,12 +649,112 @@ def report_decode() -> dict[str, Any]:
     return out
 
 
+#: Fixed pages per book for ``--what nags`` (OCR_UI_ROADMAP_C2 passo B3): the
+#: pinned pages of the Dvoretsky (the DEM prints ``²``/``³``/``±`` after
+#: moves in the Thinkers/Quality symbol convention) and of the Aagaard.
+NAG_PAGES: list[tuple[str, str, str, list[int]]] = [
+    ("Dvoretsky E1", PINNED["dvoretsky"][0], "eng", list(PINNED["dvoretsky"][1])),
+    ("Aagaard E1", PINNED["aagaard"][0], "eng", list(PINNED["aagaard"][1])),
+]
+
+
+def _nag_tokens(text: str) -> int:
+    """Move tokens on the page whose annotation tail carries a NAG."""
+    from caissa.notation.legality_repair import split_tail
+    from caissa.notation.nag_table import nags_from_suffix
+    from caissa.ocr.lexicon import is_move_token
+
+    count = 0
+    for token in text.split():
+        core, suffix = split_tail(token)
+        if suffix and is_move_token(core.strip("+#")) and nags_from_suffix(suffix):
+            count += 1
+    return count
+
+
+def _walk_nags(node: Any) -> tuple[int, int, list[int]]:
+    """``(moves, moves with NAGs, the codes)`` under a move node."""
+    moves = nags = 0
+    found: list[int] = []
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        moves += 1
+        nags += 1 if current.nags else 0
+        found.extend(current.nags)
+        stack.extend(current.children)
+    return moves, nags, found
+
+
+def report_nags(*, sabotage: str = "") -> dict[str, Any]:
+    """**OCR_UI_ROADMAP_C2 passo B3 — do the book's NAGs reach the GameScore?**
+
+    Every ``MoveNode.nags`` used to come out empty on the PDF path: the
+    repairer stripped the annotation tail and nothing read it.  The pinned
+    pages are imported with diagrams on (a game needs its anchor), the tokens
+    with a NAG tail are counted in the imported text, and the nodes with
+    NAGs are counted in the games.  ``--sabotar nags`` erases the symbols
+    from the text the games are built from: the tokens stay, the nodes' NAGs
+    have to drop to zero, and the gate reproves.
+    """
+    from caissa.core.model import GameScore, Heading, Paragraph, plain_text
+    from caissa.ingest.pdf import games as games_module
+    from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
+    from caissa.notation.nag_table import BOOK_SYMBOL_ALIASES, SYMBOLIC_GLYPHS
+
+    erase = str.maketrans({ch: "" for ch in "".join(SYMBOLIC_GLYPHS) + "".join(BOOK_SYMBOL_ALIASES)
+                           + "!?" if ch not in "+#"})
+    original = games_module.plain_text
+    if sabotage == "nags":
+        games_module.plain_text = lambda content: original(content).translate(erase)  # type: ignore[assignment]
+    out: dict[str, Any] = {}
+    try:
+        print(f"{'livro':20s} {'págs':>5s} {'lances c/ NAG no texto':>22s} {'partidas':>8s} "
+              f"{'nós':>6s} {'nós c/ NAG':>10s}")
+        for label, name, lang, pages in NAG_PAGES:
+            path = CORPUS_DIR / name
+            if not path.is_file():
+                print(f"{label:20s}  AUSENTE")
+                continue
+            result = import_pdf(path, PdfImportOptions(pages=pages, lang=lang))
+            text_tokens = games_scores = nodes = nodes_with = 0
+            codes: Counter[int] = Counter()
+            for block in result.document.body:
+                if isinstance(block, (Paragraph, Heading)):
+                    text_tokens += _nag_tokens(plain_text(block.content))
+                elif isinstance(block, GameScore):
+                    games_scores += 1
+                    for child in block.children:
+                        m, n, found = _walk_nags(child)
+                        nodes += m
+                        nodes_with += n
+                        codes.update(found)
+            print(f"{label:20s} {len(pages):5d} {text_tokens:22d} {games_scores:8d} "
+                  f"{nodes:6d} {nodes_with:10d}   "
+                  + " ".join(f"${c}×{n}" for c, n in sorted(codes.items())))
+            out[label] = {"pages": pages, "nag_tokens_in_text": text_tokens,
+                          "games": games_scores, "nodes": nodes, "nodes_with_nags": nodes_with,
+                          "codes": {f"${c}": n for c, n in sorted(codes.items())}}
+    finally:
+        games_module.plain_text = original  # type: ignore[assignment]
+    total_with = sum(v["nodes_with_nags"] for v in out.values())
+    total_games = sum(v["games"] for v in out.values())
+    passed = total_games > 0 and total_with > 0
+    print(f"\nportão B3: {'PASSOU' if passed else 'REPROVOU'} — {total_with} nó(s) com NAG em "
+          f"{total_games} partida(s)" + (f" (sabotagem: {sabotage})" if sabotage else ""))
+    out["gate"] = {"passed": passed, "nodes_with_nags": total_with, "games": total_games,
+                   "sabotage": sabotage}
+    return out
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__ and __doc__.split("\n")[0])
     parser.add_argument(
         "--what",
-        choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "all"),
+        choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "nags", "all"),
         default="books")
+    parser.add_argument("--sabotar", default="", choices=("", "nags"),
+                        help="--what nags: apaga os símbolos do texto de onde as partidas nascem")
     parser.add_argument("--cap", type=int, default=60,
                         help="máximo de páginas amostradas por livro")
     parser.add_argument("--json", type=Path, default=None,
@@ -693,6 +793,10 @@ def main(argv: Iterable[str] | None = None) -> int:
         if results:
             print()
         results["contest"] = report_contest()
+    if args.what in ("nags", "all"):
+        if results:
+            print()
+        results["nags"] = report_nags(sabotage=args.sabotar)
 
     print(f"\n{time.perf_counter() - started:.1f} s")
     if args.json is not None:

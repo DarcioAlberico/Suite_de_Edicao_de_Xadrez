@@ -49,12 +49,13 @@ from numpy.typing import NDArray
 from caissa.ingest.pdf.geometry import PageFrame
 from caissa.ingest.pdf.textlayer import PageText, TextLine, TextSpan
 from caissa.ocr.arbiter import ArbitrationOutcome, RegionTask
+from caissa.ocr.cancel import OcrCanceled, check_cancel
 from caissa.ocr.decision import Decision, RegionDecision
 from caissa.ocr.engines.base import OcrEngine
 from caissa.ocr.engines.pdf_text_layer import TextLayerVerdict
 from caissa.ocr.page import PageConfig, PageOutcome, PageRecognizer, PageTask, RegionOutcome
 from caissa.ocr.portfolio import Portfolio, PortfolioConfig, Variant, build_portfolio
-from caissa.ocr.types import BBox, OcrResult, RegionKind
+from caissa.ocr.types import BBox, OcrLine, OcrResult, RegionKind
 
 __all__ = [
     "DiagramRef",
@@ -71,6 +72,8 @@ LOGGER = logging.getLogger("caissa.ingest.pdf.ocr_service")
 _DECISION_RANK = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 0}
 #: Engine name the fine-tuned figurine model's readings carry in the fusion.
 FIGURINE_ENGINE = "tesseract_figurine"
+#: The movetext-profile strips of passo B2, under their own name so they never anchor.
+STRIPS_ENGINE = "tesseract_strips"
 
 
 # --------------------------------------------------------------------------- #
@@ -97,18 +100,67 @@ class OcrServiceConfig:
     #: the original render.
     use_portfolio: bool = True
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
+    #: OCR_UI_ROADMAP_C2 passo B8: on a page whose show-through crosses
+    #: ``portfolio.min_bleed_share``, the bleed step gets the *real* verso —
+    #: the neighbouring page of the PDF (either side of the sheet is tried),
+    #: mirrored and registered — instead of the "fainter and not connected to
+    #: ink" heuristic.  ``register_verso`` was written for this in Sol and
+    #: nothing ever handed it a verso.  The candidate that correlates best
+    #: with the page is used when it clears ``verso_min_correlation``; a page
+    #: with no PDF behind it (the benchmark, a photograph) has only its own
+    #: mirror to offer, which is what a synthetic show-through is made of.
+    #: The floor was measured on a rendered page with a *different* page
+    #: showing through at 25 % (``test_verso``): the true verso registers at
+    #: 0,13, the page's own mirror at 0,10, a page that is not the verso at
+    #: 0,03 and noise at 0,001; the benchmark's synthetic show-through (the
+    #: page itself, flipped) registers at 0,22–0,28.  0,08 sits between the
+    #: wrong page and the right one.
+    #: **Off by measurement** (2026-09-21, ``OCR_UI_REPORT_C2_FASE2.md`` §B8): on
+    #: ``shadow_curl_bleed`` the verso variant made CER 0,0387 → 0,0399 and
+    #: invented moves 8 → 10 (inside the bootstrap interval, but the wrong
+    #: way) -- the stratum's show-through is the page itself mirrored and
+    #: then curled, which defeats a global registration.  The mechanism is
+    #: tested and stays for a real book with a real verso; nothing in the
+    #: corpus rewards it yet.
+    use_verso: bool = False
+    verso_min_correlation: float = 0.08
+    verso_self_mirror: bool = True
     #: Fuse the candidates of a region token by token (Sol §SOL-6).
     fuse: bool = True
     #: Keyword overrides for :class:`caissa.ocr.fusion.FusionConfig` (the fusion's
     #: thresholds and the passo B4 sabotage switch); ``SOL_CONFIG='{"fusion":
     #: {"passo_b4": false}}'`` in ``bench_sol`` reaches here.
     fusion: dict[str, Any] = field(default_factory=dict)
+    #: OCR_UI_ROADMAP_C2 passo B5: the fused text is judged on its own
+    #: score, not the anchor's.  When the anchor abstained (Tesseract at
+    #: 0,40 on a line of solution under a diagram) and an *independent*
+    #: candidate — another engine, or the glyph reader — was accepted or sent
+    #: to review agreeing with the fused text on at least
+    #: ``fusion_rescue_moves`` move tokens, the fused result is scored by
+    #: the arbiter and decided again, capped at REVIEW: SOL-2 still holds, an
+    #: abstained anchor is never certified by its alternatives, but a reading
+    #: two readers agree on goes to the reviewer instead of to nothing.
+    #: Measured before: 33 of the 62 abstained regions of ``native`` had such
+    #: a candidate (``OCR_UI_ANALISE_C2.md`` §4.3).
+    fusion_rescue: bool = True
+    fusion_rescue_moves: int = 2
     #: Replay movetext regions for legality (Sol §SOL-8).
     validate_notation: bool = True
     #: Sol §SOL-7: on a region that reads as movetext, add Tesseract's
     #: movetext profile and its strict (whitelisted) profile as extra
     #: candidates for fusion.  The strict one is never the sole reading.
     movetext_candidates: bool = True
+    #: OCR_UI_ROADMAP_C2 passo B2: on a *mixed* region — prose with analysis
+    #: in it, never half moves — the movetext profile is run on each line
+    #: that carries notation, as a strip, and the strips join the fusion as
+    #: one candidate.  The profile's gain (SOL-7: CER 0,0168 → 0,0066 on pure
+    #: movetext) reached only regions that read as movetext as a whole; on a
+    #: book page the analysis lives inside paragraphs, and the prose DAWG
+    #: "corrected" its moves into words.  Off, the switch of the sabotage.
+    movetext_strips: bool = True
+    #: ...at most this many bands per region (a band is a run of consecutive
+    #: notation lines, one Tesseract call each).
+    movetext_strips_max: int = 8
     #: The trunk's glyph classifier as a second opinion on regions that read
     #: as movetext (:mod:`caissa.ocr.engines.glyph`): it reads figurines
     #: (``♖e8!``) where a line engine returns Latin look-alikes (``Hea!``),
@@ -165,6 +217,14 @@ class OcrServiceConfig:
     #: lets the arbiter's winner (Tesseract, usually) anchor instead.
     damaged_layer_anchors: bool = True
     page: PageConfig = field(default_factory=PageConfig)
+    #: OCR_UI_ROADMAP_C2 passo B9: the extra candidates of a region — the
+    #: movetext profiles, the glyph reader, the figurine model, the cascade
+    #: on each preprocessing variant — are independent readings of the same
+    #: pixels, and Tesseract (a subprocess) and the ONNX readers release the
+    #: GIL.  They run on this many threads; ``1`` is the serial loop of
+    #: before.  The candidate list keeps its order whatever the threads did,
+    #: so the fusion (and the trace) stay byte-for-byte deterministic.
+    workers: int = 4
     #: A region already accepted is not re-read on any variant; a region
     #: below this score is not worth the variants either (noise is noise
     #: on every image).  In between, the portfolio earns its cost.
@@ -315,12 +375,23 @@ class PageRecognition:
 
     @property
     def decision(self) -> Decision:
-        """The page's decision: the *best* region's, because a page with one
-        accepted paragraph and two abstained margins has accepted text."""
+        """The page's decision.
+
+        A page with one accepted paragraph and two abstained margins has
+        accepted text; a page with one accepted paragraph and one paragraph
+        sent to review **needs review** -- that region's text enters the page
+        flagged, and calling the page "accepted" hid it behind the page-level
+        ``below_threshold`` (the benchmark's "silent import" count, which
+        counted exactly these pages once passo B1 made scans multi-region).
+        """
         if not self.regions:
             return Decision.ABSTAINED
-        return max((r.decision.decision for r in self.regions),
-                   key=lambda d: _DECISION_RANK[d])
+        emitted = [r.decision.decision for r in self.regions if r.emits_text]
+        if not emitted:
+            return Decision.ABSTAINED
+        if Decision.REVIEW in emitted:
+            return Decision.REVIEW
+        return max(emitted, key=lambda d: _DECISION_RANK[d])
 
     @property
     def confidence(self) -> float:
@@ -425,6 +496,7 @@ class OcrService:
         #: The book's model as anchor (passo 4b), built on first use.
         self._book_anchor: Any = None
         self._recognizers: dict[str, PageRecognizer] = {}
+        self._pool: Any = None
         self.last: PageRecognition | None = None
         #: Set by the importer before each page: diagrams and notation locale.
         self.page_context: PageContext | None = None
@@ -583,8 +655,29 @@ class OcrService:
         dpi = self.choose_dpi(page, frame, verdict)
         image = self.render(page, dpi)
         task = PageTask(pdf_page=page, image=image, lang=lang, dpi=float(dpi),
-                        diagrams=tuple(diagrams), page_index=frame.index)
+                        diagrams=tuple(diagrams), page_index=frame.index,
+                        verso_sources=self._neighbour_renders(page, dpi))
         return self._recognize_task(task, image, started)
+
+    def _neighbour_renders(self, page: Any, dpi: int) -> Callable[[], list[NDArray[np.uint8]]]:
+        """The pages either side of ``page``, rendered at ``dpi`` — lazily,
+        because only a page with show-through will ask (passo B8)."""
+        def render_neighbours() -> list[NDArray[np.uint8]]:
+            out: list[NDArray[np.uint8]] = []
+            try:
+                document = page.parent
+                number = int(page.number)
+            except Exception:  # noqa: BLE001 - a page without a document has no neighbours
+                return out
+            for index in (number - 1, number + 1):
+                if index < 0 or index >= len(document):
+                    continue
+                try:
+                    out.append(self.render(document[index], dpi))
+                except Exception as exc:  # noqa: BLE001 - a neighbour that fails is no verso
+                    self.log.debug("verso: página %d não renderizou: %s", index, exc)
+            return out
+        return render_neighbours
 
     def recognize_image(self, image: NDArray[Any], *, dpi: float = 300.0, lang: str = "",
                         page_index: int = 0) -> PageRecognition:
@@ -607,23 +700,30 @@ class OcrService:
         regions: list[RegionRecognition] = []
 
         for region_outcome in outcome.regions:
+            check_cancel()
             base = self._candidate("original", region_outcome)
             candidates = [base]
             candidates.extend(self._engine_candidates(recognizer, region_outcome, task))
+            # The independent readings, as thunks, in the order the serial
+            # loop produced them; the pool runs them, the list keeps the order.
+            readings: list[Callable[[], list[Candidate]]] = []
             if cfg.movetext_candidates:
-                candidates.extend(self._profile_candidates(recognizer, region_outcome, task))
+                readings.append(lambda r=region_outcome: self._profile_candidates(recognizer, r, task))
             if cfg.glyph_candidates:
-                candidates.extend(self._glyph_candidates(recognizer, region_outcome, task))
+                readings.append(lambda r=region_outcome: self._glyph_candidates(recognizer, r, task))
             if cfg.figurine_candidates:
-                candidates.extend(self._figurine_candidates(recognizer, region_outcome, task))
+                readings.append(lambda r=region_outcome: self._figurine_candidates(recognizer, r, task))
             if self._wants_variants(region_outcome):
                 if portfolio is None:
-                    portfolio = self._portfolio(image, int(task.dpi), notes, signals=signals)
+                    portfolio = self._portfolio(image, int(task.dpi), notes, signals=signals,
+                                                verso=self._verso_for(task, image, signals, notes))
                 for variant in portfolio.variants[1:]:
-                    candidate = self._read_on_variant(recognizer, variant, region_outcome, task)
-                    if candidate is not None:
-                        candidates.append(candidate)
-            regions.append(self._settle(region_outcome, candidates, task))
+                    readings.append(lambda v=variant, r=region_outcome: [
+                        c for c in (self._read_on_variant(recognizer, v, r, task),)
+                        if c is not None])
+            for extra in self._run_readings(readings):
+                candidates.extend(extra)
+            regions.append(self._settle(region_outcome, candidates, task, recognizer))
 
         # A page where every region died inside the engine is not "a page
         # with nothing to read": it is a setup fault (a tessdata folder
@@ -649,6 +749,39 @@ class OcrService:
         return recognition
 
     # -- candidates -------------------------------------------------------- #
+
+    def _run_readings(self, readings: Sequence[Callable[[], list[Candidate]]]
+                      ) -> list[list[Candidate]]:
+        """Run the independent readings of a region, in parallel when the
+        service has workers, and return their results **in submission order**
+        (passo B9).  Each thread inherits the caller's context — the
+        cancellation hook of :mod:`caissa.ocr.cancel` included — and a
+        cancellation raised in any of them is re-raised here after the others
+        are collected."""
+        if not readings:
+            return []
+        workers = int(self.config.workers or 1)
+        if workers <= 1 or len(readings) == 1:
+            return [reading() for reading in readings]
+        if self._pool is None:
+            from concurrent.futures import ThreadPoolExecutor
+
+            self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="caissa-ocr")
+        import contextvars
+
+        futures = [self._pool.submit(contextvars.copy_context().run, reading)
+                   for reading in readings]
+        out: list[list[Candidate]] = []
+        canceled: BaseException | None = None
+        for future in futures:
+            try:
+                out.append(future.result())
+            except OcrCanceled as exc:
+                canceled = exc
+                out.append([])
+        if canceled is not None:
+            raise canceled
+        return out
 
     @staticmethod
     def _candidate(variant: str, region_outcome: RegionOutcome) -> Candidate:
@@ -717,10 +850,61 @@ class OcrService:
         score = arbitration.winner.total if arbitration.winner else 0.0
         return score >= self.config.min_score_for_variants or arbitration.result.is_empty
 
+    def _verso_for(self, task: PageTask, image: NDArray[np.uint8], signals: Any,
+                   notes: list[str]) -> NDArray[np.uint8] | None:
+        """The verso the bleed step should subtract, or ``None`` (passo B8).
+
+        Only asked for on a page whose show-through signal crosses the
+        portfolio's floor; the candidates are the neighbouring pages (and,
+        allowed, the page's own mirror), each mirrored and registered by
+        :meth:`BleedThroughReduction.register_verso`; the best correlation
+        wins when it clears the floor, and the note says which.
+        """
+        cfg = self.config
+        if not cfg.use_verso or signals is None:
+            return None
+        if float(getattr(signals, "bleed_share", 0.0)) < cfg.portfolio.min_bleed_share:
+            return None
+        from caissa.ocr.preprocess import BleedThroughReduction, to_gray
+
+        candidates: list[tuple[str, NDArray[np.uint8]]] = []
+        if task.verso_sources is not None:
+            try:
+                candidates += [(f"página vizinha {n + 1}", to_gray(v))
+                               for n, v in enumerate(task.verso_sources())]
+            except Exception as exc:  # noqa: BLE001 - no neighbours is the heuristic path
+                self.log.debug("verso: vizinhas indisponíveis: %s", exc)
+        if cfg.verso_self_mirror:
+            candidates.append(("espelho da própria página", image))
+        if not candidates:
+            return None
+        step = BleedThroughReduction()
+        gray = to_gray(image)
+        best: tuple[float, str, NDArray[np.uint8]] | None = None
+        for name, candidate in candidates:
+            try:
+                _, _, score = step.register_verso(gray, candidate, int(task.dpi))
+            except Exception as exc:  # noqa: BLE001 - a candidate that fails to register is no verso
+                self.log.debug("verso: %s não registrou: %s", name, exc)
+                continue
+            if best is None or score > best[0]:
+                best = (score, name, candidate)
+        if best is None or best[0] < cfg.verso_min_correlation:
+            notes.append("verso: nenhum candidato correlaciona com a transparência "
+                         f"(melhor {best[0]:.2f} < {cfg.verso_min_correlation:.2f}); "
+                         "redução heurística." if best else
+                         "verso: nenhum candidato registrou; redução heurística.")
+            return None
+        notes.append(f"verso real: {best[1]} registrada com correlação {best[0]:.2f}.")
+        return best[2]
+
     def _portfolio(self, image: NDArray[np.uint8], dpi: int, notes: list[str],
-                   signals: Any = None) -> Portfolio:
-        portfolio = build_portfolio(image, dpi=dpi, config=self.config.portfolio,
-                                    signals=signals)
+                   signals: Any = None, verso: NDArray[np.uint8] | None = None) -> Portfolio:
+        from dataclasses import replace
+
+        config = (replace(self.config.portfolio, verso=verso) if verso is not None
+                  else self.config.portfolio)
+        portfolio = build_portfolio(image, dpi=dpi, config=config, signals=signals)
         if len(portfolio.variants) > 1:
             notes.append("portfólio: " + ", ".join(
                 f"{v.name} ({'; '.join(v.reasons_pt)})" for v in portfolio.variants[1:]))
@@ -776,13 +960,15 @@ class OcrService:
         region = region_outcome.region
         if result.is_empty or result.engine != "tesseract" or task.image is None:
             return []
-        movetext = region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
-        if not movetext:
-            return []
         engine = next((e for e in recognizer.engines
                        if getattr(e, "name", "") == "tesseract"
                        and hasattr(e, "recognize_with_profile")), None)
         if engine is None:
+            return []
+        movetext = region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
+        if not movetext:
+            if self.config.movetext_strips and _carries_notation(result):
+                return self._strip_candidates(recognizer, engine, region_outcome, task)
             return []
         box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
         h, w = task.image.shape[:2]
@@ -815,6 +1001,99 @@ class OcrService:
             out.append(Candidate(variant=str(profile), engine=reading.engine, result=reading,
                                  decision=decision, score=score, outcome=arbitration))
         return out
+
+    def _strip_candidates(self, recognizer: PageRecognizer, engine: Any,
+                          region_outcome: RegionOutcome, task: PageTask) -> list[Candidate]:
+        """The movetext profile on the notation lines of a mixed region (passo B2).
+
+        One strip per line of the anchor that carries notation, read in PSM 7
+        with the movetext profile (DAWGs off, the move patterns on), and all
+        the strips as **one** candidate whose lines the fusion pairs with the
+        anchor's by geometry.  Lines of plain prose are not read again: the
+        prose profile is the right one for them, and a strip of prose read
+        without a dictionary would only feed the fusion worse readings.
+        """
+        from caissa.ocr.decision import decide
+        from caissa.ocr.engines.profiles import TesseractProfile
+        from caissa.ocr.lexicon import normalise_lang
+
+        arbitration = region_outcome.outcome
+        result = arbitration.result
+        region = region_outcome.region
+        assert task.image is not None
+        h, w = task.image.shape[:2]
+        image_box = BBox(0.0, 0.0, float(w), float(h))
+        lines: list[OcrLine] = []
+        strips = 0
+        # Consecutive notation lines form one band, read in one call: a
+        # paragraph of analysis is a run of such lines, and one Tesseract
+        # call per line (0,10–0,17 s of fixed overhead each) made a page of
+        # forty lines cost six seconds more.  A band is PSM 6 (a uniform
+        # block) with the movetext profile; a lone line is PSM 7.
+        bands: list[list[OcrLine]] = []
+        for line in result.lines:
+            if line.words and _line_carries_notation(line):
+                if bands and bands[-1] and self._adjacent(bands[-1][-1], line):
+                    bands[-1].append(line)
+                else:
+                    bands.append([line])
+        for band in bands[:self.config.movetext_strips_max]:
+            box = BBox.union_of([line.box for line in band])
+            # A third of a line of paper above and below: Tesseract wants
+            # the ascenders and descenders whole and a margin around them,
+            # and the line box hugs the ink.
+            strip = box.expanded(0.35 * band[0].box.h).clipped_to(image_box)
+            x, y, cw, ch = strip.to_int_tuple()
+            if cw <= 0 or ch <= 0:
+                continue
+            crop = task.image[y:y + ch, x:x + cw]
+            try:
+                reading = engine.recognize_with_profile(
+                    crop, lang=task.lang,
+                    psm_hint=RegionKind.SINGLE_LINE if len(band) == 1 else RegionKind.MOVETEXT,
+                    profile=TesseractProfile.MOVETEXT)
+            except Exception as exc:  # noqa: BLE001 - an extra candidate must never fail the page
+                self.log.debug("faixa de lances falhou: %s", exc)
+                continue
+            strips += 1
+            if reading.is_empty:
+                continue
+            for read in _translate(reading, float(x), float(y)).lines:
+                if read.words:
+                    lines.append(read)
+        if not lines:
+            return []
+        # Its own engine name and ``secondary=True``: the strips are a *subset*
+        # of the region's lines, and a candidate that can anchor would make
+        # the region *be* those lines (measured 2026-09-20: ``twocol:d:12``
+        # CER 0,0016 → 0,68, REVIEW → ACCEPTED, when the strips outscored the
+        # whole reading).  The fusion pairs them by geometry and lets them
+        # replace only a token the anchor doubted.
+        reading = OcrResult(
+            engine=STRIPS_ENGINE, lang=result.lang, lines=tuple(lines),
+            region_kind=RegionKind.MOVETEXT, duration_s=0.0,
+            meta={"variant": "movetext_strips", "profile": str(TesseractProfile.MOVETEXT),
+                  "strips": strips})
+        box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        x, y, cw, ch = box_px.clipped_to(image_box).to_int_tuple()
+        crop = task.image[y:y + ch, x:x + cw] if cw > 0 and ch > 0 else task.image
+        threshold = float(result.meta.get("arbiter_threshold", 0.78))
+        score = recognizer.arbiter.score(
+            reading, level=1, lang=task.lang,
+            task=RegionTask(image=crop, region_kind=RegionKind.MOVETEXT, lang=task.lang,
+                            scale=task.scale)).total
+        decision = decide(reading, score, policy=recognizer.config.arbiter.policy,
+                          image=task.image, langs=normalise_lang(task.lang),
+                          region_kind=RegionKind.MOVETEXT, accept_threshold=threshold)
+        return [Candidate(variant="movetext_strips", engine=reading.engine, result=reading,
+                          decision=decision, score=score, outcome=arbitration, secondary=True)]
+
+    @staticmethod
+    def _adjacent(above: OcrLine, below: OcrLine) -> bool:
+        """Two lines of the same column, one under the other, at most a line apart."""
+        gap = below.box.y0 - above.box.y1
+        return (gap <= max(above.box.h, below.box.h)
+                and above.box.horizontal_overlap(below.box) >= 0.3)
 
     def glyph_engine(self) -> OcrEngine | None:
         """The trunk's glyph reader when this machine has it, else ``None``.
@@ -982,9 +1261,11 @@ class OcrService:
                           decision=decision, score=score, outcome=arbitration, secondary=True)]
 
     def _settle(self, region_outcome: RegionOutcome, candidates: list[Candidate],
-                task: PageTask) -> RegionRecognition:
+                task: PageTask, recognizer: PageRecognizer | None = None) -> RegionRecognition:
         """Pick the best candidate, fuse, validate, and record everything."""
         cfg = self.config
+        if recognizer is None:
+            recognizer = self.recognizer_for(task.lang)
         # Who may hold the anchor seat.  The second opinions never do; and a
         # secondary engine (OCR_UI_ROADMAP passo 1: RapidOCR) does not where
         # the glyph reader sees figurines — measured on the SFC4 scans, it
@@ -1015,11 +1296,19 @@ class OcrService:
                     [(c.result, c.score, c.decision) for c in candidates],
                     lang=task.lang, image=task.image if task.pdf_page is None else None,
                     config=FusionConfig(**self.config.fusion) if self.config.fusion else None,
-                    never_anchor=frozenset(never_anchor))
+                    never_anchor=frozenset(never_anchor),
+                    calibrators=self._calibrators(recognizer, candidates, region_outcome, task))
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
                     if self.book_cipher is not None:
                         self._observe_glyph_swaps(fused, task.page_index, task.lang)
+                    if (cfg.fusion_rescue and best.decision.decision is Decision.ABSTAINED
+                            and decision.decision is Decision.ABSTAINED):
+                        rescued = self._rescue_abstained(
+                            recognizer, fused, best, candidates, region_outcome, task)
+                        if rescued is not None:
+                            decision = rescued
+                            fusion["rescued"] = True
             except ImportError:
                 pass
         region = region_outcome.region
@@ -1058,6 +1347,90 @@ class OcrService:
             legality=legality, fusion=fusion,
         )
 
+
+    @staticmethod
+    def _calibrators(recognizer: PageRecognizer, candidates: Sequence[Candidate],
+                     region_outcome: RegionOutcome, task: PageTask) -> dict[str, Any]:
+        """Engine → the function that puts its raw word confidence on the
+        arbiter's calibrated scale (passo B6), for the engines that have a
+        fitted table.  The facet is the region's, the same the arbiter used
+        to score the candidate."""
+        from caissa.ocr.arbiter import Arbiter
+
+        out: dict[str, Any] = {}
+        region_task = RegionTask(image=task.image, region_kind=region_outcome.region.kind,
+                                 lang=task.lang, scale=task.scale)
+        for candidate in candidates:
+            engine = candidate.result.engine
+            if engine in out:
+                continue
+            key = Arbiter._facet_key(candidate.result, region_task)  # noqa: SLF001 - the arbiter's own facet
+            calibration = recognizer.config.arbiter.calibration_for(engine, key)
+            if calibration.table is not None:
+                out[engine] = calibration.apply
+        return out
+
+    def _rescue_abstained(self, recognizer: PageRecognizer, fused: Any, best: Candidate,
+                          candidates: Sequence[Candidate], region_outcome: RegionOutcome,
+                          task: PageTask) -> RegionDecision | None:
+        """Passo B5: the fused text of an abstained anchor, judged on its own.
+
+        ``None`` when no independent candidate (another engine, or a second
+        opinion) was accepted or sent to review agreeing with the fused text
+        on enough move tokens; otherwise the fused result scored by the
+        arbiter and decided again, never above REVIEW, and never past the
+        evidence floors (a region with no ink under its words stays abstained
+        whatever the agreement).
+        """
+        from caissa.ocr.decision import decide
+        from caissa.ocr.lexicon import is_move_token, tokenize, normalise_lang
+
+        wanted = self.config.fusion_rescue_moves
+        moves = {t.casefold() for t in tokenize(fused.result.text) if is_move_token(t)}
+        if len(moves) < wanted:
+            return None
+        anchor_engine = best.result.engine
+        supporters = []
+        for candidate in candidates:
+            if candidate is best or candidate.decision.decision is Decision.ABSTAINED:
+                continue
+            independent = candidate.result.engine != anchor_engine or candidate.secondary
+            if not independent:
+                continue
+            theirs = {t.casefold() for t in tokenize(candidate.result.text) if is_move_token(t)}
+            agreeing = len(moves & theirs)
+            if agreeing >= wanted:
+                supporters.append((agreeing, candidate))
+        if not supporters:
+            return None
+        agreeing, supporter = max(supporters, key=lambda pair: pair[0])
+        region = region_outcome.region
+        box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        crop = task.image
+        if task.image is not None:
+            h, w = task.image.shape[:2]
+            x, y, cw, ch = box_px.clipped_to(BBox(0.0, 0.0, float(w), float(h))).to_int_tuple()
+            if cw > 0 and ch > 0:
+                crop = task.image[y:y + ch, x:x + cw]
+        score = recognizer.arbiter.score(
+            fused.result, level=1, lang=task.lang,
+            others=[c.result for c in candidates if c is not best],
+            task=RegionTask(image=crop, region_kind=region.kind, lang=task.lang,
+                            scale=task.scale)).total
+        decision = decide(
+            fused.result, score, policy=recognizer.config.arbiter.policy,
+            image=task.image if task.pdf_page is None else None,
+            langs=normalise_lang(task.lang), region_kind=region.kind,
+            accept_threshold=best.decision.accept_threshold)
+        if decision.decision is Decision.ABSTAINED:
+            return None
+        reason = (f"o motor âncora se absteve (escore {best.score:.3f}); o texto fundido, "
+                  f"re-pontuado em {score:.3f}, concorda em {agreeing} lance(s) com "
+                  f"{supporter.engine}/{supporter.variant} — vai à revisão, nunca aceito.")
+        return RegionDecision(
+            Decision.REVIEW, decision.score, decision.accept_threshold,
+            decision.review_threshold, decision.reasons_pt + (reason,),
+            decision.evidence, decision.flagged_words, True, decision.legality)
 
     def _observe_glyph_swaps(self, fused: Any, page_index: int, lang: str) -> None:
         """Feed the book cipher the look-alike → figurine swaps the fusion made.
@@ -1168,10 +1541,24 @@ def _has_figurines(result: OcrResult, *, min_confidence: float = 0.70) -> bool:
 def _looks_like_movetext(result: OcrResult) -> bool:
     from caissa.ocr.lexicon import is_move_token, tokenize
 
-    tokens = tokenize(result.text)
+    # Move numbers and their dots are the notation's own furniture, not
+    # tokens that could have been moves: ``10.d4`` tokenises as three, and
+    # counting them against the move made a line of numbered moves past
+    # move 9 read as one third notation (passo B2).
+    tokens = [t for t in tokenize(result.text) if not (t.isdigit() or set(t) <= set(".…"))]
     if len(tokens) < 6:
         return False
     return sum(1 for t in tokens if is_move_token(t)) >= 0.5 * len(tokens)
+
+
+def _line_carries_notation(line: OcrLine, *, min_moves: int = 2) -> bool:
+    """A line with at least two move tokens in it: a strip worth the movetext
+    profile (passo B2).  Not :func:`_carries_notation`, whose share rule is
+    for a region — one line of prose with a square name in it (``the e4
+    pawn``) is not a strip of moves, and each strip is one Tesseract call."""
+    from caissa.ocr.lexicon import is_move_token, tokenize
+
+    return sum(1 for t in tokenize(line.text) if is_move_token(t)) >= min_moves
 
 
 def _carries_notation(result: OcrResult, *, many: int = 4, min_share: float = 0.2) -> bool:

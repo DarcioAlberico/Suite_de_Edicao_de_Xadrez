@@ -105,7 +105,9 @@ NAG_TABLE: tuple[Nag, ...] = (
     Nag("$4", "??", "Erro grave", GROUP_MOVE),
     Nag("$5", "!?", "Lance interessante", GROUP_MOVE),
     Nag("$6", "?!", "Lance duvidoso", GROUP_MOVE),
-    Nag("$7", "□", "Lance único (forçado)", GROUP_MOVE, aliases=("™",)),
+    # `◻` (U+25FB) e o quadrado que a fonte do Informator emite
+    # (`ingest.pdf.textlayer.INFORMATOR_SYMBOLS`, passo B3).
+    Nag("$7", "□", "Lance único (forçado)", GROUP_MOVE, aliases=("™", "◻")),
     Nag("$146", "N", "Novidade teórica", GROUP_MOVE, safe_glyph=False, suffix_only=True),
     # -- Avaliacao -----------------------------------------------------
     Nag("$10", "=", "Posição equilibrada", GROUP_EVALUATION),
@@ -130,14 +132,18 @@ NAG_TABLE: tuple[Nag, ...] = (
     Nag("$32", "⟳", "Vantagem de desenvolvimento", GROUP_DYNAMICS, black_code="$33", aliases=("‰",)),
     Nag("$36", "↑", "Com iniciativa", GROUP_DYNAMICS, black_code="$37", aliases=("ƒ",)),
     Nag("$40", "→", "Com ataque", GROUP_DYNAMICS, black_code="$41", aliases=("‚",)),
-    Nag("$132", "⇆", "Com contrajogo", GROUP_DYNAMICS, black_code="$133", aliases=("„",)),
-    Nag("$138", "⨁", "Em apuro de tempo", GROUP_DYNAMICS, black_code="$139"),
+    # `⇄` (U+21C4) e a classe do leitor de glifos do tronco; `⇆` (U+21C6) a
+    # do PGN (passo B3).
+    Nag("$132", "⇆", "Com contrajogo", GROUP_DYNAMICS, black_code="$133", aliases=("„", "⇄")),
+    # `⊕` (U+2295) e o que a fonte do Informator emite para o apuro de tempo.
+    Nag("$138", "⨁", "Em apuro de tempo", GROUP_DYNAMICS, black_code="$139", aliases=("⊕",)),
     # -- Intencao ------------------------------------------------------
     # `…` **nao** entra como apelido de `∆`, embora a chave de simbolos da
     # Thinkers diga que sim: reticencia tipografica e o que quase todo PDF de
     # xadrez usa para marcar lance das pretas (`7…h6`). Trocar isso por `∆`
     # destruiria a numeracao. O NFKC ja a converte em `...`, que e o certo.
-    Nag("$140", "∆", "Com a ideia de", GROUP_INTENT, aliases=("Δ",)),
+    # `△` (U+25B3) e o triangulo da fonte do Informator.
+    Nag("$140", "∆", "Com a ideia de", GROUP_INTENT, aliases=("Δ", "△")),
     Nag("$141", "∇", "Contra a ideia de", GROUP_INTENT),
     Nag("$142", "⌓", "Melhor é", GROUP_INTENT, aliases=("¹",)),
     Nag("$143", "≤", "Pior é", GROUP_INTENT),
@@ -288,6 +294,38 @@ def canonical_code(glyph: str, white_to_move: bool = True) -> str | None:
     if nag is None:
         return None
     return nag.code_for(white_to_move)
+
+
+#: Glifos e apelidos, do mais longo para o mais curto, para fatiar a cauda
+#: de um lance (passo B3): `!?±` e `!?` + `±`, nunca `!` + `?` + `±`.
+_TAIL_PIECES: tuple[str, ...] = tuple(sorted(
+    set(SEARCHABLE_GLYPHS) | set(SUFFIX_GLYPHS) | set(BOOK_SYMBOL_ALIASES),
+    key=len, reverse=True))
+
+
+def nags_from_suffix(suffix: str, white_to_move: bool = True) -> tuple[int, ...]:
+    """Os NAGs de uma cauda de lance (`RepairedMove.suffix`), como numeros.
+
+    `Nf6!?±` -> `(5, 16)`; `Rad8³` -> `(15,)`; `Nxe4!µ` -> `(1, 17)`. O apelido
+    de fonte de livro e resolvido antes (`²` -> `⩲`), o glifo dependente do
+    lado pelo lado que **fez** o lance, e o que sobrar sem ser NAG (`+`, `#`,
+    um resto de OCR) e ignorado sem parar a fatia. E o passo G5 da analise
+    do ciclo 2: ate aqui nenhum NAG sobrevivia a via PDF -> GameScore.
+    """
+    out: list[int] = []
+    text = suffix.strip()
+    while text:
+        for piece in _TAIL_PIECES:
+            if text.startswith(piece):
+                glyph = BOOK_SYMBOL_ALIASES.get(piece, piece)
+                code = canonical_code(glyph, white_to_move)
+                if code is not None and code.startswith("$") and code[1:].isdigit():
+                    out.append(int(code[1:]))
+                text = text[len(piece):]
+                break
+        else:
+            text = text[1:]
+    return tuple(dict.fromkeys(out))
 
 
 def describe(token: str) -> str:

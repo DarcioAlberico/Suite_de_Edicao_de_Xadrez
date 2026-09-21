@@ -72,6 +72,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.ocr.labeling import LabelProject, LineLabel, LineStatus, PageLabels, RegionLabel
 from caissa.ocr.labeling.export import (
     calibration_pairs,
@@ -125,8 +126,10 @@ __all__ = [
 TITULO = "Rotulagem"
 """O rótulo da aba. O tronco o lê daqui para não escrever o nome duas vezes."""
 
-REGION_COLOR = "#7c3aed"
-SELECTED_COLOR = "#dc2626"
+#: The colours of the region boxes come from the trunk's skin when it is around
+#: (:mod:`caissa.ui.theme.pele`, passo C9); these are the names the painter asks for.
+REGION_COLOR = "regiao"
+SELECTED_COLOR = "regiao_selecionada"
 PAGE_DPI = 150  # the page image in the viewer; the crop on the right is at 300
 SEM_LINHA = "Reconheça a página (F5) ou desenhe uma região (D)."
 CLICK_SLOP_PX = 4
@@ -231,7 +234,7 @@ class _Visor(QGraphicsView):
         super().__init__(parent)
         self.cena = QGraphicsScene(self)
         self.setScene(self.cena)
-        self.setBackgroundBrush(QBrush(QColor("#3f3f46")))
+        self.setBackgroundBrush(QBrush(QColor(pele.cor("vazio_do_visor"))))
         self.setRenderHints(QPainter.RenderHint.SmoothPixmapTransform)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
@@ -286,7 +289,7 @@ class _Visor(QGraphicsView):
             return
         for region in page.regions:
             x0, y0, x1, y1 = region.rect
-            pen = QPen(QColor(SELECTED_COLOR if region is selecionada else REGION_COLOR))
+            pen = QPen(QColor(pele.cor(SELECTED_COLOR if region is selecionada else REGION_COLOR)))
             pen.setCosmetic(True)
             pen.setWidth(2 if region is selecionada else 1)
             if region is not selecionada:
@@ -295,7 +298,7 @@ class _Visor(QGraphicsView):
                 self.cena.addRect(QRectF(x0 - 2, y0 - 2, x1 - x0 + 4, y1 - y0 + 4), pen)
             )
             texto = QGraphicsSimpleTextItem(f"{region.index} {region.kind}")
-            texto.setBrush(QBrush(QColor(REGION_COLOR)))
+            texto.setBrush(QBrush(QColor(pele.cor(REGION_COLOR))))
             texto.setFlag(texto.GraphicsItemFlag.ItemIgnoresTransformations)
             texto.setPos(x0 - 2, y0 - 12)
             self.cena.addItem(texto)
@@ -330,7 +333,7 @@ class _Visor(QGraphicsView):
         self._inicio = ponto
         self._inicio_tela = event.position().toPoint()
         if self.desenhando:
-            pen = QPen(QColor(SELECTED_COLOR))
+            pen = QPen(QColor(pele.cor(SELECTED_COLOR)))
             pen.setCosmetic(True)
             pen.setWidth(2)
             self._rascunho = self.cena.addRect(QRectF(ponto, ponto), pen)
@@ -619,10 +622,13 @@ class PainelDeRotulagem(QWidget):
             b.clicked.connect(lambda _c=False, a=acao: a())
             botoes.addWidget(b)
         botoes.addStretch(1)
-        for texto, delta in (("◀ anterior", -1), ("próxima ▶", 1)):
+        paginador = []
+        for texto, delta in (("Anterior", -1), ("Próxima", 1)):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
             botoes.addWidget(b)
+            paginador.append(b)
+        pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
         dir_.addLayout(botoes)
         self.table = QTableWidget(0, 5, direita)
         self.table.setHorizontalHeaderLabels(["#", "reg.", "estado", "conf.", "texto"])
@@ -640,24 +646,29 @@ class PainelDeRotulagem(QWidget):
         corpo.setSizes([560, 440])
 
         self.status = QLabel("", self)
-        self.status.setStyleSheet("padding:3px 6px; border-top:1px solid #d1d5db;")
+        self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         raiz.addWidget(self.status)
 
     def _atalhos(self) -> None:
+        """Só o que não colide com a janela do tronco (passo C8): ``Escape`` para o desenho e
+        ``D`` no visor. ``Ctrl+S``, ``F5``, ``PgUp``/``PgDn`` eram ambíguos com os globais da
+        janela e não disparavam com a aba à frente; hoje são comandos do catálogo
+        (:data:`caissa.ui.views.declarados.COMANDOS_DA_ROTULAGEM`), e a janela roteia o
+        ``Ctrl+S``/``Ctrl+R``/``PgUp``/``PgDn`` globais para esta aba quando ela está à frente."""
         contexto = Qt.ShortcutContext.WidgetWithChildrenShortcut
-        for tecla, acao in (
-            ("F5", self.recognise_page),
-            ("Ctrl+S", self.save),
-            ("PgUp", lambda: self.go_page(self.page_index - 1)),
-            ("PgDown", lambda: self.go_page(self.page_index + 1)),
-            ("Escape", self._stop_drawing),
-        ):
-            atalho = QShortcut(QKeySequence(tecla), self)
-            atalho.setContext(contexto)
-            atalho.activated.connect(acao)
+        escape = QShortcut(QKeySequence("Escape"), self)
+        escape.setContext(contexto)
+        escape.activated.connect(self._stop_drawing)
         desenhar = QShortcut(QKeySequence("D"), self.visor)
         desenhar.setContext(contexto)
         desenhar.activated.connect(self.toggle_drawing)
+
+    def pagina_anterior(self) -> None:
+        """A página anterior desta aba -- o ``PgUp`` global, quando ela está à frente (C8)."""
+        self.go_page(self.page_index - 1)
+
+    def proxima_pagina(self) -> None:
+        self.go_page(self.page_index + 1)
 
     # -- service ------------------------------------------------------------ #
 
@@ -1716,7 +1727,8 @@ class DialogoDeTreino(QDialog):
         botoes.addWidget(self.progress)
         self.log = QPlainTextEdit(self)
         self.log.setReadOnly(True)
-        self.log.setStyleSheet("background:#111827; color:#e5e7eb; font-family:Consolas;")
+        self.log.setStyleSheet(f"background:{pele.cor('log_fundo')}; color:{pele.cor('log_texto')};")
+        self.log.setFont(pele.fonte_monoespacada())
         self.log.setAccessibleName("Registro do treino")
         raiz.addWidget(self.log, 1)
         self.timer = QTimer(self)
@@ -1946,7 +1958,7 @@ class DialogoDeMedida(QDialog):
         raiz.addWidget(self.progress_label)
         self.text = QPlainTextEdit(self)
         self.text.setReadOnly(True)
-        self.text.setStyleSheet("font-family:Consolas;")
+        self.text.setFont(pele.fonte_monoespacada())
         self.text.setAccessibleName("Resultado da medição")
         raiz.addWidget(self.text, 1)
         self.timer = QTimer(self)

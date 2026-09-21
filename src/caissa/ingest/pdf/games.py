@@ -37,6 +37,7 @@ from caissa.core.model.inline import plain_text
 from caissa.core.model.provenance import Provenance
 from caissa.ingest.pdf.captions import move_start
 from caissa.notation.legality_repair import RepairReport, repair_movetext, split_tail
+from caissa.notation.nag_table import nags_from_suffix
 from caissa.ocr.notation.movetext import MoveRun, move_runs
 
 __all__ = ["GamesReport", "attach_games", "game_from_paragraph", "is_invention"]
@@ -181,12 +182,18 @@ def _move_nodes(moves: list[Any], base: Provenance | None) -> list[MoveNode]:
             if base is not None
             else Provenance(confidence=float(move.confidence), note=note)
         )
+        # Passo B3: the annotation tail the repairer set aside (``Nf6!?±``,
+        # ``Rad8³``) becomes the node's NAGs, the side-dependent ones by the
+        # side that made the move.  Until here no NAG survived the PDF path.
+        white_moved = " w " in f" {move.fen_before} " or move.fen_before.split()[1:2] == ["w"]
+        nags = nags_from_suffix(getattr(move, "suffix", "") or "", white_moved)
         nodes.append(
             MoveNode(
                 san=move.san,
                 ply=int(move.ply) + 1,
                 position_before=move.fen_before,
                 position_after=_after(move.fen_before, move.san),
+                nags=nags,
                 provenance=provenance,
             )
         )

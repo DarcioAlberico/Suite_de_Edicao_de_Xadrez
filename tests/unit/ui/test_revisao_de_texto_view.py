@@ -24,11 +24,19 @@ from caissa.ui.widgets.cartao_da_linha import leitura_em_html
 # --------------------------------------------------------------------------- #
 
 
-def test_the_reading_html_paints_weak_words_amber_and_very_weak_red():
+def test_the_reading_html_paints_weak_words_conferir_and_very_weak_revisar():
+    """A regra do editor de texto do tronco (`ui/texto_cores.py`): a confiança vai na **letra**
+    (`conferir` em `ATENCAO`, `revisar` em `PROBLEMA_TEXTO`), nunca no fundo, que é o canal do
+    autor. Os hexadecimais vêm da pele em vigor -- o tronco quando está ao alcance, a reserva
+    da suíte quando não --, por isso o teste pergunta à pele em vez de fixá-los."""
+    from caissa.ui.theme import pele
+
     html = leitura_em_html([("the", 0.9), ("r0ok", 0.4), ("belongs", 0.2)], 0.5)
     assert html.startswith("the ")
-    assert '<span style="background:#fde68a">r0ok</span>' in html
-    assert '<span style="background:#fca5a5">belongs</span>' in html
+    assert f'<span style="color:{pele.cor("cartao_palavra_conferir")}">r0ok</span>' in html
+    assert f'<span style="color:{pele.cor("cartao_palavra_revisar")}">belongs</span>' in html
+    assert pele.cor("cartao_palavra_conferir") != pele.cor("cartao_palavra_revisar")
+    assert "background:" not in html
     assert leitura_em_html([], 0.5, fallback="a < b") == "a &lt; b"
 
 

@@ -260,3 +260,46 @@ def test_swapped_anchors_yield_no_game(monkeypatch):
     out = attach_games([left, right, *column], report=report)
     assert report.games == 0
     assert all(isinstance(b, Paragraph) for b in out[2:])
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI_ROADMAP_C2 passo B3: the NAGs reach the GameScore
+# --------------------------------------------------------------------------- #
+
+
+def _nags(score: GameScore) -> list[tuple[int, ...]]:
+    out, node = [], score.children[0]
+    while node is not None:
+        out.append(node.nags)
+        node = node.children[0] if node.children else None
+    return out
+
+
+def test_the_annotation_tail_becomes_the_nodes_nags():
+    """``!``, ``!?``, ``±``, the book's ``³`` for ``⩱`` — and the
+    side-dependent zugzwang by the side that made the move."""
+    paragraph = _movetext("19... g5!? 20 g3± gxf4 21 gxf4³ Rg8! 22 f5⨀")
+    score, why = game_from_paragraph(paragraph, FEN)
+    assert why == "game"
+    assert _sans(score) == ["g5", "g3", "gxf4", "gxf4", "Rg8", "f5"]
+    # 19...g5 is Black's: $23 would be Black's zugzwang; 22.f5 is White's: $22.
+    assert _nags(score) == [(5,), (16,), (), (15,), (1,), (22,)]
+
+
+def test_a_move_without_a_tail_has_no_nags():
+    paragraph = _movetext("19... g5 20 g3 gxf4 21 gxf4 Rg8 22 f5")
+    score, _ = game_from_paragraph(paragraph, FEN)
+    assert all(n == () for n in _nags(score))
+
+
+def test_the_book_symbol_aliases_of_the_informator_font_are_nags():
+    from caissa.notation.nag_table import nags_from_suffix
+
+    # The glyph reader's ``⇄`` and the Informator font's ``△``/``⊕``/``◻``.
+    assert nags_from_suffix("⇄", False) == (133,)
+    assert nags_from_suffix("△") == (140,)
+    assert nags_from_suffix("⊕") == (138,)
+    assert nags_from_suffix("◻") == (7,)
+    # A check mark or an OCR remnant in the tail is skipped, not fatal.
+    assert nags_from_suffix("+±") == (16,)
+    assert nags_from_suffix("~!") == (1,)

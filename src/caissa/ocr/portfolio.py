@@ -504,6 +504,16 @@ def build_portfolio(image: NDArray[Any], *, dpi: int = 300,
         if abs(signals.skew_deg) >= cfg.min_skew_deg:
             steps.insert(0, Deskew())
         plans.append(("bleed_sauvola", steps, reasons))
+        # OCR_UI_ROADMAP_C2 passo B8: with the real verso in hand the bleed
+        # step is well posed (mirror, register, subtract) — but not better
+        # on every page: measured on ``shadow_curl_bleed`` the registered
+        # verso wins some pages and the heuristic others (the curl defeats a
+        # global registration).  So the verso is one more variant, next to
+        # the heuristic one, and the arbiter picks per region; it never
+        # replaces the heuristic.
+        if cfg.verso is not None and signals.bleed_share >= cfg.min_bleed_share:
+            plans.append(("bleed_verso", list(steps),
+                          ["verso registrado", *reasons]))
 
     # 5. Dewarp only when the geometry says curl.
     if (signals.curl_amplitude_px >= cfg.min_curl_amplitude_px
@@ -513,21 +523,27 @@ def build_portfolio(image: NDArray[Any], *, dpi: int = 300,
                       [f"curvatura de {signals.curl_amplitude_px:.1f} px com consistência "
                        f"{signals.curl_consistency:.1f}"]))
 
-    if len(plans) > cfg.max_variants:
-        dropped = [name for name, _, _ in plans[cfg.max_variants:]]
-        notes.append(f"variantes além do teto de {cfg.max_variants} não construídas: "
+    # A verso in hand is the page's own evidence: it earns one seat beyond
+    # the cap rather than pushing the dewarp out.
+    cap = cfg.max_variants + (1 if any(name == "bleed_verso" for name, _, _ in plans) else 0)
+    if len(plans) > cap:
+        dropped = [name for name, _, _ in plans[cap:]]
+        notes.append(f"variantes além do teto de {cap} não construídas: "
                      f"{', '.join(dropped)}")
-        plans = plans[:cfg.max_variants]
+        plans = plans[:cap]
 
     for name, steps, reasons in plans:
         started = time.perf_counter()
         # Every plan that follows an upscale runs on the upscaled page, so
         # its geometry composes with the scale.
         base, base_dpi, base_reports, base_geometry = gray, int(dpi), [], VariantGeometry()
+        # Only the ``bleed_verso`` plan sees the verso: ``bleed_sauvola``
+        # stays the heuristic it was measured as.
+        verso = cfg.verso if name == "bleed_verso" else None
         if name != "upscale" and plans and plans[0][0] == "upscale":
             base, base_dpi, base_reports, base_geometry = _run_steps(
-                gray, int(dpi), plans[0][1], verso=cfg.verso)
-        out, out_dpi, reports, geometry = _run_steps(base, base_dpi, steps, verso=cfg.verso)
+                gray, int(dpi), plans[0][1], verso=verso)
+        out, out_dpi, reports, geometry = _run_steps(base, base_dpi, steps, verso=verso)
         geometry = VariantGeometry(scale=geometry.scale * base_geometry.scale,
                                    affine=geometry.affine, field=geometry.field)
         variant = Variant(

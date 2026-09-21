@@ -100,6 +100,9 @@ class Percurso:
     """A3, passo 5: a decisão gravada -- `ok` exige FEN gravada ≠ FEN lida."""
     conteudo: dict[str, Any] = field(default_factory=dict)
     """A3, passo 6: o que o EPUB gravado contém -- `ok` exige o `Diagram` com a FEN corrigida."""
+    trilho: dict[str, Any] = field(default_factory=dict)
+    """C8: o trilho aprende -- `aprendeu` (quando há ≥ 2 duvidosas) exige que a página gravada
+    saia da conta de dúvidas; `None` quando o livro não tinha uma segunda duvidosa."""
 
     def passou(self) -> bool:
         return (
@@ -110,6 +113,7 @@ class Percurso:
             and bool(self.diagramas.get("ok"))
             and bool(self.decisao.get("ok"))
             and bool(self.conteudo.get("ok"))
+            and self.trilho.get("aprendeu") is not False
         )
 
 
@@ -376,6 +380,8 @@ def medir(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
         "ok": int(contadores.get("diagrams", 0)) >= 1,
     }
 
+    marcas_antes = janela.trilho.marcas()   # C8: a conta de dúvidas antes de qualquer gravação
+
     # 3. ir à primeira duvidosa
     if duvidosas:
         alvo_pagina = duvidosas[0]
@@ -451,6 +457,33 @@ def medir(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
                     "ok": gravada.fen != lida and gravada.source == "janela",
                 }
             )
+        # C8: o trilho aprende com o que a pessoa gravou -- o diagrama corrigido sai da conta de
+        # dúvidas da página (uma página com três diagramas hesitantes cai de 3 para 2; com um
+        # só, deixa de ser duvidosa e «primeira duvidosa» vai à seguinte). Antes a marca só
+        # mudava numa nova importação.
+        for _ in range(6):
+            aplicacao.processEvents()
+        marcas = janela.trilho.marcas()
+        antes = int(marcas_antes[pagina_lida].duvidosos) if pagina_lida in marcas_antes else None
+        depois = int(marcas[pagina_lida].duvidosos) if pagina_lida in marcas else None
+        hesitantes = int(getattr(marcas_antes.get(pagina_lida), "hesitantes", 0) or 0)
+        percurso.trilho = {
+            "pagina_gravada": pagina_lida + 1,
+            "duvidosos_na_pagina_antes": antes,
+            "duvidosos_na_pagina_depois": depois,
+            "hesitantes_na_pagina_antes": hesitantes,
+            "duvidosas_depois": [p + 1 for p in sorted(marcas) if marcas[p].duvidosa],
+            # Só se afirma quando a dúvida da página era de diagrama (hesitante): uma página cuja
+            # conta é de regiões de texto em revisão não muda por uma correção de diagrama -- e
+            # é o caso do Aagaard 31–38, em que os 13 diagramas leem com folga.
+            "aprendeu": (depois is not None and antes is not None and depois < antes)
+            if gravada is not None and hesitantes else None,
+        }
+        if gravada is not None and not hesitantes:
+            percurso.notas.append(
+                "C8 não afirmável neste livro: o diagrama gravado não era hesitante (a dúvida da "
+                "página é de texto em revisão); a regra fica pelo teste unitário do trilho"
+            )
     else:
         percurso.notas.append(
             "a página duvidosa não tem caixa de diagrama: os passos 4 e 5 não se aplicam"
@@ -519,15 +552,40 @@ def _imagens_do_epub(caminho: Path) -> int:
         return sum(1 for n in z.namelist() if n.lower().endswith((".png", ".jpg", ".jpeg")))
 
 
-def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
+TETO_DE_TECLAS_POR_CASA = 3
+"""Teclas para corrigir uma casa pelo teclado (C8): `Tab` até ela e a letra da peça."""
+
+TETO_FRIO_S = 1.5
+"""«Clique em Ler → primeiro diagrama» num processo novo (C2). O aquecimento ao abrir o livro é
+o que faz o primeiro clique não pagar a carga do modelo. Medido 2026-09-21 (Kemeri p. 80, 3×):
+**0,58–0,59 s** com o aquecimento (o modelo carrega em ~1,7 s enquanto a pessoa vai à página);
+**1,98–2,04 s** sem ele (`--sabotar sem_aquecimento`). O roadmap propunha 8 s, que a sabotagem
+não cruzaria (anti-padrão 2): o teto fica entre os dois números medidos."""
+
+
+def medir_casa(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
     pdf: Path,
     *,
     pagina: int = 41,
     caminho_do_tronco: Path = TRONCO,
     limite_s: float = 300.0,
     sabotar: str = "",
+    teclado: bool = False,
+    frio: bool = False,
+    cancelar: bool = False,
 ) -> dict[str, Any]:
     """O fluxo `casa` (passo 13): clicar a casa no recorte → peça na paleta → aplicar no tabuleiro.
+
+    Três modos do ciclo 2 sobre o mesmo percurso:
+
+    * ``teclado`` (C8): a mesma correção feita só com ``QTest.keyClick`` a partir do foco no
+      tabuleiro -- ``Tab`` até a casa, a letra da peça -- contando as teclas; reprova acima de
+      :data:`TETO_DE_TECLAS_POR_CASA`. Sabotagem ``sem_teclado``: o tabuleiro sem ``keyPressEvent``.
+    * ``frio`` (C2): mede «clique em Ler → primeiro diagrama na lista» num processo novo e reprova
+      acima de :data:`TETO_FRIO_S`; registra quanto o aquecimento do modelo levou. Sabotagem
+      ``sem_aquecimento``: o modelo não aquece ao abrir o livro, e o primeiro «Ler» paga a carga.
+    * ``cancelar`` (C2): pede o cancelamento pelo rodapé logo depois do clique e exige que a
+      leitura pare com a frase «cancelada». Sabotagem ``sem_cancelamento``: o gancho é ignorado.
 
     A **preparação** -- abrir o livro, ir à página, ler os diagramas dela pelo clique na caixa --
     é executada e cronometrada, e **não conta**: o portão é sobre corrigir, com o diagrama já na
@@ -565,6 +623,23 @@ def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
     preparacao: list[Acao] = []
     acoes: list[Acao] = []
     notas: list[str] = []
+    if sabotar == "sem_aquecimento":
+        janela._aquecimento._feito = True   # o modelo não aquece ao abrir: o «Ler» paga a carga
+        notas.append("sabotagem: o modelo não aquece ao abrir o livro")
+    if sabotar == "sem_cancelamento":
+        from chess_diagram_ocr.qt.trabalho import Tarefa as _Tarefa
+
+        _Tarefa.should_cancel = lambda self: False  # type: ignore[method-assign]
+        notas.append("sabotagem: o gancho de cancelamento é ignorado (should_cancel sempre False)")
+    if sabotar == "sem_teclado":
+        from chess_diagram_ocr.qt.tabuleiro_editavel import TabuleiroEditavel
+
+        # O comportamento antigo: a tecla chega ao widget e nada acontece (o `keyPressEvent`
+        # herdado do Qt, que aqui é um método C++ -- substituí-lo por um Python que não faz nada
+        # é o mesmo efeito sem derrubar o processo).
+        TabuleiroEditavel.keyPressEvent = lambda self, a0: None  # type: ignore[method-assign]
+        notas.append("sabotagem: o tabuleiro editável sem keyPressEvent")
+    relogio_frio = time.perf_counter()
 
     def passo(
         lista: list[Acao],
@@ -621,12 +696,66 @@ def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
         # é uma `Tarefa` que zera `_tarefa` ao terminar -- com itens ou com erro.
         return not janela._leitura_adiada.isActive() and janela._tarefa is None
 
-    passo(
+    aquecimento_s = None
+    if frio:
+        # O aquecimento (C2) corre desde a abertura do livro; quanto dele já passou até aqui é
+        # o que o clique deixa de pagar. Espera-o terminar para medir os dois tempos à parte.
+        _esperar(aplicacao, lambda: janela._aquecimento.concluido, limite_s=60.0)
+        aquecimento_s = round(time.perf_counter() - relogio_frio, 2)
+
+    if cancelar:
+        def _clicar_e_cancelar() -> None:
+            janela.pdf.caixa_clicada.emit(0)
+            # O clique adia a leitura pelo intervalo do duplo clique; o cancelamento tem de chegar
+            # com a tarefa viva, senão não há o que cancelar.
+            _esperar(aplicacao, lambda: janela._tarefa is not None, limite_s=5.0)
+            janela.busy.request_cancel()
+
+        leitura = passo(
+            preparacao, "clicar na caixa e cancelar pelo rodapé", "cancelar",
+            _clicar_e_cancelar, _leitura_terminou,
+        )
+        frase = janela.rodape.mensagem().lower()
+        detalhes_cancel = {
+            "cancelamento_pedido": True,
+            "frase_do_rodape": janela.rodape.mensagem(),
+            "cancelou": "cancelada" in frase,
+            "espera_ms": leitura.espera_ms,
+            "itens_na_lista": len(janela.painel.modelo.items),
+        }
+        janela.close()
+        janela.deleteLater()
+        for _ in range(6):
+            aplicacao.processEvents()
+        temporaria.cleanup()
+        return _relatorio_da_casa(
+            pdf, alvo + 1, preparacao, acoes, notas, sabotar=sabotar,
+            detalhes=detalhes_cancel, modo="cancelar",
+        )
+
+    leitura = passo(
         preparacao, "abrir o primeiro diagrama da página (lê a página)", "clicar_na_caixa",
         lambda: janela.pdf.caixa_clicada.emit(0),
         _leitura_terminou,
     )
     painel = janela.painel
+    if frio:
+        detalhes_frio = {
+            "aquecimento_s": aquecimento_s,
+            "clique_ate_primeiro_diagrama_s": round(leitura.espera_ms / 1000.0, 2),
+            "teto_s": TETO_FRIO_S,
+            "diagramas": len(painel.modelo.items),
+            "no_teto": leitura.espera_ms / 1000.0 <= TETO_FRIO_S and bool(painel.modelo.items),
+        }
+        janela.close()
+        janela.deleteLater()
+        for _ in range(6):
+            aplicacao.processEvents()
+        temporaria.cleanup()
+        return _relatorio_da_casa(
+            pdf, alvo + 1, preparacao, acoes, notas, sabotar=sabotar,
+            detalhes=detalhes_frio, modo="frio",
+        )
     if not painel.modelo.items:
         notas.append("a página não rendeu diagrama lido: o percurso não tem o que corrigir")
         return _relatorio_da_casa(
@@ -671,6 +800,12 @@ def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
     if sabotar == "sem_sincronia":
         painel.ligar_recorte(False)
         notas.append("sabotagem: o clique do recorte não chega ao tabuleiro (ligar_recorte(False))")
+
+    if teclado:
+        return _corrigir_pelo_teclado(
+            janela, aplicacao, passo, acoes, preparacao, notas, casa=casa, simbolo=simbolo,
+            detalhes=detalhes, pdf=pdf, pagina=alvo + 1, sabotar=sabotar, temporaria=temporaria,
+        )
 
     # --- 1. clicar a casa no recorte (o lugar onde o olho a achou)
     recorte = painel.recorte
@@ -747,6 +882,74 @@ def medir_casa(  # noqa: PLR0915 - um percurso, do começo ao fim
     )
 
 
+def _corrigir_pelo_teclado(  # noqa: PLR0913 - o fecho do fluxo `casa`, com o que ele já tinha
+    janela: Any, aplicacao: Any, passo: Any, acoes: list[Acao], preparacao: list[Acao],
+    notas: list[str], *, casa: int, simbolo: str, detalhes: dict[str, Any], pdf: Path,
+    pagina: int, sabotar: str, temporaria: Any,
+) -> dict[str, Any]:
+    """A mesma correção só com teclas (C8): foco no tabuleiro, `Tab` até a casa, a letra da peça."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    from chess_diagram_ocr.ui import board_edit
+
+    painel = janela.painel
+    tabuleiro = painel.tabuleiro
+    janela.abas.mostrar(painel)
+    tabuleiro.setFocus()
+    aplicacao.processEvents()
+    teclas = 0
+
+    def tecla(chave: Any, modificador: Any = Qt.KeyboardModifier.NoModifier, texto: str = "") -> None:
+        nonlocal teclas
+        teclas += 1
+        if texto:
+            QTest.keyClick(tabuleiro, texto, modificador)
+        else:
+            QTest.keyClick(tabuleiro, chave, modificador)
+        aplicacao.processEvents()
+
+    # --- 1. Tab até a casa (as duvidosas primeiro; teto de oito para não girar para sempre)
+    def _ate_a_casa() -> None:
+        for _ in range(8):
+            if tabuleiro.selecionada() == casa:
+                return
+            tecla(Qt.Key.Key_Tab)
+
+    passo(acoes, f"Tab até a casa {detalhes['casa']}", "tab_ate_a_casa", _ate_a_casa,
+          lambda: tabuleiro.selecionada() == casa, limite=1.0)
+    tabs = teclas
+    # --- 2. a peça: a letra (Shift = branca), ou Delete para esvaziar
+    esperado = simbolo
+
+    def _pintou() -> bool:
+        return board_edit.piece_at(painel.modelo.fen_at(0), casa) == esperado
+
+    def _por_a_peca() -> None:
+        if not simbolo:
+            tecla(Qt.Key.Key_Delete)
+        elif simbolo.isupper():
+            tecla(None, Qt.KeyboardModifier.ShiftModifier, texto=simbolo)
+        else:
+            tecla(None, texto=simbolo)
+
+    passo(acoes, f"a tecla da peça {detalhes['para']}", "tecla_da_peca", _por_a_peca, _pintou,
+          limite=1.0)
+    detalhes.update({
+        "teclas": teclas, "tabs": tabs, "teto_de_teclas": TETO_DE_TECLAS_POR_CASA,
+        "corrigida": _pintou(), "sem_zoom": True, "recorte_focavel": True,
+        "tabuleiro_focavel": tabuleiro.focusPolicy().name != "NoFocus",
+        "no_teto": teclas <= TETO_DE_TECLAS_POR_CASA,
+    })
+    janela.close()
+    janela.deleteLater()
+    for _ in range(6):
+        aplicacao.processEvents()
+    temporaria.cleanup()
+    return _relatorio_da_casa(pdf, pagina, preparacao, acoes, notas, sabotar=sabotar,
+                              detalhes=detalhes, modo="teclado")
+
+
 def _estado_da_caixa(janela: Any, indice: int) -> str:
     """O estado desenhado da caixa `indice` da página, como `page_overlay` o decide."""
     from chess_diagram_ocr.ui.page_overlay import estado_da_caixa
@@ -769,20 +972,36 @@ def _relatorio_da_casa(
     *,
     sabotar: str,
     detalhes: dict[str, Any],
+    modo: str = "casa",
 ) -> dict[str, Any]:
-    passou = (
-        bool(acoes)
-        and len(acoes) <= TETO_DE_ACOES_DA_CASA
-        and all(a.ok and a.comando for a in acoes)
-        and bool(detalhes.get("corrigida"))
-        and bool(detalhes.get("sem_zoom"))
-        and bool(detalhes.get("recorte_focavel"))
-    )
-    return {
-        "portao": (
+    if modo == "teclado":
+        passou = bool(acoes) and all(a.ok and a.comando for a in acoes) and bool(
+            detalhes.get("corrigida")) and bool(detalhes.get("no_teto"))
+        portao = (f"OCR_UI ciclo 2, C8 -- corrigir a casa só pelo teclado (Tab até a casa, a letra da "
+                  f"peça) em <= {TETO_DE_TECLAS_POR_CASA} teclas")
+    elif modo == "frio":
+        passou = bool(detalhes.get("no_teto"))
+        portao = (f"OCR_UI ciclo 2, C2 -- clique em Ler → primeiro diagrama na lista em <= "
+                  f"{TETO_FRIO_S:.0f} s num processo novo")
+    elif modo == "cancelar":
+        passou = bool(detalhes.get("cancelou"))
+        portao = "OCR_UI ciclo 2, C2 -- cancelar pelo rodapé para a leitura entre diagramas"
+    else:
+        passou = (
+            bool(acoes)
+            and len(acoes) <= TETO_DE_ACOES_DA_CASA
+            and all(a.ok and a.comando for a in acoes)
+            and bool(detalhes.get("corrigida"))
+            and bool(detalhes.get("sem_zoom"))
+            and bool(detalhes.get("recorte_focavel"))
+        )
+        portao = (
             "OCR_UI passo 13 -- corrigir uma casa errada (casa no recorte → peça → aplicar) em <= "
             f"{TETO_DE_ACOES_DA_CASA} acoes, sem zoom na pagina"
-        ),
+        )
+    return {
+        "portao": portao,
+        "modo": modo,
         "quando": datetime.now(UTC).isoformat(timespec="seconds"),
         "amostra": {"pdf": str(pdf), "pagina": pagina},
         "sabotagem": sabotar,
@@ -843,6 +1062,7 @@ def _relatorio(pdf: Path, paginas: str, percurso: Percurso, sabotar: str = "") -
         "cancelamento": percurso.cancelamento,
         "diagramas": percurso.diagramas,
         "decisao": percurso.decisao,
+        "trilho": percurso.trilho,
         "conteudo": percurso.conteudo,
         "exportado": percurso.exportado,
         "notas": percurso.notas,
@@ -871,6 +1091,7 @@ def tabela(relatorio: dict[str, Any]) -> str:
         ("diagramas", "diagramas na importacao (A2)"),
         ("decisao", "decisao gravada (A3)"),
         ("conteudo", "conteudo do EPUB (A3)"),
+        ("trilho", "o trilho aprende (C8)"),
     ):
         valores = relatorio.get(chave) or {}
         if valores:
@@ -901,10 +1122,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--sabotar",
-        choices=("", "sem_sincronia", "sem_decisao", "sem_raster", "sem_gancho"),
+        choices=("", "sem_sincronia", "sem_decisao", "sem_raster", "sem_gancho",
+                 "sem_teclado", "sem_aquecimento", "sem_cancelamento"),
         default="",
-        help="[casa] sem_sincronia; [livro] sem_decisao (exporta sem aplicar), sem_raster",
+        help="[casa] sem_sincronia, sem_teclado (--teclado), sem_aquecimento (--frio), "
+             "sem_cancelamento (--cancelar); [livro] sem_decisao (exporta sem aplicar), sem_raster",
     )
+    parser.add_argument("--teclado", action="store_true", help="[casa] a correção só pelo teclado (C8)")
+    parser.add_argument("--frio", action="store_true", help="[casa] clique em Ler → primeiro diagrama (C2)")
+    parser.add_argument("--cancelar", action="store_true", help="[casa] cancelar a leitura pelo rodapé (C2)")
     parser.add_argument("--saida", type=Path, required=True)
     parser.add_argument("--tronco", type=Path, default=TRONCO)
     parser.add_argument("--limite-s", type=float, default=900.0)
@@ -914,8 +1140,10 @@ def main(argv: list[str] | None = None) -> int:
         relatorio = medir_casa(
             args.pdf, pagina=args.pagina, caminho_do_tronco=args.tronco,
             limite_s=min(args.limite_s, 300.0), sabotar=args.sabotar,
+            teclado=args.teclado, frio=args.frio, cancelar=args.cancelar,
         )
-        nome = "percurso_casa" + ("_sabotado" if args.sabotar else "")
+        nome = "percurso_casa" + ("_" + relatorio["modo"] if relatorio["modo"] != "casa" else "") + (
+            f"_sabotado_{args.sabotar}" if args.sabotar else "")
         args.saida.mkdir(parents=True, exist_ok=True)
         alvo = args.saida / f"{nome}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
         alvo.write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")

@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -61,6 +61,7 @@ from .layout.analyze import (
     analyze_page,
     lines_from_pdf_page,
 )
+from .layout.scan import ScanLayout, ScanLayoutConfig, scan_layout
 from .types import BBox, OcrChar, OcrLine, OcrResult, RegionKind
 
 __all__ = [
@@ -108,6 +109,20 @@ class PageConfig:
     localized_level0: bool = True
     layout: LayoutConfig = field(default_factory=LayoutConfig)
     arbiter: ArbiterConfig = field(default_factory=ArbiterConfig)
+    #: OCR_UI_ROADMAP_C2 passo B1: a page with no text layer is laid out from
+    #: the word boxes of its whole-page reading (:mod:`caissa.ocr.layout.scan`)
+    #: and, when that finds columns, read again region by region.
+    scan: ScanLayoutConfig = field(default_factory=ScanLayoutConfig)
+    #: ...and, on, read again with a second pass of the cascade over each
+    #: region's crop (PSM 4/6).  Off, the regions are cut from the whole-page
+    #: reading instead: the same words, in reading order, at no extra cost.
+    #: Measured on the 26 two-column items of ``scan_clean_300`` (2026-09-20,
+    #: ``OCR_UI_REPORT_C2.md`` §B1): slicing CER **0,0111** in 42,5 s, the
+    #: second pass 0,0206 in 66,3 s, one region 0,1238 — the tight crop of a
+    #: column loses to the words Tesseract already read with the whole page's
+    #: context.  Off is the measured default; on stays for a page whose
+    #: whole-page reading is not worth slicing.
+    scan_reread: bool = False
 
 
 # --------------------------------------------------------------------------- #
@@ -139,6 +154,10 @@ class PageTask:
     #: A detector that has already observed the document, so running heads can
     #: be told from chapter titles.  Without one only bare folios are removed.
     furniture: RunningFurnitureDetector | None = None
+    #: OCR_UI_ROADMAP_C2 passo B8: the rasters that may be the other side of
+    #: this sheet (the neighbouring pages of a scanned book), rendered at the
+    #: same resolution, on demand — only a page with show-through asks.
+    verso_sources: Callable[[], Sequence[NDArray[np.uint8]]] | None = None
 
     @property
     def scale(self) -> float:
@@ -606,6 +625,9 @@ class PageRecognizer:
         ))
         outcome = RegionOutcome(region=region, outcome=arbitration,
                                 result=arbitration.result, own_verdict=True)
+        laid_out = self._scan_layout(task, outcome, notes)
+        if laid_out is not None:
+            return self._by_scan_layout(task, outcome, laid_out, started, notes)
         return PageOutcome(
             layout=layout,
             regions=(outcome,),
@@ -617,6 +639,116 @@ class PageRecognizer:
                      "decision": (str(arbitration.decision.decision)
                                   if arbitration.decision else "n/a")},
         )
+
+    # -- scan layout (passo B1) -------------------------------------------- #
+
+    def _scan_layout(self, task: PageTask, whole: RegionOutcome,
+                     notes: list[str]) -> ScanLayout | None:
+        """Columns and regions from the whole-page reading, when it has them.
+
+        Only for a reading of the raster: a text-layer result already came
+        with a layout, and an empty or abstained one has no words to project.
+        """
+        if not self.config.scan.enabled or not task.has_image:
+            return None
+        result = whole.result
+        if (result.is_empty or result.engine in self._page_space_engines
+                or not whole.emits_text):
+            return None
+        raster_only = task.pdf_page is None
+        page_box = (self._image_box(task.image) if raster_only
+                    else self._page_box(task.pdf_page))
+        try:
+            laid_out = scan_layout(
+                result, page_box=page_box, scale=1.0 if raster_only else task.scale,
+                diagrams=() if raster_only else task.diagrams,
+                page_index=task.page_index, config=self.config.scan,
+                layout_config=self.config.layout, furniture=task.furniture)
+        except Exception as exc:  # noqa: BLE001 - the layout is a refinement; the page is already read
+            self.log.warning("leiaute em scan falhou na página %d: %s", task.page_index, exc)
+            return None
+        if laid_out is not None:
+            notes.extend(laid_out.notes)
+        return laid_out
+
+    def _by_scan_layout(self, task: PageTask, whole: RegionOutcome, laid_out: ScanLayout,
+                        started: float, notes: list[str]) -> PageOutcome:
+        """The page as the regions the scan layout found.
+
+        With ``scan_reread`` each region is arbitrated again on its own crop
+        — Tesseract in PSM 4/6 segments a column far better than it segments
+        a page, and a movetext region gets the movetext profile.  Without
+        it, each region is the slice of the whole-page reading that falls in
+        it: the words already read, in reading order.
+        """
+        layout = laid_out.layout
+        regions = self._all_regions(layout)
+        raster_only = task.pdf_page is None
+        outcomes: list[RegionOutcome] = []
+        if self.config.scan_reread:
+            for region in regions:
+                outcomes.append(self._reread_region(task, region, raster_only))
+        else:
+            for region in regions:
+                lines = tuple(layout.lines[i].source for i in region.line_indices)
+                result = replace(whole.result, lines=lines,
+                                 meta={**dict(whole.result.meta), "scan_slice": True})
+                # The other engines' whole-page readings are sliced to the
+                # region too: a whole-page candidate that outranks the slice
+                # would anchor the region with the *entire page* (measured
+                # 2026-09-21 on the Dvoretsky: every region repeating the
+                # page, CER 0 → 0,76).
+                box_px = region.box if raster_only else region.box.scaled(task.scale)
+                arbitration = replace(
+                    whole.outcome, result=result,
+                    candidates=tuple(self._slice(c, box_px) for c in whole.outcome.candidates))
+                outcomes.append(RegionOutcome(region=region, outcome=arbitration,
+                                              result=result, own_verdict=True))
+        escalated = sum(1 for o in outcomes if o.escalated)
+        return PageOutcome(
+            layout=layout,
+            regions=tuple(outcomes),
+            notes=tuple(notes),
+            total_duration_s=time.perf_counter() - started,
+            whole_page=False,
+            signals={
+                "regions": len(outcomes),
+                "escalated": escalated,
+                "own_verdicts": len(outcomes),
+                "page_verdict": "sem camada de texto: leiaute em scan",
+                "page_verdict_accepted": False,
+                "scan_layout": True,
+                "scan_reread": self.config.scan_reread,
+                **laid_out.signals,
+            },
+        )
+
+    @staticmethod
+    def _slice(result: OcrResult, box_px: BBox) -> OcrResult:
+        """The lines of a page-space reading whose centre falls in ``box_px``."""
+        kept = tuple(line for line in result.lines
+                     if box_px.x0 <= line.box.cx <= box_px.x1 and box_px.y0 <= line.box.cy <= box_px.y1)
+        if len(kept) == len(result.lines):
+            return result
+        return replace(result, lines=kept, meta={**dict(result.meta), "scan_slice": True})
+
+    def _reread_region(self, task: PageTask, region: LayoutRegion,
+                       raster_only: bool) -> RegionOutcome:
+        """The second pass over one region of a page with no text layer.
+
+        Level 0 has nothing to read here (that is why the page went whole),
+        so the pass is raster-only: no PDF page, no clip, no verdict.  The
+        layout is in pixels for a raster-only task and in points for an
+        image-only PDF page; :meth:`_crop` knows which.
+        """
+        crop, origin = self._crop(task, region.box)
+        arbitration = self.arbiter.run(RegionTask(
+            image=crop, region_kind=region.kind, lang=task.lang, pdf_page=None,
+            clip=None, scale=task.scale,
+            region_id=f"p{task.page_index}r{region.reading_order}"))
+        return RegionOutcome(region=region, outcome=arbitration,
+                             result=self._to_page_space(arbitration.result, origin),
+                             own_verdict=True)
 
     # -- geometry ---------------------------------------------------------- #
 
@@ -644,8 +776,10 @@ class PageRecognizer:
         if not task.has_image:
             return None, (0.0, 0.0)
         assert task.image is not None
-        pixels = box.scaled(task.scale).clipped_to(
-            self._image_box(task.image))
+        # A raster-only task lays out in pixels (the page box *is* the image
+        # box, passo B1); a PDF page lays out in points.
+        scaled = box if task.pdf_page is None else box.scaled(task.scale)
+        pixels = scaled.clipped_to(self._image_box(task.image))
         x, y, w, h = pixels.to_int_tuple()
         if w <= 0 or h <= 0:
             return None, (0.0, 0.0)

@@ -935,6 +935,40 @@ produto tiver um terceiro estado de tinta (um "somente leitura", digamos), a dis
 aqui e o portão a cobra sem que ninguém precise lembrar."""
 
 
+def pares_pintados_da_suite(*, cromo_escuro: bool) -> list[Par]:
+    """Os pares que as abas da suíte pintam por `setStyleSheet`/`QPainter` (passo C9).
+
+    **Não estavam em portão nenhum.** A folha do tronco não os contém, porque as views da
+    suíte escreviam a cor no widget -- e na Foco (padrão) o `#6b7280` do contexto do cartão
+    sobre `#1f2124` e o `#b45309` do motivo sobre escuro nunca foram medidos
+    (`OCR_UI_ANALISE_C2.md` §6.7). Hoje cada cor das views é um papel de
+    :mod:`caissa.ui.theme.pele`, resolvido para o token do tronco no cromo pedido, e a tabela
+    :data:`caissa.ui.theme.pele.PARES` diz que frente vai sobre que fundo: um papel novo
+    entra aqui por existir lá. Texto contra o piso de texto; a caixa sobre a página contra o
+    piso gráfico, como as marcações do tronco.
+    """
+    from caissa.ui.theme import pele
+
+    pares: list[Par] = []
+    for frente, fundo, frase in pele.PARES:
+        a, b = pele.cor(frente, escuro=cromo_escuro), pele.cor(fundo, escuro=cromo_escuro)
+        grafico = frente.startswith("regiao")
+        pares.append(
+            Par(
+                onde=f"suíte: {frente} sobre {fundo}",
+                frente=a,
+                fundo=b,
+                razao=_razao(a, b),
+                piso=PISO[GRAFICO if grafico else TEXTO],
+                especie=GRAFICO if grafico else TEXTO,
+                portao=True,
+                origem="suite",
+                nota=frase,
+            )
+        )
+    return pares
+
+
 def pares_de_estado(*, cromo_escuro: bool) -> list[Par]:
     """A distância vivo ↔ morto, como par próprio e com piso de 3,0:1 (F9-C10).
 
@@ -1140,6 +1174,7 @@ def medir(
         pele.pares += pares_da_paleta(cromo_escuro=cromo_escuro, folha=folhas[0])
         pele.pares += pares_pintados(cromo_escuro=cromo_escuro)
         pele.pares += pares_de_estado(cromo_escuro=cromo_escuro)
+        pele.pares += pares_pintados_da_suite(cromo_escuro=cromo_escuro)  # C9
         resultados.append(pele)
 
     reprovados = {pele.nome: [asdict(par) for par in pele.reprovados()] for pele in resultados}

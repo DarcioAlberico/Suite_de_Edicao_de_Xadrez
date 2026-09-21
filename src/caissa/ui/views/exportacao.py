@@ -44,6 +44,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.export.book import (
     BOOK_FORMATS,
     BookExportResult,
@@ -195,7 +196,7 @@ class DialogoDeExportacao(QDialog):
         raiz.addWidget(self.ocr)
 
         self.aviso = QLabel("", self)
-        self.aviso.setStyleSheet("color:#b91c1c;")
+        self.aviso.setStyleSheet(f"color:{pele.cor('aviso')};")
         self.aviso.setWordWrap(True)
         raiz.addWidget(self.aviso)
 

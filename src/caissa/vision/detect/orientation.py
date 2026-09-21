@@ -40,6 +40,7 @@ __all__ = [
     "rank_orientations",
     "auto_orient",
     "orientation_from_labels",
+    "rotate_placement",
     "unknown_orientation",
     "rotate_matrix_clockwise",
     "matrix_from_placement",
@@ -149,6 +150,21 @@ def placement_from_matrix(matrix: Sequence[Sequence[str]]) -> str:
             out.append(str(run))
         rows.append("".join(out))
     return "/".join(rows)
+
+
+def rotate_placement(piece_placement: str) -> str:
+    """The same position seen from the other side of the board.
+
+    A diagram printed from Black's point of view has its pieces drawn
+    upright and rank 1 at the top: a reader that takes the top row for rank
+    8 gets every square mirrored through the centre.  What has to turn is
+    the **placement**, never the pixels (rotating the image would put the
+    pieces on their heads) -- OCR_UI_ROADMAP_C2 passo C10.  Rows reversed
+    and each row reversed; a run of empties is one digit, so reversing the
+    characters of a row is exact (``3p4`` → ``4p3``).
+    """
+    rows = piece_placement.split("/")
+    return "/".join(row[::-1] for row in reversed(rows))
 
 
 def rotate_matrix_clockwise(matrix: Sequence[Sequence[str]]) -> list[list[str]]:

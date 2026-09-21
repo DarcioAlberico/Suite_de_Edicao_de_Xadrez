@@ -148,6 +148,14 @@ def make_sol() -> System:
     overrides = json.loads(os.environ.get("SOL_CONFIG", "{}"))
     if "secondary_engines" in overrides:          # JSON has lists, the field is a tuple
         overrides["secondary_engines"] = tuple(overrides["secondary_engines"])
+    if isinstance(overrides.get("page"), dict):   # nested dataclasses: {"page": {"scan": {...}}}
+        from caissa.ocr.layout.scan import ScanLayoutConfig
+        from caissa.ocr.page import PageConfig
+
+        page = dict(overrides["page"])
+        if isinstance(page.get("scan"), dict):
+            page["scan"] = ScanLayoutConfig(**page["scan"])
+        overrides["page"] = PageConfig(**page)
     engines = None
     if TESSDATA_DIR is not None:
         from caissa.ocr.engines.tesseract import TesseractConfig, TesseractEngine

@@ -43,6 +43,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.export.book import PageRangeError, parse_page_range
 from caissa.ingest.pdf import ImportCanceled, PdfImportOptions, import_pdf, open_pdf
 from caissa.ocr.labeling.recognise import render_rgb
@@ -297,10 +298,13 @@ class PainelDeRevisaoDeTexto(QWidget):
             botoes.addWidget(b)
             self.acoes[texto] = b
         botoes.addStretch(1)
-        for texto, delta in (("◀ anterior", -1), ("próxima ▶", 1)):
+        paginador = []
+        for texto, delta in (("Anterior", -1), ("Próxima", 1)):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
             botoes.addWidget(b)
+            paginador.append(b)
+        pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
         dir_.addLayout(botoes)
         dir_.addStretch(1)
         corpo.addWidget(direita)
@@ -309,19 +313,16 @@ class PainelDeRevisaoDeTexto(QWidget):
         corpo.setSizes([440, 560])
 
         self.status = QLabel("", self)
-        self.status.setStyleSheet("padding:3px 6px; border-top:1px solid #d1d5db;")
+        self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         self.status.setAccessibleName("Estado da revisão")
         raiz.addWidget(self.status)
 
     def _atalhos(self) -> None:
-        contexto = Qt.ShortcutContext.WidgetWithChildrenShortcut
-        for tecla, acao in (
-            ("Ctrl+S", self.gravar),
-            ("Ctrl+O", self.escolher_pdf),
-        ):
-            atalho = QShortcut(QKeySequence(tecla), self)
-            atalho.setContext(contexto)
-            atalho.activated.connect(acao)
+        """Nenhum atalho local desde o passo C8: ``Ctrl+S`` e ``Ctrl+O`` eram ambíguos com os
+        globais da janela do tronco (com a aba à frente, nem um nem outro disparava). As duas
+        ações estão em :data:`caissa.ui.views.declarados.COMANDOS_DA_REVISAO_DE_TEXTO`; a
+        janela as liga ao catálogo, ao menu, à paleta e às teclas -- e roteia o ``Ctrl+S``
+        global para :meth:`gravar` quando esta aba está à frente."""
 
     # -- the book ----------------------------------------------------------- #
 

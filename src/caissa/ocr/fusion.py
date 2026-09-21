@@ -59,7 +59,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
@@ -138,6 +138,14 @@ class FusionConfig:
     #: read ``♘e5``.  A different hypothesis from the rejected SOL-6 vote,
     #: which was between noisy variants of the same engine.
     weak_anchor_confidence: float = 0.35
+    #: OCR_UI_ROADMAP_C2 passo B6: the word confidences the fusion compares
+    #: are put on the arbiter's calibrated scale (Sol §SOL-4's fitted tables,
+    #: per engine and facet) before any threshold sees them.  Raw, Tesseract's
+    #: 0,80 and RapidOCR's 0,80 are different claims — the tables say 0,72
+    #: and 0,55 — and a swap decided by tenths was decided on nothing.  The
+    #: glyph reader and the figurine model have no table and keep their raw
+    #: scale (their thresholds were set on it).  Off, the raw scale of SOL-6.
+    calibrated: bool = True
     #: The sabotage switch of passo B4 (``SOL_CONFIG='{"fusion": {"passo_b4": false}}'``):
     #: off, the fusion matches strings the way it did before -- a dash in a
     #: move is not support, an opening bracket or a lost digit blocks the
@@ -284,22 +292,30 @@ def _pair_words(anchor: OcrLine, other: OcrLine, cfg: FusionConfig) -> dict[int,
 # --------------------------------------------------------------------------- #
 
 
+Calibrator = Callable[[float], float]
+
+
 def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]], *,
                     lang: str = "", image: NDArray[np.uint8] | None = None,
                     config: FusionConfig | None = None,
                     never_anchor: frozenset[str] = frozenset(),
-                    letter_guarded: frozenset[str] = _LETTER_GUARDED) -> FusedRegion | None:
+                    letter_guarded: frozenset[str] = _LETTER_GUARDED,
+                    calibrators: Mapping[str, Calibrator] | None = None) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
     The thin outer layer: it pins the passo B4 switch of ``config`` to this
     context (:data:`_B4`, read by the string helpers that take no config) and
     hands over to :func:`_fuse_candidates`, which holds the algorithm.
+    ``calibrators`` maps an engine name to the function that puts its raw
+    word confidence on the common scale (passo B6); an engine without one
+    keeps its raw scale.
     """
     cfg = config or FusionConfig()
     token = _B4.set(cfg.passo_b4)
     try:
         return _fuse_candidates(candidates, lang=lang, image=image, config=cfg,
-                                never_anchor=never_anchor, letter_guarded=letter_guarded)
+                                never_anchor=never_anchor, letter_guarded=letter_guarded,
+                                calibrators=calibrators if cfg.calibrated else None)
     finally:
         _B4.reset(token)
 
@@ -308,7 +324,8 @@ def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision
                     lang: str = "", image: NDArray[np.uint8] | None = None,
                     config: FusionConfig | None = None,
                     never_anchor: frozenset[str] = frozenset(),
-                    letter_guarded: frozenset[str] = _LETTER_GUARDED) -> FusedRegion | None:
+                    letter_guarded: frozenset[str] = _LETTER_GUARDED,
+                    calibrators: Mapping[str, Calibrator] | None = None) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
     ``never_anchor`` names engines that only ever supply alternatives — the
@@ -334,18 +351,24 @@ def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision
     langs = normalise_lang(lang)
     diacritic_lang = bool(langs) and langs[0] in _DIACRITIC_LANGS
 
-    # Per anchor word: the readings of every source.
+    def scale_of(engine: str) -> Calibrator:
+        return (calibrators or {}).get(engine) or (lambda raw: raw)
+
+    # Per anchor word: the readings of every source, on the common scale.
+    anchor_scale = scale_of(anchor_result.engine)
     slots: list[list[Reading]] = []
     slot_words: list[tuple[int, int, OcrWord]] = []   # (line index, word index, word)
     for li, line in enumerate(anchor_result.lines):
         for wi, word in enumerate(line.words):
-            slots.append([Reading(anchor_name, word.text, word.confidence, word.box)])
+            slots.append([Reading(anchor_name, word.text, anchor_scale(word.confidence),
+                                  word.box)])
             slot_words.append((li, wi, word))
     slot_index = {(li, wi): n for n, (li, wi, _) in enumerate(slot_words)}
 
     source_scores = {anchor_name: anchor_score}
     for other_result, other_score, _ in usable[1:]:
         name = _source_of(other_result)
+        scale = scale_of(other_result.engine)
         source_scores[name] = other_score
         for li, line in enumerate(anchor_result.lines):
             partner = _pair_lines(line, other_result.lines, cfg)
@@ -353,7 +376,7 @@ def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision
                 continue
             for wi, other_word in _pair_words(line, partner, cfg).items():
                 slots[slot_index[(li, wi)]].append(
-                    Reading(name, other_word.text, other_word.confidence, other_word.box,
+                    Reading(name, other_word.text, scale(other_word.confidence), other_word.box,
                             margin=getattr(other_word, "margin", None)))
 
     secondary = frozenset(_source_of(r) for r, _, _ in usable if r.engine in never_anchor)

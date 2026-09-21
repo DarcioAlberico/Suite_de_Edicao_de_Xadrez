@@ -47,6 +47,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import sys
 import tempfile
 import time
@@ -210,6 +211,15 @@ class TesseractConfig:
     #: region gets the plain configuration.
     use_profiles: bool = True
     profiles: ProfileConfig = field(default_factory=ProfileConfig)
+    #: OCR_UI_ROADMAP_C2 passo B9: ``OMP_THREAD_LIMIT`` for the child.  The
+    #: service runs the candidates of a region in parallel, and four
+    #: Tesseracts each spawning four OpenMP threads oversubscribe the
+    #: machine; one thread per child is what the parallelism is made of.
+    #: ``None`` leaves the environment alone.
+    omp_thread_limit: int | None = 1
+    #: How often the runner looks at the cancellation hook while the child
+    #: runs (passo B9); the child is killed when the hook says so.
+    cancel_poll_s: float = 0.1
 
 
 # --------------------------------------------------------------------------- #
@@ -491,7 +501,10 @@ class TesseractEngine(OcrEngineBase):
 
     def __init__(self, config: TesseractConfig | None = None) -> None:
         self._profile_files = ProfileFiles((config or TesseractConfig()).profiles)
-        self._forced_profile: TesseractProfile | None = None
+        # Per thread: the service reads a region's candidates in parallel
+        # (passo B9), and a forced profile on the instance would leak from
+        # one thread's strict reading into another's prose.
+        self._forced = threading.local()
         super().__init__()
         self.config = config or TesseractConfig()
         self._binary: str | None = None
@@ -613,32 +626,69 @@ class TesseractEngine(OcrEngineBase):
             return getattr(subprocess, "CREATE_NO_WINDOW", 0)
         return 0
 
+    def _child_env(self) -> dict[str, str] | None:
+        limit = self.config.omp_thread_limit
+        if limit is None:
+            return None
+        return {**os.environ, "OMP_THREAD_LIMIT": str(int(limit))}
+
     def _run(self, cmd: list[str], *, timeout: float,
              cwd: str | None = None) -> subprocess.CompletedProcess[str]:
+        """Run the child, polling the cancellation hook while it works.
+
+        OCR_UI_ROADMAP_C2 passo B9: a ``subprocess.run`` with a 180 s timeout
+        could not be interrupted, and the importer only looked at its hook
+        between pages.  The child is now waited on in short ticks; when the
+        hook says stop it is killed and :class:`OcrCanceled` is raised —
+        past every ``except Exception`` on the way up, to the importer.
+        """
+        from ..cancel import OcrCanceled, should_cancel
+
         try:
-            return subprocess.run(
+            proc = subprocess.Popen(  # noqa: S603 - the command is built here, not from input
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=timeout,
                 cwd=cwd,
+                env=self._child_env(),
                 creationflags=self._creation_flags(),
-                check=False,
             )
-        except subprocess.TimeoutExpired as exc:
-            raise OcrError(
-                self.name,
-                f"O Tesseract excedeu o tempo limite de {timeout:.0f}s.",
-                detail=str(exc),
-            ) from exc
         except OSError as exc:
             raise OcrError(
                 self.name,
                 f"Não foi possível executar o Tesseract: {exc}",
                 detail=str(exc),
             ) from exc
+        deadline = time.monotonic() + timeout
+        tick = max(0.02, float(self.config.cancel_poll_s))
+        try:
+            while True:
+                try:
+                    stdout, stderr = proc.communicate(timeout=tick)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+                if should_cancel():
+                    proc.kill()
+                    proc.communicate()
+                    raise OcrCanceled("OCR cancelado durante o Tesseract.")
+                if time.monotonic() >= deadline:
+                    proc.kill()
+                    proc.communicate()
+                    raise OcrError(
+                        self.name,
+                        f"O Tesseract excedeu o tempo limite de {timeout:.0f}s.",
+                        detail=" ".join(cmd[:3]),
+                    )
+        except BaseException:
+            if proc.poll() is None:
+                proc.kill()
+                proc.communicate()
+            raise
+        return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
     # -- recognition ------------------------------------------------------- #
 
@@ -676,11 +726,11 @@ class TesseractEngine(OcrEngineBase):
                                profile: TesseractProfile) -> OcrResult:
         """Recognise with an explicit profile — the strict movetext candidate
         the service adds for token fusion (Sol §SOL-7)."""
-        self._forced_profile = profile
+        self._forced.profile = profile
         try:
             return self.recognize(image, lang=lang, psm_hint=psm_hint)
         finally:
-            self._forced_profile = None
+            self._forced.profile = None
 
     def _recognize(
         self,
@@ -696,7 +746,7 @@ class TesseractEngine(OcrEngineBase):
         warnings: list[str] = []
         profile: TesseractProfile | None = None
         if self.config.use_profiles:
-            profile = self._forced_profile or profile_for(psm_hint)
+            profile = getattr(self._forced, "profile", None) or profile_for(psm_hint)
 
         known = self.languages()
         requested = [p for p in lang.split("+") if p]

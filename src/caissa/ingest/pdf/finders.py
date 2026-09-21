@@ -240,12 +240,58 @@ def signal_from_prediction(oriented: Any, *, model_hash: str = "") -> dict[str, 
     }
 
 
+def point_of_view_from_labels(page: Any, box: tuple[float, float, float, float]) -> Any:
+    """The orientation the coordinates printed around ``box`` assert, or ``None``.
+
+    The text layer's short words around the rectangle (``vector_detect``'s
+    reader), judged by :func:`~caissa.vision.detect.orientation.orientation_from_labels`;
+    ``None`` when the page prints no coordinates there, or the text layer
+    is absent (a scan) -- an absence of evidence, not a verdict.
+    """
+    try:
+        from caissa.vision.detect.orientation import orientation_from_labels
+        from caissa.vision.detect.vector_detect import _short_labels
+
+        labels = _short_labels(page, box)
+    except Exception:  # noqa: BLE001 - no labels is the normal case on a scan
+        return None
+    if not labels:
+        return None
+    return orientation_from_labels(labels, box)
+
+
+def rotate_signal(signal: dict[str, Any]) -> dict[str, Any]:
+    """The per-square signal of a hit seen from the other side (passo C10):
+    confidences by ``a1`` index mirrored through the centre, repairs and
+    alternatives on the rotated squares."""
+    from dataclasses import replace as _replace
+
+    from caissa.vision.detect.orientation import rotate_placement
+
+    out = dict(signal)
+    confidences = signal.get("square_confidences") or ()
+    if len(confidences) == _SQUARES:
+        out["square_confidences"] = tuple(confidences[_SQUARES - 1 - i] for i in range(_SQUARES))
+
+    def turned(square: str) -> str:
+        return f"{'abcdefgh'[7 - 'abcdefgh'.index(square[0])]}{9 - int(square[1])}"
+
+    out["repairs"] = tuple(_replace(r, square=turned(r.square)) for r in signal.get("repairs", ()))
+    alternatives = []
+    for candidate in signal.get("alternatives", ()):
+        placement, _, rest = candidate.fen.partition(" ")
+        alternatives.append(_replace(candidate, fen=f"{rotate_placement(placement)} {rest}".strip()))
+    out["alternatives"] = tuple(alternatives)
+    return out
+
+
 def raster_diagram_finder(
     *,
     classify: bool = True,
     dpi: int = DEFAULT_DPI,
     max_boards: int = DEFAULT_MAX_BOARDS,
     classifier: Any = None,
+    read_coordinates: bool = True,
 ) -> DiagramFinder:
     """A finder that detects diagrams in the rendered page and, optionally, reads them.
 
@@ -257,6 +303,9 @@ def raster_diagram_finder(
         max_boards: Cap per page, as the trunk defines it.
         classifier: A loaded :class:`~caissa.vision.classify.BatchedClassifier`
             to reuse across books; loaded on first use when ``None``.
+        read_coordinates: Passo C10 -- read the coordinates the page prints
+            around each board and, when they say Black's point of view,
+            rotate the FEN (never the pixels).  Off, the sabotage of the gate.
 
     The model is loaded lazily on the first page that has a candidate, so a
     book with no diagrams never pays for it.
@@ -271,6 +320,7 @@ def raster_diagram_finder(
 
     def finder(page: Any, frame: PageFrame, _text: PageText) -> list[DiagramHit]:
         from caissa.vision.classify.cvoff import ensure_cvoff_on_path
+        from caissa.vision.detect.orientation import rotate_placement
 
         ensure_cvoff_on_path()
         from chess_diagram_ocr.detection import detect_diagrams  # type: ignore[import-not-found]
@@ -316,6 +366,21 @@ def raster_diagram_finder(
                 path = RecognitionPath.NEURAL
                 white_bottom = int(getattr(oriented[index], "rotation", 0)) == 0
                 signal = signal_from_prediction(oriented[index], model_hash=model_hash)
+                if white_bottom and read_coordinates:
+                    # Passo C10: the coordinates printed around the board are
+                    # the one direct evidence of the point of view.  From
+                    # Black's side the pieces are upright (the classifier is
+                    # right to keep rotation 0) and the top row is rank 1: the
+                    # FEN turns, the pixels do not.
+                    pov = point_of_view_from_labels(page, (x0, y0, x1, y1))
+                    if pov is not None and not pov.white_at_bottom:
+                        fen = f"{rotate_placement(prediction.fen_board)} w - - 0 1"
+                        white_bottom = False
+                        signal = rotate_signal(signal)
+                        signal["orientation_reason"] = (
+                            "coordenadas da borda: ponto de vista das pretas ("
+                            + "; ".join(pov.evidence) + ")")
+                        signal["orientation_ambiguous"] = pov.confidence < 0.9
             hits.append(
                 DiagramHit(
                     box=(float(x0), float(y0), float(x1), float(y1)),

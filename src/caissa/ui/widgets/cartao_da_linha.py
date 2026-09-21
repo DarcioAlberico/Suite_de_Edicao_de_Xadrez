@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.ocr.labeling.helpers import FIGURINE_KEYS, letters_to_figurines
 
 __all__ = ["CROP_HEIGHT_PX", "CROP_MAX_ZOOM", "CartaoDaLinha", "leitura_em_html", "pixmap_de"]
@@ -53,7 +54,8 @@ def pixmap_de(rgb: np.ndarray) -> QPixmap:
 def leitura_em_html(
     words: Sequence[tuple[str, float]], threshold: float, fallback: str = ""
 ) -> str:
-    """The engine's reading with the weak words highlighted — amber, red when far under."""
+    """The engine's reading with the weak words in the letter colour of the trunk's text editor:
+    `conferir` (`ATENCAO`) under the threshold, `revisar` (`PROBLEMA_TEXTO`) when far under."""
     if not words:
         return fallback.replace("&", "&amp;").replace("<", "&lt;")
     html: list[str] = []
@@ -62,9 +64,9 @@ def leitura_em_html(
         if confidence >= threshold:
             html.append(texto)
         elif confidence < threshold * RED_SHARE:
-            html.append(f'<span style="background:#fca5a5">{texto}</span>')
+            html.append(f'<span style="color:{pele.cor("cartao_palavra_revisar")}">{texto}</span>')
         else:
-            html.append(f'<span style="background:#fde68a">{texto}</span>')
+            html.append(f'<span style="color:{pele.cor("cartao_palavra_conferir")}">{texto}</span>')
     return " ".join(html)
 
 
@@ -84,13 +86,13 @@ class CartaoDaLinha(QWidget):
         coluna = QVBoxLayout(self)
         coluna.setContentsMargins(0, 0, 0, 0)
         self.recorte = QLabel(vazio, self)
-        self.recorte.setStyleSheet("background:#e5e7eb; padding:2px;")
+        self.recorte.setStyleSheet(f"background:{pele.cor('cartao_fundo_do_recorte')}; padding:2px;")
         self.recorte.setMinimumHeight(CROP_HEIGHT_PX + 8)
         self.recorte.setMaximumHeight(CROP_HEIGHT_PX + 8)
         self.recorte.setAccessibleName("Recorte da linha atual")
         coluna.addWidget(self.recorte)
         self.contexto = QLabel("", self)
-        self.contexto.setStyleSheet("color:#6b7280;")
+        self.contexto.setStyleSheet(f"color:{pele.cor('cartao_contexto')};")
         coluna.addWidget(self.contexto)
         coluna.addWidget(QLabel("Leitura do motor (palavras fracas em destaque):", self))
         self.leitura = QTextEdit(self)
@@ -106,7 +108,7 @@ class CartaoDaLinha(QWidget):
         )
         coluna.addWidget(self.alternativas)
         self.motivo = QLabel("", self)
-        self.motivo.setStyleSheet("color:#b45309;")
+        self.motivo.setStyleSheet(f"color:{pele.cor('cartao_motivo')};")
         self.motivo.setWordWrap(True)
         coluna.addWidget(self.motivo)
         coluna.addWidget(

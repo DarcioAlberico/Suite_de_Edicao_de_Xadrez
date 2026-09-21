@@ -116,6 +116,7 @@ from caissa.ingest.pdf.textlayer import (
     extract_page_text,
     stroke_bold_fonts,
 )
+from caissa.ocr.cancel import OcrCanceled, cancellable
 from caissa.ocr.engines.pdf_text_layer import (
     PdfTextLayerEngine,
     TextLayerThresholds,
@@ -634,8 +635,11 @@ class PdfImporter:
         indices = self.page_indices
         self.report.pages_planned = len(indices)
         try:
-            self._survey(indices)
-            entries = self._build(indices)
+            # Passo B9: the hook reaches inside the page -- every Tesseract
+            # child of this import polls it (:mod:`caissa.ocr.cancel`).
+            with cancellable(self.options.should_cancel):
+                self._survey(indices)
+                entries = self._build(indices)
         except ImportCanceled:
             if not self.options.keep_partial:
                 raise
@@ -802,16 +806,22 @@ class PdfImporter:
         for n, index in enumerate(indices):
             try:
                 self._check_cancel()
-            except ImportCanceled:
+                started = time.perf_counter()
+                page_report, page_entries = self._build_page(index, builder, finder)
+            except (ImportCanceled, OcrCanceled) as exc:
                 # Passo 17: close the paragraph in progress so the partial
                 # document ends on a whole block, then hand the entries over.
+                # Passo B9: a cancellation that reached inside the page's OCR
+                # arrives here as ``OcrCanceled`` and is the same event.
                 tail = builder.flush()
                 if tail is not None:
                     entries.append(tail)
                 self._partial_entries = entries
+                if isinstance(exc, OcrCanceled):
+                    raise ImportCanceled(
+                        "Importação cancelada durante o OCR de uma página. "
+                        "O documento parcial foi descartado.") from exc
                 raise
-            started = time.perf_counter()
-            page_report, page_entries = self._build_page(index, builder, finder)
             page_report.duration_ms = (time.perf_counter() - started) * 1000.0
             self.report.pages.append(page_report)
             self._page_reports[index] = page_report

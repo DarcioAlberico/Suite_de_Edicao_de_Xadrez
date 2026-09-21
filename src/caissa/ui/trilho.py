@@ -10,10 +10,17 @@ só a pinta.
 
 **"Duvidosa" tem uma definição, e ela é a do fluxo principal (U6):** uma página é duvidosa
 quando tem trabalho para a pessoa -- uma região de OCR mandada a revisão ou abstida **que o
-revisor ainda não decidiu**, ou um diagrama localizado que não foi lido. Uma página só de texto
-limpo não é duvidosa; uma página com 3 diagramas lidos e 0 regiões em revisão não é duvidosa. A
-primeira duvidosa é a primeira **em ordem de página**, não a de maior risco: o trilho é um mapa
-do livro, e a fila por risco continua sendo da aba «Revisão de texto» (passo 14).
+revisor ainda não decidiu**, um diagrama localizado que não foi lido, ou (OCR_UI ciclo 2, passo
+C8) um diagrama lido **com hesitação** -- uma casa abaixo de 0,90 de confiança, o âmbar da
+janela -- **que ninguém corrigiu ainda**. Uma página só de texto limpo não é duvidosa; uma
+página com 3 diagramas lidos com folga e 0 regiões em revisão não é duvidosa. A primeira
+duvidosa é a primeira **em ordem de página**, não a de maior risco: o trilho é um mapa do
+livro, e a fila por risco continua sendo da aba «Revisão de texto» (passo 14).
+
+**E o trilho aprende com o que a pessoa corrige (C8):** a decisão gravada na janela
+(:mod:`caissa.ocr.diagram_decisions`) tira o diagrama da conta de hesitantes, e a decisão de
+texto gravada tira a região da conta de pendentes -- :func:`estados` é reavaliada a cada
+gravação, sobre o mesmo relatório, com as decisões relidas do disco.
 """
 
 from __future__ import annotations
@@ -24,11 +31,18 @@ from typing import Any
 
 __all__ = [
     "EstadoDaPagina",
+    "anterior_duvidosa",
     "estados",
+    "hesitantes_por_pagina",
     "primeira_duvidosa",
     "progresso",
+    "proxima_duvidosa",
     "resumo_pt",
 ]
+
+#: A square read below this confidence makes its diagram hesitant -- the
+#: same floor :meth:`caissa.core.model.Diagram.doubtful_squares` uses.
+LIMIAR_DE_HESITACAO = 0.9
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +58,9 @@ class EstadoDaPagina:
         diagramas_lidos: Dos localizados, quantos saíram com posição.
         texto: A página tem texto no documento (camada ou OCR).
         duvidosos: Regiões de OCR em revisão/abstidas ainda sem decisão, mais os diagramas não
-            lidos. Zero é "nada a fazer aqui".
+            lidos, mais os lidos com hesitação e ainda não corrigidos. Zero é "nada a fazer aqui".
+        hesitantes: Dos lidos, quantos têm casa abaixo de :data:`LIMIAR_DE_HESITACAO` e nenhuma
+            correção gravada (passo C8).
         revisada: A página **tinha** regiões em revisão e todas estão decididas.
     """
 
@@ -56,6 +72,7 @@ class EstadoDaPagina:
     texto: bool = False
     duvidosos: int = 0
     revisada: bool = False
+    hesitantes: int = 0
 
     @property
     def duvidosa(self) -> bool:
@@ -73,11 +90,49 @@ def _pendentes_por_pagina(report: Any, decisions: Any | None) -> dict[int, tuple
     return contagem
 
 
+def hesitantes_por_pagina(
+    document: Any, diagram_decisions: Any | None = None, *,
+    threshold: float = LIMIAR_DE_HESITACAO,
+) -> dict[int, int]:
+    """``{página: diagramas lidos com hesitação e sem correção gravada}`` (passo C8).
+
+    Lê os :class:`~caissa.core.model.Diagram` do documento importado: um diagrama hesita quando
+    tem casa abaixo de ``threshold`` (:meth:`RecognitionResult.doubtful_squares`); deixa de contar quando
+    a pessoa o verificou (``provenance.verified_by_human``) ou quando há uma decisão gravada
+    para a caixa dele (``diagram_decisions.match``, IoU ≥ 0,5 sobre o retângulo em pontos).
+    """
+    contagem: dict[int, int] = {}
+    for block in getattr(document, "body", ()) or ():
+        if type(block).__name__ != "Diagram":
+            continue
+        provenance = getattr(block, "provenance", None)
+        pagina = getattr(provenance, "page_index", None)
+        if pagina is None:
+            continue
+        recognition = getattr(block, "recognition", None)
+        if recognition is None or not getattr(recognition, "fen", ""):
+            continue   # not read: already counted as "não lido"
+        if getattr(provenance, "verified_by_human", False):
+            continue
+        if not recognition.doubtful_squares(threshold):
+            continue
+        rect = getattr(provenance, "rect", None)
+        if diagram_decisions is not None and rect is not None:
+            box = (float(rect.x), float(rect.y), float(rect.x + rect.width),
+                   float(rect.y + rect.height))
+            if diagram_decisions.match(int(pagina), box) is not None:
+                continue
+        contagem[int(pagina)] = contagem.get(int(pagina), 0) + 1
+    return contagem
+
+
 def estados(
     report: Any,
     *,
     decisions: Any | None = None,
     page_count: int | None = None,
+    document: Any | None = None,
+    diagram_decisions: Any | None = None,
 ) -> list[EstadoDaPagina]:
     """Um estado por página do livro, em ordem de página.
 
@@ -85,9 +140,14 @@ def estados(
     importação planejou (``report.pages_planned``) ou montou. As páginas planejadas e não
     montadas -- o que um cancelamento deixou de fora -- aparecem com ``montada=False``, para o
     trilho desenhá-las como "ainda não lida" e não como vazias.
+
+    ``document`` (o :class:`~caissa.core.model.Document` importado) e ``diagram_decisions``
+    (:class:`~caissa.ocr.diagram_decisions.DiagramDecisions`) ligam a conta de hesitantes
+    (passo C8); sem o documento a conta é a de antes.
     """
     por_pagina = {int(p.index): p for p in getattr(report, "pages", ()) or ()}
     pendentes = _pendentes_por_pagina(report, decisions)
+    hesitantes = hesitantes_por_pagina(document, diagram_decisions) if document is not None else {}
     ultima = max(
         [page_count or 0, int(getattr(report, "pages_planned", 0) or 0)]
         + [indice + 1 for indice in por_pagina]
@@ -100,6 +160,7 @@ def estados(
             continue
         total, decididas = pendentes.get(pagina, (0, 0))
         nao_lidos = max(0, int(relatorio.diagrams) - int(relatorio.diagrams_read))
+        hesitam = int(hesitantes.get(pagina, 0))
         resultado.append(
             EstadoDaPagina(
                 pagina=pagina,
@@ -109,8 +170,9 @@ def estados(
                 diagramas_lidos=int(relatorio.diagrams_read),
                 texto=int(getattr(relatorio, "lines", 0) or 0) > 0
                 or str(relatorio.source).startswith("text"),
-                duvidosos=(total - decididas) + nao_lidos,
+                duvidosos=(total - decididas) + nao_lidos + hesitam,
                 revisada=total > 0 and decididas == total,
+                hesitantes=hesitam,
             )
         )
     return resultado
@@ -122,6 +184,25 @@ def primeira_duvidosa(paginas: Iterable[EstadoDaPagina]) -> int | None:
         if estado.duvidosa:
             return estado.pagina
     return None
+
+
+def proxima_duvidosa(paginas: Iterable[EstadoDaPagina], atual: int) -> int | None:
+    """A primeira duvidosa **depois** de ``atual`` (passo C8); ``None`` quando não há mais."""
+    for estado in paginas:
+        if estado.pagina > atual and estado.duvidosa:
+            return estado.pagina
+    return None
+
+
+def anterior_duvidosa(paginas: Iterable[EstadoDaPagina], atual: int) -> int | None:
+    """A última duvidosa **antes** de ``atual``; ``None`` quando não há."""
+    alvo = None
+    for estado in paginas:
+        if estado.pagina >= atual:
+            break
+        if estado.duvidosa:
+            alvo = estado.pagina
+    return alvo
 
 
 def progresso(report: Any) -> tuple[int, int, bool]:

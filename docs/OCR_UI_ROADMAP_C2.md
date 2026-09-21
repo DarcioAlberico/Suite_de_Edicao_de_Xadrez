@@ -6,6 +6,7 @@
 > e lista as fases 2 e 3 por alavanca, a detalhar quando a 1 fechar. Relatório do construtor:
 > `docs/quality/OCR_UI_REPORT_C2.md` (uma seção por passo, todo número com o comando ao lado).
 > Não substitui `OCR_UI_ROADMAP.md` (ciclo 1), cujas pendências humanas (0b, crítico C3) continuam.
+> **Fase 2** (§3) executada em 2026-09-20/21 — relatório `docs/quality/OCR_UI_REPORT_C2_FASE2.md`.
 
 ## 0. Regras que valem para todos os passos
 
@@ -271,13 +272,195 @@ Formato: **arquivos** · **briefing** · **portão** · **sabotagem** · **saíd
 - **Sabotagem.** O comportamento atual (`abas.setEnabled(False)`) → REPROVA.
 - **Saída.** §C7.
 
-## 3. Fases 2 e 3 (a detalhar quando a fase 1 fechar)
+## 3. Fase 2 — texto, glifos e janela (executada em 2026-09-20/21)
 
-- **Fase 2 — texto, glifos e janela:** B1 (leiaute em scan, alavanca 3), B2 (perfil por faixa,
-  17), B3 (NAGs, 16 — usa `RepairedMove.suffix`), B5 (escore da fusão, 7), B6 (escala, 20),
-  B8 (verso, T7), B9 (paralelo + cancelamento dentro da página, T8), C2 (ler a página, 10), C3
-  (segunda opinião de outra família, 18), C8 (trilho/teclado, 19), C9 (pele nas abas, U6),
-  C10 (coordenadas/ponto de vista das pretas, D7).
+Mesmo formato da fase 1: **arquivos** · **briefing** · **portão** · **sabotagem** · **saída**. O
+relatório é `docs/quality/OCR_UI_REPORT_C2_FASE2.md` (uma seção por passo, número com comando ao
+lado). Construída por uma sessão só, passo a passo, com os benchmarks rodados **em sequência** (a
+primeira rodada, feita em paralelo com testes, contaminou o `s/MP` e foi descartada — §4).
+Tronco: commit **2077410**; suíte: o commit que traz esta seção.
+
+### B1 — Leiaute na página digitalizada (alavanca 3; análise §4.2)
+
+- **Arquivos.** Suíte: `ocr/layout/scan.py` (novo: `find_gutters`, `split_at_gutters`,
+  `scan_layout`, `ScanLayoutConfig`), `ocr/page.py` (`PageConfig.scan`/`scan_reread`;
+  `_whole_page` → `_scan_layout`/`_by_scan_layout`; `_crop` aceita caixa em pixels na tarefa sem
+  PDF), `benchmarks/bench_sol.py` (`SOL_CONFIG` aninhado: `{"page": {"scan": {...}}}`),
+  `tests/unit/ocr/test_scan_layout.py`.
+- **Briefing.** O método do tronco (`text/colunas.py`, projeção de **linhas** feitas de caixas de
+  **palavra**, uma linha tolerada na calha a partir de 12, piso de 0,8 caractere/1 %/4 px, faixa
+  estreita fundida) sobre a leitura inteira em PSM 3; as linhas partidas nas calhas vão ao
+  `analyze_page` de sempre; região de lances → `MOVETEXT`. **Duas guardas medidas** (§4): três
+  faixas = tabela (`max_columns=2`); faixa com mediana < 16 caracteres = lista de lances
+  (`min_band_chars`). `scan_reread=False` por medição: fatiar a leitura inteira dá CER 0,0111 em
+  42,5 s contra 0,0206 em 66,3 s relendo por região (26 itens `twocol`).
+- **Portão.** `bench_sol --strata scan_clean_300,scan_degraded_150,native`: CER `twocol`
+  0,1238 → ≤ 0,012; `scan_clean_300` inteiro sem regressão fora do IC; `table` e `single`
+  inalterados; controles 0/9.
+- **Sabotagem.** `SOL_CONFIG='{"page": {"scan": {"enabled": false}}}'` → `twocol` volta a 0,12.
+- **Saída.** §B1 do relatório.
+
+### B2 — O perfil de lances chega à página mista (alavanca 17; análise §4.5)
+
+- **Arquivos.** Suíte: `ingest/pdf/ocr_service.py` (`OcrServiceConfig.movetext_strips`/
+  `movetext_strips_max`, `_strip_candidates`, `_line_carries_notation`, `STRIPS_ENGINE`;
+  `_looks_like_movetext` sem os números e pontos no denominador), `tests/unit/ingest/
+  test_movetext_strips.py`.
+- **Briefing.** Numa região que **não** é movetext mas carrega notação, cada corrida de linhas
+  consecutivas com ≥ 2 lances vira uma faixa lida com o perfil `MOVETEXT` (PSM 7 numa linha,
+  PSM 6 numa banda; ≤ 8 bandas por região), e as faixas entram na fusão como **um** candidato
+  secundário sob nome próprio (`tesseract_strips`) — nunca âncora (§4).
+- **Portão.** `bench_sol --strata native,scan_clean_300`, por `genre`: `mixed` sem regressão;
+  sabotagem `{"movetext_strips": false}`.
+- **Saída.** §B2.
+
+### B3 — NAGs na via de importação (alavanca 16; análise §5.6)
+
+- **Arquivos.** Suíte: `notation/nag_table.py` (`nags_from_suffix`; apelidos `⇄`, `△`, `⊕`,
+  `◻`), `ingest/pdf/games.py` (`_move_nodes` preenche `MoveNode.nags` de `RepairedMove.suffix`,
+  lado pelo `fen_before`), `benchmarks/notation_integrity.py --what nags [--sabotar nags]`,
+  `tests/unit/ingest/test_games.py`.
+- **Portão.** `notation_integrity --what nags` nas páginas pinadas do DEM e do Aagaard: nós com
+  NAG > 0 (medido 6 em 9 partidas: `$1×2 $2×2 $3×1 $6×1`).
+- **Sabotagem.** `--sabotar nags` apaga os símbolos do texto de onde as partidas nascem → 0.
+- **Saída.** §B3. O texto do IR fica como impresso (`²` não é reescrito); o NAG vai estrutural.
+
+### B5 — O escore da fusão (alavanca 7; análise §4.3)
+
+- **Arquivos.** Suíte: `ingest/pdf/ocr_service.py` (`OcrServiceConfig.fusion_rescue`/
+  `fusion_rescue_moves`, `_rescue_abstained`; `PageRecognition.decision` = REVIEW quando alguma
+  região emitida está em revisão), `ocr/fusion.py` (docs).
+- **Briefing.** Âncora abstida + candidato **independente** aceito/revisão concordando em ≥ 2
+  lances com o fundido → o fundido é re-pontuado pelo árbitro e decidido de novo, **nunca acima
+  de REVIEW** (SOL-2), nunca por cima dos pisos de evidência.
+- **Portão.** `bench_sol --strata native`: abstidos 62 → menor; `sol_gate` 0 silenciosas e 0/9
+  controles; sabotagem `{"fusion_rescue": false}`.
+- **Saída.** §B5 (o que a régua mede: um abstido conta CER 0; um rescue com texto certo mas na
+  ordem de leitura do PSM 3 conta CER alto — o número é dito com essa ressalva).
+
+### B6 — Escala comum na fusão (alavanca 20; análise §4.6)
+
+- **Arquivos.** Suíte: `ocr/fusion.py` (`FusionConfig.calibrated`, `fuse_candidates(calibrators=)`),
+  `ingest/pdf/ocr_service.py` (`_calibrators`: `ArbiterConfig.calibration_for(engine, facet).apply`).
+- **Briefing.** As confianças de palavra que a fusão compara passam pelas tabelas calibradas do
+  SOL-4 (Tesseract e RapidOCR; o leitor de glifos e o modelo de figurinas ficam na escala crua,
+  que é a dos seus limiares). Os três limiares da `FusionConfig` **não** foram recalibrados —
+  o efeito medido no corpus decide se ficam (§B6).
+- **Portão.** `bench_sol --strata native,scan_degraded_150,fax_dither`; sabotagem
+  `{"fusion": {"calibrated": false}}`.
+- **Saída.** §B6.
+
+### B8 — O verso real (T7; análise §4.7)
+
+- **Arquivos.** Suíte: `ocr/page.py` (`PageTask.verso_sources`), `ingest/pdf/ocr_service.py`
+  (`use_verso`, `verso_min_correlation`, `verso_self_mirror`, `_neighbour_renders`, `_verso_for`),
+  `ocr/portfolio.py` (variante `bleed_verso` **ao lado** de `bleed_sauvola`, só ela recebe o
+  verso; +1 no teto quando há verso), `tests/unit/ocr/test_verso.py`.
+- **Briefing.** Página com `bleed_share` acima do piso: as páginas vizinhas do PDF (e o espelho
+  da própria) registradas por `register_verso`; a de melhor correlação acima de 0,08 (piso
+  medido: verso certo 0,13, página errada 0,03, ruído 0,001) vira a variante `bleed_verso`. Não
+  substitui a heurística: medido, cada uma ganha em páginas diferentes (§4).
+- **Portão.** `bench_sol --strata shadow_curl_bleed`; sabotagem `{"use_verso": false}`.
+- **Resultado: desligado por medição.** No estrato o `bleed_verso` fez CER 0,0387 → 0,0399 e
+  inventados 8 → 10 (dentro do IC, na direção errada): a página do corpus é espelhada **e
+  depois** curvada, e o registro global não segue a curvatura. `OcrServiceConfig.use_verso=False`
+  guarda os números; o mecanismo fica testado (`test_verso`, 7) à espera de um livro com verso
+  real (§4).
+- **Saída.** §B8.
+
+### B9 — Paralelo e cancelamento dentro da página (T8; análise §4.8)
+
+- **Arquivos.** Suíte: `ocr/cancel.py` (novo: `OcrCanceled(BaseException)`, `cancellable`,
+  `check_cancel` — `ContextVar`), `ocr/engines/tesseract.py` (`Popen` com sondagem do gancho e
+  `kill`; `OMP_THREAD_LIMIT=1` no filho; `_forced_profile` por thread), `ingest/pdf/ocr_service.py`
+  (`OcrServiceConfig.workers=4`, `_run_readings` com `copy_context`, ordem de submissão),
+  `ingest/pdf/importer.py` (`cancellable(should_cancel)` em volta da importação; `OcrCanceled` →
+  `ImportCanceled` com o parcial), `tests/unit/ocr/test_cancel.py`.
+- **Portão.** `s/MP` `workers=4` × `workers=1` nos estratos de scan; o `ocr_trace` igual nos
+  dois (a lista de candidatos guarda a ordem de submissão); teste de que o filho é morto em
+  < 5 s quando o gancho diz parar.
+- **Sabotagem.** `{"workers": 1}` (o serial); teste do importador com provedor que levanta
+  `OcrCanceled` na 2.ª página → `ImportCanceled` com 1 página no parcial.
+- **Saída.** §B9.
+
+### C2 — Ler a página com progresso, cancelamento e o gravar trancado (alavanca 10; análise §6.3)
+
+- **Arquivos.** Tronco: `service.py` (`recognize_page(progress=, should_cancel=)`,
+  `RecognitionCanceled(partial)`), `qt/trabalho.py` (`Tarefa.cancelar`/`should_cancel`),
+  `qt/leitura.py` (novo: `Ocupacao`, `Aquecimento`, as frases), `qt/janela.py` (`_rodar` no
+  registro com `total=` e `cancel=`; `_falhou` com os ramos cancelada/sem modelo;
+  `painel.trancar_gravacao`; aquecimento ao abrir o livro), `qt/painel_de_resultado.py`
+  (`trancar_gravacao`, `mostrar_vazio_sem_modelo`), `ui/busy.py` (`_rodar` sai de
+  `FORA_DO_REGISTRO`), `tests/test_qt_leitura.py`, `tests/test_service.py`. Suíte:
+  `ui/audit/percurso.py` (`--fluxo casa --frio` / `--cancelar`, sabotagens `sem_aquecimento`,
+  `sem_cancelamento`).
+- **Portão.** `caissa.ui.audit.progresso` sem defeito bloqueante com `_rodar` registrado;
+  `percurso --fluxo casa --cancelar` PASSOU e `--sabotar sem_cancelamento` REPROVOU;
+  `--frio` (processo novo) abaixo de **1,5 s** até o primeiro diagrama — medido 0,58–0,64 s com
+  o aquecimento, 1,98–2,17 s sem (`--sabotar sem_aquecimento` REPROVOU; o teto de 8 s que este
+  passo propunha não reprovaria a sabotagem — §4); `bloqueio` remedido 3/3 PASSOU com o
+  aquecimento adiado para 3 s de ócio (§4).
+- **Saída.** §C2.
+
+### C3 — Segunda opinião de outra família (alavanca 18; análise §3.5)
+
+- **Arquivos.** Tronco: `qt/painel_de_resultado.py` (`segunda_opiniao`, botão que nasce escondido
+  e aparece com leitor configurado; `DIVERGENTE` nas casas em disputa; `Tab` as percorre),
+  `qt/tabuleiro_editavel.py` (`definir_casas_disputadas`), `ui/comandos.py`/`ui/menu.py`
+  (`segunda_opiniao`), `ui/strings.py`. Suíte: `benchmarks/second_opinion_gate.py` (novo).
+- **Portão.** Nos 11 barrados do conjunto de campo (`f4_grade/failures.json`): fração das casas
+  erradas cobertas pela disputa ≥ 0,75 — medido **23/27 = 85,2 %**, mediana 2 casas em disputa.
+- **Sabotagem.** `--sabotar copia` (o segundo leitor devolve a leitura do primeiro) → 0/27.
+- **Saída.** §C3.
+
+### C8 — Trilho que aprende, dúvidas navegáveis, teclado no tabuleiro (alavanca 19; análise §6.6)
+
+- **Arquivos.** Suíte: `ui/trilho.py` (`hesitantes_por_pagina`, `estados(document=,
+  diagram_decisions=)`, `proxima_duvidosa`/`anterior_duvidosa`), `ui/views/declarados.py` (novo:
+  as tabelas `COMANDOS_DA_ROTULAGEM`/`COMANDOS_DA_REVISAO_DE_TEXTO`), `ui/views/rotulagem.py` e
+  `revisao_de_texto.py` (sem os `QShortcut` ambíguos), `ui/audit/percurso.py` (`--fluxo casa
+  --teclado`, sabotagem `sem_teclado`; o fluxo `livro` afirma `trilho.aprendeu`). Tronco:
+  `ui/teclado_do_tabuleiro.py` (novo, a regra), `qt/tabuleiro_editavel.py` (`StrongFocus`,
+  `keyPressEvent`, `definir_duvidosas`), `qt/trilho.py` + `ui/trilho.py` (próxima/anterior),
+  `qt/importador_de_livro.py` (`atualizar_trilho`, decisões de diagrama e hesitantes na conta),
+  `qt/abas_da_suite.py` (novo: donos e roteamento por aba à frente), `ui/comandos.py`,
+  `ui/menu.py`, `ui/atalhos.py` (`Ctrl+Page Up/Down`), `qt/janela.py`.
+- **Portão.** `percurso --fluxo casa --teclado` ≤ 3 teclas por casa (`Tab` + letra) — medido
+  **2**; `--sabotar sem_teclado` REPROVOU (9); `audit.comandos` 0 soltos (424 medidos);
+  `percurso --fluxo livro` afirma `trilho.aprendeu` **quando a página tem diagrama hesitante**
+  (no Aagaard 31–38 são 0: a dúvida é de texto — a regra fica pelo `test_trilho` e pelo
+  `PonteTests`, §4); testes `TecladoTests`.
+- **Saída.** §C8.
+
+### C9 — As abas da suíte pela pele (U6; análise §6.7)
+
+- **Arquivos.** Suíte: `ui/theme/pele.py` (novo: `PAPEIS`, `PARES`, `cor`, `vestir_paginador`),
+  `ui/views/{rotulagem,revisao_de_texto,exportacao}.py`, `ui/widgets/cartao_da_linha.py`,
+  `ui/audit/contraste.py` (`pares_pintados_da_suite`), `tests/unit/ui/test_pele_da_suite.py`.
+- **Portão.** `caissa.ui.audit.contraste` PASSOU com os 8 pares da suíte medidos nas duas
+  peles (308 pares, 228 sob portão); `--sabotar` REPROVOU.
+- **Saída.** §C9.
+
+### C10 — Coordenadas impressas e o ponto de vista das pretas (D7; análise §3.8)
+
+- **Arquivos.** Suíte: `vision/detect/orientation.py` (`rotate_placement`), `vector_detect.py`
+  (gira o `placement` quando `white_at_bottom=False`; as coordenadas lidas em volta das
+  **células** em espaço de página — a caixa antiga estava meia casa fora e o leitor de rótulos
+  nunca respondia), `ingest/pdf/finders.py` (`point_of_view_from_labels`, `rotate_signal`;
+  a via raster gira a FEN, nunca a imagem), `benchmarks/coordinate_survey.py` (novo),
+  `tests/unit/detect/test_point_of_view.py`. Tronco: `orientation.py` (`BoardCoordinates.
+  files_left_to_right`; `OrientationVerdict.black_point_of_view`; `resolve(turn=)`),
+  `inference.py` (`predict_with_orientation(coordinates=)`, `turn` = a mesma matriz vista do
+  outro lado), `pdf_text.py` (`board_coordinates_for`, `DiagramContext.coordinates`),
+  `service.py` (`RecognizedDiagram.black_point_of_view`), `qt/painel_de_resultado.py`
+  (tabuleiro `virado` para bater com o recorte).
+- **Portão.** `coordinate_survey.py` (população no acervo); testes com fixture do lado das
+  pretas (`coordinates="black"`) → placement canônico; sabotagem = rótulos espelhados
+  (`coordinates=True`) → placement como impresso.
+- **Saída.** §C10.
+
+### Fase 3 e humano (inalterados)
+
 - **Fase 3 — modelo e ciclo fechado:** C4 (mhsp + RandomStroke com ablação, 13), C5 (calibrador
   de cor + perfil por livro, D6/X3), C6 (fechar o ciclo, X6), C11 (restrições do decodificador,
   D8), A11 (sidecar de proveniência, X4), B10 (cifra com escopo, `figurine_set`, G6/G7).
@@ -292,3 +475,17 @@ Formato: **arquivos** · **briefing** · **portão** · **sabotagem** · **saíd
 | 2026-09-20 | B7 | **portão reescrito**: recall de `=` não é mensurável — a verdade rotulada (SFC4 `calib`/`dev`/`blind` e os outros dois documentos) não tem um único `=` | O portão fica "`:` e `;` verdade × hipótese > 0 (medido: 10/10 e 1/1) + 204/204 figurinas + ≥ 280 lances", e o `=` fica fixado por teste sobre o tronco real (`test_glyph_postchain`: com `empilhados` um `=` desenhado vira uma caixa; sem, nenhuma toca o `=`). Fechar de verdade exige rotular uma página com promoções (humano — vai para a lista do 0b) | construtor + crítico |
 | 2026-09-20 | A3 | **inserido na integração**: `export_book(document=)` recusa documento sem as imagens em disco | O import da janela corria sem `asset_dir` → `Resource.path=None` → o EPUB perderia as imagens em silêncio (crítico Codex). Agora `views/importacao.py` extrai para uma pasta do processo e `export_book` reimporta (com aviso no log) quando falta arquivo; `documento_para` que falha é dito no rodapé | construtor + crítico |
 | 2026-09-20 | C7 | **achado do portão `bloqueio`**: as abas da suíte abrindo o livro na thread da janela custavam 209 ms (SHA-256 do PDF inteiro + render) | A Rotulagem só seleciona o documento quando é mostrada (`showEvent`); a Revisão de texto recebe `page_count` da janela em vez de reabrir o PDF. `bloqueio` de 209 ms para 8–12 ms (`OCR_UI_REPORT_C2.md` §0.2) | construtor |
+| 2026-09-20 | fase 2 | **rodada de benchmark descartada** | Os A/B da fase corriam em paralelo com os testes das duas árvores; o `s/MP` saiu 12,3 em `scan_degraded_150` (7,3 a sós). Refeita em sequência, sem outro trabalho de CPU; os JSON `f2_*` em `benchmarks/reports/sol/` são os da rodada limpa | construtor |
+| 2026-09-20 | B2 | **a faixa vira candidato secundário sob nome próprio** (`tesseract_strips`, `secondary=True`) | A primeira versão entrava como `engine="tesseract"`, `secondary=False`, e a arbitragem a escolhia como **âncora** da região com um subconjunto das linhas: `twocol:d:12` CER 0,0016 → 0,68, Euwe `82:352` → 0,91. Com nome próprio e secundária, só apoia a fusão | construtor |
+| 2026-09-20 | B1 | **modo fatia por região** (`PageRecognizer._slice`) | No modo fatia os candidatos da arbitragem partilhada eram de **página inteira** e ancoravam cada região com a página toda (Dvoretsky CER 0 → 0,76). Cada região recebe os candidatos fatiados pela sua caixa. `scan_reread=False` fica por medição (0,0111/42,5 s × 0,0206/66,3 s) | construtor |
+| 2026-09-20 | B1 | **duas guardas**: `max_columns=2` e `min_band_chars=16` | Tabela de três faixas (`table:2` CER → 0,47) e lista de lances brancas \| pretas (`18:179:252` → 0,62) têm calha limpa e eram partidas como colunas de prosa. Três faixas = tabela; faixa com mediana de linha < 16 caracteres = lista de lances. `table` e `single` voltam ao antes ao décimo de milésimo | construtor |
+| 2026-09-20 | B5 | **`PageRecognition.decision` propaga REVIEW** | O `sol_gate` contava «silenciosa» toda página multi-região cuja âncora aceitava mas uma região emitida estava em revisão (4 páginas); agora a decisão da página é REVIEW quando qualquer região emitida está em revisão — 0 silenciosas | construtor |
+| 2026-09-21 | B8 | **`use_verso=False` por padrão** | Medido no `shadow_curl_bleed`: CER 0,0387 → 0,0399, inventados 8 → 10 com a variante ligada (registro global contra página curvada). O mecanismo fica com testes e interruptor; a decisão pede um livro com verso real | construtor |
+| 2026-09-21 | C2 | **aquecimento adiado para 3 s de ócio** (`leitura.ESPERA_PARA_AQUECER_MS`, reiniciado a cada virada de página, nunca com tarefa em curso) | A carga do modelo ao abrir o livro é C que segura o GIL: `bloqueio` VIOLA («abrir PDF» 28–45 ms, primeira virada 57–84 ms). Adiado, 3/3 PASSOU («abrir PDF» pior 14,8/11,8/6,6 ms); o primeiro «Ler» continua a 0,6 s porque o aquecimento acaba antes de a pessoa chegar à página. O `closeEvent` espera o aquecimento (uma `QThread` destruída a correr matava o processo da auditoria `comandos`) | construtor |
+| 2026-09-21 | C2 | **teto do `--frio` de 8 s para 1,5 s** (`percurso.TETO_FRIO_S`) | A sabotagem `sem_aquecimento` mede 1,98–2,17 s — não cruzaria 8 s (anti-padrão 2). O teto ficou entre os dois números medidos (0,58–0,64 s com aquecimento) | construtor |
+| 2026-09-21 | C8 | **`Tab` percorre as casas na ordem da dúvida** (`teclado_do_tabuleiro.proxima_duvidosa` respeita a ordem da lista; o painel ordena por margem) | O portão `--teclado` reprovou a primeira versão: em ordem de tabuleiro eram 8 `Tab` até e2. Com a casa de menor confiança primeiro, 1 `Tab` + letra = 2 teclas | construtor |
+| 2026-09-21 | C8 | **o tabuleiro em foco toma para si `←`/`→`/`Del`** (`DonoDeAcoes` em `TabuleiroEditavel`; `teclado_do_tabuleiro.ACOES_DAS_SETAS`, `ACAO_DE_APAGAR`) | As setas e o `Delete` são atalhos globais e a guarda de atalhos é um filtro na aplicação: o `keyPressEvent` do passo nunca as recebia na janela de verdade (o teste do widget sozinho passava; a suíte inteira do tronco reprovou depois de qualquer teste que ligasse a guarda). É a regra da S-244, a mesma que dá `←` ao campo de texto em foco; teste com a guarda ligada + sabotagem | construtor |
+| 2026-09-21 | C8 | **`trilho.aprendeu` afirmado só com hesitante na página** | No Aagaard 31–38 os 13 diagramas leem com folga; a dúvida do trilho é de texto e a correção de um diagrama não a muda — afirmar `aprendeu` ali seria afirmar o que a página não tem. O fluxo `livro` diz em nota; a regra fica no `test_trilho` (hesitante → decidido) e no `PonteTests` | construtor |
+| 2026-09-21 | C9 | **`regiao_selecionada` → `TRACEJADO`** | O papel `ALVO` da pele media 1,65:1 sobre a página na auditoria de contraste (o par da suíte reprovava); o tracejado é o traço de seleção que a pele já tem sob portão | construtor |
+| 2026-09-21 | C9 | **palavras fracas do cartão na letra, não no fundo** (`cartao_palavra_conferir` = `ATENCAO`, `cartao_palavra_revisar` = `PROBLEMA_TEXTO`) | A primeira versão mapeava os fundos âmbar/vermelho do cartão para `REALCE_NOTA`/`REALCE_DESTAQUE`, que na tabela de significado do tronco são o canal de **quem escreve** (`REALCE_NOTA` é verde): a suíte inteira acusou `#b9ffc5` atrás de uma palavra duvidosa. A regra do editor do tronco (`ui/texto_cores.py`) é confiança na letra; `contraste` remedido 308/228 PASSOU com os 8 pares | construtor |
+| 2026-09-21 | B3/C3 | **`CAISSA_FIGURINE_TESSDATA` só no `bench_sol`** | Com a variável no ambiente o `config` do tronco recusa o caminho e o classificador de diagramas não carrega — o portão do B3 (partidas sob diagramas) contava 0 partidas por isso, não pelos NAGs. Portões que precisam de diagramas lidos correm sem ela | construtor |
