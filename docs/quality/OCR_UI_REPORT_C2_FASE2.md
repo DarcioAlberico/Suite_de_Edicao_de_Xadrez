@@ -119,7 +119,7 @@
 5. **O portão da segunda opinião não rodou no sandbox do crítico** (sem diretório temporário
    gravável). Não é do código: no ciclo 2 o Codex corre com `-s workspace-write` e `TEMP`
    dentro do workspace, e reproduz. Os números de §C3 vêm do JSON gravado
-   (`benchmarks\reports\second_opinion\`), com o comando ao lado.
+   (`benchmarks\reports\second_opinion_20260920_235339.json` e `…_235340_copia.json`), com o comando ao lado.
 
 Não bloqueantes atendidos: `service.py` lê `context.coordinates` e
 `oriented.black_point_of_view` pelo contrato, sem `getattr`. Da revisão do construtor, na
