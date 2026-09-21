@@ -78,6 +78,17 @@
   PASSOU (`percurso_casa_teclado_20260921_053026.json`), `--sabotar sem_teclado` REPROVOU,
   `audit.teclado` PASSOU (`teclado_20260921_053107.json`); testes: o `Tab` sai depois da última e
   entra na primeira; a sabotagem (a volta de antes) prende o foco por oito `Tab`.
+- **C2/C3: duas `Tarefa` com pai, e o parecer preso ao índice.** A tarefa da segunda opinião
+  nascia filha do painel e a do aquecimento filha da janela: destruídas com eles, o destrutor
+  de `QThread` **aborta o processo** com a thread a correr (F9-C2) — fechar a janela nos ~7 s
+  da primeira carga do leitor tsoj, ou numa carga do modelo mais longa que os 15 s de
+  `ESPERA_AO_FECHAR_MS`, era esse caso. As duas passam a `manter_viva(Tarefa(...))` sem pai, e
+  os slots perguntam se o painel ainda existe. E `_chegou_a_segunda` conferia só o índice: o
+  parecer da página anterior ia parar no diagrama de mesmo índice da página seguinte (a classe
+  de defeito da S-68) — agora é por identidade do diagrama, e o parecer atrasado é descartado
+  com frase. Revisão do construtor antes da crítica (tronco be790f0); testes: parecer depois
+  de a página mudar descartado; fechar o painel com a leitura a correr não derruba o processo;
+  o aquecimento sem pai.
 - **A suíte inteira do tronco travava em `test_app_pyqt`** (não reprovava: **travava**). O
   serviço falso do arquivo não aceitava `progress=`/`should_cancel=` → `TypeError` → `_falhou`
   → `dialogos.mostrar_falha`, uma caixa **modal** que ninguém fecha num teste headless. Visto
