@@ -7,15 +7,14 @@
 > tronco `..\ChessVisionOFF_Puro` (3.10, `torch 2.10.0+cpu`). O treino da ablação do C4 correu na
 > GPU pela venv da suíte sobre o código do tronco, em segundo plano durante toda a fase; os
 > tempos (`s/MP`, `s/diagrama`, `wall_s`) carregam essa contenção e são ditos com ela.
-> Commits: tronco **5fb2711**, suíte: o commit que grava este relatório (hash na mensagem do commit
-> seguinte da suíte, que traz as sementes 43/44 e a sabotagem `i50` do §C4); um em cada, o hash do
-> outro na mensagem.
+> Commits: tronco **5fb2711**, suíte **502dbad** (a fase) e o commit que fecha o §C4 com as sementes
+> 43/44 e a sabotagem `i50`; um em cada repositório, o hash do outro na mensagem.
 
 ## §0 — Em uma tela (o que o usuário passa a ter)
 
 | antes | depois | portão | passo |
 |---|---|---|---|
-| o aumento dirigido (`mhsp`) nunca virou produção; nenhum aumento tocava a espessura do traço; a janela retreinava sempre no genérico; uma época custava 10 min mesmo na GPU | `RandomStroke` (letra `e`, **1 px** — 2 px fecha o contorno das brancas, medido); a ablação `aug0` × `mhsp` × `mhspe` × `e` do zero com a mesma semente e partição; a janela retreina no regime do checkpoint de produção; o cache do dataset com piso na janela do amostrador: **10,1 → 3,2 min/época** | `lab_gate` (teste 566): produção 555, `aug0` **556**, `mhsp` 555, `mhspe` 553, `e` 554 — ±3 tabuleiros; campo: `mhsp` ≈ `aug0` (3 exportados-e-errados), `mhspe`/`e` **4**; **nenhuma variante domina, nada a trocar**; a sabotagem `i` (3 %) foi **inerte** — vermelho, `i50` e sementes 43/44 na fila | C4 |
+| o aumento dirigido (`mhsp`) nunca virou produção; nenhum aumento tocava a espessura do traço; a janela retreinava sempre no genérico; uma época custava 10 min mesmo na GPU | `RandomStroke` (letra `e`, **1 px** — 2 px fecha o contorno das brancas, medido); a ablação `aug0` × `mhsp` × `mhspe` × `e` do zero com a mesma semente e partição; a janela retreina no regime do checkpoint de produção; o cache do dataset com piso na janela do amostrador: **10,1 → 3,2 min/época** | 3 sementes: `aug0` teste 553–556 (média 554,7), campo 1–4 exportados-e-errados; `mhspe` 553–555 (554,0), 2–4 — **a variância entre sementes é maior que a diferença entre variantes; nada a trocar**; as sabotagens `i` (3 %) e `i50` (50 %) foram **inertes** (inversão sem troca de rótulo não confunde a cor) — vermelho, próxima: ruído de rótulo `X↔x` | C4 |
 | a cifra do livro fixava a peça pela **primeira** observação, não tinha estilo nem janela; o `♕` do texto saía `♛` no DOCX/EPUB; a revisão não distinguia figurina lida de figurina inferida | maioria, estilo (classe de tamanho da linha) e janela de páginas, exemplos com confiança; `PieceGlyph` com `figurine_set` e proveniência própria; um span por figurina no `PageText` com a origem (`figurine_origin`: `glyph`/`tesseract_figurine`/`cifra`) | `notation_integrity --what contest`: Gaprindashvili **914 → 917** (de 986), Aagaard 157, Nunn 363, controles intactos; `cifra_plana` → 914 | B10 |
 | o decodificador não sabia de bispos da mesma cor nem de reis adjacentes; o lance impresso sob o diagrama nunca voltava à posição | `DecodeRules` (bispos por cor de casa contam como promovidos; reis que se tocam); `lance_seguinte`: o primeiro lance impresso é jogado, e a troca única de segunda opção ou de cor que faz a linha fechar é adotada com o gate julgando as outras casas | `lab_gate` produção: `classic` 0,9770 → **0,9806** (`helped` 0 → 2, `hurt` 0); no campo `next_move_checked` **2** de 114 (população de 2, dito) | C11 |
 | 10 das 27 casas erradas do campo eram de cor, 4 delas `q→Q` no Koblenz a 0,71–1,00, e nenhum sinal do softmax as movia | a tinta do centro da casa contra as damas/torres/... **corrigidas do mesmo livro**, por peça e cor de casa, só onde as cores se separam; o perfil do livro (`perfil.json`) como recipiente, ao lado da cifra | `field_exact`: exatos **103 → 105** (Koblenz: as damas de casa escura `p30 d0 d6` e `p50 d0 h4`; `colour_repaired_wrong` 0); `sem_cor` → 103; `cor_trocada` → 103 (o calibrador cala); fechamento do Koblenz um-de-fora: k=22 → **6 trocas, 6 certas** | C5 |
@@ -119,12 +118,13 @@
   176–211. O instrumento sem resolução se abstém; é o desenho, e está medido (§C5).
 - **B10: +3 lances em 986, e nenhum nos outros dois livros.** O Aagaard e o Nunn não têm
   símbolos que o estilo ou a janela resgatem. A maioria fica por argumento (§0.1).
-- **C4: nenhuma variante domina, e a sabotagem foi inerte.** A uma semente e 16 épocas as cinco
-  variantes ficam a ±3 tabuleiros de 566 no laboratório e o `RandomStroke` exporta **mais** um
-  errado no campo (4 contra 3); `i` a 3 % é indistinguível do `aug0` — o instrumento não tem
-  resolução para a pergunta, e a decisão de trocar o `.pt` (§10.2) não tem número que a
-  sustente: `models/piece_classifier.pt` não foi tocado. `i50` e as sementes 43/44 estão na
-  fila e entram num commit seguinte da suíte (§C4).
+- **C4: nenhuma variante domina, e as sabotagens foram inertes.** Em três sementes o `aug0`
+  sozinho varia mais (553–556 no teste, 1–4 exportados-e-errados no campo) do que qualquer
+  variante difere dele, e o `RandomStroke` fica um pouco abaixo em todas as médias; `i` a 3 % e
+  `i50` a 50 % são indistinguíveis do `aug0` — inverter sem trocar o rótulo não confunde a cor,
+  a sabotagem estava mal desenhada e a próxima (ruído de rótulo `X↔x`) está escrita. O
+  instrumento não tem resolução para a pergunta, e a decisão de trocar o `.pt` (§10.2) não tem
+  número que a sustente: `models/piece_classifier.pt` não foi tocado (§C4).
 - **O conjunto de campo já estava contaminado antes da fase** (Anand 62, Euwe 25/62, Yusupov 14,
   Kemeri 144 têm amostras de treino, `labels.pages_with_training_samples`); e sete rótulos novos
   da janela (Koblenz p. 50 ×2, 51 ×2, 10, 13; Aagaard 7) ainda **não têm split** — a ablação do
@@ -151,75 +151,98 @@ Suíte: `benchmarks/c4_ablation.py` (do zero, mesma semente e partição, `assig
 16 épocas; `--variants aug0,mhsp,mhspe,e,i,i50`), `lab_gate --candidate … --unconstrained
 --rules`, `field_exact --model`, `f4_field_failures --model`.
 
-**Medição — treino (semente 42, 16 épocas, GPU; `c4_ablation.py --seeds 42 --epochs 16`,
-`benchmarks/reports/c4_ablation/c4_<variante>_s42.json`).** 4.344 tabuleiros de treino, 535 de
-validação (`splits.csv` de hoje: 14 Koblenz de 2026-09-20 estão em `train`, 3 em `val`, 1 em
-`test`; os 7 rótulos sem split ficaram fora):
+**Medição — treino (16 épocas, GPU, do zero; `c4_ablation.py --seeds 42|43,44 --variants …
+--epochs 16`, `benchmarks/reports/c4_ablation/c4_<variante>_s<semente>.json`).** 4.344
+tabuleiros de treino, 535 de validação (`splits.csv` de hoje: 14 Koblenz de 2026-09-20 estão em
+`train`, 3 em `val`, 1 em `test`; os 7 rótulos sem split ficaram fora). Sementes 42, 43 e 44
+para `aug0` e `mhspe` (a pergunta do passo: o traço), 42 e 43 para `mhsp` e `e`, 42 para as duas
+sabotagens; `mhsp`/`e` na semente 44 eram as últimas duas corridas da fila ao fechar este
+relatório e entram no mesmo diretório (retoque deste §, sem mudar o veredito — as três sementes
+de `aug0`/`mhspe` já mostram a variância):
 
-| variante | regime | melhor época | `val_board_exact` | `T` (S-28) | parede |
-|---|---|---|---|---|---|
-| `aug0` | blur/jitter/afim | 15 | 0,9664 (517/535) | 1,004 | 1.715 s |
-| `mhsp` | + espelho, hachura, granulação, papel | 16 | 0,9664 (517) | 1,218 | 1.767 s |
-| `mhspe` | + `RandomStroke` 1 px | 12 | 0,9682 (518) | 0,996 | 1.801 s |
-| `e` | só `RandomStroke` | 8 | 0,9682 (518) | 1,174 | 1.588 s |
-| `i` (sabotagem, inversão sem troca de rótulo a 3 %) | | 9 | 0,9626 (515) | 0,853 | 1.647 s |
+| variante | regime | semente | melhor época | `val_board_exact` (de 535) | `T` (S-28) | parede |
+|---|---|---|---|---|---|---|
+| `aug0` | blur/jitter/afim | 42 · 43 · 44 | 15 · 15 · 10 | 0,9664 (517) · 0,9682 (518) · 0,9664 (517) | 1,00 · 1,35 · 1,30 | 1.715 · 1.472 · 1.360 s |
+| `mhsp` | + espelho, hachura, granulação, papel | 42 · 43 | 16 · 12 | 0,9664 (517) · 0,9664 (517) | 1,22 · 1,00 | 1.767 · 1.612 s |
+| `mhspe` | + `RandomStroke` 1 px | 42 · 43 · 44 | 12 · 7 · 14 | 0,9682 (518) · 0,9645 (516) · 0,9682 (518) | 1,00 · 1,18 · 1,38 | 1.801 · 1.640 · 1.631 s |
+| `e` | só `RandomStroke` | 42 · 43 | 8 · 10 | 0,9682 (518) · 0,9682 (518) | 1,17 · 1,00 | 1.588 · 1.445 s |
+| `i` (sabotagem: inversão sem troca de rótulo, 3 %) | | 42 | 9 | 0,9626 (515) | 0,85 | 1.647 s |
+| `i50` (sabotagem forte: inversão em metade dos lotes) | | 42 | 16 | 0,9607 (514) | 1,39 | 1.392 s |
 
-Um tabuleiro de 535 separa as quatro variantes na validação. O laboratório e o campo:
+Dois tabuleiros de 535 cobrem tudo o que separa as quatro variantes na validação, semente a
+semente. O laboratório e o campo, por checkpoint:
 
 | modelo | `lab_gate` teste 566, restrito (`c11`): exatos · casa · ilegais · `helped`/`hurt` | sem decodificador: exatos · ilegais | campo: exatos · exportados · exp.-exatos · **exp.-errados** · `field_exact` | casas de cor entre as erradas (`f4`) |
 |---|---|---|---|---|
-| produção (+ C5/C11) | **555** · 0,999172 · 0 · 2/0 | 553 · 3 | 105 · 103 · 100 · **3** · 0,9709 | 8 (3 Koblenz, 3 Niemeijer, Stefaniu, Burgess) |
+| produção (+ C5/C11) | 555 · 0,999172 · 0 · 2/0 | 553 · 3 | 105 · 103 · 100 · **3** · 0,9709 | 8 (3 Koblenz, 3 Niemeijer, Stefaniu, Burgess) |
 | `c4_aug0_s42` | **556** · 0,999420 · 0 · 2/0 | 554 · 1 | 103 · 104 · 101 · **3** · 0,9712 | 5 |
+| `c4_aug0_s43` | 553 · 0,999310 · 0 · 3/0 | 550 · 3 | 102 · 102 · 98 · **4** · 0,9608 | — |
+| `c4_aug0_s44` | 555 · 0,999255 · 0 · 3/0 | 552 · 3 | 108 · 101 · 100 · **1** · 0,9901 | — |
 | `c4_mhsp_s42` | 555 · 0,999144 · 0 · 2/0 | 553 · 2 | 104 · 105 · 102 · **3** · 0,9714 | 4 |
+| `c4_mhsp_s43` | 553 · 0,999255 · 0 · 2/0 | 551 · 3 | 101 · 104 · 100 · **4** · 0,9615 | — |
 | `c4_mhspe_s42` | 553 · 0,999089 · 0 · 3/0 | 550 · 4 | 101 · 102 · 98 · **4** · 0,9608 | 8 |
+| `c4_mhspe_s43` | 555 · 0,999117 · 0 · 2/0 | 553 · 4 | 101 · 98 · 94 · **4** · 0,9592 | — |
+| `c4_mhspe_s44` | 554 · 0,999117 · 0 · 3/0 | 551 · 5 | 104 · 102 · 100 · **2** · 0,9804 | — |
 | `c4_e_s42` | 554 · 0,999227 · 0 · 2/0 | 552 · 2 | 106 · 100 · 96 · **4** · 0,9600 | 4 |
-| `c4_i_s42` (sabotagem) | **556** · 0,999365 · 0 · 2/0 | 554 · 2 | 104 · 101 · 98 · **3** · 0,9703 | 4 |
+| `c4_e_s43` | **556** · 0,999255 · 0 · 0/0 | 556 · 3 | 105 · 98 · 95 · **3** · 0,9694 | — |
+| `c4_i_s42` (sabotagem, 3 %) | **556** · 0,999365 · 0 · 2/0 | 554 · 2 | 104 · 101 · 98 · **3** · 0,9703 | 4 |
+| `c4_i50_s42` (sabotagem, 50 %) | 553 · 0,999199 · 0 · 2/0 | 551 · 2 | 104 · 97 · 95 · **2** · 0,9794 | 7 |
 
 ```
-.venv\Scripts\python.exe benchmarks\lab_gate.py --runs 3 --unconstrained --tag c4_s42 --candidate ..\ChessVisionOFF_Puro\models\experiments\c4_aug0_s42.pt … --candidate …\c4_i_s42.pt   (lab_gate_20260921_064813_c4_s42.json)
-.venv\Scripts\python.exe benchmarks\field_exact.py --variant recall-pack --runs 3 --model ..\ChessVisionOFF_Puro\models\experiments\c4_<v>_s42.pt --tag c4_<v>_s42   (field_exact_20260921_06{5137,5500,5821,…}_c4_<v>_s42.json)
+.venv\Scripts\python.exe benchmarks\lab_gate.py --runs 3 --unconstrained --tag c4_s42 --candidate ..\ChessVisionOFF_Puro\models\experiments\c4_aug0_s42.pt … --candidate …\c4_i_s42.pt   (lab_gate_20260921_064813_c4_s42.json; …_085416_c4_s43_44_i50.json; …_c4_s43b.json)
+.venv\Scripts\python.exe benchmarks\field_exact.py --variant recall-pack --runs 3 --model ..\ChessVisionOFF_Puro\models\experiments\c4_<v>_s<n>.pt --tag c4_<v>_s<n>   (field_exact_20260921_*_c4_<v>_s<n>.json)
 .venv\Scripts\python.exe tools\f4_field_failures.py --barrados --model … --out scratchpad\f4_c4_<v>
 ```
 
+Médias sobre as três sementes — `aug0`: teste **554,7** (553–556), campo 104,3 exatos, 102,3
+exportados, 99,7 exportados-exatos, **2,7** exportados-e-errados (1–4); `mhspe`: teste **554,0**
+(553–555), campo 102,0 · 100,7 · 97,3 · **3,3** (2–4).
+
 **O que os números dizem (e o que não dizem).**
 
-- **Nenhuma variante domina.** No laboratório as cinco ficam a ±3 tabuleiros de 566 da produção
-  (`aug0` e a sabotagem `i` em 556, `mhspe` em 553), todas com 0 ilegais e `hurt` 0; no campo,
-  `mhsp` ≈ `aug0` (+1 exato, +1 exportado, os mesmos 3 exportados-e-errados) e as duas
-  variantes com o `RandomStroke` (`mhspe`, `e`) exportam **4** errados em vez de 3 e caem a
-  0,960 — o `e` tem o maior número de exatos (106) e o menor de exportados (100): calibrado
-  mais frio (`T` 1,17), barra mais. O ganho de 1 tabuleiro de validação do `mhspe`/`e` não
-  sobrevive ao teste nem ao campo. **O portão do C4 não passou: nada a trocar** (§10.2 — a
-  decisão é da pessoa, e estes números não a sustentam; `models/piece_classifier.pt` intacto).
-- **A sabotagem foi inerte, e isso é vermelho.** `i` a 3 % (o que a letra `i` sempre foi) é
-  indistinguível do `aug0` no laboratório (556 = 556) e no campo (4 casas de cor contra 5). Uma
-  sabotagem que não piora não prova o instrumento: a ablação a uma semente e 16 épocas não tem
-  resolução para separar «aumento que ajuda a cor» de «aumento que a estraga» — e o mesmo vale
-  para o ganho que ela mediria. Fica na fila `i50` (inversão em metade dos lotes,
-  `SABOTAGE_VARIANTS` no `c4_ablation.py`) e as sementes 43/44 de `aug0`/`mhspe` (a correr ao
-  fechar este relatório; entram num commit seguinte da suíte, com os JSON).
+- **A variância entre sementes é maior que a diferença entre variantes.** O `aug0` sozinho vai
+  de 553 a 556 no teste e de 1 a 4 exportados-e-errados no campo (0,9608 a 0,9901 de
+  `field_exact`); o `mhspe`, de 553 a 555 e de 2 a 4. As médias põem o `RandomStroke` um pouco
+  abaixo do `aug0` em tudo (teste 554,0 × 554,7; exatos 102,0 × 104,3; exportados-e-errados 3,3
+  × 2,7), dentro da dispersão de uma semente. `mhsp` ≈ `aug0` (555/553; 3/4 errados) e `e` ≈
+  `mhspe` (554/556; 4/3). Todos com 0 ilegais e `hurt` 0. **O portão do C4 não passou: nada a
+  trocar** (§10.2 — a decisão é da pessoa, e estes números não a sustentam;
+  `models/piece_classifier.pt` intacto). O 1 tabuleiro de validação que o traço ganha em duas
+  sementes (518 × 517) não sobrevive ao teste nem ao campo.
+- **As duas sabotagens foram inertes, e isso é vermelho.** `i` a 3 % (o que a letra `i` sempre
+  foi) é indistinguível do `aug0` no teste (556 = 556) e no campo (4 casas de cor contra 5); `i50`
+  (inversão em **metade** dos lotes, `SABOTAGE_VARIANTS`) dá 553 no teste — dentro da faixa do
+  `aug0` — e 7 casas de cor no campo contra 5 do `aug0` e 8 do `mhspe`, com **menos**
+  exportados-e-errados (2). A sabotagem estava mal desenhada: inverter o contraste sem trocar o
+  rótulo não confunde a cor — o fundo invertido é um modo à parte que o modelo separa, e o
+  rótulo continua consistente. Uma sabotagem que não piora não prova o instrumento: com 4–8
+  casas de cor no campo e ±2 tabuleiros de 566 por semente, a ablação **não tem resolução** para
+  separar «aumento que ajuda a cor» de «aumento que a estraga». A próxima sabotagem é ruído de
+  rótulo — trocar `X↔x` em 10 % das casas rotuladas —, que é o que uma inversão não é; e o
+  instrumento que resolveria a pergunta é um conjunto de campo com mais casas de cor (as 10 de
+  hoje são 4 livros), não outra semente.
 - **Os candidatos leem as damas do Koblenz certas sem calibrador — mas não é o aumento.** Os 14
   Koblenz corrigidos em 2026-09-20 (p. 7–12, 46–47) entraram em `train`; o modelo de produção
-  não os viu. Koblenz no campo: produção 0/4 exatos (2/4 com o C5), candidatos 1–4/4, todos
-  incluindo o `aug0`. É o livro no treino, não o traço — o mesmo que
+  não os viu. Koblenz no campo: produção 0/4 exatos (2/4 com o C5), candidatos 1–4/4 conforme a
+  semente, `aug0` incluído. É o livro no treino, não o traço — o mesmo que
   `labels.pages_with_training_samples` conta por página, aqui por livro (páginas diferentes).
   O calibrador do C5 chega a 2/4 **sem** retreinar, e a comparação justa do aumento é
   candidato contra candidato (mesma partição), não contra a produção.
-- **Todos os retreinados perdem um Niemeijer p. 20 inteiro** (27–28 casas: orientação; produção
-  8 casas) e ele fica barrado nos seis. Não é do aumento (o `aug0` também) — é o orçamento de
+- **Todos os retreinados perdem um Niemeijer p. 20 inteiro** (24–28 casas: orientação; produção
+  8 casas) e ele fica barrado em todos. Não é do aumento (o `aug0` também) — é o orçamento de
   16 épocas contra o checkpoint de produção; fora do escopo, dito.
 - **O achado que valeu a fase é o cache.** 25 tabuleiros por worker para uma janela de 64 do
   `BoardGroupedSampler` reabriam o PNG a cada casa; com o piso, a época caiu de 10,1 para 3,2 min
-  e os cinco treinos couberam em 2,4 h. O treino da janela herda o piso.
+  e os 14 treinos da ablação couberam em 6 h de GPU partilhada com os benchmarks da fase (1.360–
+  1.801 s cada). O treino da janela herda o piso.
 
-**Sabotagem.** `i` (acima) — inerte a 3 %, registrada como vermelha. Testes: `test_augment.py`
-+8 (o raio só entra com o traço ligado; engrossar escurece e afinar clareia; 1 px preserva o
-vão do contorno sintético e **2 px o fecha**; a borda da casa fica como está; raio zero e
-probabilidade zero são identidade; o sorteio usa o RNG do torch; e a ordem dos estágios
-ajustada), `test_training.py` +1 (o cache por processo nunca fica abaixo da janela do
-amostrador), `test_configuracoes.py` +1 (`RegimeDeAumentoTests`: o pedido de treino lê o
-regime do checkpoint — `from_letters` é a inversa de `version`, e sem metadado cai em `aug0`).
-
+**Sabotagem.** `i` e `i50` (acima) — inertes, registradas como vermelhas, com a próxima
+desenhada. Testes: `test_augment.py` +8 (o raio só entra com o traço ligado; engrossar escurece
+e afinar clareia; 1 px preserva o vão do contorno sintético e **2 px o fecha**; a borda da casa
+fica como está; raio zero e probabilidade zero são identidade; o sorteio usa o RNG do torch; e a
+ordem dos estágios ajustada), `test_training.py` +1 (o cache por processo nunca fica abaixo da
+janela do amostrador), `test_configuracoes.py` +1 (`RegimeDeAumentoTests`: o pedido de treino lê
+o regime do checkpoint — `from_letters` é a inversa de `version`, e sem metadado cai em `aug0`).
 
 ## §B10 — Cifra com escopo, `figurine_set`, proveniência do `PieceGlyph`
 
@@ -292,7 +315,7 @@ fica com a confiança da matriz e o gate julga as outras (`gate_confidence`, em 
 | portão | antes | depois | comando |
 |---|---|---|---|
 | `lab_gate` produção, split `test` (566 tabuleiros), restrito | `classic`: exatos **0,9770** (553), casa 0,999117, ilegais 0, `helped` 0, `hurt` 0 | C11: exatos **0,9806** (555), casa 0,999172, ilegais 0, `helped` **2**, `hurt` **0** | `benchmarks\lab_gate.py --runs 3 [--rules classic]` (`lab_gate_20260921_053550_c11_classic.json`, `…_053625_c11_rules.json`) |
-| `field_exact` (b) | — | `next_move_checked` **2** de 114, `replayed` 0, `repaired` 0, `ambiguous` 0 (`f3_on`); `--sabotar lance_vizinho`: idêntico — inerte (§0.3) | `benchmarks\field_exact.py --variant recall-pack --runs 3 [--sabotar sem_lance|lance_vizinho]` |
+| `field_exact` (b) | — | `next_move_checked` **2** de 114, `replayed` 0, `repaired` 0, `ambiguous` 0 (`f3_on`); `--sabotar lance_vizinho`: idêntico — inerte (§0.3) | `benchmarks\field_exact.py --variant recall-pack --runs 3 [--sabotar sem_lance\|lance_vizinho]` |
 | `games_gate` | cobertura 0,04 | inalterado (nenhum diagrama do campo com linha sob ele que o mecanismo tocasse) | `benchmarks\games_gate.py` |
 
 Os dois tabuleiros que o C11 (a) ganha no laboratório são os dois em que a leitura tinha um

@@ -493,13 +493,16 @@ C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfi
 - **Portão.** `lab_gate --candidate … --runs 3 --unconstrained` (3× verde, sem regressão de
   acurácia por casa nem de ilegais), `field_exact --model …` com `exported_wrong` ao lado, e
   `f4_field_failures --model …` para as trocas X↔x. O que passou e o que não passou está em
-  §C4 do relatório; a troca do `.pt` é decisão da pessoa (§10.2). **Resultado (semente 42):
-  nenhuma variante domina** — laboratório a ±3 de 566, `mhsp` ≈ `aug0` no campo, `mhspe`/`e`
-  com um exportado-e-errado a mais; nada a trocar.
+  §C4 do relatório; a troca do `.pt` é decisão da pessoa (§10.2). **Resultado (sementes 42,
+  43, 44): nenhuma variante domina** — o `aug0` varia mais entre sementes (553–556 no teste,
+  1–4 exportados-e-errados no campo) do que qualquer variante difere dele, e o `RandomStroke`
+  fica um pouco abaixo em todas as médias; nada a trocar.
 - **Sabotagem.** `--augment i` sozinho (inversão **sem** troca de rótulo) tem de piorar a cor
   — treinado na mesma grade. **Medido: não piorou** — a letra `i` inverte em 3 %, e a 3 % o
-  `c4_i_s42` é indistinguível do `aug0` (556 = 556 no teste; 4 casas de cor contra 5 no campo).
-  Vermelho no relatório; `i50` (`SABOTAGE_VARIANTS`, inversão em metade dos lotes) na fila.
+  `c4_i_s42` é indistinguível do `aug0` (556 = 556 no teste; 4 casas de cor contra 5 no campo);
+  `i50` (`SABOTAGE_VARIANTS`, inversão em metade dos lotes) também: 553 no teste, 7 casas de cor
+  contra 5–8. Inverter sem trocar o rótulo não confunde a cor. Vermelho no relatório; a próxima
+  sabotagem é ruído de rótulo `X↔x` em 10 % das casas.
 - **Saída.** §C4. **Achado que valeu a fase:** o cache do dataset por processo dividia 128 por
   5 = 25 tabuleiros para uma janela de 64 do amostrador: cada casa reabria o PNG e a época
   custava **10,1 min** (na GPU!); com o piso na janela, **3,2 min** (`loader_probe`, 400 lotes:
@@ -608,6 +611,8 @@ C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfi
   page_contribute_nothing`, `test_text_corrections_become_calibration_pairs_minus_the_blind_
   page`); a primeira versão do comando incluiu as duas amostras da p. 50 do Koblenz (página de
   campo) no perfil — o campo teria medido a si mesmo; a regra das páginas de campo nasceu daí.
+  E a segunda ainda as incluía: o `labels.csv` grava a página em base 1 e o campo em base 0
+  (§4, `_page_index_of_label`) — apareceu ao listar as trocas do um-de-fora casa a casa.
 - **Saída.** §C6.
 
 ### A11 — Sidecar de proveniência (X4; análise §7.4)
@@ -680,5 +685,5 @@ C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfi
 | 2026-09-21 | A11 | **um sidecar para os dois PGNs** (aceitos e revisão na mesma lista, com o veredito por linha) | Dois sidecars com a mesma chave seriam a colisão que `verificar` existe para acusar; o `.review.pgn` aponta para o mesmo arquivo. O teste de retomada (`test_resume_produces_the_same_pgn`) passou a normalizar o nome do sidecar — único header que difere entre `inteiro.pgn` e `retomado.pgn` | construtor |
 | 2026-09-21 | B10 | **a origem da figurina vai em `TextSpan.figurine_origin`, não em `engine`** | `test_a_scan_without_a_text_layer_is_read_by_default` (Sol §SOL-1) acusou a primeira versão na suíte inteira: com a origem no `engine`, um parágrafo do Flores Rios saía `glyph+tesseract+tesseract_figurine` e cinco linhas só de lances saíam `glyph`. A proveniência do bloco é do OCR que leu as palavras; quem pôs a peça é a do `PieceGlyph` (`note`). `test_figurine_provenance` reescrito: os cinco spans com `engine` `tesseract` e `figurine_origin` `"", glyph, "", cifra, ""` | construtor |
 | 2026-09-21 | C6 | **`source_page` do `labels.csv` é base 1; o fechamento o converte antes de reter** (`closing._page_index_of_label`) | A segunda aprovação do perfil do Koblenz ainda levava os dois tabuleiros da página de campo 50: o tronco grava a página como a janela mostra (base 1, `51`; `labels.pages_with_training_samples` subtrai um), e o campo, o manifesto cego e as decisões são base 0 — a retenção comparava `51` com `50`, retinha dois tabuleiros da p. 49 (índice) e deixava entrar os da página de campo. Apareceu ao listar as seis trocas do um-de-fora casa a casa (`p51 h4 Q→q` era o `p50 d0` do campo). Perfil apagado e aprovado de novo (152/150 amostras, 6 trocas, 6 certas), campo remedido; teste com o rótulo `13` contra a página de campo `13` | construtor |
-| 2026-09-21 | C4 | **a sabotagem `i` é inerte a 3 %; entra `i50`** (`c4_ablation.SABOTAGE_VARIANTS`) | `c4_i_s42` = `aug0` no teste (556/566) e no campo (4 casas de cor contra 5): a letra `i` sempre inverteu em 3 % dos lotes, e a 3 % em 16 épocas não há o que estragar. Uma sabotagem que não piora não prova o instrumento — fica vermelha no relatório, e a próxima (`i50`, metade dos lotes) está na fila | construtor |
-| 2026-09-21 | C4 | **nenhuma variante domina a uma semente; o `.pt` fica** | Laboratório: produção 555, `aug0` 556, `mhsp` 555, `mhspe` 553, `e` 554 de 566 (0 ilegais, `hurt` 0); campo: `mhsp` ≈ `aug0` (3 exportados-e-errados), `mhspe`/`e` 4. O 1 tabuleiro de validação (518 × 517 de 535) do `RandomStroke` não sobrevive ao teste nem ao campo. Os candidatos leem as damas do Koblenz porque 14 tabuleiros do livro entraram em `train` em 2026-09-20 — não é o aumento (o `aug0` também lê) e a comparação justa é candidato × candidato | construtor |
+| 2026-09-21 | C4 | **as sabotagens `i` (3 %) e `i50` (50 %) são inertes; a próxima é ruído de rótulo `X↔x`** (`c4_ablation.SABOTAGE_VARIANTS`) | `c4_i_s42` = `aug0` no teste (556/566) e no campo (4 casas de cor contra 5); `c4_i50_s42` 553 no teste (a faixa do `aug0` é 553–556) e 7 casas de cor contra 5–8, com menos exportados-e-errados (2). Inverter o contraste sem trocar o rótulo não confunde a cor: o fundo invertido é um modo à parte que o modelo separa. Uma sabotagem que não piora não prova o instrumento — fica vermelha no relatório, com a próxima desenhada: trocar `X↔x` em 10 % das casas rotuladas | construtor |
+| 2026-09-21 | C4 | **nenhuma variante domina em três sementes; o `.pt` fica** | `aug0` 556/553/555 no teste e 3/4/1 exportados-e-errados no campo (0,9712/0,9608/0,9901); `mhspe` 553/555/554 e 4/4/2 — médias 554,7 × 554,0 e 2,7 × 3,3: a variância entre sementes é maior que a diferença entre variantes, e o traço fica um pouco abaixo em tudo. `mhsp` ≈ `aug0`, `e` ≈ `mhspe`; 0 ilegais e `hurt` 0 em todos. O 1 tabuleiro de validação (518 × 517 de 535) do `RandomStroke` não sobrevive ao teste nem ao campo. Os candidatos leem as damas do Koblenz porque 14 tabuleiros do livro entraram em `train` em 2026-09-20 — não é o aumento (o `aug0` também lê) e a comparação justa é candidato × candidato | construtor |
