@@ -662,3 +662,77 @@ Nada para fechar a fase 1.
 ## O que especificamente precisa mudar para eu aprovar
 
 Nada. A fase 1 está aprovada porque os bloqueantes foram encerrados, as sabotagens agora derrubam os portões quando apropriado, e o relatório distingue claramente o que foi medido do que permanece aberto.
+
+---
+
+# Fase 2 do ciclo 2 (código) — vereditos do crítico Codex
+
+> Objeto: os commits da fase 2 (tronco `2077410`…`167d52d`, suíte `b156222`…`dcc72d7`) e o
+> relatório `OCR_UI_REPORT_C2_FASE2.md`. Um crítico só, por pedido: o Codex (`codex exec -s
+> read-only --ephemeral`, GPT-5.6, esforço `high`; briefing
+> `brief_critico_fase2.md`, o mesmo formato da fase 1). **Ciclo 1: REPROVADO, 5 bloqueantes**;
+> o que mudou por item está em `OCR_UI_REPORT_C2_FASE2.md` §0.1 (segunda lista). Antes de
+> chamar o crítico, a revisão do próprio construtor já tinha fechado quatro defeitos
+> (recorte que não virava, armadilha do `Tab`, tarefas com pai, parecer preso ao índice —
+> §0.1, primeira lista) — o crítico achou o quinto e o sexto (a calibração das faixas e a
+> `Tarefa` de `_rodar`) e duas falhas silenciosas.
+
+## Crítico Codex — ciclo 1 (REPROVADO, 5 bloqueantes)
+
+VEREDITO: REPROVADO  
+CICLO: 1
+
+## Conferências feitas
+
+| Passo | Comando/arquivo:linha | Confere? | Nota |
+|---|---|---:|---|
+| Diff suíte | `git diff beb8a71..dcc72d7` — 39 arquivos, +4098/-143 | Sim | Diff inteiro lido. |
+| Diff tronco | `git diff 8de189f..167d52d` — 34 arquivos, +1694/-52 | Sim | Diff inteiro lido. |
+| Pytest suíte | módulos tocados, `-s -p no:cacheprovider` | Parcial | 72 passaram, 8 erros por ausência de diretório temporário utilizável; nenhum erro de asserção observado. |
+| Pytest tronco | módulos tocados, `-s -p no:cacheprovider` | Parcial | 270 passaram, 86 falharam por `tempfile`/`TemporaryDirectory`; 3 xfails. |
+| Bench NAG | `notation_integrity.py --what nags` e sabotagem | Sim | Normal passou; sabotagem produziu 0 NAG e reprovou. |
+| Bench coordenadas | `coordinate_survey.py` normal/sabotagem | Parcial | Números reproduzidos: 10639 `a-h`, 0 `h-a`; sabotagem inverteu para 10639 `h-a`. Escrita do JSON foi negada. |
+| Bench segunda opinião | `second_opinion_gate.py` normal/sabotagem | Não | Normal não chegou ao gate por tempdir/cache; JSON existente registra 23/27. Sabotagem reproduziu 0/27. |
+| JSONs SOL | `benchmarks/reports/sol/f2_*.json` | Parcial | Números principais conferem com o relatório, mas todos registram `commit: beb8a71`, não `dcc72d7`. |
+| JSONs UI | `benchmarks/reports/ui` | Parcial | Há passes finais, mas também falhas anteriores de C2, C8 e C9; não é uma série inteiramente limpa. |
+| Estado da árvore | suíte `git status` | Observação | Não alterei arquivos. Durante a auditoria apareceu um diff externo não commitado que já corrige a calibração dos strips; foi preservado. |
+
+## Defeitos bloqueantes
+
+1. **B6/B2 — calibração semântica quebrada para `tesseract_strips`.**  
+   Em `src/caissa/ingest/pdf/ocr_service.py:76`, os strips recebem o engine `tesseract_strips`; em `:1081-1089` são pontuados com esse nome; em `:1351-1371`, `_calibrators` procura a tabela usando exatamente esse engine. A configuração possui tabela para `tesseract`, mas não para `tesseract_strips`, portanto os strips ficam na escala bruta enquanto o Tesseract principal é calibrado. Isso torna a fusão incomparável e invalida a alegação de B6. O diff externo não commitado adiciona precisamente o mapeamento ausente.
+
+2. **Os benchmarks não comprovam o commit avaliado.**  
+   Os JSONs `f2_*` registram `environment.commit = beb8a71`, embora o commit sob revisão seja `dcc72d7`. Logo, os números do relatório não demonstram o comportamento do diff final.
+
+3. **Métrica obrigatória não reproduzível neste ambiente.**  
+   O gate normal de segunda opinião não executou por falta de diretório temporário utilizável e erro de artefato pré-compilado no cache. Pelo próprio critério do briefing/charter, uma métrica que não pode ser reproduzida não pode aprovar.
+
+4. **C2 — fechamento pode aceitar a janela com `QThread` ainda vivo.**  
+   `src/chess_diagram_ocr/qt/janela.py:1363` cria a tarefa como filha da janela. Em `:2022-2025`, `closeEvent` espera apenas um prazo fixo, registra aviso se a thread ainda estiver ativa e aceita o fechamento mesmo assim. A destruição da janela pode então abortar o processo com `QThread: Destroyed while thread is still running`.
+
+5. **Falha de B2 pode ser descartada silenciosamente.**  
+   `src/caissa/ingest/pdf/ocr_service.py:1055-1065` captura qualquer exceção da leitura dos strips, registra apenas em `debug` e retorna nenhum candidato. O pipeline continua como se B2 não existisse, sem nota na decisão ou no relatório.
+
+## Defeitos não bloqueantes
+
+- `src/chess_diagram_ocr/service.py:777` e `:791` usam `getattr(..., None/False)` para campos de orientação. Um contrato quebrado pode cair silenciosamente na orientação padrão.
+- `src/caissa/ingest/pdf/ocr_service.py:667-669` transforma falha de layout em fallback de leitura integral; há log, mas não há sinal claro no resultado entregue à UI.
+- B8, C8 e C10 permanecem com evidência limitada conforme o próprio relatório: B8 não teve efeito estatístico conclusivo, C8 não demonstrou aprendizagem no corpus escolhido e C10 não teve amostras de orientação preta.
+
+## O que falta
+
+- Corrigir e commitar o mapeamento de calibração `tesseract_strips → tesseract`.
+- Reexecutar os benchmarks no commit final, com diretório temporário gravável, cache limpo e três repetições.
+- Reproduzir o gate normal de segunda opinião.
+- Corrigir o ciclo de vida da thread no fechamento da janela.
+- Tornar falhas de strips/layout/orientação observáveis no resultado, não apenas em logs.
+
+## O que especificamente precisa mudar para eu aprovar
+
+1. Calibrar `tesseract_strips` com a tabela de `tesseract` tanto na pontuação inicial quanto na fusão.
+2. Garantir que os JSONs tragam `commit: dcc72d7` e correspondam exatamente ao relatório.
+3. Fazer `closeEvent` cancelar e aguardar corretamente, ou manter a tarefa viva sem destruir a janela enquanto ela roda.
+4. Expor falhas de B2/layout/orientação como notas ou estados verificáveis.
+5. Entregar novamente os pytest e os três gates reproduzíveis em ambiente com escrita temporária.
+

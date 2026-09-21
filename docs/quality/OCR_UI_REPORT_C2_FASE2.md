@@ -94,6 +94,40 @@
   → `dialogos.mostrar_falha`, uma caixa **modal** que ninguém fecha num teste headless. Visto
   com `-o faulthandler_timeout`; o fake acompanha a assinatura de `recognize_page`.
 
+**O que a crítica mudou** (Codex, ciclo 1: REPROVADO, 5 bloqueantes — transcrição em
+`OCR_UI_ANALISE_C2_CRITICAS.md`, «Fase 2»):
+
+1. **As faixas (B2) ficavam na escala crua enquanto a âncora era calibrada** — a
+   incompatibilidade que o B6 existe para tirar: `tesseract_strips` não tinha tabela (SOL-4) e
+   `calibration_for` devolvia a reserva. `arbiter.SCALE_OF` mapeia o motor à escala que ele
+   empresta (`tesseract_strips → tesseract`) e `calibration_for` a aplica **na pontuação**
+   (`arbiter.score`) **e na fusão** (`_calibrators`); 2 testes. Medido: nenhum item do corpus
+   muda de CER ou de lances (§0.2, `f3_*`) — a faixa continua no limite do ruído.
+2. **Os JSON dos benchmarks registravam `commit: beb8a71`** (a árvore de trabalho antes do
+   commit). Remedido no commit do código final da suíte (`3bbcf23`): `f3_on`, `f3_b1_off`,
+   `f3_b2_off` — CER e lances **idênticos ao milésimo** aos `f2_*` em todos os estratos e
+   ablações (§0.2), exceto `shadow_curl_bleed`, que agora é o lado `use_verso=False` (0,0387).
+3. **A tarefa de `_rodar` era filha da janela**: `closeEvent` esperava 15 s e aceitava o fecho
+   com a thread viva — o destrutor de `QThread` aborta o processo. `manter_viva(Tarefa(...))`
+   sem pai, slots por `_se_viva` (`weakref` + `sip.isdeleted`). No caminho, o portão de
+   execução do tronco (`test_busy::PortaoDeExecucaoTests`) acusou o relógio do aquecimento de
+   uma janela fechada-mas-não-destruída disparando numa janela morta: `Aquecimento.cancelar`
+   no `closeEvent` (teste). `test_packaging.LIMITE` 2.058 → 2.077 com o motivo.
+4. **A faixa que falhava era `debug` e silêncio** (o pipeline seguia como se B2 não existisse):
+   aviso no log e **uma nota por região** em `PageRecognition.notes` (teste); o leiaute em
+   scan que falha também deixa nota em `PageOutcome.notes` (teste).
+5. **O portão da segunda opinião não rodou no sandbox do crítico** (sem diretório temporário
+   gravável). Não é do código: no ciclo 2 o Codex corre com `-s workspace-write` e `TEMP`
+   dentro do workspace, e reproduz. Os números de §C3 vêm do JSON gravado
+   (`benchmarks\reports\second_opinion\`), com o comando ao lado.
+
+Não bloqueantes atendidos: `service.py` lê `context.coordinates` e
+`oriented.black_point_of_view` pelo contrato, sem `getattr`. Da revisão do construtor, na
+mesma rodada: `PageRecognizer._slice` corta os candidatos dos outros motores **por palavra** (uma
+linha fundida pela calha caía inteira na coluna do seu centro; teste) e a reserva clara da caixa
+de região dava 2,99:1 sobre a folha (piso 3,0) → `#8b5cf6`, 4,04:1, com um teste que mede todas
+as reservas nas duas peles (sem o tronco ninguém as media).
+
 ### 0.2 Invariantes e portões rodados na integração
 
 | invariante / portão | resultado | comando |
@@ -101,11 +135,12 @@
 | suíte de testes (com PyQt6) | **3.882 passaram, 10 pulados, 1 reprovou** em 752 s (`suite_tests.log`) — o reprovado era o realce verde do C9 (`test_revisao_de_texto_view`, §C9): corrigido, 24/24 no arquivo e 12/12 com o tronco no caminho; `test_arquitetura.py` à parte **19/19** (a fronteira `ui/` sem toolkit vale para o `ui/teclado_do_tabuleiro.py` novo do tronco) | `PYTHONPATH=.venv-pack\Lib\site-packages .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py`; `test_arquitetura.py` à parte |
 | testes do tronco | **4.687 passaram, 4 pulados, 8 xfail, 2 reprovaram** em 482 s (`trunk_tests2.log`) — os dois reprovados são os de antes da fase (`test_field_eval::ImpressaoDaMedicaoTests`: relatórios de campo mediram código anterior; `test_strings::AccentTests`: `cabecas`/`configuracoes`/`pagina`/`SELECAO` em módulos que a fase não tocou). A primeira corrida **travou** em `test_app_pyqt` (caixa modal do `_falhou`, §0.1) e a segunda reprovou `TecladoTests::test_setas_andam` (a guarda de atalhos, §0.1), `test_docs` (a contagem de threads: 18 → 20, `ARCHITECTURE.md`) e `test_editor_model::SemTkinterTests` (`teclado_do_tabuleiro.py` na lista) — os quatro corrigidos | `..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q` |
 | `sol_gate --report-only` sobre o `f2_on` | 0 importações silenciosas, **0/9 controles**, nenhuma regressão de CER fora do IC em estrato algum (native 0,0921 → 0,0237, scan_clean 0,0330 → 0,0058, degraded 0,0454 → 0,0256, fax 0,0449 → 0,0312, bleed 0,0397 → 0,0399 contra o `baseline` do próprio portão); os portões absolutos (CER limpo ≤ 0,005, lances ≥ 0,998, inventados 0, ordem 1,0) continuam **bloqueados** como estavam no ciclo 1 — a ordem de leitura 0,9917 é o `twocol:a:10` (0,5 também no antes: o RapidOCR perde a primeira linha do russo) | `benchmarks\sol_gate.py --report-only benchmarks\reports\sol\f2_on_*.json` |
+| benchmarks no commit final da suíte (`3bbcf23`) | `f3_on` (5 estratos), `f3_b1_off`, `f3_b2_off`: **CER e lances idênticos** aos `f2_on`/`f2_b1_off`/`f2_b2_off` em cada estrato (native 0,0237/0,9391; scan_clean 0,0058/0,9586 e 0,0274/0,9580 sem B1, 0,0059/0,9559 sem B2; degraded 0,0256/0,8839 e 0,0335/0,8801 sem B1; fax 0,0312/0,8283; bleed **0,0387**/0,9345 = o lado `use_verso=False`, hoje o padrão); silenciosas 0, controles 0/9, ordem 0,9917. `s/MP` 10–20 % maior em **todas** as configurações, ablações incluídas (scan_clean 1,26 → 1,48; sem B2 1,10 → 1,30; native 2,13 → 2,59): estado da máquina, não o código — os `s/MP` do §B9 continuam os do `f2_*`, medidos na mesma hora um contra o outro. **Uma corrida por configuração**, e não três: o B9 já mostrou 274/274 itens byte-iguais entre paralelo e serial, e os `f3_*` repetiram os `f2_*` ao milésimo num commit diferente — o CER é determinístico; o que varia é o tempo, e ele foi medido contra a sua ablação na mesma hora | `CAISSA_FIGURINE_TESSDATA=models\tessdata .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither --label f3_on` (`f3_on_20260921_031907.json`); `SOL_CONFIG='{"page": {"scan": {"enabled": false}}}' … --strata scan_clean_300,scan_degraded_150 --label f3_b1_off`; `SOL_CONFIG='{"movetext_strips": false}' … --strata native,scan_clean_300 --label f3_b2_off` |
 | `progresso` (F9) | **PASSOU** — `_rodar` REGISTRADA (total, cancel); `segunda_opiniao` DECLARADA | `python -m caissa.ui.audit.progresso --tronco ..\ChessVisionOFF_Puro --saida benchmarks\reports\ui\f2_c2` |
 | `contraste` | **PASSOU** (308 pares, 228 sob portão, 8 da suíte); `--sabotar` **REPROVOU** | `python -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\f2_c9 [--sabotar]` |
 | `comandos`, `teclado`, `bloqueio` | `comandos` **PASSOU** (424 medidos, 415 habilitados, 0 soltos, 0 que prometem, 0 cinzas sem motivo, 3 peles); `teclado` **PASSOU** (o tabuleiro no ciclo do `Tab`); `bloqueio` **PASSOU 3/3** («abrir PDF» pior 14,8 / 11,8 / 6,6 ms) depois de VIOLA com o aquecimento imediato (§C2) | ver §C2/§C8 |
 | `percurso --fluxo livro` (Aagaard 31–38) | **PASSOU** — 6 ações, decisão `fonte=janela`, EPUB com os 13 diagramas e o corrigido; `trilho.aprendeu` em nota (0 hesitantes nas páginas: a dúvida é de texto — §0.3) | `python -m caissa.ui.audit.percurso --pdf "…AAGAARD….pdf" --paginas 31-38 --saida benchmarks\reports\ui\f2_c8` |
-| catracas do tronco | `test_packaging.LIMITE` 1.998 → **2.058** (motivo no docstring: C2/C3/C8; a mecânica em `qt/leitura.py`, `qt/abas_da_suite.py`, `ui/teclado_do_tabuleiro.py`) | `pytest tests\test_packaging.py` |
+| catracas do tronco | `test_packaging.LIMITE` 1.998 → **2.058** (motivo no docstring: C2/C3/C8; a mecânica em `qt/leitura.py`, `qt/abas_da_suite.py`, `ui/teclado_do_tabuleiro.py`) → **2.077** na crítica (a tarefa sem pai, `_se_viva`, o cancelamento do aquecimento ao fechar) | `pytest tests\test_packaging.py` |
 
 ### 0.3 O que ficou vermelho ou aberto (honesto)
 
@@ -178,7 +213,7 @@ contar números e pontos) vira `MOVETEXT`. `PageRecognizer._whole_page` → `_sc
 
 ### Portão
 
-A tabela acima: `CAISSA_FIGURINE_TESSDATA=models\tessdata .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither --label f2_on` (`benchmarks\reports\sol\f2_on_20260921_001320.json`); o «antes» é o mesmo comando com todos os interruptores da fase 2 desligados (`SOL_CONFIG='{"page": {"scan": {"enabled": false}}, "movetext_strips": false, "fusion_rescue": false, "fusion": {"calibrated": false}, "use_verso": false, "workers": 1}'`, `f2_before_20260920_233910.json`); cada ablação desliga um só. `single`, `table` e `problems` inalterados ao décimo de milésimo (o controle de coluna única do tronco, Darcy Lima 0/39, refeito aqui como 101 itens `single`); a sabotagem `{"page": {"scan": {"enabled": false}}}` devolve `two-column` a 0,1249 — **REPROVA**. Os dois itens `two-column` que restam acima de 0,05: `twocol:a:10` (0,135 nos três — o RapidOCR perde a primeira linha do russo, antes da fase) e `twocol:a:11` (0,050).
+A tabela acima: `CAISSA_FIGURINE_TESSDATA=models\tessdata .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither --label f2_on` (`benchmarks\reports\sol\f2_on_20260921_001320.json`; repetido ao milésimo no commit final como `f3_on_20260921_031907.json` e `f3_b1_off_20260921_032317.json`, §0.2); o «antes» é o mesmo comando com todos os interruptores da fase 2 desligados (`SOL_CONFIG='{"page": {"scan": {"enabled": false}}, "movetext_strips": false, "fusion_rescue": false, "fusion": {"calibrated": false}, "use_verso": false, "workers": 1}'`, `f2_before_20260920_233910.json`); cada ablação desliga um só. `single`, `table` e `problems` inalterados ao décimo de milésimo (o controle de coluna única do tronco, Darcy Lima 0/39, refeito aqui como 101 itens `single`); a sabotagem `{"page": {"scan": {"enabled": false}}}` devolve `two-column` a 0,1249 — **REPROVA**. Os dois itens `two-column` que restam acima de 0,05: `twocol:a:10` (0,135 nos três — o RapidOCR perde a primeira linha do russo, antes da fase) e `twocol:a:11` (0,050).
 
 ### Testes
 
@@ -209,7 +244,7 @@ como um terço de notação e nunca era movetext).
 | `scan_clean_300` inteiro CER / lances | 0,0058 / 0,9586 | 0,0059 / 0,9559 |
 | `s/MP` `scan_clean_300` | 1,26 | 1,10 |
 
-O `f2_on` é o comando do §B1 (`benchmarks\reports\sol\f2_on_20260921_001320.json`); a ablação é o mesmo comando com `SOL_CONFIG='{"movetext_strips": false}' --label f2_b2_off` (`f2_b2_off_20260921_002336.json`). **No limite do ruído**: +0,4 pp de lances onde a faixa
+O `f2_on` é o comando do §B1 (`benchmarks\reports\sol\f2_on_20260921_001320.json`); a ablação é o mesmo comando com `SOL_CONFIG='{"movetext_strips": false}' --label f2_b2_off` (`f2_b2_off_20260921_002336.json`); os dois repetidos ao milésimo no commit final (`f3_on`, `f3_b2_off_20260921_032739.json`), já com as faixas na escala do Tesseract (§0.1: a calibração das faixas não mudou um item). **No limite do ruído**: +0,4 pp de lances onde a faixa
 corre, nada em `native` (a camada de texto lê as páginas nativas; a faixa só existe sobre uma
 leitura do Tesseract). O custo é 0,16 s/MP em `scan_clean_300`. Fica ligado pelo sinal e pela
 sabotagem, que reproduz o antes ao milésimo; o ganho que o SOL-7 mediu em movetext puro (CER
@@ -326,8 +361,9 @@ sintético (a própria página espelhada) registra a 0,22–0,28.
 | `s/MP` | 5,58 | 6,05 |
 
 O `f2_on` é o comando do §B1 (`benchmarks\reports\sol\f2_on_20260921_001320.json`); a ablação é o mesmo comando com `SOL_CONFIG='{"use_verso": false}' --label f2_b8_off` (`f2_b8_off_20260921_003654.json`) — o `f2_on` correu com o padrão de então (`use_verso=True`); hoje o padrão é o lado `f2_b8_off` desta tabela, e reproduzir o `f2_on` pede `SOL_CONFIG='{"use_verso": true}'`. **Desligado por medição** (§0.3);
-`OcrServiceConfig.use_verso=False` documenta os números. As correlações registradas no
-estrato: 0,22–0,28 (o espelho da própria página).
+`OcrServiceConfig.use_verso=False` documenta os números; o `f3_on` no commit final, com o
+padrão, dá o lado desligado: 0,0387 / 0,9345 / 8. As correlações registradas no estrato:
+0,22–0,28 (o espelho da própria página).
 
 ### Testes
 
@@ -389,7 +425,9 @@ na janela porque o portão `progresso` atribui a thread ao registro da mesma fun
 tarefa; `_falhou` trata `RecognitionCanceled` (o lido fica na lista, frase «cancelada») e o
 `.pt` ausente (`Ferramentas ▸ Configurações…`, `painel.mostrar_vazio_sem_modelo`);
 `_atualizar_controles` tranca só `btn_salvar*` (`painel.trancar_gravacao`); `("janela.py",
-"_rodar")` sai de `FORA_DO_REGISTRO`.
+"_rodar")` sai de `FORA_DO_REGISTRO`. Depois da crítica: a tarefa de `_rodar` e a do aquecimento
+**sem pai** (`manter_viva`; os slots por `_se_viva`), e o `closeEvent` cancela o aquecimento
+agendado (§0.1, segunda lista).
 
 ### Portão
 
@@ -525,7 +563,9 @@ duvidosa e entra na primeira; sabotagem da volta), `tests/unit/ui/test_trilho.py
 `cor(papel)` (o token no cromo em vigor — `tema.cromo_escuro_em_vigor()` — ou a reserva sem
 tronco), `PARES` (o que as views pintam sobre o quê), `fonte_monoespacada`, `vestir_paginador`
 (o ícone do tronco ao lado da palavra, `◀`/`▶` fora). As quatro views usam `pele.cor`.
-`contraste.pares_pintados_da_suite` mede os 8 pares nas duas peles. Duas mutações medidas: a
+`contraste.pares_pintados_da_suite` mede os 8 pares nas duas peles; as **reservas** (a suíte sem o
+tronco) são medidas por teste (`test_as_reservas_passam_no_piso_de_contraste_nas_duas_peles`) — a
+caixa de região clara dava 2,99:1, piso 3,0, e passou a `#8b5cf6` (4,04:1). Duas mutações medidas: a
 caixa selecionada era `ALVO` (papel de tabuleiro, 1,65:1 sobre a folha) → `TRACEJADO` ("a área
 que você está selecionando"), 6,18:1; e as palavras fracas da leitura do motor no cartão
 (`leitura_em_html`) saíam com **fundo** `REALCE_NOTA`/`REALCE_DESTAQUE` — o teste da suíte
