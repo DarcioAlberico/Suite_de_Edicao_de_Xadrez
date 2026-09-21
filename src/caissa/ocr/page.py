@@ -665,7 +665,11 @@ class PageRecognizer:
                 page_index=task.page_index, config=self.config.scan,
                 layout_config=self.config.layout, furniture=task.furniture)
         except Exception as exc:  # noqa: BLE001 - the layout is a refinement; the page is already read
+            # Said in the page's notes and not only in the log (crítico
+            # Codex, fase 2 ciclo 1): the page goes whole, and whoever reads
+            # the outcome sees why it did.
             self.log.warning("leiaute em scan falhou na página %d: %s", task.page_index, exc)
+            notes.append(f"leiaute em scan falhou (a página foi lida inteira): {type(exc).__name__}: {exc}")
             return None
         if laid_out is not None:
             notes.extend(laid_out.notes)
@@ -725,12 +729,35 @@ class PageRecognizer:
 
     @staticmethod
     def _slice(result: OcrResult, box_px: BBox) -> OcrResult:
-        """The lines of a page-space reading whose centre falls in ``box_px``."""
-        kept = tuple(line for line in result.lines
-                     if box_px.x0 <= line.box.cx <= box_px.x1 and box_px.y0 <= line.box.cy <= box_px.y1)
-        if len(kept) == len(result.lines):
+        """The part of a page-space reading that falls in ``box_px``, **by word**.
+
+        By word and not by line: the other engines read the same page whole,
+        and a line that PSM 3 fused across the gutter has its centre in one
+        of the two columns — sliced by line it would carry the other column's
+        words into this region and the fusion would see them as support.
+        A line is kept whole when all its words fall inside, cut to the words
+        that do when some do, and dropped when none does.
+        """
+
+        def inside(box: BBox) -> bool:
+            return box_px.x0 <= box.cx <= box_px.x1 and box_px.y0 <= box.cy <= box_px.y1
+
+        kept: list[OcrLine] = []
+        cut = False
+        for line in result.lines:
+            words = tuple(w for w in line.words if inside(w.box))
+            if len(words) == len(line.words):
+                if words or inside(line.box):
+                    kept.append(line)
+                else:
+                    cut = True
+                continue
+            cut = True
+            if words:
+                kept.append(replace(line, words=words, box=BBox.union_of([w.box for w in words])))
+        if not cut:
             return result
-        return replace(result, lines=kept, meta={**dict(result.meta), "scan_slice": True})
+        return replace(result, lines=tuple(kept), meta={**dict(result.meta), "scan_slice": True})
 
     def _reread_region(self, task: PageTask, region: LayoutRegion,
                        raster_only: bool) -> RegionOutcome:

@@ -39,7 +39,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +48,7 @@ from numpy.typing import NDArray
 
 from caissa.ingest.pdf.geometry import PageFrame
 from caissa.ingest.pdf.textlayer import PageText, TextLine, TextSpan
-from caissa.ocr.arbiter import ArbitrationOutcome, RegionTask
+from caissa.ocr.arbiter import SCALE_OF, ArbitrationOutcome, RegionTask
 from caissa.ocr.cancel import OcrCanceled, check_cancel
 from caissa.ocr.decision import Decision, RegionDecision
 from caissa.ocr.engines.base import OcrEngine
@@ -74,6 +74,7 @@ _DECISION_RANK = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 
 FIGURINE_ENGINE = "tesseract_figurine"
 #: The movetext-profile strips of passo B2, under their own name so they never anchor.
 STRIPS_ENGINE = "tesseract_strips"
+assert STRIPS_ENGINE in SCALE_OF, "the strips are Tesseract readings: they borrow its scale"
 
 
 # --------------------------------------------------------------------------- #
@@ -708,7 +709,7 @@ class OcrService:
             # loop produced them; the pool runs them, the list keeps the order.
             readings: list[Callable[[], list[Candidate]]] = []
             if cfg.movetext_candidates:
-                readings.append(lambda r=region_outcome: self._profile_candidates(recognizer, r, task))
+                readings.append(lambda r=region_outcome: self._profile_candidates(recognizer, r, task, notes))
             if cfg.glyph_candidates:
                 readings.append(lambda r=region_outcome: self._glyph_candidates(recognizer, r, task))
             if cfg.figurine_candidates:
@@ -943,7 +944,7 @@ class OcrService:
         )
 
     def _profile_candidates(self, recognizer: PageRecognizer, region_outcome: RegionOutcome,
-                            task: PageTask) -> list[Candidate]:
+                            task: PageTask, notes: list[str] | None = None) -> list[Candidate]:
         """Sol §SOL-7: the movetext and strict readings of a movetext-like region.
 
         Only when Tesseract is the engine that read it (the profiles are
@@ -968,7 +969,7 @@ class OcrService:
         movetext = region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)
         if not movetext:
             if self.config.movetext_strips and _carries_notation(result):
-                return self._strip_candidates(recognizer, engine, region_outcome, task)
+                return self._strip_candidates(recognizer, engine, region_outcome, task, notes)
             return []
         box_px = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
         h, w = task.image.shape[:2]
@@ -1003,7 +1004,8 @@ class OcrService:
         return out
 
     def _strip_candidates(self, recognizer: PageRecognizer, engine: Any,
-                          region_outcome: RegionOutcome, task: PageTask) -> list[Candidate]:
+                          region_outcome: RegionOutcome, task: PageTask,
+                          notes: list[str] | None = None) -> list[Candidate]:
         """The movetext profile on the notation lines of a mixed region (passo B2).
 
         One strip per line of the anchor that carries notation, read in PSM 7
@@ -1053,7 +1055,15 @@ class OcrService:
                     psm_hint=RegionKind.SINGLE_LINE if len(band) == 1 else RegionKind.MOVETEXT,
                     profile=TesseractProfile.MOVETEXT)
             except Exception as exc:  # noqa: BLE001 - an extra candidate must never fail the page
-                self.log.debug("faixa de lances falhou: %s", exc)
+                # Never silently (crítico Codex, fase 2 ciclo 1): the page keeps
+                # its anchor, but the recognition says the strips were lost --
+                # one note per region, on the page's notes, and a warning.
+                self.log.warning("página %d, região %s: a faixa de lances falhou: %s",
+                                 task.page_index, region.reading_order, exc)
+                if notes is not None and not any(f"região {region.reading_order}" in n
+                                                 and "faixa de lances falhou" in n for n in notes):
+                    notes.append(f"faixa de lances falhou na região {region.reading_order}: "
+                                 f"{type(exc).__name__}: {exc}")
                 continue
             strips += 1
             if reading.is_empty:
@@ -1364,6 +1374,8 @@ class OcrService:
             engine = candidate.result.engine
             if engine in out:
                 continue
+            # `calibration_for` maps an engine to the scale it borrows
+            # (`arbiter.SCALE_OF`: the strips of passo B2 are Tesseract's).
             key = Arbiter._facet_key(candidate.result, region_task)  # noqa: SLF001 - the arbiter's own facet
             calibration = recognizer.config.arbiter.calibration_for(engine, key)
             if calibration.table is not None:

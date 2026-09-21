@@ -50,3 +50,30 @@ def test_o_portao_de_contraste_mede_os_pares_da_suite():
     assert len(pares) == len(pele.PARES)
     assert all(p.origem == "suite" and p.portao for p in pares)
     assert all(p.passou() for p in pares), [(p.onde, p.razao) for p in pares if not p.passou()]
+
+
+def _razao_wcag(a: str, b: str) -> float:
+    """A razão de contraste da WCAG 2.1, escrita aqui para a reserva ser medida sem o tronco."""
+
+    def luminancia(hexa: str) -> float:
+        canais = []
+        for i in (1, 3, 5):
+            c = int(hexa[i:i + 2], 16) / 255.0
+            canais.append(c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4)
+        r, g, b_ = canais
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b_
+
+    la, lb = sorted((luminancia(a), luminancia(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def test_as_reservas_passam_no_piso_de_contraste_nas_duas_peles(monkeypatch):
+    """Sem o tronco a suíte mostra as reservas, e ninguém as media: a caixa de região clara
+    (`#7c3aed`) dava 2,99:1 sobre a folha, piso 3,0. Texto ≥ 4,5:1; caixa sobre a página ≥ 3:1."""
+    monkeypatch.setattr(pele, "_tokens", lambda: None)
+    for frente, fundo, o_que in pele.PARES:
+        piso = 3.0 if fundo == "pagina" else 4.5
+        for escuro in (False, True):
+            razao = _razao_wcag(pele.cor(frente, escuro=escuro), pele.cor(fundo, escuro=escuro))
+            assert razao >= piso, (o_que, "escuro" if escuro else "claro", round(razao, 2), piso)
+

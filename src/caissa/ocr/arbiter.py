@@ -44,7 +44,7 @@ import inspect
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Any
 
@@ -179,6 +179,14 @@ DEFAULT_CALIBRATIONS: dict[str, EngineCalibration] = {
 #: Used for an engine with no entry above — neutral.
 FALLBACK_CALIBRATION = EngineCalibration()
 
+#: Engine name -> the engine whose scale its raw confidences are on, and so
+#: whose calibration (reputation and SOL-4 table) it borrows.  The movetext
+#: strips of passo B2 are Tesseract readings under a name of their own (the
+#: name keeps them from anchoring a region); scored or fused under their own
+#: name they stayed raw while the anchor was calibrated -- the mismatch B6
+#: exists to remove (crítico Codex, fase 2 ciclo 1).
+SCALE_OF: dict[str, str] = {"tesseract_strips": "tesseract"}
+
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -232,6 +240,11 @@ class ArbiterConfig:
 
     def calibration_for(self, engine: str,
                         key: FacetKey | None = None) -> EngineCalibration:
+        """The calibration of ``engine`` on the facet ``key`` — of the engine
+        whose scale it borrows (:data:`SCALE_OF`) when it has one."""
+        engine = SCALE_OF.get(engine, engine)
+        if key is not None and key.engine != engine:
+            key = replace(key, engine=engine)
         base = self.calibrations.get(engine, FALLBACK_CALIBRATION)
         if base.table is not None:
             return base

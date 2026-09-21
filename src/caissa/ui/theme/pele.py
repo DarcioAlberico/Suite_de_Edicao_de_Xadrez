@@ -23,7 +23,8 @@ __all__ = ["PAPEIS", "PARES", "cor", "cromo_escuro", "fonte_monoespacada", "tem_
 #: Papel da suíte -> (token do tronco, reserva clara, reserva escura).
 PAPEIS: dict[str, tuple[str, str, str]] = {
     # a caixa de uma região de rotulagem sobre a página, e a selecionada
-    "regiao": ("A_FAZER", "#7c3aed", "#a78bfa"),
+    # reserva clara #8b5cf6 e não #7c3aed: 4,04:1 sobre a folha, contra 2,99:1 (piso 3,0)
+    "regiao": ("A_FAZER", "#8b5cf6", "#a78bfa"),
     # `TRACEJADO` é, na tabela de significado do tronco, "a área que você está selecionando"
     # -- a marcação de página para o que está em foco; `ALVO` é de tabuleiro e some sobre a folha.
     "regiao_selecionada": ("TRACEJADO", "#dc2626", "#f87171"),

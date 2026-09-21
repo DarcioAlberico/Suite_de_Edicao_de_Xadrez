@@ -138,6 +138,22 @@ def test_sabotage_the_switch_leaves_the_mixed_region_to_the_prose_profile():
     assert "movetext_strips" not in [c.variant for c in recognition.regions[0].candidates]
 
 
+def test_a_strip_that_fails_is_said_in_the_page_notes_and_the_page_keeps_its_anchor():
+    """Never silently (crítico Codex, fase 2 ciclo 1): the extra candidate must not fail the
+    page, but the recognition says the strips were lost — in ``notes``, not only in the log."""
+
+    class Failing(MockTesseract):
+        def recognize_with_profile(self, image, *, lang, psm_hint, profile):
+            raise RuntimeError("tesseract morreu na faixa")
+
+    engine = Failing()
+    recognition = _service(engine).recognize_image(inked(), dpi=300, lang="eng")
+    assert recognition.answered, "the page keeps its anchor"
+    assert "movetext_strips" not in [c.variant for c in recognition.regions[0].candidates]
+    assert any("faixa de lances falhou" in n and "RuntimeError" in n for n in recognition.notes), recognition.notes
+    assert sum("faixa de lances falhou" in n for n in recognition.notes) == 1, "one note per region"
+
+
 def test_a_line_needs_two_moves_to_be_a_strip():
     line = MockTesseract._line("the e4 pawn is weak", 0.0, 0.9)
     assert not _line_carries_notation(line)
@@ -156,3 +172,48 @@ def test_numbered_moves_past_move_nine_still_read_as_movetext():
                       lines=(MockTesseract._line(ROWS[0], 0.0, 0.9),),
                       region_kind=RegionKind.PAGE)
     assert not _looks_like_movetext(prose)
+
+
+def test_the_strips_candidate_is_calibrated_with_tesseract_table():
+    """Passo B6 meets B2: the strips are Tesseract readings under another name, so their raw
+    confidences go through Tesseract's fitted table.  Without the mapping the anchor was
+    calibrated and the strips stayed raw -- the mismatch B6 exists to remove."""
+    from types import SimpleNamespace
+
+    from caissa.ingest.pdf.ocr_service import STRIPS_ENGINE
+    from caissa.ocr.arbiter import ArbiterConfig
+    from caissa.ocr.types import RegionKind as Kind
+
+    def result(engine: str) -> OcrResult:
+        word = OcrWord(text="Nf3", box=BBox(0, 0, 10, 10), confidence=0.8)
+        line = OcrLine(words=(word,), box=BBox(0, 0, 10, 10), kind=Kind.MOVETEXT)
+        return OcrResult(engine=engine, lang="eng", lines=(line,), region_kind=Kind.MOVETEXT)
+
+    recognizer = SimpleNamespace(config=SimpleNamespace(arbiter=ArbiterConfig()))
+    region_outcome = SimpleNamespace(region=SimpleNamespace(kind=Kind.MOVETEXT))
+    task = SimpleNamespace(image=np.zeros((8, 8), np.uint8), lang="eng", scale=300.0 / 72.0)
+    candidates = [SimpleNamespace(result=result("tesseract")), SimpleNamespace(result=result(STRIPS_ENGINE))]
+
+    calibrators = OcrService._calibrators(recognizer, candidates, region_outcome, task)
+
+    assert "tesseract" in calibrators
+    assert STRIPS_ENGINE in calibrators, "the strips stayed on the raw scale"
+    for raw in (0.3, 0.6, 0.85, 0.95):
+        assert calibrators[STRIPS_ENGINE](raw) == calibrators["tesseract"](raw)
+
+
+def test_the_arbiter_scores_the_strips_on_tesseract_scale_too():
+    """Not only the fusion: the arbiter's own scoring of the strips candidate (``arbiter.score``
+    → ``calibration_for(result.engine, key)``) borrows Tesseract's calibration (``SCALE_OF``)."""
+    from caissa.ingest.pdf.ocr_service import STRIPS_ENGINE
+    from caissa.ocr.arbiter import SCALE_OF, ArbiterConfig
+    from caissa.ocr.calibration import FacetKey
+
+    assert SCALE_OF[STRIPS_ENGINE] == "tesseract"
+    config = ArbiterConfig()
+    theirs = config.calibration_for(STRIPS_ENGINE, FacetKey(engine=STRIPS_ENGINE, lang="eng"))
+    ours = config.calibration_for("tesseract", FacetKey(engine="tesseract", lang="eng"))
+    assert theirs.table is not None, "the strips stayed on the raw scale"
+    assert theirs.key == ours.key and theirs.table == ours.table
+    assert theirs.worst_word_weight == ours.worst_word_weight
+

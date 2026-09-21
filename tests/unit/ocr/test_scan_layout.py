@@ -377,3 +377,47 @@ def test_the_two_bands_of_a_move_list_are_not_columns():
     assert scan_layout(reading, page_box=BBox(0.0, 0.0, 600.0, 400.0)) is None
     assert scan_layout(reading, page_box=BBox(0.0, 0.0, 600.0, 400.0),
                        config=ScanLayoutConfig(min_band_chars=3)) is not None
+
+
+def test_the_other_engines_candidates_are_sliced_by_word_not_by_line():
+    """A whole-page candidate whose lines PSM 3 fused across the gutter: sliced by line, the
+    fused line lands whole in the column its centre falls in and carries the other column's
+    words into the region as support for the fusion.  By word, each region gets its own half."""
+    from caissa.ocr.types import OcrLine, OcrWord
+
+    def word(text: str, x: float, y: float) -> OcrWord:
+        return OcrWord(text=text, box=BBox(x, y, 60.0, 20.0), confidence=0.9)
+
+    left = (word("alpha", 100, 100), word("bravo", 200, 100))
+    right = (word("charlie", 1400, 100), word("delta", 1500, 100))
+    fused = OcrLine(words=left + right, box=BBox.union_of([w.box for w in left + right]))
+    only_right = OcrLine(words=right, box=BBox.union_of([w.box for w in right]))
+    reading = OcrResult(engine="other", lang="eng", lines=(fused, only_right))
+
+    left_box = BBox(0.0, 0.0, 1150.0, 700.0)
+    right_box = BBox(1250.0, 0.0, 1150.0, 700.0)
+    sliced_left = PageRecognizer._slice(reading, left_box)
+    sliced_right = PageRecognizer._slice(reading, right_box)
+
+    assert [w.text for line in sliced_left.lines for w in line.words] == ["alpha", "bravo"]
+    assert [w.text for line in sliced_right.lines for w in line.words] == [
+        "charlie", "delta", "charlie", "delta"]
+    assert sliced_left.meta["scan_slice"] is True
+    # A reading entirely inside the box is returned as is.
+    assert PageRecognizer._slice(reading, BBox(0.0, 0.0, 2400.0, 700.0)) is reading
+
+
+def test_a_layout_that_fails_leaves_the_page_whole_and_says_so_in_the_notes(monkeypatch):
+    """The layout is a refinement: the page is already read.  But the fallback is not silent
+    (crítico Codex, fase 2 ciclo 1): the outcome's notes say the page went whole, and why."""
+    from caissa.ocr import page as page_module
+
+    def explode(*_args, **_kwargs):
+        raise ValueError("calha impossível")
+
+    monkeypatch.setattr(page_module, "scan_layout", explode)
+    engine = MergingOcr(two_column_reading(LEFT, RIGHT))
+    outcome = _recognizer(engine).run(PageTask(image=_blank(), lang="eng", dpi=300.0))
+    assert outcome.whole_page
+    assert any("leiaute em scan falhou" in n and "ValueError" in n for n in outcome.notes), outcome.notes
+
