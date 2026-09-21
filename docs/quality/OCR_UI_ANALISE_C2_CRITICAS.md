@@ -35,7 +35,7 @@ Conferiu as três correções contra o próprio `failures.json`, executou o bloc
 
 ### Ciclo 1
 
-VEREDITO: REPROVADO  
+VEREDITO: REPROVADO
 CICLO: 1
 
 ## Conferências feitas
@@ -65,26 +65,26 @@ CICLO: 1
 
 ## Defeitos bloqueantes
 
-1. **Comportamento incorreto atribuído ao perfil SOL-7.**  
+1. **Comportamento incorreto atribuído ao perfil SOL-7.**
    Em `OCR_UI_ANALISE_C2.md:53,292,355-358`, afirma-se que o perfil só roda quando `kind is MOVETEXT`. O código real em `src/caissa/ingest/pdf/ocr_service.py:775` usa:
 
    `region.kind is RegionKind.MOVETEXT or _looks_like_movetext(result)`
 
    e `_looks_like_movetext` está implementado em `:1163-1169`. A conclusão “nunca roda em página digitalizada” não é demonstrada e a descrição do comportamento é falsa.
 
-2. **Medição de `game_from_paragraph` não é executável como publicada.**  
+2. **Medição de `game_from_paragraph` não é executável como publicada.**
    `OCR_UI_ANALISE_C2.md:41` publica uma chamada com uma string e sem `start_fen`. A assinatura real em `src/caissa/ingest/pdf/games.py:188-190` exige `Paragraph` e `start_fen`. O defeito subjacente do fallback é real, mas a prova apresentada não é uma medição válida.
 
-3. **Violação sistemática da regra de proveniência numérica.**  
+3. **Violação sistemática da regra de proveniência numérica.**
    `OCR_UI_ANALISE_C2.md:13-16` promete origem `report§` para todos os números. Isso não ocorre, por exemplo, em `:44` (`167`, `204/204 vs 193`), `:45` (`27`, `37`), `:49` (`5.444`, `38`), `:50` (`314`, `2,3 F1`), `:51` (`289 ≈20 min`), `:54` (`64/64`) e `:55` (`25 teclas`). Sem fonte ou marcador `(medido nesta análise)`, o roadmap não é auditável.
 
-4. **Instrumentos propostos não existem com os argumentos usados.**  
+4. **Instrumentos propostos não existem com os argumentos usados.**
    `OCR_UI_ANALISE_C2.md:557,609` prescreve `percurso --frio` e `percurso --teclado`. O parser real em `src/caissa/ui/audit/percurso.py:656-672` não aceita nenhum deles. O documento não define o novo instrumento, contrato, saída ou gate correspondente.
 
-5. **A seção de revisão adversarial está vazia.**  
+5. **A seção de revisão adversarial está vazia.**
    `OCR_UI_ANALISE_C2.md:17` afirma que §11 registra as alterações dos críticos, mas `:822-824` contém apenas um placeholder. Isso invalida a rastreabilidade exigida pelo brief.
 
-6. **Afirmação de não repetição é falsa.**  
+6. **Afirmação de não repetição é falsa.**
    `OCR_UI_ANALISE_C2.md:6-7` diz que nenhuma alavanca anterior é repetida. A alavanca 13 reabre o experimento `mhsp`, já medido e rejeitado em `ChessVisionOFF_Puro/docs/EXPERIMENTS_FASE7.md:989-1005`, relacionado também ao experimento anterior de cor de peças. A hipótese nova `RandomStroke` não basta: falta uma ablação que isole o ganho novo.
 
 ## Defeitos não bloqueantes
@@ -115,7 +115,7 @@ Nenhum arquivo foi alterado.
 
 ### Ciclo 2
 
-VEREDITO: REPROVADO  
+VEREDITO: REPROVADO
 CICLO: 2
 
 ## Conferências feitas
@@ -134,7 +134,7 @@ CICLO: 2
 
 ## Defeitos bloqueantes
 
-1. **Os comandos publicados em §5.2/§5.3 não são reproduzíveis como escritos.**  
+1. **Os comandos publicados em §5.2/§5.3 não são reproduzíveis como escritos.**
    Em `docs/OCR_UI_ANALISE_C2.md:497-508`, o código usa `start_fen=FEN` e passa `FEN`, mas nunca define `FEN`. A execução literal com o interpretador exigido terminou em:
 
    `NameError: name 'FEN' is not defined`
@@ -164,7 +164,7 @@ Depois, executar novamente os blocos exatamente como publicados e registrar a sa
 
 ### Ciclo 3
 
-VEREDITO: REPROVADO  
+VEREDITO: REPROVADO
 CICLO: 3
 
 ## Conferências feitas
@@ -207,7 +207,7 @@ O bloco literal de §5.2 foi executado com o `.venv`: código de saída 0 e stdo
 
 ## Defeitos bloqueantes
 
-1. **Número sem origem em §11.**  
+1. **Número sem origem em §11.**
    Em `OCR_UI_ANALISE_C2.md:968-969`, o texto afirma “8 + 6 bloqueantes” dos críticos anteriores, mas não fornece relatório, veredito anterior ou marca de medição. Isso viola a regra explícita do próprio documento: todo número deve ter origem. O `CRITIC_CHARTER.md` não contém esse número. É uma falha de proveniência factual e impede aprovação.
 
 ## Defeitos não bloqueantes
@@ -232,7 +232,7 @@ Não alterei arquivos.
 
 ### Ciclo 4
 
-VEREDITO: APROVADO  
+VEREDITO: APROVADO
 CICLO: 4
 
 ## Conferências feitas
@@ -471,7 +471,7 @@ paridade e a sabotagem dos 64 índices, A6/A9 com as duas sabotagens) está corr
 
 ## Crítico Codex — ciclo 1 (REPROVADO, 6 bloqueantes)
 
-VEREDITO: REPROVADO  
+VEREDITO: REPROVADO
 CICLO: 1
 
 ## Conferências feitas
@@ -630,7 +630,7 @@ O que resta são dívidas nomeadas, nenhuma das quais faz o produto dar resultad
 
 ## Crítico Codex — ciclo 2 (APROVADO)
 
-VEREDITO: APROVADO  
+VEREDITO: APROVADO
 CICLO: 2
 
 ## Conferências feitas
@@ -675,11 +675,15 @@ Nada. A fase 1 está aprovada porque os bloqueantes foram encerrados, as sabotag
 > chamar o crítico, a revisão do próprio construtor já tinha fechado quatro defeitos
 > (recorte que não virava, armadilha do `Tab`, tarefas com pai, parecer preso ao índice —
 > §0.1, primeira lista) — o crítico achou o quinto e o sexto (a calibração das faixas e a
-> `Tarefa` de `_rodar`) e duas falhas silenciosas.
+> `Tarefa` de `_rodar`) e duas falhas silenciosas. **Ciclo 2 (sobre tronco `b20cd6f`, suíte
+> `c13baca`; sandbox `workspace-write` com `TEMP` no workspace, para os portões correrem):
+> APROVADO, 0 bloqueantes** — os três não bloqueantes (o cabeçalho do relatório com o hash do
+> tronco antes das correções, espaços em branco, os portões absolutos de CER vermelhos como
+> declarado) fechados no commit seguinte, salvo o terceiro, que é o estado honesto do §0.3.
 
 ## Crítico Codex — ciclo 1 (REPROVADO, 5 bloqueantes)
 
-VEREDITO: REPROVADO  
+VEREDITO: REPROVADO
 CICLO: 1
 
 ## Conferências feitas
@@ -699,19 +703,19 @@ CICLO: 1
 
 ## Defeitos bloqueantes
 
-1. **B6/B2 — calibração semântica quebrada para `tesseract_strips`.**  
+1. **B6/B2 — calibração semântica quebrada para `tesseract_strips`.**
    Em `src/caissa/ingest/pdf/ocr_service.py:76`, os strips recebem o engine `tesseract_strips`; em `:1081-1089` são pontuados com esse nome; em `:1351-1371`, `_calibrators` procura a tabela usando exatamente esse engine. A configuração possui tabela para `tesseract`, mas não para `tesseract_strips`, portanto os strips ficam na escala bruta enquanto o Tesseract principal é calibrado. Isso torna a fusão incomparável e invalida a alegação de B6. O diff externo não commitado adiciona precisamente o mapeamento ausente.
 
-2. **Os benchmarks não comprovam o commit avaliado.**  
+2. **Os benchmarks não comprovam o commit avaliado.**
    Os JSONs `f2_*` registram `environment.commit = beb8a71`, embora o commit sob revisão seja `dcc72d7`. Logo, os números do relatório não demonstram o comportamento do diff final.
 
-3. **Métrica obrigatória não reproduzível neste ambiente.**  
+3. **Métrica obrigatória não reproduzível neste ambiente.**
    O gate normal de segunda opinião não executou por falta de diretório temporário utilizável e erro de artefato pré-compilado no cache. Pelo próprio critério do briefing/charter, uma métrica que não pode ser reproduzida não pode aprovar.
 
-4. **C2 — fechamento pode aceitar a janela com `QThread` ainda vivo.**  
+4. **C2 — fechamento pode aceitar a janela com `QThread` ainda vivo.**
    `src/chess_diagram_ocr/qt/janela.py:1363` cria a tarefa como filha da janela. Em `:2022-2025`, `closeEvent` espera apenas um prazo fixo, registra aviso se a thread ainda estiver ativa e aceita o fechamento mesmo assim. A destruição da janela pode então abortar o processo com `QThread: Destroyed while thread is still running`.
 
-5. **Falha de B2 pode ser descartada silenciosamente.**  
+5. **Falha de B2 pode ser descartada silenciosamente.**
    `src/caissa/ingest/pdf/ocr_service.py:1055-1065` captura qualquer exceção da leitura dos strips, registra apenas em `debug` e retorna nenhum candidato. O pipeline continua como se B2 não existisse, sem nota na decisão ou no relatório.
 
 ## Defeitos não bloqueantes
@@ -736,3 +740,40 @@ CICLO: 1
 4. Expor falhas de B2/layout/orientação como notas ou estados verificáveis.
 5. Entregar novamente os pytest e os três gates reproduzíveis em ambiente com escrita temporária.
 
+## Crítico Codex — ciclo 2 (APROVADO)
+
+VEREDITO: APROVADO
+CICLO: 2
+
+## Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| B2/B6 | [`arbiter.py:182-188,241-257,456-494`](<C:/Python-Chess2/Suite_de_Edicao_de_Xadrez/src/caissa/ocr/arbiter.py:182>) e `test_movetext_strips.py:177,205` | Sim | `tesseract_strips` usa a tabela Tesseract na pontuação e em `_calibrators`; testes passaram. |
+| B1/B2 | [`page.py:645-760`](<C:/Python-Chess2/Suite_de_Edicao_de_Xadrez/src/caissa/ocr/page.py:645>) e `ocr_service.py:1052-1099` | Sim | Falhas deixam notas; candidatos são fatiados por palavra. Testes passaram. |
+| Benchmarks | `f3_on`, `f3_b1_off`, `f3_b2_off` | Sim | Todos registram `environment.commit=3bbcf23`; configurações e números batem com §B1/§B2/§0.2. Uma corrida por configuração, conforme justificativa documentada. |
+| B9 | `f2_on` × `f2_b9_serial` | Sim | Comparação independente: 274/274 itens iguais nos campos medidos. |
+| C3 | `second_opinion_gate.py --failures ...` | Sim | PASSOU: 23/27 casas, 85,2%; sabotagem não passou. |
+| C2 | [`janela.py:1365-1373,2035-2042`](<C:/Python-Chess2/ChessVisionOFF_Puro/src/chess_diagram_ocr/qt/janela.py:1365>) e [`leitura.py:167-177`](<C:/Python-Chess2/ChessVisionOFF_Puro/src/chess_diagram_ocr/qt/leitura.py:167>) | Sim | Tarefas sem pai, slots protegidos por `_se_viva`, aquecimento cancelado no fechamento. |
+| C8/C10 | `tabuleiro_editavel.py:252-305`; `painel_de_resultado.py:1416-1426` | Sim | Tab sai do tabuleiro; recorte e tabuleiro viram juntos no ponto de vista das pretas. |
+| C9 | `pele.py` e `test_pele_da_suite.py:70` | Sim | Reserva clara corrigida; testes de contraste passaram. |
+| Testes | Suíte: `86 passed`; tronco: `359 passed, 3 xfailed`; janela: `111 passed, 2 skipped, 3 xfailed` | Sim | A primeira falha do tronco foi apenas mistura de binários NumPy/Pillow 3.11 com Python 3.10; repetição no ambiente correto passou. |
+| Benchmarks pequenos | `notation_integrity`, `coordinate_survey` e gate C3 | Sim | NAGs: 6/9; sabotagem: 0. Coordenadas: 10.639 `a-h`, 0 `h-a`; sabotagem inverteu o resultado. |
+
+## Defeitos bloqueantes
+
+Nenhum. Os cinco bloqueantes do ciclo 1 foram corrigidos, testados e reproduzidos nos portões correspondentes. Não encontrei regressão nova funcional nas correções.
+
+## Defeitos não bloqueantes
+
+1. O cabeçalho do relatório ainda diz tronco `2077410` em [`OCR_UI_REPORT_C2_FASE2.md:7`](<C:/Python-Chess2/Suite_de_Edicao_de_Xadrez/docs/quality/OCR_UI_REPORT_C2_FASE2.md:7>), embora o commit auditado seja `b20cd6f`.
+2. `git diff --check` aponta apenas whitespace/blanks em documentação e fim de alguns arquivos de teste.
+3. Os portões absolutos de CER/acurácia continuam vermelhos, mas isso está declarado honestamente no §0.3 e não foi introduzido por estas correções.
+
+## O que falta
+
+Nada bloqueante para fechar a fase 2.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechados, os testes tocados passaram, o gate C3 passou, as sabotagens falharam como esperado e os relatórios finais são coerentes com os JSON commitados.

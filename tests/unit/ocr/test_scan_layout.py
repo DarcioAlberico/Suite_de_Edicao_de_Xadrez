@@ -420,4 +420,3 @@ def test_a_layout_that_fails_leaves_the_page_whole_and_says_so_in_the_notes(monk
     outcome = _recognizer(engine).run(PageTask(image=_blank(), lang="eng", dpi=300.0))
     assert outcome.whole_page
     assert any("leiaute em scan falhou" in n and "ValueError" in n for n in outcome.notes), outcome.notes
-

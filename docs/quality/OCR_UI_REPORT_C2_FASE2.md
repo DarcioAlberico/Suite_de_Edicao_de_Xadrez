@@ -4,7 +4,9 @@
 > B8, B9, C2, C3, C8, C9, C10) · **Análise:** `docs/OCR_UI_ANALISE_C2.md` · **Fase 1:**
 > `OCR_UI_REPORT_C2.md` · **Papel:** construtor. Todo número traz o comando ao lado. Ambiente:
 > suíte `.venv` (Python 3.11.9), PyQt6 do `.venv-pack`, tronco `..\ChessVisionOFF_Puro` (3.10),
-> commit **2077410** (o da suíte é o que traz este relatório).
+> commits **2077410 → b20cd6f** (fase + revisão + crítica; o da suíte é o que traz este
+> relatório). Crítica: Codex ciclo 1 REPROVADO (5 bloqueantes), **ciclo 2 APROVADO** —
+> `OCR_UI_ANALISE_C2_CRITICAS.md`, «Fase 2».
 > Construída por **uma sessão, passo a passo**, com os benchmarks rodados em sequência (a
 > primeira rodada, feita em paralelo com testes e portões, contaminou o `s/MP` e foi descartada).
 
@@ -117,8 +119,8 @@
    aviso no log e **uma nota por região** em `PageRecognition.notes` (teste); o leiaute em
    scan que falha também deixa nota em `PageOutcome.notes` (teste).
 5. **O portão da segunda opinião não rodou no sandbox do crítico** (sem diretório temporário
-   gravável). Não é do código: no ciclo 2 o Codex corre com `-s workspace-write` e `TEMP`
-   dentro do workspace, e reproduz. Os números de §C3 vêm do JSON gravado
+   gravável). Não é do código: no ciclo 2 o Codex correu com `-s workspace-write` e `TEMP`
+   dentro do workspace e **reproduziu** (23/27, 85,2 %; a sabotagem reprovou). Os números de §C3 vêm do JSON gravado
    (`benchmarks\reports\second_opinion_20260920_235339.json` e `…_235340_copia.json`), com o comando ao lado.
 
 Não bloqueantes atendidos: `service.py` lê `context.coordinates` e

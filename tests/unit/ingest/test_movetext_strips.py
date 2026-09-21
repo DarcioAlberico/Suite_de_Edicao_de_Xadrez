@@ -216,4 +216,3 @@ def test_the_arbiter_scores_the_strips_on_tesseract_scale_too():
     assert theirs.table is not None, "the strips stayed on the raw scale"
     assert theirs.key == ours.key and theirs.table == ours.table
     assert theirs.worst_word_weight == ours.worst_word_weight
-

@@ -76,4 +76,3 @@ def test_as_reservas_passam_no_piso_de_contraste_nas_duas_peles(monkeypatch):
         for escuro in (False, True):
             razao = _razao_wcag(pele.cor(frente, escuro=escuro), pele.cor(fundo, escuro=escuro))
             assert razao >= piso, (o_que, "escuro" if escuro else "claro", round(razao, 2), piso)
-

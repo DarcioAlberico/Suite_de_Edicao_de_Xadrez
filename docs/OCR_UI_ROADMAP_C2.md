@@ -278,7 +278,9 @@ Mesmo formato da fase 1: **arquivos** · **briefing** · **portão** · **sabota
 relatório é `docs/quality/OCR_UI_REPORT_C2_FASE2.md` (uma seção por passo, número com comando ao
 lado). Construída por uma sessão só, passo a passo, com os benchmarks rodados **em sequência** (a
 primeira rodada, feita em paralelo com testes, contaminou o `s/MP` e foi descartada — §4).
-Tronco: commit **2077410**; suíte: o commit que traz esta seção.
+Tronco: commits **2077410 → b20cd6f**; suíte: **b156222 → c13baca** (fase, revisão do construtor,
+crítica). Crítico Codex: ciclo 1 REPROVADO (5 bloqueantes), ciclo 2 **APROVADO** — vereditos em
+`docs/quality/OCR_UI_ANALISE_C2_CRITICAS.md`, «Fase 2».
 
 ### B1 — Leiaute na página digitalizada (alavanca 3; análise §4.2)
 
