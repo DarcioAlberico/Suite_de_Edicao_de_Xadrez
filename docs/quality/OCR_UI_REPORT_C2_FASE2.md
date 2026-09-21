@@ -68,6 +68,16 @@
   (2026-09-21, tronco 167d52d); `recorte.mostrar(virado=pretas)` e
   `PontoDeVistaDasPretasTests` (2: o tabuleiro e o recorte viram juntos e a posição fica
   canônica; de pé e das brancas nada vira).
+- **C8: o `Tab` que dava a volta era uma armadilha de teclado** (WCAG 2.1.2). Com uma posição na
+  tela o tabuleiro consumia todo `Tab`/`Shift+Tab` (e `Ctrl+Tab` caía no mesmo lugar): quem não
+  usa o mouse não saía dele. A auditoria `teclado` não vê isso — mede a cadeia pelo
+  `focusNextPrevChild` da **janela**, não pela tecla entregue ao widget. Agora a lista das
+  duvidosas é percorrida **uma vez** e o foco segue (`proxima_duvidosa(dar_a_volta=False)`);
+  entrar pelo teclado já pousa na primeira (`focusInEvent` por `Tab`/`Backtab`). Revisão do
+  construtor antes da crítica (tronco 545ce67); portões remedidos: `percurso --teclado` 2 teclas
+  PASSOU (`percurso_casa_teclado_20260921_053026.json`), `--sabotar sem_teclado` REPROVOU,
+  `audit.teclado` PASSOU (`teclado_20260921_053107.json`); testes: o `Tab` sai depois da última e
+  entra na primeira; a sabotagem (a volta de antes) prende o foco por oito `Tab`.
 - **A suíte inteira do tronco travava em `test_app_pyqt`** (não reprovava: **travava**). O
   serviço falso do arquivo não aceitava `progress=`/`should_cancel=` → `TypeError` → `_falhou`
   → `dialogos.mostrar_falha`, uma caixa **modal** que ninguém fecha num teste headless. Visto
@@ -455,8 +465,9 @@ do primeiro não marca nada.
   decisões do disco e reavalia as marcas — chamado por `_gravou_amostra` e `_fechar_item_da_fila`.
   Comandos `proxima_duvidosa`/`anterior_duvidosa` (`Ctrl+Page Down/Up`, menu Ver).
 - **Teclado.** `ui/teclado_do_tabuleiro.py` (a regra, sem toolkit): `Tab`/`Shift+Tab` → a
-  próxima/anterior duvidosa (as âmbar; sem elas as incertas; sem elas as ocupadas), setas, `k q r
-  b n p` (Shift = branca), `Delete`, `Espaço`/`Enter` (o pincel). `TabuleiroEditavel` com
+  próxima/anterior duvidosa (as âmbar; sem elas as incertas; sem elas as ocupadas) **uma vez,
+  e depois o foco sai do tabuleiro** (§0.1), setas, `k q r b n p` (Shift = branca), `Delete`,
+  `Espaço`/`Enter` (o pincel). `TabuleiroEditavel` com
   `StrongFocus`, `keyPressEvent`, `definir_duvidosas` (o painel manda as âmbar). A letra é a peça
   e não a coluna (o `b` teria dois papéis). As setas e o `Delete` são atalhos **globais** da
   janela e a guarda os vê antes do widget: o tabuleiro em foco os toma para si pelo protocolo
@@ -488,8 +499,9 @@ do primeiro não marca nada.
 
 ### Testes
 
-`tests/test_qt_tabuleiro_editavel.py::TecladoTests` (8: com a guarda de atalhos ligada as setas
-andam e a janela não recebe a tecla; sabotagem sem `acoes_proprias`), `tests/unit/ui/test_trilho.py` (+2),
+`tests/test_qt_tabuleiro_editavel.py::TecladoTests` (10: com a guarda de atalhos ligada as setas
+andam e a janela não recebe a tecla; sabotagem sem `acoes_proprias`; o `Tab` sai depois da última
+duvidosa e entra na primeira; sabotagem da volta), `tests/unit/ui/test_trilho.py` (+2),
 `tests/test_ui_comandos.py` (rótulos registrados), `tests/test_qt_janela.py` (110 passam).
 
 ---
