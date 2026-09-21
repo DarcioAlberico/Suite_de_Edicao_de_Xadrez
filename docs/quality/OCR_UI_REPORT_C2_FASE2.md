@@ -61,6 +61,13 @@
   aqui e continua trocando de diagrama com o foco em qualquer outro lugar. Teste com a guarda
   ligada + sabotagem (sem `acoes_proprias` a janela fica com a seta e a seleção não sai do
   lugar). O portão `--teclado` (Tab + letra) não passava por aí, e é por isso que não pegou.
+- **C10: o recorte não virava com o tabuleiro.** No ponto de vista das pretas a casa canônica
+  `i` está impressa em `63 − i` — a mesma relação da leitura de cabeça para baixo —, mas o
+  recorte virava só por `rotation == 180`: a tinta, o apontar e o clique no recorte caíam na
+  casa espelhada. Achado na revisão do próprio construtor **antes** de chamar o crítico
+  (2026-09-21, tronco 167d52d); `recorte.mostrar(virado=pretas)` e
+  `PontoDeVistaDasPretasTests` (2: o tabuleiro e o recorte viram juntos e a posição fica
+  canônica; de pé e das brancas nada vira).
 - **A suíte inteira do tronco travava em `test_app_pyqt`** (não reprovava: **travava**). O
   serviço falso do arquivo não aceitava `progress=`/`should_cancel=` → `TypeError` → `_falhou`
   → `dialogos.mostrar_falha`, uma caixa **modal** que ninguém fecha num teste headless. Visto
@@ -537,7 +544,8 @@ exibição bate com o livro. Tronco: `pdf_text.board_coordinates_for` **produz**
 `CoordinateRule` responde `black_point_of_view` em vez de `upright=False` (girar a imagem poria
 as peças de cabeça para baixo); `OrientationPolicy.resolve(turn=)` gira o **mapeamento**
 (`prediction_from_probs(probs[::-1])`, os mesmos parâmetros); `RecognizedDiagram.
-black_point_of_view`; o painel desenha o tabuleiro `virado`.
+black_point_of_view`; o painel desenha o tabuleiro **e o recorte** `virado` pelo mesmo critério
+(§0.1: o recorte virava só pela rotação e a tinta caía na casa espelhada).
 
 ### Portão
 
