@@ -8,6 +8,9 @@
 > Não substitui `OCR_UI_ROADMAP.md` (ciclo 1), cujas pendências humanas (0b, crítico C3) continuam.
 > **Fase 2** (§3) executada em 2026-09-20/21 — relatório `docs/quality/OCR_UI_REPORT_C2_FASE2.md`.
 > **Fase 3** (§3b) executada em 2026-09-21 — relatório `docs/quality/OCR_UI_REPORT_C2_FASE3.md`.
+> **Fase 4** (§3c) — o que a análise nomeia fora das 20 alavancas (§3.10, §4.9, §6.9, §10.6) e o
+> que os relatórios e os críticos deixaram como dívida nomeada; executada em 2026-09-21 — relatório
+> `docs/quality/OCR_UI_REPORT_C2_FASE4.md`.
 
 ## 0. Regras que valem para todos os passos
 
@@ -642,6 +645,216 @@ C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfi
   livros/<slug>/perfil.json`, ao lado da cifra, que o `--importar-acervo` do bundle já leva),
   **§10.5** (o sidecar ao lado do PGN e do livro, `.proveniencia.jsonl`).
 
+## 3c. Fase 4 — o que nenhum portão media, e a evidência que faltava (executada em 2026-09-21)
+
+As três fases cobriram as 20 alavancas do §0 da análise. O que sobrou está **fora** dessa
+tabela e foi dito com endereço: as notas menores (§3.10, §4.9, §5.8), «o que nenhum portão mede
+hoje» (§6.9), a decisão §10.6 (EPUBCheck), os «não bloqueantes» que os críticos deixaram para
+a fase seguinte (`OCR_UI_ANALISE_C2_CRITICAS.md`, fase 1 ciclo 2, itens 5–8) e o §0.3 do
+relatório da fase 3 (a sabotagem inerte do C4, o campo contaminado, os rótulos sem partição).
+Esta fase é isso, no mesmo formato: **arquivos** · **briefing** · **portão** · **sabotagem** ·
+**saída**. Relatório: `docs/quality/OCR_UI_REPORT_C2_FASE4.md`. Construída por uma sessão só,
+com o treino do C16 na GPU em segundo plano (os tempos carregam a contenção e são ditos com ela).
+Ordem executada: C16 (lançado primeiro, é o mais longo) → C12 → A12 → B11 → B12 → A13 → C14 → C15.
+
+**O que a fase não toma, e por quê** (para ninguém reabrir sem número novo): desenho vetorial
+com assinatura desconhecida → casa vazia e `Diagram.marks` (§3.10): `vector_survey_20260914`
+conta **0** `drawing_boards` nos 46 livros — sem população, fica como defeito nomeado; fonte de
+diagrama inline apagando a figurina (§5.8): população 0, a própria análise diz «não é passo»;
+idioma por página (§4.9): nenhum item bilíngue no corpus — portão impossível; decodificar as
+duas orientações (§3.10, 15–20 % de `decode_s`): trocaria decisões de orientação para ganhar
+milissegundos; o desenho dos vazios (§6.10) e o alto contraste **como pele nova** são do
+crítico visual C3 (humano) — aqui só a detecção e a régua; A2 «com portão de aceitação»
+(crítico da fase 1, item 8): o EPUB já diz a dúvida por casa (C1) e no alt text (A9), e
+**não desenhar** um diagrama lido abaixo do portão é a decisão §10.1 da pessoa, não do
+construtor.
+
+### C12 — A estipulação como evidência (§3.10, §6.9, SPEC §6.4; a hipótese da S-33)
+
+- **Arquivos.** Tronco: `estipulacao.py` (novo: gramática `Estipulacao`, o verificador
+  `verificar` — busca exaustiva em python-chess para mate em 1–2, Stockfish `go mate N` quando
+  `engine.find_engine` o acha, para 3–4 —, `conferir` com as mesmas candidatas do C11 e
+  `apply_stipulation`), `pdf_text.py` (`DiagramContext.stipulation`, o padrão de legenda
+  `#2`/`3‡`/`Mate in two`/`Matt in 3 Zügen`/`mate em 2`/`mat en 3`, e o escopo de página
+  «Combinations #2»), `service.py` (`RecognitionOptions.stipulation`; `RecognizedDiagram.
+  stipulation`, `stipulation_closes`, `stipulation_repairs`, `stipulation_reason`, entram em
+  `external_repairs`), `pdf_to_pgn.py` (`[Stipulation]`, `[StipulationCheck]`, a nota do
+  reparo), `proveniencia.py`, `field_eval.py` (contadores `stipulation_*`), `qt/painel_de_
+  resultado.py` + `ui/strings.py` (a frase no painel), `README.md` (árvore), testes. Suíte:
+  `ingest/pdf/captions.py` (a mesma gramática, com teste de paridade contra o tronco),
+  `importer.py` (`Diagram.stipulation` = «Mate em 2», `Diagram.solution` com a chave quando
+  fecha, aviso quando não fecha), `benchmarks/field_exact.py` (`--sabotar sem_estipulacao`,
+  contadores no JSON).
+- **Briefing.** Um livro de problemas imprime a exigência ao lado do diagrama, e a exigência é
+  **verificável**: «mate em 2» ou fecha na posição lida ou não fecha. Hoje `importer.py` só
+  preenche «Brancas jogam» e `Diagram.solution` nunca existe; a S-33 registrou a hipótese
+  («uma avaliação bizarra sugere erro de OCR») como não feita. O mecanismo é o do C11 com outro
+  predicado: joga-se a **exigência** em vez do lance impresso; se não fecha, tentam-se as
+  segundas opções das casas hesitantes e a cor de qualquer peça, e adota-se a troca única que
+  faz fechar. Mate em 2 é busca exaustiva barata (ordem de 10³ nós); mate em 3–4 é o motor
+  quando existe (`CVOFF_ENGINE_PATH`; nesta máquina o Stockfish do Sigil) e «não verificado
+  (sem motor)» quando não. Uma exigência que não fecha **nunca** apaga a leitura: vira estado
+  com ação (revisão) e frase.
+- **Portão.** No conjunto de campo (`field_exact --runs 3`): (a) toda verdade anotada com
+  estipulação lida fecha (`stipulation_truth_closes` = `stipulation_checked`; se uma verdade
+  não fecha, ou a gramática leu errado ou a anotação está errada — e o relatório diz qual);
+  (b) `stipulation_repaired_wrong` = 0; (c) os exatos não caem. **Sabotagem:** `--sabotar
+  sem_estipulacao` (`RecognitionOptions.stipulation=False`) devolve `stipulation_checked` 0 e
+  os exatos de antes; `estipulacao_vizinha` dá a cada diagrama a exigência do vizinho — um
+  sinal que ainda «fecha» sob isso alimenta-se de coincidência.
+- **Saída.** `[Stipulation "#2"]` e `[StipulationCheck "fecha"|"não fecha: …"]` no PGN;
+  «Mate em 2 — fecha (1.♕h7#)» / «não fecha nesta leitura» no painel; `Diagram.stipulation` e
+  `Diagram.solution` no EPUB/DOCX; os contadores no JSON do campo.
+
+### A12 — EPUBCheck como invariante (§6.9, §10.6)
+
+- **Arquivos.** Suíte: `tests/unit/export/corpus.py` (`epubcheck_jar` procura também
+  `tools/epubcheck*/epubcheck.jar` na raiz do repositório e `%LOCALAPPDATA%\Caissa\`),
+  `tools/instalar_epubcheck.py` (novo: desempacota um `epubcheck-*.zip` — nesta máquina o que o
+  Sigil já baixou em `%TEMP%\sigil-epubcheck-*\epubcheck.zip`, 4.2.6, Java 8 basta — em
+  `tools/epubcheck-<versão>/`, ignorado pelo git), `.gitignore`, `ui/audit/percurso.py` (o
+  fluxo `livro` roda o EPUBCheck sobre o EPUB exportado quando o jar existe e conta os erros),
+  `tests/unit/export/test_epubcheck.py` (novo).
+- **Briefing.** A SPEC §11.3 exige «0 erros» e o `ROADMAP.md` publica «EPUBCheck 0 erros», mas
+  o teste é **pulado** quando o jar não está na máquina — e não estava. Um portão declarado que
+  não roda em invariante nenhuma é um portão que passa cego. O jar fica fixado por caminho do
+  repositório (ou `CAISSA_EPUBCHECK`), o `percurso --fluxo livro` passa a validar o EPUB de
+  verdade e a suíte deixa de pular.
+- **Portão.** `pytest tests/unit/export -k epubcheck` **não pulado**, 0 erros no corpus; `percurso
+  --fluxo livro` com `epubcheck_erros = 0` no JSON. **Sabotagem:** um pacote com o `mimetype`
+  errado / o `nav` fora do manifesto (`test_epubcheck`: `run_epubcheck` conta ≥ 1 erro e a
+  função que o portão usa reprova); `--sabotar sem_epubcheck` no `percurso` → o JSON diz
+  «EPUBCheck não rodou» e o portão reprova.
+- **Saída.** O «0 erros» da SPEC medido em toda invariante nesta máquina.
+
+### B11 — O instrumento mede o que o produto faz: `_xheight_px` e a abstenção que não é CER 0 (§4.9)
+
+- **Arquivos.** Suíte: `ocr/portfolio.py` (`_xheight_px(gray, dpi)`: teto físico de componente
+  — 0,25 pol — em vez de 5 % da altura da imagem), `benchmarks/bench_sol.py` + `ocr/metrics.py`
+  (`cer_all`: CER sobre **todos** os itens rotulados, com a abstenção valendo o texto do
+  melhor candidato — ao lado do CER dos aceitos, nunca no lugar), `ocr/gates.py`/`sol_gate.py`
+  (a coluna publicada), `docs/quality/sol/sol.json` + `sol.md` **republicados** com o
+  instrumento corrigido (estavam em `69583fd`, 2026-09-13; o `baseline.json` é o sistema de
+  referência Tesseract-só e não muda), testes.
+- **Briefing.** `_xheight_px` mantém componentes de altura ≤ 5 % da imagem: numa folha inteira
+  são 165 px (tudo que é letra entra); num item sintético de 382 px são 19 px, as letras saem e
+  ficam pingos e vírgulas — a altura-x lê 5 px, a página é tratada como degradada e o benchmark
+  roda RapidOCR + upscale onde o produto, com páginas inteiras, não roda. O benchmark media o
+  que o produto não faz. Depois: o teto é físico (uma letra nunca passa de 0,25 pol), igual
+  nos dois casos. E «abstenção = CER 0» esconde o T2: `cer_all` diz quanto texto a página
+  perde de fato.
+- **Portão.** `detect_signals` sobre o mesmo parágrafo solto e colado numa folha A4 dá a
+  mesma altura-x (± 1 px; hoje 5 × 20); `bench_sol` remedido; `sol_gate --report-only` 0
+  silenciosas, 0/9 controles no `sol.json` novo. **Sabotagem:** `SOL_CONFIG='{"portfolio":
+  {"xheight_relative": true}}'` devolve o teto relativo e o número de antes.
+- **Saída.** `sol.md` com `cer_all` por estrato; o baseline diz com que instrumento foi medido.
+
+### B12 — O DPI real chega ao Tesseract; as ligaduras dobram na fronteira (§4.9)
+
+- **Arquivos.** Suíte: `ocr/arbiter.py` (`RegionTask.dpi`; o árbitro entra em
+  `engine.with_dpi` quando o motor o tem), `ocr/engines/tesseract.py` (`with_dpi`: `--dpi` = o
+  DPI da variante que o portfólio entregou, não 300 fixo), `ocr/page.py` +
+  `ingest/pdf/ocr_service.py` (`variant_dpi`, um interruptor só; `_read_on_variant` passa
+  `variant.dpi`), `ocr/engines/normalize.py` (novo: `fold_ligatures` — `ﬁ ﬂ ﬀ ﬃ ﬄ ﬅ ﬆ` →
+  letras; **não** NFKC, que trocaria `½` por `1⁄2` e `²` por `2`), aplicado na saída de todo
+  motor em `engines/base.py`, testes.
+- **Briefing.** O upscale entrega 450 DPI e o Tesseract é informado de 300: a estimativa de
+  tamanho de fonte dele erra por 1,5 e a segmentação de linhas paga. A ligadura `ﬁ` do
+  Tesseract entra no IR como U+FB01: o métrico normaliza e não vê, o EPUB e a busca veem.
+- **Portão.** Teste de unidade da fronteira (`ﬁ` nunca sai de um motor); `bench_sol` nos
+  estratos com upscale (`scan_degraded_150`) CER ≤ o de antes (dentro do IC) e sem regressão
+  nos outros. **Sabotagem:** `SOL_CONFIG='{"variant_dpi": false}'` fixa o antes.
+- **Saída.** O IR sem ligaduras; o Tesseract sabendo a resolução que recebe.
+
+### A13 — Recursos por importação; um rodapé só; `paralelo` booleano (críticos da fase 1, itens 5–7)
+
+- **Arquivos.** Suíte: `ui/views/importacao.py` (`_pasta_de_recursos()` → uma pasta **por
+  importação**, `<stem>-<n>`, apagada quando a importação seguinte do mesmo livro a substitui e
+  ninguém exporta dela), `ui/audit/paralelo.py` (`troca_de_livro` com os booleanos julgados
+  por nome, não `all()` sobre strings), teste. Tronco: `qt/importador_de_livro.py`
+  (`_concluiu` cala quando o cancelamento foi por troca de livro — a ponte já diz a frase).
+- **Briefing.** Uma pasta por processo para todas as importações: `diagrama-p31-0001.png`
+  colide entre dois livros com as mesmas páginas, e uma exportação em curso lê arquivos que a
+  importação seguinte sobrescreve. E dois rodapés contraditórios em 1 s ao trocar de livro.
+- **Portão.** `paralelo --pdf Kemeri --pagina 80 --outro-livro X`: os recursos dos dois livros
+  em pastas distintas e a exportação do primeiro relê os dele; rodapé com **uma** frase.
+  **Sabotagem:** `--sabotar pasta_partilhada` → colisão acusada; `_relatorio` com um booleano
+  falso → reprova (teste).
+- **Saída.** O que o crítico pediu, medido.
+
+### C14 — O tabuleiro fala ao leitor de tela; os portões a 150 %/200 %; alto contraste (§6.9, Carta §3.2)
+
+- **Arquivos.** Tronco: `qt/tabuleiro_editavel.py` (`_anunciar`: `accessibleName` = «Tabuleiro,
+  casa e2 selecionada: peão branco» a cada seleção — o PyQt6 não expõe `QAccessible`, e não
+  precisa: o próprio `QWidget.setAccessibleName` emite o `NameChanged` de acessibilidade; o
+  rodapé continua), `ui/strings.py` (`nome_acessivel_do_tabuleiro`), `qt/plataforma.py`
+  (`alto_contraste_ativo()`: `SPI_GETHIGHCONTRAST` por ctypes no Windows, `CVOFF_ALTO_CONTRASTE`
+  força para o arnês, `False` fora), `qt/tema.py` (com alto contraste ativo `aplicar_tema`
+  devolve `"alto_contraste"` e **não** aplica folha nem paleta: a paleta do sistema vale;
+  `alto_contraste_em_vigor()` para quem desenha à mão), testes. Suíte: `ui/audit/teclado.py`
+  (`_medir_o_tabuleiro`: seleciona e2 e lê o nome acessível; `CAISSA_SABOTAR_ANUNCIO=1` é a
+  sabotagem), `ui/audit/capture.py` (`--escala 1.25|1.5|2` = `QT_SCALE_FACTOR` antes da
+  `QApplication`; os tamanhos físicos são os mesmos, a janela é pedida em pixels lógicos e a
+  recusa — a janela que não encolhe até o tamanho lógico da tela — vira `*_recusas.json`),
+  `vazio` sobre as capturas físicas 3840×2160 a 200 %.
+- **Briefing.** «Casa e2 selecionada» vai ao rodapé e nenhum leitor de tela ouve; nenhum
+  portão roda com `QT_SCALE_FACTOR`; `grep HighContrast` não acha nada. Três itens da Carta
+  §3.2 sem régua. O alto contraste **como pele nova** (contornos, sem cor como único sinal)
+  é do crítico C3; aqui a régua é «a pele sai do caminho».
+- **Portão.** `audit.teclado`: nome acessível do tabuleiro diz a casa selecionada e a peça
+  (sabotagem: não anunciar → REPROVOU); `capture --escala 1.25/1.5/2`: a janela cabe na tela
+  lógica ou o mínimo é dito com número; `vazio` a 200 % sobre 4K: ≤ 200 kpx ou o vermelho
+  dito; `aplicar_tema` com alto contraste: folha vazia, paleta do sistema (teste).
+- **Saída.** O leitor de tela ouve a casa; os portões medem a escala; o alto contraste do
+  Windows é respeitado.
+
+### C15 — O campo limpo: a contaminação dita, os rótulos com partição (fase 3 §0.3)
+
+- **Arquivos.** Suíte: `benchmarks/field_exact.py` (`contaminated_diagrams` e
+  `field_exact_clean` — o mesmo número sem os diagramas cujas páginas têm amostra de treino,
+  `labels.pages_with_training_samples`; os dois publicados lado a lado), `docs/quality/CORPUS.md`
+  (a regra). Tronco: `training.pin_field_pages` (a guarda em `resolve_splits`: rótulo novo de
+  página de campo → `test`, dito no log), `data/splits.csv` (os 7 rótulos da janela sem partição
+  recebem a sua por `resolve_splits`, **nunca** `train` para página de campo).
+- **Briefing.** Anand 62, Euwe 25/62, Yusupov 14 e Kemeri 144 têm amostras de treino: o campo
+  mede, em parte, o que o modelo viu. Publicar só o número cheio é publicar um número que
+  ninguém pode conferir. E rótulos sem split ficam invisíveis a todo treino (S-56) — ou entram
+  no `train` pelo próximo `cvoff-train` mesmo sendo de página de campo.
+- **Portão.** Os dois números no JSON; `field_exact_clean` ≤ `field_exact` explicado por
+  população; nenhum rótulo sem split; nenhum rótulo de página de campo em `train`.
+  **Sabotagem:** uma página de campo marcada como de treino → `contaminated_diagrams` sobe e
+  o limpo cai (teste).
+- **Saída.** O campo com o seu número honesto ao lado.
+
+### C16 — A sabotagem que faltava ao C4 (ruído de rótulo `X↔x`) e o peso da correção humana (§3.10; fase 3 §C4)
+
+- **Arquivos.** Tronco: `dataset.py` (`BoardFenDataset.label_overrides` e `ruido_de_cor` —
+  troca a cor do rótulo em `fração` das casas ocupadas dos tabuleiros de treino, semente fixa),
+  `training.py` (`OptimPlan.label_noise`, `OptimPlan.corrected_repeat` — os tabuleiros de rota
+  humana, `ROTAS_HUMANAS`, repetidos k vezes por época no `BoardGroupedSampler`; metadados no
+  checkpoint; `train_model(label_noise=, corrected_repeat=)`), `cli/train.py`, testes. Suíte:
+  `benchmarks/c4_ablation.py` (variantes `x10` = `aug0` + ruído 10 %, `w3` = `aug0` + correção
+  ×3).
+- **Briefing.** As sabotagens `i`/`i50` foram inertes: inverter sem trocar o rótulo não confunde
+  a cor. A sabotagem honesta é trocar o **rótulo** — `X↔x` em 10 % das casas ocupadas — e ver
+  se o teste 566 e o campo a acusam; se não acusam, o instrumento não tem resolução para a
+  pergunta do C4 e o relatório o diz. E a pergunta que `labels.py` deixou escrita («as
+  corrigidas à mão treinam melhor?») ganha um número: 161 tabuleiros de rota humana em 5.457,
+  repetidos ×3, contra o `aug0` na mesma semente.
+- **Portão.** `lab_gate --candidate … --runs 3` e `field_exact --model …` para `x10` e `w3`
+  (semente 42, 16 épocas): `x10` **tem** de cair abaixo da faixa do `aug0` (553–556 no teste,
+  1–4 exportados-e-errados no campo) — é uma sabotagem e um instrumento que não a vê é vermelho;
+  `w3` é medição, não portão. Testes: o ruído só toca tabuleiros de treino; a repetição só
+  conta rotas humanas; os metadados dizem os dois.
+- **Saída.** A resolução do instrumento do C4 dita com número; a decisão §10.2 continua da
+  pessoa, agora com o peso da correção medido.
+
+### 3c.9 Humano (inalterado)
+
+0b, crítico visual C3 (que agora tem o desenho dos vazios e o alto contraste como pele na
+mesa), §10.2 (o `.pt`, com o C16 medido), §10.4 (perfis dos outros livros), rotular uma página
+com `=` (B7).
+
 ## 4. Mutações
 
 | data | passo | mutação | por quê | quem |
@@ -687,3 +900,16 @@ C11 → C5 → C6 → A11. Os passos que trocam o `.pt` de produção ou o perfi
 | 2026-09-21 | C6 | **`source_page` do `labels.csv` é base 1; o fechamento o converte antes de reter** (`closing._page_index_of_label`) | A segunda aprovação do perfil do Koblenz ainda levava os dois tabuleiros da página de campo 50: o tronco grava a página como a janela mostra (base 1, `51`; `labels.pages_with_training_samples` subtrai um), e o campo, o manifesto cego e as decisões são base 0 — a retenção comparava `51` com `50`, retinha dois tabuleiros da p. 49 (índice) e deixava entrar os da página de campo. Apareceu ao listar as seis trocas do um-de-fora casa a casa (`p51 h4 Q→q` era o `p50 d0` do campo). Perfil apagado e aprovado de novo (152/150 amostras, 6 trocas, 6 certas), campo remedido; teste com o rótulo `13` contra a página de campo `13` | construtor |
 | 2026-09-21 | C4 | **as sabotagens `i` (3 %) e `i50` (50 %) são inertes; a próxima é ruído de rótulo `X↔x`** (`c4_ablation.SABOTAGE_VARIANTS`) | `c4_i_s42` = `aug0` no teste (556/566) e no campo (4 casas de cor contra 5); `c4_i50_s42` 553 no teste (a faixa do `aug0` é 553–556) e 7 casas de cor contra 5–8, com menos exportados-e-errados (2). Inverter o contraste sem trocar o rótulo não confunde a cor: o fundo invertido é um modo à parte que o modelo separa. Uma sabotagem que não piora não prova o instrumento — fica vermelha no relatório, com a próxima desenhada: trocar `X↔x` em 10 % das casas rotuladas | construtor |
 | 2026-09-21 | C4 | **nenhuma variante domina em três sementes; o `.pt` fica** | `aug0` 556/553/555 no teste e 3/4/1 exportados-e-errados no campo (0,9712/0,9608/0,9901); `mhspe` 553/555/554 e 4/4/2 — médias 554,7 × 554,0 e 2,7 × 3,3: a variância entre sementes é maior que a diferença entre variantes, e o traço fica um pouco abaixo em tudo. `mhsp` ≈ `aug0`, `e` ≈ `mhspe`; 0 ilegais e `hurt` 0 em todos. O 1 tabuleiro de validação (518 × 517 de 535) do `RandomStroke` não sobrevive ao teste nem ao campo. Os candidatos leem as damas do Koblenz porque 14 tabuleiros do livro entraram em `train` em 2026-09-20 — não é o aumento (o `aug0` também lê) e a comparação justa é candidato × candidato | construtor |
+| 2026-09-21 | C12 | **«mate em N» é mate em exatamente N** (`estipulacao.verificar`: um mate mais curto devolve `fecha=False` com «mais curto que a exigência») | Na primeira versão um mate em 1 «fechava» uma exigência de 2, e na busca de trocas uma peça a mais fechava por um mate que o problema nunca teve — o teste do empate ganhou uma terceira vencedora. Um mate mais curto é cozido ou leitura errada, e é dito | construtor |
+| 2026-09-21 | C12 | **a busca de trocas só com a busca exaustiva (mate ≤ 2), nunca com o motor nem com mate em 1** (`LANCES_DA_BUSCA`, `MIN_LANCES_PARA_REPARO`) | Cada verificação no motor custa até 3 s; 38 candidatas numa página de seis problemas travariam a janela. Mate em 1 é a regra «um lance só confirma» do C11 | construtor |
+| 2026-09-21 | C12 | **o motor fecha antes do `join` das threads** (`estipulacao.registrar_fecho` com `threading._register_atexit`) | O `SimpleEngine` do python-chess corre numa thread que não é *daemon* e o interpretador a junta antes dos `atexit`: o `field_exact` imprimia o relatório e ficava pendurado (duas corridas mortas à mão) | construtor |
+| 2026-09-21 | C12 | **portão (a) achou duas anotações erradas no conjunto de campo** (Niemeijer p20 d0 e d2) | d0: a verdade anotada tem mate em 1 para um `3‡` cuja chave impressa (`1.Pd3`) nem é legal nela — a fila 5 está deslocada uma coluna na anotação (imagem com grade); d2: a anotação diz torre branca em h1, a leitura da máquina (torre preta, «exportada e errada» a 0,805) fecha o `3+` com o `1.Kb7` que o livro imprime — entrou em `field_corrections.json` com a prova documental e o glifo; d0 fica para olho humano (a fila corrigida ainda tem mate em 2) | construtor |
+| 2026-09-21 | C12 | **`estipulacao_vizinha` é sabotagem fraca nesta população** | Numa página de problemas a exigência é a da página (Polgar: seis `#2`); a rotação só muda 2 de 10 e devolve os mesmos contadores (`truth 8/10` × `9/10`). A que reprova o portão é `sem_estipulacao` (`checked 0`) | construtor |
+| 2026-09-21 | A12 | **o portão achou 4 erros no EPUB do produto** (`OPF-028: prefixo não declarado "pdf"`) | `percurso --fluxo livro` validou o EPUB exportado pela janela: as entradas `MetadataEntry(scheme="pdf")` do importador saíam como `property="pdf:Producer"` sem prefixo no `<package>` — invisível ao corpus dos testes, que não tem entrada assim. Todo esquema de metadado vira prefixo declarado (`_prefix_token`) e o nome vira termo válido (`_property_token`); teste com EPUBCheck | construtor |
+| 2026-09-21 | A12 | **EPUBCheck que não roda devolve `-1`, nunca «0 erros»** (`run_epubcheck`) | Um arquivo inexistente saía com «0 erros fatais / 0 erros» e código 1 — o antigo helper lia 0. O resumo é lido nas duas línguas, os fatais somam, e sem resumo com código ≠ 0 é falha | construtor |
+| 2026-09-21 | B11 | **o teto físico não reproduz «5 px» na fonte sintética** | Com a fonte do arnês o teto relativo em 382 px dá 0,0 (sobram < 20 componentes), não 5 px como nos itens reais: a mesma falha (o que sobra não é letra). O teste afirma «solto = folha» com o físico e «solto ≠ folha» com o relativo; a mudança de rota é medida no benchmark | construtor |
+| 2026-09-21 | C14 | **o PyQt6 não expõe `QAccessible`; o anúncio é o `setAccessibleName`** | O roadmap pedia `QAccessible.updateAccessibility`; o binding não o tem. O próprio `QWidget.setAccessibleName` emite o `NameChanged`; anunciado só quando muda | construtor |
+| 2026-09-21 | C14 | **a janela exige 1248×695 lógicos** (`capture --escala`, `*_recusas.json`) | A 125 % não cabe em 1366×768 nem 1280×800; a 150 % só em ≥ 1920×1080; a 200 % só em 4K. E a 200 % sobre 4K, 6 de 8 painéis passam de 200 kpx (`vazio`). Dois números novos e vermelhos para o crítico C3 | construtor |
+| 2026-09-21 | C14 | **alto contraste = «a pele sai do caminho»**, não «≥ 7:1 medido» | Não há como medir a paleta de alto contraste do Windows *offscreen*; a régua honesta é que `aplicar_tema` não aplica folha nem paleta com o modo ligado (teste). Contornos e papéis sem cor são pele nova: C3 | construtor |
+| 2026-09-21 | C15 | **rótulo novo de página de campo vai para `test`, dito** (`training.pin_field_pages`) | O sorteio poria os dois Koblenz «51» (página de campo 50) em `train`/`val`; `test` é retido como o campo. O split `test` passa de 566 a 569 — o `aug0` s42 foi remedido nele para a comparação do C16 valer | construtor |
+| 2026-09-21 | C16 | **10 % de ruído de rótulo quase não aparece no laboratório e aparece inteiro no campo** (`x10` 557/569 × `aug0` 558/569 no teste; **72 × 104 exportados** no campo) | A rede treinada com rótulo sujo fica menos confiante e o gate de 0,80 barra 32 diagramas que antes passavam — e o que passa é todo exato (72/72), com 108 exatos no total contra 103. A régua da fase 3 para o C4 (`board_exact` do teste + exportados-e-errados) era cega ao dano; a que o vê é a taxa de exportação e os exatos totais do campo. `x25` fica na tabela (`LABEL_NOISE_VARIANTS`) para quem quiser a curva | construtor |

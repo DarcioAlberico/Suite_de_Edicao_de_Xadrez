@@ -66,12 +66,14 @@ from caissa.core.model import (
     FenCandidate,
     Figure,
     FontWeight,
+    GameScore,
     Heading,
     ImageBlock,
     ImageInline,
     Inline,
     Measure,
     MetadataEntry,
+    MoveNode,
     Orientation,
     Paragraph,
     ParagraphProps,
@@ -365,6 +367,12 @@ class PdfImportOptions:
     #: the machine's reading.  ``None`` applies nothing (``export_book``
     #: loads the book's file when the caller passed none).
     diagram_decisions: Any | None = None
+    #: OCR_UI ciclo 2, C12: a printed demand ("mate in 2", ``#2``) is played
+    #: against the reading through the trunk's ``estipulacao`` (exhaustive
+    #: search for mate in 1-2, the UCI engine for 3+ when the machine has one).
+    #: The ``Diagram`` says the demand, carries the key as ``solution`` when it
+    #: closes and warns when it does not.  Off is the before.
+    verify_stipulations: bool = True
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -630,6 +638,8 @@ class PdfImporter:
         self._abstained_figures: list[_FigureEntry] = []
         self._decisions_applied = 0
         self._diagram_decisions_applied = 0
+        self._stipulations_checked = 0
+        self._stipulations_failed = 0
 
     # -- driver ------------------------------------------------------------ #
 
@@ -714,6 +724,10 @@ class PdfImporter:
         document = self._to_ir(entries)
         # Counted while the nodes were built (passo A3): the reviewer's positions.
         self.report.counters["diagram_decisions_applied"] = self._diagram_decisions_applied
+        # C12: how many printed demands were played against a reading, and how many
+        # the reading did not meet -- the diagrams the review should look at first.
+        self.report.counters["stipulations_checked"] = self._stipulations_checked
+        self.report.counters["stipulations_failed"] = self._stipulations_failed
         self._save_book_cipher()
         self.report.duration_s = time.perf_counter() - started
         if self.options.asset_dir is not None and self.report.ocr_traces:
@@ -1544,6 +1558,26 @@ class PdfImporter:
             extractor=_EXTRACTOR,
             extractor_version=_EXTRACTOR_VERSION,
         )
+        stipulation = None
+        side_known = context.side_to_move is not None or decision is not None
+        if side_known:
+            white_to_move = decision.side == "w" if decision is not None else context.side_to_move
+            stipulation = "Brancas jogam" if white_to_move else "Pretas jogam"
+        # C12: the printed demand is what the SPEC §6.4 stipulation field is
+        # for ("Mate em 2"), and it is verifiable -- the verdict goes to the
+        # warnings and the key to ``solution``.  A demand that does not close
+        # never erases the reading: it is said, for the review to look.
+        solution: GameScore | None = None
+        if context.stipulation is not None:
+            stipulation = context.stipulation.description
+            if self.options.verify_stipulations and hit.fen:
+                closes, keys, reason = _verify_stipulation(fen, context.stipulation)
+                warnings.append(f"exigência {context.stipulation.label}: {reason}")
+                if closes is True and len(keys) == 1:
+                    solution = _solution_score(fen, keys[0])
+                self._stipulations_checked += 1
+                if closes is False:
+                    self._stipulations_failed += 1
         recognition = RecognitionResult(
             fen=hit.fen or "",
             overall_confidence=hit.confidence if hit.fen else 0.0,
@@ -1570,11 +1604,6 @@ class PdfImporter:
             recognised_at=datetime.now(UTC),
             warnings=tuple(warnings),
         )
-        stipulation = None
-        side_known = context.side_to_move is not None or decision is not None
-        if side_known:
-            white_to_move = decision.side == "w" if decision is not None else context.side_to_move
-            stipulation = "Brancas jogam" if white_to_move else "Pretas jogam"
         note = None if crop is None else f"recorte em {crop.key}"
         if decision is not None:
             note = f"{note}; " if note else ""
@@ -1588,6 +1617,7 @@ class PdfImporter:
             number=context.exercise_number,
             label=context.label,
             stipulation=stipulation,
+            solution=solution,
             side_to_move_indicator=side_known,
             alt_text=(crop.description if crop else None),
             provenance=self._provenance(
@@ -1883,6 +1913,61 @@ def _caption_inlines(context: DiagramContext) -> list[Inline]:
             parts.append(where)
     text = " · ".join(parts)
     return [Text(content=text)] if text else []
+
+
+def _verify_stipulation(fen: str, demand: Any) -> tuple[bool | None, tuple[str, ...], str]:
+    """The demand played against ``fen`` through the trunk's ``estipulacao`` (C12).
+
+    Returns ``(closes, keys, reason)``: ``closes`` is ``True``/``False``/``None``
+    (not verifiable -- no engine for mate in 3+, illegal position, trunk
+    absent), ``keys`` the SAN of the key(s) found, ``reason`` the sentence in
+    pt-BR that the warning carries.  Never raises: a verifier that crashes an
+    import would cost the book to say "mate in 2 does not close".
+    """
+    try:
+        import chess
+
+        from caissa.vision.classify.cvoff import ensure_cvoff_on_path
+
+        ensure_cvoff_on_path()
+        from chess_diagram_ocr.estipulacao import (  # type: ignore[import-not-found]
+            LANCES_DA_BUSCA,
+            Estipulacao,
+            motor_padrao,
+            verificar,
+        )
+    except Exception as exc:  # noqa: BLE001 - the trunk is optional at this boundary
+        return None, (), f"não verificada (verificador indisponível: {exc})"
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        return None, (), "não verificada (FEN inválida)"
+    demand_t = Estipulacao(int(demand.moves), texto=str(demand.text))
+    try:
+        motor = motor_padrao() if demand_t.lances > LANCES_DA_BUSCA else None
+        verdict = verificar(board.board_fen(), board.turn, demand_t, motor=motor)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning("Verificação da exigência falhou: %s", exc)
+        return None, (), f"não verificada ({exc})"
+    return verdict.fecha, tuple(verdict.chaves), verdict.motivo
+
+
+def _solution_score(fen: str, key_san: str) -> GameScore | None:
+    """The key move as a one-move :class:`GameScore` from ``fen`` (C12)."""
+    try:
+        import chess
+
+        board = chess.Board(fen)
+        move = board.parse_san(key_san)
+        san = board.san(move)
+        board.push(move)
+        after = board.fen()
+    except (ValueError, AssertionError):
+        return None
+    return GameScore(
+        initial_fen=fen,
+        children=(MoveNode(san=san, ply=1, position_before=fen, position_after=after, emphasis=True),),
+    )
 
 
 def _with_side(fen: str, white: bool) -> str:

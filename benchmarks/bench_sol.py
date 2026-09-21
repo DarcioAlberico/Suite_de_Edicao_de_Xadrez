@@ -156,6 +156,10 @@ def make_sol() -> System:
         if isinstance(page.get("scan"), dict):
             page["scan"] = ScanLayoutConfig(**page["scan"])
         overrides["page"] = PageConfig(**page)
+    if isinstance(overrides.get("portfolio"), dict):   # B11: {"portfolio": {"xheight_relative": true}}
+        from caissa.ocr.portfolio import PortfolioConfig
+
+        overrides["portfolio"] = PortfolioConfig(**overrides["portfolio"])
     engines = None
     if TESSDATA_DIR is not None:
         from caissa.ocr.engines.tesseract import TesseractConfig, TesseractEngine
@@ -167,6 +171,11 @@ def make_sol() -> System:
         recognition = service.recognize_image(rendered.gray, dpi=float(rendered.dpi),
                                               lang=model_lang(tesseract_lang(item)))
         text = recognition.text
+        # B11: what the service *had* for the page, emitted or not -- the text of every
+        # region including the abstained ones.  ``cer_withheld`` is measured on it.
+        withheld = "\n".join(
+            r.result.text for r in recognition.regions
+            if not r.emits_text and r.result.text.strip())
         return Answer(
             text=text if recognition.answered else None,
             decision=str(recognition.decision),
@@ -174,6 +183,7 @@ def make_sol() -> System:
             engine=recognition.engine,
             below_threshold=recognition.below_threshold,
             meta=recognition.trace(),
+            withheld=withheld,
         )
 
     return run
@@ -223,6 +233,13 @@ def measure(system: System, item: GoldenItem, stratum: str) -> dict[str, Any] | 
     score = score_text(item.truth, text)
     row.update(score.as_dict())
     row["length_ratio"] = round(score.length_ratio, 4)
+    # B11 (análise §4.9): "abstention = CER 0" hid the T2.  ``cer_all`` is the CER the
+    # reader pays -- the emitted text, or **1,0** when the page abstained (nothing shown);
+    # ``cer_withheld`` says how good the text the service withheld was, when it had any.
+    row["cer_all"] = round(score.cer, 5) if text is not None else 1.0
+    withheld = answer.get("withheld") or ""
+    if text is None and withheld.strip():
+        row["cer_withheld"] = round(score_text(item.truth, withheld).cer, 5)
     if len(item.regions) > 1 and text is not None:
         truths = [r.truth for r in sorted(item.regions, key=lambda r: r.reading_order)]
         found = region_order_from_text(text, truths)
@@ -281,14 +298,19 @@ def markdown(report: dict[str, Any]) -> str:
         "",
         "## Resumo por estrato",
         "",
-        "| estrato | n | resp. | abst. | revisão | CER médio | IC 95% | WER | lances "
+        "| estrato | n | resp. | abst. | revisão | CER médio | IC 95% | CER c/ abst. | CER retido | WER | lances "
         "| perdidos | inventados | ctrl FP | s/MP |",
-        "|---|--:|--:|--:|--:|--:|---|--:|--:|--:|--:|--:|--:|",
+        "|---|--:|--:|--:|--:|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|",
     ]
     for name, s in report["summary"]["by_stratum"].items():
+        # B11: «CER c/ abst.» conta a abstenção como a página inteira perdida (1,0); «CER
+        # retido» é o CER do texto que o serviço tinha e não emitiu (n entre parênteses).
+        retido = s.get("cer_withheld_mean")
         lines.append(
             f"| {name} | {s['n']} | {s['answered']} | {s['abstained']} | {s['review']} | "
             f"{_fmt(s['cer_mean'])} | {_fmt(s['cer_ci'][0])}–{_fmt(s['cer_ci'][1])} | "
+            f"{_fmt(s.get('cer_all_mean', s['cer_mean']))} | "
+            f"{(_fmt(retido) + ' (' + str(s.get('withheld_with_text', 0)) + ')') if retido is not None else '—'} | "
             f"{_fmt(s['wer_mean'])} | {_fmt(s['move_accuracy'])} | {s['moves_missing']} | "
             f"{s['moves_invented']} | {s['control_false_positives']}/{s['controls']} | "
             f"{_fmt(s['seconds_per_megapixel'], 2)} |")

@@ -16,6 +16,7 @@ Usage::
     .venv/Scripts/python.exe benchmarks/c4_ablation.py --seeds 42 --epochs 16
     .venv/Scripts/python.exe benchmarks/c4_ablation.py --seeds 43,44 --variants mhsp,mhspe
     .venv/Scripts/python.exe benchmarks/c4_ablation.py --seeds 42 --variants i50   # a sabotagem
+    .venv/Scripts/python.exe benchmarks/c4_ablation.py --seeds 42 --variants x10,w3  # C16 (fase 4)
 
 Roda na venv da suíte (torch com CUDA) sobre o código do tronco; o checkpoint gravado
 carrega na venv do tronco (CPU) — ``lab_gate`` e ``field_exact`` conferem isso ao medir.
@@ -48,6 +49,16 @@ OUT_DIR = REPO_ROOT / "benchmarks" / "reports" / "c4_ablation"
 #: — indistinguível do ``aug0`` no laboratório e no campo (relatório da fase 3, §C4).
 SABOTAGE_VARIANTS = {"i50": 0.5}
 
+#: C16 (fase 4): a sabotagem **de rótulo** — ``x10`` troca a cor (``X↔x``) de 10 % das casas
+#: ocupadas dos tabuleiros de treino (``OptimPlan.label_noise``); as de contraste foram
+#: inertes porque inverter sem trocar o rótulo não confunde a cor. Um instrumento que não a
+#: acusa não tem resolução para a pergunta do C4, e o relatório o diz.
+LABEL_NOISE_VARIANTS = {"x10": 0.10, "x25": 0.25}
+
+#: C16: o peso da correção humana — ``w3`` repete três vezes por época os tabuleiros de rota
+#: humana (``dataset.ROTAS_HUMANAS``, ``OptimPlan.corrected_repeat``), sobre o ``aug0``.
+CORRECTED_REPEAT_VARIANTS = {"w3": 3, "w5": 5}
+
 logger = logging.getLogger("c4_ablation")
 
 
@@ -58,7 +69,19 @@ def _augment(letters: str):
         from chess_diagram_ocr.augment import AugmentConfig
 
         return AugmentConfig(invert=SABOTAGE_VARIANTS[letters])
+    if letters in LABEL_NOISE_VARIANTS or letters in CORRECTED_REPEAT_VARIANTS:
+        return _augment_from_letters("aug0")
     return _augment_from_letters(letters)
+
+
+def _training_knobs(variant: str) -> dict[str, Any]:
+    """Os botões do C16 que a variante liga além do aumento (vazio para as outras)."""
+    knobs: dict[str, Any] = {}
+    if variant in LABEL_NOISE_VARIANTS:
+        knobs["label_noise"] = LABEL_NOISE_VARIANTS[variant]
+    if variant in CORRECTED_REPEAT_VARIANTS:
+        knobs["corrected_repeat"] = CORRECTED_REPEAT_VARIANTS[variant]
+    return knobs
 
 
 def train_variant(variant: str, seed: int, epochs: int, workers: int) -> dict[str, Any]:
@@ -91,12 +114,14 @@ def train_variant(variant: str, seed: int, epochs: int, workers: int) -> dict[st
         calibrate=True,
         augment=augment,
         progress_cb=observe,
+        **_training_knobs(variant),
     )
     checkpoint = load_checkpoint(model_path, map_location="cpu")
     metadata = dict(checkpoint.metadata) if isinstance(checkpoint.metadata, dict) else {}
     result = {
         "variant": variant,
         "augment_version": augment.version,
+        "training_knobs": _training_knobs(variant),
         "seed": seed,
         "epochs_requested": epochs,
         "epochs_run": len(run.history),

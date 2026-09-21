@@ -280,7 +280,11 @@ class OcrEngineBase(abc.ABC):
                 warnings=result.warnings,
                 meta=result.meta,
             )
-        return result
+        # B12: the typographic ligatures fold here, once, for every engine --
+        # the IR never sees a U+FB01 (see ``normalize``).
+        from caissa.ocr.engines.normalize import fold_result
+
+        return fold_result(result)
 
 
 # --------------------------------------------------------------------------- #

@@ -20,6 +20,12 @@ Caïssa Studio é a unificação de cinco projetos que já existiam em `C:\Pytho
 
 **Suíte: 3.680 testes, 2 pulados** (WOFF2/Brotli e EPUBCheck, ausências declaradas).
 Roda em ~13 min: `.venv\Scripts\python.exe -m pytest tests -q` (3.678 passed, 2026-09-11)
+**2026-09-21 (OCR/UI ciclo 2, fase 4, A12):** o EPUBCheck **deixou de ser pulado** nesta máquina —
+o jar 4.2.6 vive em `tools/epubcheck-4.2.6/` (ignorado pelo git; `tools/instalar_epubcheck.py`
+desempacota o zip da release ou a cópia que o Sigil deixa em `%TEMP%`; `caissa.export.epubcheck`
+é o locator/runner que os testes e o `percurso --fluxo livro` partilham). Na primeira corrida
+sobre o EPUB do produto ele achou 4 erros (`OPF-028`, prefixo `pdf:`) — corrigidos. Ver
+`docs/quality/OCR_UI_REPORT_C2_FASE4.md` §A12.
 
 > **Um teste instável, ainda não diagnosticado (2026-09-10).**
 > `tests/unit/model/test_ids.py::test_a_fresh_id_carries_roughly_the_current_time`

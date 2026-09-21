@@ -17,6 +17,7 @@ enquanto a importação anda, em vez de esperar o fim.
 from __future__ import annotations
 
 import functools
+import itertools
 import logging
 import threading
 from pathlib import Path
@@ -50,6 +51,20 @@ def _pasta_de_recursos() -> Path:
     atexit.register(shutil.rmtree, pasta, True)
     return pasta
 
+
+_IMPORTACOES = itertools.count(1)
+
+
+def pasta_da_importacao(pdf_path: Path) -> Path:
+    """A folder of its own for **this** import's images (OCR_UI ciclo 2, A13).
+
+    One folder per book was not enough: importing the same book again while an export
+    of the previous result was still reading its images overwrote them under the same
+    names (critic of phase 1, item 5).  Every import gets ``<livro>-<n>``; the previous
+    folder stays until the process ends, so the document that points at it stays whole.
+    """
+    return _pasta_de_recursos() / f"{_nome_seguro(pdf_path.stem)}-{next(_IMPORTACOES)}"
+
 __all__ = ["ImportadorDoLivro"]
 
 
@@ -71,6 +86,7 @@ class ImportadorDoLivro(QObject):
         super().__init__(pai)
         self._pai = pai
         self._cancelar: threading.Event | None = None
+        self._motivo_do_cancelamento = ""
         self._rodando = False
         self._indices: tuple[int, ...] = ()
         self._montadas = 0
@@ -114,10 +130,15 @@ class ImportadorDoLivro(QObject):
         ).start()
         return True
 
-    def cancelar(self) -> None:
+    def cancelar(self, *, motivo: str = "") -> None:
+        """Pede o cancelamento.  ``motivo="troca_de_livro"`` (A13) diz que o resultado vai ser
+        descartado por quem chamou: o rodapé não promete exportar o que já foi lido."""
         if self._cancelar is None:
             return
+        self._motivo_do_cancelamento = motivo
         self._cancelar.set()
+        if motivo == "troca_de_livro":
+            return
         self.estado.emit("Cancelando a importação… o que já foi lido fica.")
 
     def _trabalho(
@@ -143,7 +164,7 @@ class ImportadorDoLivro(QObject):
                     # document can be exported as it is (passo A3) instead of read again;
                     # without it every image resource would have ``path=None`` and the
                     # EPUB would silently drop them.
-                    asset_dir=_pasta_de_recursos() / _nome_seguro(pdf_path.stem),
+                    asset_dir=pasta_da_importacao(pdf_path),
                 ),
             )
         except Exception as exc:  # a thread não pode derrubar a janela
@@ -171,7 +192,12 @@ class ImportadorDoLivro(QObject):
             return
         self.resultado = resultado
         relatorio = resultado.report
-        if relatorio.canceled:
+        motivo, self._motivo_do_cancelamento = self._motivo_do_cancelamento, ""
+        if relatorio.canceled and motivo == "troca_de_livro":
+            # A13: quem trocou de livro vai descartar este resultado e dizê-lo -- prometer
+            # «podem ser exportadas» aqui era a segunda das duas frases contraditórias.
+            pass
+        elif relatorio.canceled:
             self.estado.emit(
                 f"Importação cancelada: {relatorio.pages_built} de {relatorio.pages_planned} "
                 "página(s) ficaram lidas e podem ser exportadas."

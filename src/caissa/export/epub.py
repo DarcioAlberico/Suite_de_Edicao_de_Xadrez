@@ -711,6 +711,29 @@ def _language(document: Document, context: ExportContext) -> str:
     return context.options.language or document.metadata.language or "pt-BR"
 
 
+#: Prefixes the package already declares, or that EPUB 3 reserves and must
+#: not be redeclared (``dc``, ``dcterms``, ``marc``, ``media``, ``onix``,
+#: ``xsd``, ``a11y``, ``msv``, ``prism``).
+_BUILTIN_PREFIXES = frozenset(
+    {"schema", "rendition", "caissa", "dc", "dcterms", "marc", "media", "onix", "xsd",
+     "a11y", "msv", "prism"}
+)
+
+
+def _prefix_token(scheme: str) -> str:
+    """A scheme as a prefix name: letters, digits, ``_``/``-``/``.``; never empty, never
+    starting with a digit."""
+    cleaned = "".join(ch if (ch.isalnum() or ch in "_-.") else "-" for ch in scheme.strip())
+    cleaned = cleaned.strip("-.") or "caissa"
+    return ("x-" + cleaned) if cleaned[0].isdigit() else cleaned
+
+
+def _property_token(name: str) -> str:
+    """A metadata name as a property term (the part after the prefix and the colon)."""
+    cleaned = "".join(ch if (ch.isalnum() or ch in "_-.") else "-" for ch in name.strip())
+    return cleaned.strip("-.") or "entry"
+
+
 def _opf(
     document: Document,
     context: ExportContext,
@@ -795,10 +818,20 @@ def _opf(
         meta.append(
             f'<dc:identifier id="isbn">urn:isbn:{escape(metadata.isbn)}</dc:identifier>'
         )
+    # OCR_UI ciclo 2, A12: every custom scheme becomes a *declared* prefix on
+    # ``<package>`` (below), and the property name is a valid vocabulary term.
+    # The importer's ``scheme="pdf"`` entries used to come out as
+    # ``property="pdf:Producer"`` with no prefix declared -- four EPUBCheck
+    # errors (OPF-028) on every book exported from the window, invisible to
+    # the corpus tests, which carry no such entries.
+    extra_prefixes: dict[str, str] = {}
     for entry in metadata.custom:
+        scheme = _prefix_token(entry.scheme or "caissa")
+        if scheme not in _BUILTIN_PREFIXES:
+            extra_prefixes.setdefault(scheme, f"https://caissa.studio/ns/{scheme}#")
         meta.append(
-            f'<meta property="{escape_attr(entry.scheme or "caissa")}:'
-            f'{escape_attr(entry.name)}">{escape(entry.value)}</meta>'
+            f'<meta property="{escape_attr(scheme)}:'
+            f'{escape_attr(_property_token(entry.name))}">{escape(entry.value)}</meta>'
         )
     meta.append(
         '<meta property="rendition:layout">'
@@ -862,13 +895,19 @@ def _opf(
         )
 
     toc_attr = ' toc="ncx"' if include_ncx else ""
+    prefixes = " ".join(
+        [
+            "schema: http://schema.org/",
+            "rendition: http://www.idpf.org/vocab/rendition/#",
+            "caissa: https://caissa.studio/ns#",
+        ]
+        + [f"{scheme}: {iri}" for scheme, iri in sorted(extra_prefixes.items())]
+    )
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" '
         'unique-identifier="pub-id" '
-        'prefix="schema: http://schema.org/ '
-        'rendition: http://www.idpf.org/vocab/rendition/# '
-        'caissa: https://caissa.studio/ns#">\n'
+        f'prefix="{escape_attr(prefixes)}">\n'
         '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/" '
         'xmlns:opf="http://www.idpf.org/2007/opf">\n'
         + "\n".join(meta)

@@ -336,6 +336,23 @@ def _fixar_a_vista(janela: object) -> None:
         print(f"  (a vista não foi fixada: {exc})", file=sys.stderr)
 
 
+ESCALA_ENV = "QT_SCALE_FACTOR"
+"""A escala do sistema (125 % = `1.25`, 200 % = `2`): o Qt a lê **antes** da `QApplication`,
+por isso ela viaja pelo ambiente do subprocesso de cada pele e nunca é fixada depois."""
+
+
+def tamanhos_logicos(escala: float) -> tuple[tuple[int, int], ...]:
+    """Os mesmos tamanhos físicos de `TAMANHOS` em pixels **lógicos** da escala (C14 do ciclo 2).
+
+    A 200 % um monitor 4K tem 1920×1080 pixels lógicos: a janela é pedida nesse tamanho e a
+    captura (`grab`, física) sai com 3840×2160 -- o mesmo nome de arquivo, a mesma régua do
+    `vazio`, sobre a fotografia que a pessoa a 200 % vê.
+    """
+    if escala <= 1.0:
+        return TAMANHOS
+    return tuple((int(round(w / escala)), int(round(h / escala))) for w, h in TAMANHOS)
+
+
 def capturar(
     saida: Path,
     *,
@@ -343,6 +360,7 @@ def capturar(
     pdf: Path | None = None,
     caminho_do_tronco: Path = TRONCO,
     peles: tuple[tuple[str, str], ...] = PELES,
+    escala: float = 1.0,
 ) -> list[Path]:
     """Grava um PNG por (pele, tamanho, aba), **uma pele por processo**, e devolve o que gravou.
 
@@ -364,6 +382,8 @@ def capturar(
         antes = set(saida.glob(f"{marca}_{rotulo}_*.png"))
         ambiente = dict(os.environ)
         ambiente["CVOFF_SKIN"] = nome_da_pele
+        if escala > 1.0:
+            ambiente[ESCALA_ENV] = f"{escala:g}"
         argumentos = [
             sys.executable,
             "-m",
@@ -376,6 +396,8 @@ def capturar(
             marca,
             "--tronco",
             str(caminho_do_tronco),
+            "--escala",
+            f"{escala:g}",
         ]
         if pdf is not None:
             argumentos += ["--pdf", str(pdf)]
@@ -402,6 +424,7 @@ def capturar_uma_pele(
     """Grava um PNG por (tamanho, aba) para **uma** pele. É o que cada subprocesso faz."""
     _preparar(caminho_do_tronco)
     saida.mkdir(parents=True, exist_ok=True)
+    recusas: list[dict[str, Any]] = []
     gravados: list[Path] = []
 
     from chess_diagram_ocr.qt.plataforma import politica_de_escala
@@ -460,7 +483,8 @@ def capturar_uma_pele(
     for _ in range(3):
         aplicacao.processEvents()
 
-    for largura, altura in TAMANHOS:
+    escala = float(os.environ.get(ESCALA_ENV, "1") or 1.0)
+    for (largura, altura), (fisica_w, fisica_h) in zip(tamanhos_logicos(escala), TAMANHOS, strict=True):
         janela.resize(largura, altura)
         for _ in range(8):
             aplicacao.processEvents()
@@ -474,10 +498,16 @@ def capturar_uma_pele(
             # **A recusa é dado, não ruído.** Uma janela que não encolhe até o tamanho
             # pedido não cabe na tela de quem pediu, e o número exato é o defeito.
             print(
-                f"  ! {tema} pediu {largura}x{altura}, ficou "
+                f"  ! {tema} pediu {largura}x{altura}"
+                f"{f' (escala {escala:g}: {fisica_w}x{fisica_h} físicos)' if escala > 1.0 else ''}, ficou "
                 f"{janela.width()}x{janela.height()} (mínimo "
                 f"{janela.minimumSizeHint().width()}x{janela.minimumSizeHint().height()})"
             )
+            recusas.append({
+                "pele": tema, "escala": escala, "pedido": [largura, altura],
+                "fisico": [fisica_w, fisica_h], "ficou": [janela.width(), janela.height()],
+                "minimo": [janela.minimumSizeHint().width(), janela.minimumSizeHint().height()],
+            })
         for area in areas_de_trabalho(janela):
             area.mostrar()
             for _ in range(4):
@@ -489,13 +519,20 @@ def capturar_uma_pele(
                 .replace("ç", "c")
                 .replace("ó", "o")
             )
-            alvo = saida / f"{marca}_{tema}_{largura}x{altura}_{nome_base}.png"
+            # O nome leva o tamanho **físico**: a régua do `vazio` procura `*_3840x2160_*`.
+            alvo = saida / f"{marca}_{tema}_{fisica_w}x{fisica_h}_{nome_base}.png"
             janela.grab().save(str(alvo))
             gravados.append(alvo)
             print(f"  {alvo.name}")
     janela.close()
     janela.deleteLater()
     aplicacao.processEvents()
+    if recusas:
+        # C14: a janela que não cabe na tela lógica da escala é um número publicado, não
+        # uma linha perdida no stderr.
+        (saida / f"{marca}_{tema}_recusas.json").write_text(
+            json.dumps({"escala": escala, "recusas": recusas}, indent=2, ensure_ascii=False),
+            encoding="utf-8")
 
     return gravados
 
@@ -511,7 +548,19 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="fotografa UMA pele. Sem isto, o arnes percorre todas as de PELES.",
     )
+    parser.add_argument(
+        "--escala", type=float, default=1.0,
+        help="C14: a escala do sistema (1.25, 1.5, 2). Os tamanhos físicos são os mesmos; a "
+             "janela é pedida em pixels lógicos e a captura sai física.",
+    )
     args = parser.parse_args(argv)
+    if args.escala > 1.0 and os.environ.get(ESCALA_ENV, "") != f"{args.escala:g}":
+        # A escala tem de existir antes da QApplication: quem chega aqui sem ela no ambiente
+        # (a linha de comando) reexecuta a si mesmo com ela.
+        ambiente = dict(os.environ)
+        ambiente[ESCALA_ENV] = f"{args.escala:g}"
+        return subprocess.run([sys.executable, "-m", "caissa.ui.audit.capture", *(argv or sys.argv[1:])],
+                              env=ambiente, check=False).returncode  # noqa: S603 - argv nosso
     if args.pele:
         rotulo = dict(PELES).get(args.pele)
         if rotulo is None:
@@ -526,7 +575,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"{len(gravados)} capturas da pele {args.pele} em {args.saida}")
         return 0
-    gravados = capturar(args.saida, marca=args.marca, pdf=args.pdf, caminho_do_tronco=args.tronco)
+    gravados = capturar(args.saida, marca=args.marca, pdf=args.pdf, caminho_do_tronco=args.tronco,
+                        escala=args.escala)
     print(f"{len(gravados)} capturas em {args.saida}")
     return 0
 

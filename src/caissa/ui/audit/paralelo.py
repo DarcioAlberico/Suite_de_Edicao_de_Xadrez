@@ -250,6 +250,23 @@ def medir_paralelo(  # noqa: PLR0915 - um percurso, do começo ao fim
         # Trocar de livro a meio da importação: a janela cancela, a ponte descarta (C7).
         anterior = janela._pdf
         marcas_antes = len(getattr(janela.trilho, "_marcas", {}) or {})
+        # A13: o rodapé, frase a frase, do momento da troca até o relatório chegar -- para
+        # acusar a promessa («podem ser exportadas») seguida do descarte («descartada»).
+        frases: list[str] = []
+        mostrar_original = janela.rodape.mostrar
+
+        def mostrar_e_anotar(texto: str, **kwargs: Any) -> None:
+            frases.append(str(texto))
+            mostrar_original(texto, **kwargs)
+
+        janela.rodape.mostrar = mostrar_e_anotar  # type: ignore[method-assign]
+        if sabotar == "rodape_duplo":
+            # O antes do A13: o importador promete exportar o que o descarte vai jogar fora.
+            importador = getattr(janela.livro, "importador", None)
+            if importador is not None:
+                cancelar_original = importador.cancelar
+                importador.cancelar = lambda *, motivo="": cancelar_original()  # type: ignore[method-assign]
+                notas.append("sabotagem: o cancelamento por troca de livro chega sem motivo ao importador")
         passo(
             acoes,
             f"abrir outro livro ({outro_livro.name}) durante a importação",
@@ -268,9 +285,15 @@ def medir_paralelo(  # noqa: PLR0915 - um percurso, do começo ao fim
         revisao = getattr(janela, "revisao_de_texto", None)
         fila = getattr(revisao, "queue", None) if revisao is not None else None
         fila_do_anterior = bool(fila and fila.items and fila.items[0].document == anterior.stem)
+        janela.rodape.mostrar = mostrar_original  # type: ignore[method-assign]
+        promessa = [f for f in frases if "podem ser exportadas" in f]
+        descarte = [f for f in frases if "descartada" in f]
         detalhes["troca_de_livro"] = {
             "anterior": anterior.name,
             "novo": outro_livro.name,
+            "rodape_frases": frases,
+            # A13: sem a promessa de exportar o que foi descartado -- um rodapé só.
+            "rodape_sem_contradicao": not (promessa and descarte),
             "resultado_descartado": janela.livro.resultado is None,
             "trilho_sem_estados_do_anterior": len(getattr(janela.trilho, "_marcas", {}) or {}) <= marcas_antes,
             "fila_nao_e_do_anterior": not fila_do_anterior,
@@ -374,7 +397,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pagina", type=int, default=41, help="a pagina com diagrama a corrigir (base 1)"
     )
-    parser.add_argument("--sabotar", choices=("", "trancar_tudo", "sem_descarte"), default="")
+    parser.add_argument("--sabotar", choices=("", "trancar_tudo", "sem_descarte", "rodape_duplo"), default="")
     parser.add_argument(
         "--outro-livro", type=Path, default=None,
         help="abrir este PDF durante a importação: o resultado dela não pode virar trilho nem fila do livro novo",

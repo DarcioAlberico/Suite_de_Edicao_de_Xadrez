@@ -100,12 +100,27 @@ class PageSignals:
         }
 
 
-def _xheight_px(gray: Image) -> float:
+#: The tallest a letter can be, in inches: 0,25 in is 18 pt of cap height, above
+#: any body text and below a diagram piece.  Physical, so a paragraph on its
+#: own and the same paragraph on a full sheet measure the same x-height.
+LETTER_MAX_INCHES = 0.25
+
+
+def _xheight_px(gray: Image, dpi: int = 300, *, relative: bool = False) -> float:
     """Median height of letter-sized connected components — an x-height proxy.
 
     Lowercase letters without ascenders are the most numerous components on
     a page of prose, so the median height of components that are neither
     specks nor lines lands on the x-height or just above it.
+
+    OCR_UI ciclo 2, B11: the size cap is **physical** (``LETTER_MAX_INCHES``
+    at ``dpi``), not 5 % of the image.  With the relative cap a paragraph
+    rendered on its own (382 px tall) kept only components up to 19 px, the
+    letters fell out, and the median of what remained -- dots and commas --
+    read 5 px: the item was routed as "small print", upscaled and handed to
+    the second engine, which the product never does with a full page (the
+    same paragraph on a 3 300 px sheet reads 20 px).  ``relative=True`` is
+    the old rule, kept as the sabotage of the gate.
     """
     binary = (gray <= otsu_threshold(gray)).astype(np.uint8)
     count, _, stats, _ = cv2.connectedComponentsWithStats(binary, 8)
@@ -114,7 +129,11 @@ def _xheight_px(gray: Image) -> float:
     heights = stats[1:, cv2.CC_STAT_HEIGHT]
     widths = stats[1:, cv2.CC_STAT_WIDTH]
     h, w = gray.shape[:2]
-    keep = (heights >= 4) & (heights <= 0.05 * h) & (widths <= 0.05 * w) & (widths >= 2)
+    if relative:
+        cap_h, cap_w = 0.05 * h, 0.05 * w
+    else:
+        cap_h = cap_w = max(8.0, LETTER_MAX_INCHES * max(1, int(dpi)))
+    keep = (heights >= 4) & (heights <= cap_h) & (widths <= cap_w) & (widths >= 2)
     if keep.sum() < 20:
         return 0.0
     return float(np.median(heights[keep]))
@@ -153,9 +172,14 @@ def _bleed_share(gray: Image, dpi: int) -> float:
     return float((suspicious & ~near_ink).mean())
 
 
-def detect_signals(image: NDArray[Any], *, dpi: int = 300) -> PageSignals:
-    """Measure the page once.  Pure: the image is not modified."""
+def detect_signals(image: NDArray[Any], *, dpi: int = 300,
+                   config: PortfolioConfig | None = None) -> PageSignals:
+    """Measure the page once.  Pure: the image is not modified.
+
+    ``config`` only carries :attr:`PortfolioConfig.xheight_relative` here (B11).
+    """
     gray = to_gray(image)
+    relative = bool(config.xheight_relative) if config is not None else False
     levels = np.unique(gray)
     is_binary = levels.size <= 2
     skew, _ = estimate_skew_angle(gray)
@@ -176,7 +200,7 @@ def detect_signals(image: NDArray[Any], *, dpi: int = 300) -> PageSignals:
         shadow_spread=float(spread),
         bleed_share=_bleed_share(gray, dpi) if not is_binary else 0.0,
         noise_sigma=_noise_sigma(gray) if not is_binary else 0.0,
-        xheight_px=_xheight_px(gray),
+        xheight_px=_xheight_px(gray, dpi, relative=relative),
         curl_amplitude_px=curl_amp,
         curl_consistency=curl_cons,
         ink_fraction=ink_fraction,
@@ -327,6 +351,10 @@ class PortfolioConfig:
     #: Skew worth correcting, in degrees.  Deskew's own floor is 0.15°; the
     #: portfolio asks for more because a variant costs an engine run.
     min_skew_deg: float = 0.30
+    #: B11 sabotage: measure the x-height with the old cap of 5 % of the image
+    #: height instead of the physical ``LETTER_MAX_INCHES``.  ``SOL_CONFIG=
+    #: '{"portfolio": {"xheight_relative": true}}'`` is the before.
+    xheight_relative: bool = False
     #: Background spread (grey levels between the 5th and 95th percentile of
     #: the estimated illumination) that counts as a shadow.
     min_shadow_spread: float = 25.0
@@ -465,7 +493,7 @@ def build_portfolio(image: NDArray[Any], *, dpi: int = 300,
 
     cfg = config or PortfolioConfig()
     gray = to_gray(image)
-    signals = signals or detect_signals(gray, dpi=dpi)
+    signals = signals or detect_signals(gray, dpi=dpi, config=cfg)
     notes: list[str] = []
     variants: list[Variant] = [Variant(name="original", image=gray, dpi=int(dpi))]
     plans: list[tuple[str, list[Any], list[str]]] = []

@@ -1181,10 +1181,14 @@ def auditar(
     # `_medir_os_dialogos`: por onze ciclos este portão publicou `0 sem nome` sobre a janela
     # principal e nunca abriu um dos doze `QDialog` do produto.
     dialogos = _medir_os_dialogos(janela, aplicacao)
+    # C14 do ciclo 2: o tabuleiro fala ao leitor de tela -- o nome acessível diz a casa
+    # selecionada. Medido na janela de verdade, com o gesto que a fila e o recorte fazem.
+    tabuleiro = _medir_o_tabuleiro(janela, aplicacao)
     _descartar(janela, aplicacao)
 
     return {
-        "portao": "SPEC 10.6/11.3 -- navegação inteira por teclado, nome e papel em todo controle",
+        "portao": "SPEC 10.6/11.3 -- navegação inteira por teclado, nome e papel em todo controle; "
+                  "C14: o tabuleiro anuncia a casa selecionada",
         "quando": datetime.now(UTC).isoformat(timespec="seconds"),
         "ambiente": {
             "qt": QT_VERSION_STR,
@@ -1217,7 +1221,40 @@ def auditar(
         "abas": [_como_json(aba) for aba in abas],
         "dialogos": [_como_json(aba) for aba in dialogos],
         "dialogos_do_produto": dialogos_registrados(caminho_do_tronco),
-        "veredito": veredito([*abas, *dialogos]),
+        "tabuleiro": tabuleiro,
+        "veredito": veredito([*abas, *dialogos]) if tabuleiro.get("anuncia_a_casa", True) else "REPROVOU",
+    }
+
+
+SABOTAGEM_DO_ANUNCIO = "CAISSA_SABOTAR_ANUNCIO"
+"""`1` cala o `_anunciar` do tabuleiro antes de a janela nascer: a sabotagem do C14, que tem de
+fazer este portão reprovar."""
+
+
+def _medir_o_tabuleiro(janela: Any, aplicacao: Any) -> dict[str, Any]:
+    """Seleciona uma casa no tabuleiro editável e lê o nome acessível (C14)."""
+    painel = getattr(janela, "painel", None)
+    tabuleiro = getattr(painel, "tabuleiro", None)
+    if tabuleiro is None:
+        return {"medido": False, "motivo": "a janela não tem tabuleiro editável"}
+    if os.environ.get(SABOTAGEM_DO_ANUNCIO, "").strip() == "1":
+        tabuleiro._anunciar = lambda: None  # noqa: SLF001 - a sabotagem, declarada no JSON
+    antes = str(tabuleiro.accessibleName() or "")
+    try:
+        tabuleiro.mostrar("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+        tabuleiro.selecionar_casa(52)  # e2, um peão branco
+        for _ in range(2):
+            aplicacao.processEvents()
+        nome = str(tabuleiro.accessibleName() or "")
+    except Exception as exc:  # noqa: BLE001 - o portão diz o que falhou, não cai
+        return {"medido": True, "anuncia_a_casa": False, "motivo": f"{exc}"}
+    return {
+        "medido": True,
+        "sabotagem": os.environ.get(SABOTAGEM_DO_ANUNCIO, "").strip() == "1",
+        "nome_antes": antes,
+        "nome_depois": nome,
+        "anuncia_a_casa": "e2" in nome and "selecionada" in nome,
+        "diz_a_peca": "peão branco" in nome,
     }
 
 

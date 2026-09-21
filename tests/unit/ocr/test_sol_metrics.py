@@ -244,6 +244,15 @@ def test_summary_reads_the_rows_it_is_given():
     assert s["controls"] == 1
     assert s["control_false_positives"] == 0
     assert s["move_accuracy"] == 1.0
+    # B11 (ciclo 2): the abstention is not CER 0 -- over the three measured items it costs
+    # the whole page, and the mean says so; the withheld text is reported when it exists.
+    assert s["cer_all_mean"] == pytest.approx((0.0 + 0.02 + 1.0) / 3)
+    assert s["cer_withheld_mean"] is None
+    assert s["withheld_with_text"] == 0
+    rows[2]["cer_withheld"] = 0.3
+    again = summarise_rows(rows)
+    assert again["cer_withheld_mean"] == pytest.approx(0.3)
+    assert again["withheld_with_text"] == 1
 
 
 def test_gates_block_on_each_target_and_on_a_control_false_positive():

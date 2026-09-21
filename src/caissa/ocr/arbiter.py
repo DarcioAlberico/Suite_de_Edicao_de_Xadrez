@@ -277,6 +277,11 @@ class RegionTask:
     clip: BBox | None = None
     #: PDF points to image pixels, i.e. ``dpi / 72``.
     scale: float = 1.0
+    #: OCR_UI ciclo 2, B12: the resolution of ``image`` as rendered -- the
+    #: variant's, not the page's, when the portfolio upscaled it.  An engine
+    #: that takes a resolution hint (``with_dpi``) gets it; ``None`` lets each
+    #: engine's own default stand.
+    dpi: float | None = None
     region_id: str = ""
     #: A verdict already computed for this region, handed to a level-0 engine
     #: that accepts one.  The page runner supplies it so that a region too
@@ -538,6 +543,12 @@ class Arbiter:
                 scale=task.scale, psm_hint=task.region_kind, **extra)
             return page_result
         assert task.image is not None
+        with_dpi = getattr(engine, "with_dpi", None)
+        if task.dpi and callable(with_dpi):
+            # B12: the engine is told the resolution it is really looking at.
+            with with_dpi(task.dpi):
+                return engine.recognize(task.image, lang=task.lang,
+                                        psm_hint=task.region_kind)
         return engine.recognize(task.image, lang=task.lang,
                                 psm_hint=task.region_kind)
 

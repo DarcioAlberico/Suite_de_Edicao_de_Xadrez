@@ -42,6 +42,9 @@ pays for it.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
+
 import html
 import os
 import re
@@ -700,8 +703,9 @@ class TesseractEngine(OcrEngineBase):
                "-l", lang, "--psm", str(psm), "--oem", str(self.config.oem)]
         if self.config.tessdata_dir:
             cmd += ["--tessdata-dir", os.path.abspath(self.config.tessdata_dir)]
-        if self.config.dpi:
-            cmd += ["--dpi", str(int(self.config.dpi))]
+        dpi = self._effective_dpi()
+        if dpi:
+            cmd += ["--dpi", str(dpi)]
         if self.config.want_char_boxes:
             cmd += ["-c", "hocr_char_boxes=1"]
         params = dict(self.config.extra_config)
@@ -720,6 +724,28 @@ class TesseractEngine(OcrEngineBase):
         if self.config.box_file_fallback is not None:
             return self.config.box_file_fallback
         return self._box_fallback_armed
+
+    @contextlib.contextmanager
+    def with_dpi(self, dpi: float) -> Iterator[None]:
+        """Recognise at ``dpi`` for the duration of the block (OCR_UI ciclo 2, B12).
+
+        The portfolio's upscale variant hands the engine a 450 DPI image while
+        ``config.dpi`` says 300: Tesseract's font-size estimate is off by 1,5×
+        and its line segmentation pays for it.  Thread-local, like the forced
+        profile, so two pages read in parallel do not swap resolutions.
+        """
+        previous = getattr(self._forced, "dpi", None)
+        self._forced.dpi = int(round(float(dpi))) if dpi else None
+        try:
+            yield
+        finally:
+            self._forced.dpi = previous
+
+    def _effective_dpi(self) -> int | None:
+        forced = getattr(self._forced, "dpi", None)
+        if forced:
+            return int(forced)
+        return int(self.config.dpi) if self.config.dpi else None
 
     def recognize_with_profile(self, image: NDArray[np.uint8], *, lang: str,
                                psm_hint: RegionKind,
@@ -767,8 +793,9 @@ class TesseractEngine(OcrEngineBase):
             out_base = tmp_path / "out"
             pil = Image.fromarray(gray)
             save_kwargs: dict[str, object] = {}
-            if self.config.dpi:
-                save_kwargs["dpi"] = (int(self.config.dpi), int(self.config.dpi))
+            dpi = self._effective_dpi()
+            if dpi:
+                save_kwargs["dpi"] = (dpi, dpi)
             pil.save(image_path, format="PNG", **save_kwargs)
 
             cmd = self._build_command(image_path, out_base,

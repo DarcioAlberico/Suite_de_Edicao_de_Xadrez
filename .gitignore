@@ -36,6 +36,9 @@ models/
 *.gguf
 *.bin
 
+# --- Validadores de terceiros instalados na maquina (tools/instalar_epubcheck.py) --- #
+tools/epubcheck-*/
+
 # --- Relatorios e saidas geradas -------------------------------------------- #
 benchmarks/reports/
 benchmarks/corpus/**/derived/

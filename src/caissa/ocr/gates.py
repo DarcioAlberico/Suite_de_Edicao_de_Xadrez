@@ -116,6 +116,10 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
     measured = [r for r in rows if not r.get("control")]
     answered = _answered(measured)
     cers = [float(r["cer"]) for r in answered]
+    # B11: the CER over **every** measured item, an abstention costing the whole page (1,0);
+    # and the CER of the text the service withheld, over the abstained items that had any.
+    cers_all = [float(r.get("cer_all", r["cer"] if r.get("answered") else 1.0)) for r in measured]
+    cers_withheld = [float(r["cer_withheld"]) for r in measured if r.get("cer_withheld") is not None]
     truth_moves = sum(int(r.get("moves_truth", 0)) for r in answered)
     kept = sum(int(r.get("moves_kept", 0)) for r in answered)
     invented = sum(int(r.get("moves_invented", 0)) for r in answered)
@@ -143,6 +147,9 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
         "cer_mean": round(cer_mean, 5),
         "cer_ci": [round(cer_lo, 5), round(cer_hi, 5)],
         "cer_median": round(sorted(cers)[len(cers) // 2], 5) if cers else 0.0,
+        "cer_all_mean": round(mean(cers_all), 5) if cers_all else 0.0,
+        "cer_withheld_mean": round(mean(cers_withheld), 5) if cers_withheld else None,
+        "withheld_with_text": len(cers_withheld),
         "wer_mean": round(mean(float(r.get("wer", 0.0)) for r in answered), 5),
         "line_exact_mean": round(mean(float(r.get("line_exact", 0.0)) for r in answered), 4),
         "moves_truth": truth_moves,

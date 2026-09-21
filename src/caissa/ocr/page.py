@@ -107,6 +107,10 @@ class PageConfig:
     #: OCR.  Off, a rejected page goes to OCR whole, as before Sol.  A page
     #: with no text at all is whole-page OCR either way.
     localized_level0: bool = True
+    #: OCR_UI ciclo 2, B12: hand each engine the resolution of the image it
+    #: reads (``RegionTask.dpi``); ``False`` is the before.  The service keeps
+    #: it in step with ``OcrServiceConfig.variant_dpi``.
+    variant_dpi: bool = True
     layout: LayoutConfig = field(default_factory=LayoutConfig)
     arbiter: ArbiterConfig = field(default_factory=ArbiterConfig)
     #: OCR_UI_ROADMAP_C2 passo B1: a page with no text layer is laid out from
@@ -509,6 +513,7 @@ class PageRecognizer:
             pdf_page=task.pdf_page,
             clip=box,
             scale=task.scale,
+            dpi=float(task.dpi) if self.config.variant_dpi else None,
             region_id=f"p{task.page_index}r{region.reading_order}",
             verdict=verdict,
         ))
@@ -621,6 +626,7 @@ class PageRecognizer:
             pdf_page=task.pdf_page,
             clip=None,
             scale=task.scale,
+            dpi=float(task.dpi) if self.config.variant_dpi else None,
             region_id=f"p{task.page_index}",
         ))
         outcome = RegionOutcome(region=region, outcome=arbitration,
@@ -772,6 +778,7 @@ class PageRecognizer:
         arbitration = self.arbiter.run(RegionTask(
             image=crop, region_kind=region.kind, lang=task.lang, pdf_page=None,
             clip=None, scale=task.scale,
+            dpi=float(task.dpi) if self.config.variant_dpi else None,
             region_id=f"p{task.page_index}r{region.reading_order}"))
         return RegionOutcome(region=region, outcome=arbitration,
                              result=self._to_page_space(arbitration.result, origin),

@@ -109,6 +109,10 @@ class OcrServiceConfig:
     #: the original render.
     use_portfolio: bool = True
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
+    #: OCR_UI ciclo 2, B12: an engine reading a portfolio variant is told the
+    #: variant's resolution (the upscale is 450 DPI, not the 300 the engine
+    #: assumed).  ``False`` is the before -- ``SOL_CONFIG='{"variant_dpi": false}'``.
+    variant_dpi: bool = True
     #: OCR_UI_ROADMAP_C2 passo B8: on a page whose show-through crosses
     #: ``portfolio.min_bleed_share``, the bleed step gets the *real* verso —
     #: the neighbouring page of the PDF (either side of the sheet is tried),
@@ -584,8 +588,12 @@ class OcrService:
     def recognizer_for(self, lang: str, *, secondary: bool = True) -> PageRecognizer:
         key = f"{lang}|{'+' if secondary else '-'}"
         if key not in self._recognizers:
+            from dataclasses import replace
+
+            # B12: one switch for the page reads and the variant reads.
+            page_config = replace(self.config.page, variant_dpi=self.config.variant_dpi)
             self._recognizers[key] = PageRecognizer(
-                self.engines_for(lang, secondary=secondary), self.config.page, self.log)
+                self.engines_for(lang, secondary=secondary), page_config, self.log)
         return self._recognizers[key]
 
     def _wants_secondary(self, image: NDArray[np.uint8], dpi: int,
@@ -598,7 +606,7 @@ class OcrService:
             return True, None
         from caissa.ocr.portfolio import degradation_reasons, detect_signals
 
-        signals = detect_signals(image, dpi=dpi)
+        signals = detect_signals(image, dpi=dpi, config=cfg.portfolio)
         reasons = degradation_reasons(signals, dpi=dpi, config=cfg.portfolio)
         if reasons:
             notes.append("motor secundário nesta página: " + ", ".join(reasons))
@@ -966,6 +974,7 @@ class OcrService:
         arbitration = recognizer.arbiter.run(RegionTask(
             image=crop, region_kind=region.kind, lang=task.lang, pdf_page=None,
             scale=task.scale, region_id=f"p{task.page_index}r{region.reading_order}@{variant.name}",
+            dpi=float(variant.dpi) if self.config.variant_dpi else None,
         ))
         if arbitration.decision is None:
             return None

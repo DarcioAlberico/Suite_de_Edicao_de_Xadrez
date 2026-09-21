@@ -128,9 +128,33 @@ def _slice(report: Any) -> dict[str, Any]:
         "next_move_replayed", "next_move_repaired", "next_move_repaired_exact",
         "next_move_repaired_wrong", "next_move_ambiguous", "colour_repaired",
         "colour_repaired_squares", "colour_repaired_exact", "colour_repaired_wrong",
+        "stipulation_checked", "stipulation_closed", "stipulation_failed", "stipulation_unverified",
+        "stipulation_repaired", "stipulation_repaired_exact", "stipulation_repaired_wrong",
+        "stipulation_ambiguous", "stipulation_truth_checked", "stipulation_truth_closes",
+        "stipulation_truth_failed", "contaminated", "contaminated_exported",
+        "contaminated_exported_comparable", "contaminated_exported_exact",
+        "clean_exported_comparable", "field_exact_clean",
         "seconds", "seconds_per_diagram",
     )
     return {key: data[key] for key in keep if key in data}
+
+
+def _stipulation_engine(motor: str | None) -> Any:
+    """The engine resolver for ``RecognitionOptions.stipulation_engine`` (C12): ``None`` keeps the
+    trunk's default (settings + ``find_engine``), ``"nenhum"`` never opens a process, a path opens
+    that binary once for the whole measurement."""
+    if motor is None:
+        return None
+    if motor.strip().lower() in ("nenhum", "none", ""):
+        return lambda: None
+    from chess_diagram_ocr.engine import EngineAnalyzer
+    from chess_diagram_ocr.estipulacao import registrar_fecho
+
+    analyzer = EngineAnalyzer(Path(motor), threads=1)
+    # The UCI process has a reader thread that is not a daemon: without a close that runs
+    # *before* the interpreter joins its threads, the measurement hangs after printing.
+    registrar_fecho(analyzer)
+    return lambda: analyzer
 
 
 def _profile_calibrator(path: Path | None, sabotage: str = "") -> Any:
@@ -160,8 +184,12 @@ def _profile_calibrator(path: Path | None, sabotage: str = "") -> Any:
 def _sabotage(name: str):
     """C11 sabotage ``lance_vizinho``: every diagram of a page gets the *next* diagram's line
     of moves (cyclic); a page with one diagram keeps its own.  A next-move signal that still
-    repairs under this feeds on coincidence, and the gate must say so."""
-    if name != "lance_vizinho":
+    repairs under this feeds on coincidence, and the gate must say so.
+
+    C12 sabotage ``estipulacao_vizinha``: the same rotation for the printed demand -- but the
+    demand of a problem page is usually the page's (``#2`` for all six), so the rotation
+    only bites where captions differ; the report says how many it moved."""
+    if name not in ("lance_vizinho", "estipulacao_vizinha"):
         yield
         return
     import dataclasses
@@ -174,6 +202,13 @@ def _sabotage(name: str):
         contexts = list(original(*args, **kwargs))
         if len(contexts) < 2:
             return contexts
+        if name == "estipulacao_vizinha":
+            demands = [getattr(c, "stipulation", None) if c is not None else None for c in contexts]
+            return [
+                None if context is None
+                else dataclasses.replace(context, stipulation=demands[(index + 1) % len(contexts)])
+                for index, context in enumerate(contexts)
+            ]
         lines = [getattr(c, "first_moves_text", "") if c is not None else "" for c in contexts]
         numbers = [getattr(c, "first_move_number", None) if c is not None else None for c in contexts]
         out = []
@@ -193,13 +228,27 @@ def _sabotage(name: str):
         trunk_service.contexts_for_pdf_page = original
 
 
+def _training_pages(root: Path) -> dict[tuple[str, int], int]:
+    """C15: the pages with a `train` sample, the way the trunk's `cvoff-field` computes them
+    (`labels.pages_with_training_samples`).  Without this the report published
+    `contaminated 0` for a field set that has training pages -- the clean number needs it."""
+    from chess_diagram_ocr.labels import LabelStore, pages_with_training_samples
+    from chess_diagram_ocr.splits import load_splits
+
+    labels, splits = root / "data" / "labels.csv", root / "data" / "splits.csv"
+    if not labels.exists() or not splits.exists():
+        return {}
+    return pages_with_training_samples(LabelStore(labels).read(), load_splits(splits))
+
+
 def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path,
              sabotage: str = "") -> tuple[dict[str, Any], Any]:
     from chess_diagram_ocr.field_eval import evaluate_field
 
     started = time.perf_counter()
     with _variant(variant), _sabotage(sabotage):
-        report = evaluate_field(pages, options=options, pdf_dir=pdf_dir)
+        report = evaluate_field(pages, options=options, pdf_dir=pdf_dir,
+                                training_pages=_training_pages(pdf_dir.parent))
     elapsed = time.perf_counter() - started
     row = _slice(report)
     row["wall_s"] = round(elapsed, 3)
@@ -211,6 +260,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--variant", action="append", default=[],
                         choices=("baseline", "raw", "recall-pack", "recall-pack+refine"))
     parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--motor", default=None,
+                        help="C12: o binário UCI para mate em 3+ (padrão: as configurações do tronco e "
+                             "`engine.find_engine`; `nenhum` para nunca abrir um processo).")
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--max-boards", type=int, default=12)
     parser.add_argument("--model", type=Path, default=None, help="Checkpoint under test; default is production.")
@@ -218,9 +270,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tag", default="")
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "benchmarks" / "reports")
     parser.add_argument("--sabotar", default="", choices=("", "sem_lance", "lance_vizinho", "sem_cor",
-                                                            "cor_trocada", "sem_evidencia"),
+                                                            "cor_trocada", "sem_evidencia",
+                                                            "sem_estipulacao", "estipulacao_vizinha"),
                         help="C11: sem_lance desliga o lance seguinte (RecognitionOptions.next_move); "
                              "lance_vizinho dá a cada diagrama a linha de lances do diagrama vizinho. "
+                             "C12: sem_estipulacao desliga a exigência (RecognitionOptions.stipulation); "
+                             "estipulacao_vizinha dá a cada diagrama a exigência do vizinho. "
                              "C5: sem_cor desliga o calibrador de cor; cor_trocada troca as amostras "
                              "brancas pelas pretas no perfil do livro (os protótipos embaralhados). "
                              "sem_evidencia desliga os dois (o antes da fase 3).")
@@ -257,6 +312,10 @@ def main(argv: list[str] | None = None) -> int:
             next_move=args.sabotar not in ("sem_lance", "sem_evidencia"),
             colour=args.sabotar not in ("sem_cor", "sem_evidencia"),
             colour_calibrator=_profile_calibrator(args.perfil, args.sabotar),
+            # C12: a exigência; `sem_evidencia` continua sendo «o antes da fase 3», e a fase 4
+            # desliga a sua com o interruptor próprio.
+            stipulation=args.sabotar not in ("sem_estipulacao", "sem_evidencia"),
+            stipulation_engine=_stipulation_engine(args.motor),
         )
         for ruler, pages, hit in rulers:
             runs = []
@@ -297,14 +356,27 @@ def main(argv: list[str] | None = None) -> int:
         encoding="utf-8",
     )
 
-    header = f"{'variant':<20}{'ruler':<14}{'recall':>8}{'prec':>7}{'exp':>6}{'cmp':>5}{'ok':>5}{'field_exact':>13}{'s/diag':>9}"
+    header = (f"{'variant':<20}{'ruler':<14}{'recall':>8}{'prec':>7}{'exp':>6}{'cmp':>5}{'ok':>5}"
+              f"{'field_exact':>13}{'clean':>8}{'n_clean':>8}{'s/diag':>9}")
     print("\n" + header)
     print("-" * len(header))
     for row in results:
+        # C15: o número limpo (páginas sem amostra de treino) ao lado do cheio, sempre.
         print(f"{row['variant']:<20}{row['ruler']:<14}{row['detection_recall']:>8.4f}{row['detection_precision']:>7.4f}"
               f"{row['exported']:>6}{row['exported_comparable']:>5}{row['exported_exact']:>5}"
-              f"{row['field_exact']:>13.4f}{row['seconds_per_diagram']:>9.4f}")
+              f"{row['field_exact']:>13.4f}{row.get('field_exact_clean', 0.0):>8.4f}"
+              f"{row.get('clean_exported_comparable', 0):>8}{row['seconds_per_diagram']:>9.4f}")
 
+    c12 = results[-1]
+    print(
+        f"\nC12 estipulação: checked {c12.get('stipulation_checked', 0)} · closed {c12.get('stipulation_closed', 0)}"
+        f" · failed {c12.get('stipulation_failed', 0)} · unverified {c12.get('stipulation_unverified', 0)}"
+        f" · repaired {c12.get('stipulation_repaired', 0)} (exact {c12.get('stipulation_repaired_exact', 0)},"
+        f" wrong {c12.get('stipulation_repaired_wrong', 0)}) · ambiguous {c12.get('stipulation_ambiguous', 0)}"
+        f" · truth closes {c12.get('stipulation_truth_closes', 0)}/{c12.get('stipulation_truth_checked', 0)}"
+    )
+    for item in c12.get("stipulation_truth_failed", []) or []:
+        print("  verdade que não fecha: " + item)
     print("\nper stratum (regime), last variant/ruler shown above:")
     last = results[-1]
     for name, part in last["per_regime"].items():

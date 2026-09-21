@@ -195,7 +195,11 @@ O material de referência sai deste mesmo acervo:
 
 1. **Mediana de no mínimo 3 execuções.** Uma execução não é medição.
 2. **Sempre nomeie o estrato.** "99 % de acurácia" sem estrato não significa nada.
-3. **Nunca meça no conjunto de treino.** `splits.csv` existe para isso.
+3. **Nunca meça no conjunto de treino.** `splits.csv` existe para isso. E o inverso
+   (OCR_UI ciclo 2, C6/C15): **o campo mede, nunca alimenta** — um rótulo tirado de uma
+   página do `field_set.jsonl` vai para `test`, nunca para `train` (`training.pin_field_pages`,
+   com o aviso no log), e o `field_exact` publica o número **limpo** (páginas sem amostra de
+   treino, `field_exact_clean`) ao lado do cheio: a diferença é o viés, medido e não estimado.
 4. **Reporte o pior estrato, não só a média.** A média esconde o `Euwe Band 1-2`.
 5. **Verifique antes se já foi medido.** `docs/ASSETS.md` §2.14 lista otimizações já
    testadas e rejeitadas (TTA, temperatura calibrada). Não as redescubra.

@@ -103,6 +103,10 @@ class Percurso:
     trilho: dict[str, Any] = field(default_factory=dict)
     """C8: o trilho aprende -- `aprendeu` (quando há ≥ 2 duvidosas) exige que a página gravada
     saia da conta de dúvidas; `None` quando o livro não tinha uma segunda duvidosa."""
+    epubcheck: dict[str, Any] = field(default_factory=dict)
+    """A12: o EPUB exportado validado pelo EPUBCheck -- `ok` exige `erros == 0` **medido**; o
+    validador ausente ou que não rodou é `ok=False`, dito em `motivo`. Um portão declarado que
+    não roda não passa."""
 
     def passou(self) -> bool:
         return (
@@ -114,6 +118,7 @@ class Percurso:
             and bool(self.decisao.get("ok"))
             and bool(self.conteudo.get("ok"))
             and self.trilho.get("aprendeu") is not False
+            and bool(self.epubcheck.get("ok"))
         )
 
 
@@ -531,6 +536,9 @@ def medir(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
                 "imagens_no_epub": imagens,
                 "ok": bool(com_a_fen) and imagens >= 1,
             }
+            # A12: o «0 erros» da SPEC §11.3 medido sobre o EPUB que a pessoa acabou de
+            # exportar, e não só sobre o corpus sintético dos testes.
+            percurso.epubcheck = _epubcheck_do_epub(destino, sabotar)
 
     janela.close()
     janela.deleteLater()
@@ -542,6 +550,30 @@ def medir(  # noqa: PLR0915, PLR0912 - um percurso, do começo ao fim
         os.environ[ENV_ROOT] = raiz_anterior
     temporaria.cleanup()
     return _relatorio(pdf, paginas, percurso, sabotar)
+
+
+def _epubcheck_do_epub(caminho: Path, sabotar: str = "") -> dict[str, Any]:
+    """O EPUBCheck sobre o EPUB exportado (A12): erros contados pelo validador, ou o motivo de
+    não ter rodado. `--sabotar sem_epubcheck` finge que o jar não existe -- o portão reprova."""
+    from caissa.export.epubcheck import find_epubcheck_jar, java_available, run_epubcheck
+
+    jar = None if sabotar == "sem_epubcheck" else find_epubcheck_jar()
+    if jar is None:
+        return {"ok": False, "erros": None, "motivo": "EPUBCheck não rodou: jar ausente "
+                "(tools/instalar_epubcheck.py ou CAISSA_EPUBCHECK)"}
+    if not java_available():
+        return {"ok": False, "erros": None, "motivo": "EPUBCheck não rodou: sem Java"}
+    try:
+        resultado = run_epubcheck(jar, caminho)
+    except Exception as exc:  # noqa: BLE001 - o validador que não roda é reprovação com motivo
+        return {"ok": False, "erros": None, "motivo": f"EPUBCheck não rodou: {exc}"}
+    return {
+        "ok": resultado.ok,
+        "erros": resultado.errors,
+        "avisos": resultado.warnings,
+        "jar": str(jar),
+        "motivo": "" if resultado.ok else resultado.output[-1500:],
+    }
 
 
 def _imagens_do_epub(caminho: Path) -> int:
@@ -1053,7 +1085,7 @@ def _relatorio(pdf: Path, paginas: str, percurso: Percurso, sabotar: str = "") -
             "OCR_UI passo 17 -- abrir → primeira duvidosa → corrigir → exportar em <= "
             f"{TETO_DE_ACOES} acoes; cancelar a 30 % devolve 30 % das paginas; "
             "C2 A2: diagramas >= 1 na importacao; C2 A3: decisao gravada (FEN != lida) e o "
-            "EPUB traz o Diagram corrigido"
+            "EPUB traz o Diagram corrigido; C2 A12: EPUBCheck 0 erros sobre o EPUB exportado"
         ),
         "quando": datetime.now(UTC).isoformat(timespec="seconds"),
         "amostra": {"pdf": str(pdf), "paginas": paginas},
@@ -1064,6 +1096,7 @@ def _relatorio(pdf: Path, paginas: str, percurso: Percurso, sabotar: str = "") -
         "decisao": percurso.decisao,
         "trilho": percurso.trilho,
         "conteudo": percurso.conteudo,
+        "epubcheck": percurso.epubcheck,
         "exportado": percurso.exportado,
         "notas": percurso.notas,
         "veredito": "PASSOU" if percurso.passou() else "REPROVOU",
@@ -1092,10 +1125,12 @@ def tabela(relatorio: dict[str, Any]) -> str:
         ("decisao", "decisao gravada (A3)"),
         ("conteudo", "conteudo do EPUB (A3)"),
         ("trilho", "o trilho aprende (C8)"),
+        ("epubcheck", "EPUBCheck sobre o exportado (A12)"),
     ):
         valores = relatorio.get(chave) or {}
         if valores:
-            linhas.append(f"  {titulo}: " + ", ".join(f"{k}={v}" for k, v in valores.items()))
+            linhas.append(f"  {titulo}: " + ", ".join(
+                f"{k}={str(v)[:200]}" for k, v in valores.items()))
     if relatorio.get("sabotagem"):
         linhas.append(f"  sabotagem: {relatorio['sabotagem']}")
     if relatorio["exportado"]:
@@ -1123,10 +1158,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--sabotar",
         choices=("", "sem_sincronia", "sem_decisao", "sem_raster", "sem_gancho",
-                 "sem_teclado", "sem_aquecimento", "sem_cancelamento"),
+                 "sem_teclado", "sem_aquecimento", "sem_cancelamento", "sem_epubcheck"),
         default="",
         help="[casa] sem_sincronia, sem_teclado (--teclado), sem_aquecimento (--frio), "
-             "sem_cancelamento (--cancelar); [livro] sem_decisao (exporta sem aplicar), sem_raster",
+             "sem_cancelamento (--cancelar); [livro] sem_decisao (exporta sem aplicar), sem_raster, "
+             "sem_epubcheck (A12: o validador «ausente» -- o portão reprova)",
     )
     parser.add_argument("--teclado", action="store_true", help="[casa] a correção só pelo teclado (C8)")
     parser.add_argument("--frio", action="store_true", help="[casa] clique em Ler → primeiro diagrama (C2)")
