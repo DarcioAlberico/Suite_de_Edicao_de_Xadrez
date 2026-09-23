@@ -37,6 +37,7 @@ que fica **à vista** (nenhum controle fora da vista sem barra, nenhum espremido
 rodapé legível com a linha cheia), no mínimo e a 1366×728, com quatro sabotagens (`rodape`,
 `corte`, `mensagem`, `aperto`). Grave a saída de cada corrida num arquivo, não num `| grep`: o
 filho órfão de uma pele que morreu segura o pipe. Ver `docs/quality/OCR_UI_REPORT_C2_FASE5.md`.
+**2026-09-23 (fase 5, ciclo 5 do crítico):** o portão do teclado (`caissa.ui.audit.teclado`) aperta a **tecla** de verdade (`QTest.keyClick`), com o Tab e de volta com o Shift+Tab, e reprova a área onde ela empaca (o foco não sai, ou a tecla escreve no controle) ou põe o foco num controle sem um pixel à vista — a cadeia do foco dizia «50/50» com o Tab preso num editor. Uma rolagem só segue o foco que anda dentro dela: o conteúdo de uma rolagem que o Tab alcança de fora usa `caissa.ui.widgets.foco_a_vista.RolagemSegueOFoco`. O portão da janela assenta a linha do arnês nas duas passadas e tem a sexta sabotagem, `linha`. No árbitro, a concordância entre os motores é medida na ordem em que cada um leu (`arbiter._engine_order`: o B13 move as linhas de uma leitura sem decidir quem ganha); e a página diz o motor que falhou (`OcrEngineBase` marca a leitura vazia `failed`: o RapidOCR roda no processo e, sem memória, falha na alocação).
 
 > **Um teste instável, ainda não diagnosticado (2026-09-10).**
 > `tests/unit/model/test_ids.py::test_a_fresh_id_carries_roughly_the_current_time`

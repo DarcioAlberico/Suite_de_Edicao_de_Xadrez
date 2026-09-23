@@ -1,0 +1,969 @@
+{
+  "gerado_em": "2026-09-23T23:34:53+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "aperto",
+  "suite": {
+    "caminho": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez",
+    "commit": "b6978ec9ea325a0b9e50b7dd87899177835c26cd",
+    "fora_do_commit": []
+  },
+  "tronco": {
+    "caminho": "C:\\Python-Chess2\\_f5c4_tronco",
+    "commit": "7a78367aee4ba73da4c2744155033daa70d61fcd",
+    "fora_do_commit": []
+  },
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            895,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 44,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 18,
+          "linha_reposta": 1,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 353,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 353,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 471,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 471,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            895,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 44,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 25,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 353,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 353,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 471,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 471,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 82
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            883,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ],
+          "alcancaveis_pela_barra": 66,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ],
+          "alcancaveis_pela_barra": 34,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 363,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 76
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 363,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 76
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 483,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 76
+                }
+              ]
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 483,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": [
+                {
+                  "tipo": "QPushButton",
+                  "texto": "Mensagens",
+                  "cadeia": "RodapeDaJanela < QWidget",
+                  "largura": 1,
+                  "minimo": 76
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    }
+  ],
+  "passou": false
+}
