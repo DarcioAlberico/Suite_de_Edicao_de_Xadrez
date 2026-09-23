@@ -1,0 +1,220 @@
+{
+  "gerado_em": "2026-09-23T07:45:52+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "rodape",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2206,
+        606
+      ],
+      "ficou": [
+        2206,
+        606
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            848,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            775,
+            135
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            412,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "cabe": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2206,
+        640
+      ],
+      "ficou": [
+        2206,
+        640
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            848,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            775,
+            135
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            412,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "cabe": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2194,
+        629
+      ],
+      "ficou": [
+        2194,
+        629
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            812,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            743,
+            113
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            426,
+            390
+          ],
+          "cadeia": "QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto < QStackedWidget",
+          "texto": ""
+        }
+      ],
+      "cabe": false
+    }
+  ],
+  "passou": false
+}

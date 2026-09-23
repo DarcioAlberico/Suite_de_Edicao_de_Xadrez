@@ -244,6 +244,7 @@ def test_summary_reads_the_rows_it_is_given():
     assert s["controls"] == 1
     assert s["control_false_positives"] == 0
     assert s["move_accuracy"] == 1.0
+    assert s["accepted_wrong"] == 0
     # B11 (ciclo 2): the abstention is not CER 0 -- over the three measured items it costs
     # the whole page, and the mean says so; the withheld text is reported when it exists.
     assert s["cer_all_mean"] == pytest.approx((0.0 + 0.02 + 1.0) / 3)
@@ -253,6 +254,13 @@ def test_summary_reads_the_rows_it_is_given():
     again = summarise_rows(rows)
     assert again["cer_withheld_mean"] == pytest.approx(0.3)
     assert again["withheld_with_text"] == 1
+
+
+def test_an_accepted_reading_that_lost_text_is_counted_and_a_reviewed_one_is_not():
+    """B14 (ciclo 2): «aceitos errados» -- aceitos com CER acima de 10 % -- por estrato."""
+    rows = [_row("photo", 0.786), _row("photo", 0.786, decision="review"), _row("photo", 0.10),
+            _row("photo", 0.004)]
+    assert summarise_rows(rows)["accepted_wrong"] == 1
 
 
 def test_gates_block_on_each_target_and_on_a_control_false_positive():

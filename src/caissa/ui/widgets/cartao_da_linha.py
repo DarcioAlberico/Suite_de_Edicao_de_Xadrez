@@ -32,6 +32,7 @@ from PyQt6.QtWidgets import (
 )
 
 from caissa.ui.theme import pele
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 from caissa.ocr.labeling.helpers import FIGURINE_KEYS, letters_to_figurines
 
 __all__ = ["CROP_HEIGHT_PX", "CROP_MAX_ZOOM", "CartaoDaLinha", "leitura_em_html", "pixmap_de"]
@@ -91,10 +92,11 @@ class CartaoDaLinha(QWidget):
         self.recorte.setMaximumHeight(CROP_HEIGHT_PX + 8)
         self.recorte.setAccessibleName("Recorte da linha atual")
         coluna.addWidget(self.recorte)
-        self.contexto = QLabel("", self)
+        # C18: a linha de contexto pedia 1.056 px de largura mínima; elidida, com o todo na dica.
+        self.contexto = RotuloQueEncolhe("", self)
         self.contexto.setStyleSheet(f"color:{pele.cor('cartao_contexto')};")
         coluna.addWidget(self.contexto)
-        coluna.addWidget(QLabel("Leitura do motor (palavras fracas em destaque):", self))
+        coluna.addWidget(RotuloQueEncolhe("Leitura do motor (palavras fracas em destaque):", self))
         self.leitura = QTextEdit(self)
         self.leitura.setReadOnly(True)
         self.leitura.setMaximumHeight(48)
@@ -112,7 +114,7 @@ class CartaoDaLinha(QWidget):
         self.motivo.setWordWrap(True)
         coluna.addWidget(self.motivo)
         coluna.addWidget(
-            QLabel("Verdade (Enter aceita · Ctrl+Enter grava a edição · Ctrl+R rejeita):", self)
+            RotuloQueEncolhe("Verdade (Enter aceita · Ctrl+Enter grava a edição · Ctrl+R rejeita):", self)
         )
         self.verdade = QPlainTextEdit(self)
         self.verdade.setMaximumHeight(60)

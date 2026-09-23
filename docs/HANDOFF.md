@@ -26,6 +26,13 @@ desempacota o zip da release ou a cópia que o Sigil deixa em `%TEMP%`; `caissa.
 é o locator/runner que os testes e o `percurso --fluxo livro` partilham). Na primeira corrida
 sobre o EPUB do produto ele achou 4 erros (`OPF-028`, prefixo `pdf:`) — corrigidos. Ver
 `docs/quality/OCR_UI_REPORT_C2_FASE4.md` §A12.
+**2026-09-23 (OCR/UI ciclo 2, fase 5, A15):** a suíte inteira com PyQt6 roda **com** o
+`tests/unit/ui/test_arquitetura.py` na mesma corrida (4.004 passaram, 9 pulados) — a afirmação
+«importar o arnês não traz um binding de Qt» é feita num processo novo por arnês. Dois
+interruptores novos no `OcrServiceConfig`: `table_rows` (B13, a tabela lida por linha) e
+`ink_coverage`/`min_ink_coverage` (B14, a leitura que não cobre a tinta não é aceita); toda
+corrida de A/B do `bench_sol` passa **os dois** pelo `SOL_CONFIG`. Portão novo do mínimo da
+janela: `caissa.ui.audit.minimo` (teto 1250×640). Ver `docs/quality/OCR_UI_REPORT_C2_FASE5.md`.
 
 > **Um teste instável, ainda não diagnosticado (2026-09-10).**
 > `tests/unit/model/test_ids.py::test_a_fresh_id_carries_roughly_the_current_time`

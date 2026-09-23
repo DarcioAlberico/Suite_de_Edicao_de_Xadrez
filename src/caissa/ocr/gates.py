@@ -58,6 +58,10 @@ class GateThresholds:
     dpi150_strata: tuple[str, ...] = ("scan_degraded_150",)
     #: Rows whose CER is at most this are "correct" for calibration purposes.
     correct_cer: float = 0.02
+    #: An **accepted** row whose CER is above this lost text and went into the book as if it
+    #: were whole -- the count B14 of the cycle 2 exists to bring down (30 in the phase 4
+    #: ``sol.json``: the photo that lost the end of every line, accepted at 0,87).
+    accepted_wrong_cer: float = 0.10
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +135,8 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
     reviews = [r for r in measured if r.get("decision") == "review"]
     abstained = [r for r in measured if r.get("decision") == "abstained"]
     silent = [r for r in answered if r.get("below_threshold") and r.get("decision") == "accepted"]
+    accepted_wrong = [r for r in answered if r.get("decision") == "accepted"
+                      and float(r["cer"]) > t.accepted_wrong_cer]
     control_hits = [r for r in controls if r.get("answered") and r.get("hypothesis_chars", 0)]
     reading_orders = [float(r["reading_order"]) for r in answered
                       if r.get("reading_order") is not None]
@@ -159,6 +165,7 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
         "move_accuracy": round(kept / truth_moves, 5) if truth_moves else 1.0,
         "insertion_rate": round(mean(insertions), 5),
         "silent_below_threshold": len(silent),
+        "accepted_wrong": len(accepted_wrong),
         "controls": len(controls),
         "control_false_positives": len(control_hits),
         "reading_order_mean": round(mean(reading_orders), 4) if reading_orders else None,

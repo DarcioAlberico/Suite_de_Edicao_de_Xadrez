@@ -114,6 +114,7 @@ from caissa.ocr.training import (
 from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
     "TITULO",
@@ -645,7 +646,8 @@ class PainelDeRotulagem(QWidget):
         corpo.setStretchFactor(1, 2)
         corpo.setSizes([560, 440])
 
-        self.status = QLabel("", self)
+        # C18: a linha de estado pedia 2.868 px de largura mínima (o texto inteiro).
+        self.status = RotuloQueEncolhe("", self)
         self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         raiz.addWidget(self.status)
 

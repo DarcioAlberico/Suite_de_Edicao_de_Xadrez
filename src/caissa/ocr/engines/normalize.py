@@ -16,7 +16,7 @@ from dataclasses import replace
 
 from caissa.ocr.types import OcrLine, OcrResult, OcrWord
 
-__all__ = ["LIGATURES", "fold_ligatures", "fold_result"]
+__all__ = ["LIGATURES", "fold_ligatures", "fold_result", "text_layer_flags"]
 
 LIGATURES: dict[str, str] = {
     "ﬀ": "ff",
@@ -60,3 +60,25 @@ def fold_result(result: OcrResult) -> OcrResult:
     if not changed:
         return result
     return replace(result, lines=tuple(lines))
+
+
+#: PyMuPDF's own default flags per extraction mode -- the ones ``page.get_text(mode)``
+#: uses when it is given none.
+_MODE_FLAGS = {"text": "TEXTFLAGS_TEXT", "dict": "TEXTFLAGS_DICT", "rawdict": "TEXTFLAGS_RAWDICT",
+               "words": "TEXTFLAGS_WORDS", "blocks": "TEXTFLAGS_BLOCKS"}
+
+
+def text_layer_flags(mode: str = "text") -> int:
+    """``page.get_text(mode)``'s default flags **without** ``TEXT_PRESERVE_LIGATURES`` (A14).
+
+    The engines' output folds at :func:`fold_result`; a PDF's text layer is read by
+    PyMuPDF, and MuPDF expands a ligature into its letters -- ``ﬁ`` into ``f`` and ``i``,
+    the box split between them -- when the flag is off.  The importer's extractor
+    (``ingest.pdf.textlayer._text_flags``) has always read that way; the level-0 engine,
+    the layout's page lines and the search index read with the defaults, and the Polgar
+    carried 19 ligatures into them (``OCR_UI_REPORT_C2_FASE5.md`` §A14).  Everything else
+    in the flags is the mode's default, so nothing but the ligatures changes.
+    """
+    import pymupdf
+
+    return int(getattr(pymupdf, _MODE_FLAGS[mode])) & ~int(pymupdf.TEXT_PRESERVE_LIGATURES)

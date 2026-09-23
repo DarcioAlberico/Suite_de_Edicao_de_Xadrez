@@ -1,0 +1,196 @@
+{
+  "gerado_em": "2026-09-23T07:45:39+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1248,
+        606
+      ],
+      "motores": [
+        {
+          "minimo": [
+            854,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            854,
+            135
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            412,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "cabe": true
+    },
+    {
+      "pele": "foco",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1248,
+        640
+      ],
+      "motores": [
+        {
+          "minimo": [
+            854,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            854,
+            135
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            412,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "cabe": true
+    },
+    {
+      "pele": "fita",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1246,
+        629
+      ],
+      "motores": [
+        {
+          "minimo": [
+            822,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            822,
+            113
+          ],
+          "cadeia": "PainelDeRevisaoDeTexto < QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            426,
+            390
+          ],
+          "cadeia": "QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto < QStackedWidget",
+          "texto": ""
+        }
+      ],
+      "cabe": true
+    }
+  ],
+  "passou": true
+}

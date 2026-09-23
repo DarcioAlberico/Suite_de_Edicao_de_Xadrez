@@ -31,11 +31,13 @@ from PyQt6.QtGui import QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -56,6 +58,7 @@ from caissa.ocr.review import (
     decisions_path,
 )
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
     "TITULO",
@@ -275,7 +278,16 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.table.itemSelectionChanged.connect(self._on_table_select)
         corpo.addWidget(self.table)
 
-        direita = QWidget(corpo)
+        # C18: o cartão numa rolagem vertical. Solto, ele punha esta aba em 501 px de altura -- a
+        # segunda mais alta da pilha de áreas, logo abaixo da Galeria do tronco (516 px, que é quem
+        # segura a pele Foco em 640, no teto do portão `caissa.ui.audit.minimo`). Na rolagem a aba
+        # pede 135 px: quando a Galeria deixar de decidir a altura, não será esta a decidir.
+        rolagem = QScrollArea(corpo)
+        rolagem.setWidgetResizable(True)
+        rolagem.setFrameShape(QFrame.Shape.NoFrame)
+        rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        rolagem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        direita = QWidget()
         dir_ = QVBoxLayout(direita)
         dir_.setContentsMargins(4, 0, 0, 0)
         self.cartao = CartaoDaLinha(direita, vazio=SEM_ITEM)
@@ -307,12 +319,13 @@ class PainelDeRevisaoDeTexto(QWidget):
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
         dir_.addLayout(botoes)
         dir_.addStretch(1)
-        corpo.addWidget(direita)
+        rolagem.setWidget(direita)
+        corpo.addWidget(rolagem)
         corpo.setStretchFactor(0, 2)
         corpo.setStretchFactor(1, 3)
         corpo.setSizes([440, 560])
 
-        self.status = QLabel("", self)
+        self.status = RotuloQueEncolhe("", self)   # C18
         self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         self.status.setAccessibleName("Estado da revisão")
         raiz.addWidget(self.status)

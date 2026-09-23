@@ -298,9 +298,9 @@ def markdown(report: dict[str, Any]) -> str:
         "",
         "## Resumo por estrato",
         "",
-        "| estrato | n | resp. | abst. | revisão | CER médio | IC 95% | CER c/ abst. | CER retido | WER | lances "
-        "| perdidos | inventados | ctrl FP | s/MP |",
-        "|---|--:|--:|--:|--:|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|",
+        "| estrato | n | resp. | abst. | revisão | aceitos errados | CER médio | IC 95% | CER c/ abst. | CER retido "
+        "| WER | lances | perdidos | inventados | ctrl FP | s/MP |",
+        "|---|--:|--:|--:|--:|--:|--:|---|--:|--:|--:|--:|--:|--:|--:|--:|",
     ]
     for name, s in report["summary"]["by_stratum"].items():
         # B11: «CER c/ abst.» conta a abstenção como a página inteira perdida (1,0); «CER
@@ -308,6 +308,7 @@ def markdown(report: dict[str, Any]) -> str:
         retido = s.get("cer_withheld_mean")
         lines.append(
             f"| {name} | {s['n']} | {s['answered']} | {s['abstained']} | {s['review']} | "
+            f"{s.get('accepted_wrong', '—')} | "
             f"{_fmt(s['cer_mean'])} | {_fmt(s['cer_ci'][0])}–{_fmt(s['cer_ci'][1])} | "
             f"{_fmt(s.get('cer_all_mean', s['cer_mean']))} | "
             f"{(_fmt(retido) + ' (' + str(s.get('withheld_with_text', 0)) + ')') if retido is not None else '—'} | "
@@ -339,7 +340,8 @@ def markdown(report: dict[str, Any]) -> str:
             f"{p['threshold']:.1f}: {p['coverage']:.2f}/{p['risk']:.3f}" for p in rc))
     lines.append(f"- Enviado para revisão: {overall['review_share']:.1%}; abstenção "
                  f"{overall['abstention_rate']:.1%}; importações silenciosas abaixo do limiar: "
-                 f"{overall['silent_below_threshold']}.")
+                 f"{overall['silent_below_threshold']}; aceitos com CER > 10 %: "
+                 f"{overall.get('accepted_wrong', '—')}.")
     lines.append(f"- Tempo total {overall['seconds_total']} s, "
                  f"{overall['seconds_per_megapixel']} s/MP.")
     if report.get("gates"):

@@ -113,6 +113,21 @@ class OcrServiceConfig:
     #: variant's resolution (the upscale is 450 DPI, not the 300 the engine
     #: assumed).  ``False`` is the before -- ``SOL_CONFIG='{"variant_dpi": false}'``.
     variant_dpi: bool = True
+    #: OCR_UI ciclo 2, B13: a page read in PSM 3 has the blocks Tesseract cut
+    #: a table (or a two-column move list) into read **row by row**
+    #: (:mod:`caissa.ocr.layout.rows`), on the page and on every variant.  Off
+    #: is the before -- ``SOL_CONFIG='{"table_rows": false}'``.
+    table_rows: bool = True
+    #: OCR_UI ciclo 2, B14: a raster reading is measured against the page's
+    #: own ink (:mod:`caissa.ocr.coverage`).  A region whose reading leaves more
+    #: than ``1 - min_ink_coverage`` of its letter-size ink unread gets the
+    #: portfolio variants even when the original was accepted; a candidate that
+    #: covers the ink anchors before one that does not; and no reading that
+    #: covers less is ever ``ACCEPTED`` -- it goes to review with the share in
+    #: the reason.  Off is the before -- ``SOL_CONFIG='{"ink_coverage": false}'``.
+    ink_coverage: bool = True
+    #: Fitted on the ``calib`` partition only (``OCR_UI_REPORT_C2_FASE5.md`` §B14).
+    min_ink_coverage: float = 0.90
     #: OCR_UI_ROADMAP_C2 passo B8: on a page whose show-through crosses
     #: ``portfolio.min_bleed_share``, the bleed step gets the *real* verso —
     #: the neighbouring page of the PDF (either side of the sheet is tried),
@@ -334,6 +349,10 @@ class RegionRecognition:
     fusion: dict[str, Any] = field(default_factory=dict)
     #: A person settled this region (OCR_UI_ROADMAP passo 14): the IR says so.
     verified: bool = False
+    #: B14: the share of the region's letter-size ink under the emitted words
+    #: (:mod:`caissa.ocr.coverage`); ``None`` when not measured (a text layer,
+    #: too few letters, the switch off).
+    ink_coverage: float | None = None
 
     @property
     def emits_text(self) -> bool:
@@ -361,6 +380,7 @@ class RegionRecognition:
             "own_verdict": self.own_verdict,
             "legality": self.legality,
             "fusion": self.fusion,
+            "ink_coverage": None if self.ink_coverage is None else round(self.ink_coverage, 4),
             "chars": self.result.char_count,
             "mean_confidence": round(self.result.mean_confidence, 4),
             "estimated_cer": self.estimated_cer,
@@ -590,8 +610,11 @@ class OcrService:
         if key not in self._recognizers:
             from dataclasses import replace
 
-            # B12: one switch for the page reads and the variant reads.
-            page_config = replace(self.config.page, variant_dpi=self.config.variant_dpi)
+            # B12: one switch for the page reads and the variant reads; B13 the
+            # same for the table read by rows, which lives in the arbiter.
+            page_config = replace(
+                self.config.page, variant_dpi=self.config.variant_dpi,
+                arbiter=replace(self.config.page.arbiter, table_rows=self.config.table_rows))
             self._recognizers[key] = PageRecognizer(
                 self.engines_for(lang, secondary=secondary), page_config, self.log)
         return self._recognizers[key]
@@ -744,11 +767,22 @@ class OcrService:
         # it is set in the body face, in small type or in display type.
         body_size = body_size_of(
             line.font_size for r in outcome.regions for line in r.result.lines)
+        # B14: the page's letter-size ink, once, when some region was read from
+        # the raster (a text layer is what the PDF says, not a reading of ink).
+        page_ink = (self._page_ink(image, task)
+                    if cfg.ink_coverage and any(_read_from_raster(r.result) for r in outcome.regions)
+                    else None)
         for region_outcome in outcome.regions:
             check_cancel()
             base = self._candidate("original", region_outcome)
             candidates = [base]
             candidates.extend(self._engine_candidates(recognizer, region_outcome, task))
+            region_ink = self._region_ink(page_ink, region_outcome, task)
+            coverage = self._coverage_of(region_outcome.result, region_ink)
+            if coverage is not None and coverage < cfg.min_ink_coverage:
+                notes.append(
+                    f"região {region_outcome.region.reading_order}: a leitura cobre "
+                    f"{coverage:.0%} da tinta — variantes pedidas (B14)")
             # The independent readings, as thunks, in the order the serial
             # loop produced them; the pool runs them, the list keeps the order.
             readings: list[Callable[[], list[Candidate]]] = []
@@ -758,7 +792,7 @@ class OcrService:
                 readings.append(lambda r=region_outcome: self._glyph_candidates(recognizer, r, task))
             if cfg.figurine_candidates:
                 readings.append(lambda r=region_outcome: self._figurine_candidates(recognizer, r, task))
-            if self._wants_variants(region_outcome):
+            if self._wants_variants(region_outcome, coverage=coverage):
                 if portfolio is None:
                     portfolio = self._portfolio(image, int(task.dpi), notes, signals=signals,
                                                 verso=self._verso_for(task, image, signals, notes))
@@ -769,7 +803,7 @@ class OcrService:
             for extra in self._run_readings(readings):
                 candidates.extend(extra)
             regions.append(self._settle(region_outcome, candidates, task, recognizer,
-                                        body_size=body_size))
+                                        body_size=body_size, ink=region_ink))
 
         # A page where every region died inside the engine is not "a page
         # with nothing to read": it is a setup fault (a tessdata folder
@@ -880,11 +914,49 @@ class OcrService:
                 decision=decision, score=total, outcome=arbitration))
         return out
 
-    def _wants_variants(self, region_outcome: RegionOutcome) -> bool:
+    # -- ink coverage (passo B14) ------------------------------------------ #
+
+    def _page_ink(self, image: NDArray[np.uint8], task: PageTask) -> Any:
+        """The page's letter-size ink, without the diagrams the importer located."""
+        from caissa.ocr.coverage import ink_map
+
+        exclude: list[BBox] = []
+        context = self.page_context
+        if context is not None and task.pdf_page is not None:
+            exclude = [BBox.from_edges(*d.box).scaled(task.scale) for d in context.diagrams]
+        try:
+            return ink_map(image, float(task.dpi), exclude=exclude)
+        except Exception as exc:  # noqa: BLE001 - a measure of the reading must never fail the page
+            self.log.warning("cobertura da tinta: página %d não medida: %s", task.page_index, exc)
+            return None
+
+    @staticmethod
+    def _region_ink(page_ink: Any, region_outcome: RegionOutcome, task: PageTask) -> Any:
+        """The page ink inside the region, when the region was read from the raster."""
+        if page_ink is None or not _read_from_raster(region_outcome.result):
+            return None
+        region = region_outcome.region
+        box = region.box.scaled(task.scale) if task.pdf_page is not None else region.box
+        return page_ink.within(box)
+
+    @staticmethod
+    def _coverage_of(result: OcrResult, ink: Any) -> float | None:
+        if ink is None or not _read_from_raster(result):
+            return None
+        from caissa.ocr.coverage import ink_coverage
+
+        return ink_coverage(result, ink)
+
+    def _wants_variants(self, region_outcome: RegionOutcome, *,
+                        coverage: float | None = None) -> bool:
         if not self.config.use_portfolio:
             return False
         arbitration = region_outcome.outcome
-        if arbitration.accepted and not arbitration.result.is_empty:
+        # B14: an accepted reading that left the region's ink unread is not
+        # done -- the variants (shadow normalisation, Sauvola, upscale) are
+        # what reads the dark end of a photographed line.
+        incomplete = coverage is not None and coverage < self.config.min_ink_coverage
+        if arbitration.accepted and not arbitration.result.is_empty and not incomplete:
             return False
         # A level-0 winner was read, not recognised; a variant of the raster
         # cannot improve a text layer, and the region has no raster engine
@@ -894,7 +966,8 @@ class OcrService:
         if not raster_ran and arbitration.engines_run:
             return False
         score = arbitration.winner.total if arbitration.winner else 0.0
-        return score >= self.config.min_score_for_variants or arbitration.result.is_empty
+        return (incomplete or score >= self.config.min_score_for_variants
+                or arbitration.result.is_empty)
 
     def _verso_for(self, task: PageTask, image: NDArray[np.uint8], signals: Any,
                    notes: list[str]) -> NDArray[np.uint8] | None:
@@ -1318,12 +1391,15 @@ class OcrService:
 
     def _settle(self, region_outcome: RegionOutcome, candidates: list[Candidate],
                 task: PageTask, recognizer: PageRecognizer | None = None, *,
-                body_size: float = 0.0) -> RegionRecognition:
+                body_size: float = 0.0, ink: Any = None) -> RegionRecognition:
         """Pick the best candidate, fuse, validate, and record everything.
 
         ``body_size`` is the page's body line size (B10): with it the region
         and each swapped token get a style for the book cipher; without it
-        every observation is style-less.
+        every observation is style-less.  ``ink`` is the region's letter-size
+        ink (B14, :mod:`caissa.ocr.coverage`): with it a reading that leaves
+        some unread never anchors over one that does not, and is never
+        accepted.
         """
         cfg = self.config
         if recognizer is None:
@@ -1345,6 +1421,20 @@ class OcrService:
                 c.variant == "glyph" and _has_figurines(c.result) for c in candidates):
             never_anchor.update(cfg.secondary_engines)
         anchorable = [c for c in candidates if c.engine not in never_anchor] or candidates
+        # B14: the readings that left part of the region's ink unread anchor
+        # only when no reading that covers it (and is not abstained) may: the
+        # score judged the words they have, never the lines they lost.  They
+        # stay candidates -- the fusion takes their tokens where they overlap.
+        incomplete: frozenset[int] = frozenset()
+        if cfg.ink_coverage and ink is not None:
+            covered = {id(c): self._coverage_of(c.result, ink) for c in anchorable}
+            short = {key for key, value in covered.items()
+                     if value is not None and value < cfg.min_ink_coverage}
+            whole = [c for c in anchorable if id(c) not in short
+                     and c.decision.decision is not Decision.ABSTAINED]
+            if short and whole:
+                anchorable = whole
+                incomplete = frozenset(n for n, c in enumerate(candidates) if id(c) in short)
         damaged_layer = next(
             (c for c in anchorable if c.engine == "pdf_text_layer"
              and c.result.meta.get("notation_damaged") and not c.result.is_empty), None)
@@ -1364,7 +1454,8 @@ class OcrService:
                     lang=task.lang, image=task.image if task.pdf_page is None else None,
                     config=FusionConfig(**self.config.fusion) if self.config.fusion else None,
                     never_anchor=frozenset(never_anchor),
-                    calibrators=self._calibrators(recognizer, candidates, region_outcome, task))
+                    calibrators=self._calibrators(recognizer, candidates, region_outcome, task),
+                    incomplete=incomplete)
                 if fused is not None:
                     result, decision, fusion = fused.result, fused.decision, fused.as_dict()
                     if self.book_cipher is not None:
@@ -1410,12 +1501,23 @@ class OcrService:
                                  style=region_style, confidence=float(decision.score))
             if diagram is not None:
                 legality["diagram"] = list(diagram.box)
+        # B14: whatever the score says, a reading that covers less of the ink
+        # than the floor is not accepted -- the reviewer is told how much.
+        coverage = (self._coverage_of(result, ink)
+                    if cfg.ink_coverage and "pdf_text_layer" not in result.engine else None)
+        if (coverage is not None and coverage < cfg.min_ink_coverage
+                and decision.decision is Decision.ACCEPTED):
+            decision = replace(
+                decision, decision=Decision.REVIEW, demoted=True,
+                reasons_pt=(*decision.reasons_pt,
+                            f"A leitura cobre {coverage:.0%} da tinta desta região: linhas ou "
+                            f"fins de linha podem ter ficado sem ler."))
         return RegionRecognition(
             reading_order=region.reading_order, kind=region.kind, box_px=box_px,
             result=result, decision=decision, engine=result.engine or best.engine,
             variant=str(result.meta.get("variant", best.variant)), score=best.score,
             candidates=tuple(candidates), own_verdict=region_outcome.own_verdict,
-            legality=legality, fusion=fusion,
+            legality=legality, fusion=fusion, ink_coverage=coverage,
         )
 
 
@@ -1692,6 +1794,13 @@ def _is_board_coordinates(text: str) -> bool:
 
 
 _FIGURINES = frozenset("♔♕♖♗♘♙♚♛♜♝♞♟")
+
+
+def _read_from_raster(result: OcrResult) -> bool:
+    """Whether ``result`` is a reading of the raster (passo B14): not empty,
+    and not the text layer, which says what the PDF says and has no ink to
+    miss."""
+    return not result.is_empty and result.engine != "pdf_text_layer"
 
 
 def _has_figurines(result: OcrResult, *, min_confidence: float = 0.70) -> bool:

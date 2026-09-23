@@ -187,6 +187,12 @@ FALLBACK_CALIBRATION = EngineCalibration()
 #: exists to remove (crítico Codex, fase 2 ciclo 1).
 SCALE_OF: dict[str, str] = {"tesseract_strips": "tesseract"}
 
+#: The page segmentation modes in which the engine cuts the image into blocks
+#: of its own (``--psm 1``/``3``) -- the only readings whose block order can put
+#: a table's columns one after the other (passo B13).  Every other PSM reads one
+#: block, a line or a word, and a result without ``psm`` is not Tesseract's.
+_SEGMENTING_PSMS = frozenset({1, 3})
+
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -234,6 +240,11 @@ class ArbiterConfig:
     #: engine budget.  Counting it did: on a scanned page level 0 came back
     #: empty, Tesseract ran, and the third slot Surya needed was gone.
     count_empty_in_budget: bool = False
+    #: OCR_UI ciclo 2, B13: a reading from an automatic page segmentation
+    #: (PSM 1/3) has its table groups read row by row
+    #: (:func:`caissa.ocr.layout.rows.rows_of_tables`).  ``False`` is the before;
+    #: the service keeps it in step with ``OcrServiceConfig.table_rows``.
+    table_rows: bool = True
 
     def threshold_for(self, level: int) -> float:
         return self.accept_threshold_by_level.get(level, self.accept_threshold)
@@ -588,6 +599,13 @@ class Arbiter:
                 continue
 
             result = self._invoke(engine, task)
+            if cfg.table_rows and result.meta.get("psm") in _SEGMENTING_PSMS:
+                # B13: the engine's own page segmentation cut a table (or a
+                # move list) into column blocks; read it row by row before it
+                # is scored, so every candidate is compared in reading order.
+                from caissa.ocr.layout.rows import rows_of_tables
+
+                result = rows_of_tables(result)
             results.append(result)
             engines_run.append(engine.name)
 

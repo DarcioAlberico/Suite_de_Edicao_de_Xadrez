@@ -11,6 +11,10 @@
 > **Fase 4** (§3c) — o que a análise nomeia fora das 20 alavancas (§3.10, §4.9, §6.9, §10.6) e o
 > que os relatórios e os críticos deixaram como dívida nomeada; executada em 2026-09-21 — relatório
 > `docs/quality/OCR_UI_REPORT_C2_FASE4.md`.
+> **Fase 5** (§3d) — definida em 2026-09-23 a partir da massa de erro do `sol.json` da fase 4
+> (a tabela lida por coluna, o texto perdido e aceito) e das dívidas medidas e sem dono; executada
+> no mesmo dia — relatório `docs/quality/OCR_UI_REPORT_C2_FASE5.md` (o portão de 150 DPI do Sol
+> verde pela primeira vez; aceitos errados 30 → 7).
 
 ## 0. Regras que valem para todos os passos
 
@@ -23,8 +27,10 @@
 - **Invariantes depois de todo passo:** `pytest tests -q -p no:cacheprovider --ignore=tests\
   integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` (e este à
   parte) — com `PYTHONPATH=.venv-pack\Lib\site-packages` para os `test_*_view.py` (que importam
-  PyQt6 no topo) e, nesse caso, `tests\unit\ui\test_arquitetura.py` **à parte** (afirma que nenhum
-  binding de Qt está em `sys.modules`, o que é falso por ordem depois dos testes de janela); testes do tronco; `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json`
+  PyQt6 no topo); desde a fase 5 (A15) o `tests\unit\ui\test_arquitetura.py` roda **na mesma
+  corrida** (a afirmação «nenhum binding de Qt em `sys.modules`» é feita num processo novo por
+  arnês); testes do tronco, **sem `--deselect`** desde a fase 5 (os relatórios de campo correntes
+  remedidos no commit); `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json`
   (0 silenciosas, 0/9 controles) quando o passo toca `caissa.ocr`; `git status --short` só com os
   caminhos do passo.
 - **Commits por caminho nomeado**, nunca `git add -A` (outra sessão trabalha neste checkout).
@@ -855,6 +861,197 @@ construtor.
 mesa), §10.2 (o `.pt`, com o C16 medido), §10.4 (perfis dos outros livros), rotular uma página
 com `=` (B7).
 
+## 3d. Fase 5 — o texto que some sem aviso, a tabela lida por coluna, a janela que não cabe, e a régua do `.pt`
+
+A fase 4 fechou o que a análise nomeava fora da tabela. A 5 nasce do que ficou **medido e sem
+dono** depois dela, e de uma releitura dos itens que mais pesam no `sol.json` publicado
+(`docs/quality/sol/sol.json`, fase 4, 747 itens). Duas descobertas desta releitura, cada uma com
+o comando que a reproduz:
+
+- **A massa de erro do portão de 150 DPI é ordem, não leitura.** `scan_degraded_150` tem CER
+  0,0224 contra o teto de 0,020; as seis tabelas do estrato somam 1,806 dos 3,07 de massa
+  (59 %), e três delas (`table:2` 0,465, `table:4` 0,640, `table:7` 0,676) saem com **todos os
+  caracteres certos** (`hypothesis_chars` = `truth_chars`) em ordem de coluna — o Tesseract em
+  PSM 3 partiu a tabela em blocos por coluna e os leu um depois do outro (`scratchpad/
+  probe_table.py`, blocos `b1`–`b8` com `x` disjuntos e `y` sobrepostos). As mesmas tabelas a
+  300 DPI saem em ordem de linha (um bloco por célula). E a lista de lances do Dvoretsky
+  (`real:…:17:401:52` 0,590, `11:54:52` 0,381, `13:278:52` 0,347): todos os lances das brancas,
+  depois todos os das pretas. O RapidOCR já lê assim por linha (`engines/rapidocr.
+  _reading_order`, `TABLE_CELL_CHARS`); o Tesseract não. O B1 recusa, de propósito, partir
+  tabela (`max_columns=2`) e lista de lances (`min_band_chars=16`) em colunas — e deixa a
+  leitura do jeito que o PSM 3 a devolveu.
+- **O texto que a leitura perde é aceito.** 30 itens saem `accepted` com CER > 0,10 (foto 20,
+  sombra 5, fax 4, nativo 1; massa 4,71 dos 6,19 da foto). Na foto o fundo escurece para a
+  direita e o Tesseract perde o fim de toda linha (`authored:de:4`: «…im Endspiel» sem «eine
+  starke»), ou quatro linhas inteiras (`synth:Dvoretsky…:201:21`: 2 de 6 linhas, aceita a 0,872,
+  CER 0,786); e as variantes que as leriam (`deskew_shadow`, `bleed_sauvola`) **não rodam**,
+  porque `_wants_variants` só as pede quando o original não foi aceito — e o escore não vê texto
+  que falta. Medido com um protótipo (`scratchpad/probe_coverage.py`: componentes de tinta do
+  tamanho de letra depois de normalizar o fundo, a fração da tinta sob as caixas de palavra):
+  as leituras que perderam texto cobrem 0,21–0,85 da tinta; as boas, 0,97–1,00.
+
+E o que as fases deixaram nomeado: o fax (fase 4 §0.3, 0,0312 → 0,0382 pelo instrumento), as
+ligaduras da camada de texto (fase 4 §0.3: B12 só dobra o que os **motores** emitem — o Polgar
+tem 19 em 5 páginas, `pymupdf get_text` sobre os 50 PDFs do acervo), a régua do C4 (fase 4 §C16:
+a que vê o dano é a taxa de exportação e os exatos totais do campo, e a decisão §10.2 ainda não
+foi posta nela), a janela que não cabe (fase 4 §C14: 1248×695 lógicos; medido de novo nesta
+fase com `scratchpad/probe_minsize2.py`: **o rótulo de mensagem do rodapé é um `QLabel` comum** —
+com um livro aberto, a frase do rodapé sozinha pede 1.246 px; um rótulo de estado da Rotulagem
+pede 2.868 px; o cartão da Revisão de texto, 1.056), e as invariantes que toda fase roda com
+exceção (`test_strings::AccentTests` e `ImpressaoDaMedicaoTests` no tronco, `test_arquitetura`
+à parte na suíte). Mesmo formato: **arquivos** · **briefing** · **portão** · **sabotagem** ·
+**saída**. Relatório: `docs/quality/OCR_UI_REPORT_C2_FASE5.md`. Ordem: B13 → B14 → B15 → A14 →
+C17 → C18 → A15, e a crítica adversarial por último.
+
+**O que a fase não toma, e por quê:** o `18 . . .` do Dvoretsky lido `os`/`oe`/`wee` (4 itens
+nativos, um livro, uma tipografia — nomeado, não é passo); os homóglifos `Kp`/`Кр` do
+`authored:ru` (3 itens, estratos degradados); o `vazio` a 200 % e o alto contraste como pele
+(C3, humano); a crítica das fases 3 e 4, que não foram criticadas (fica oferecida, não tomada:
+é revisão do que existe, não fase nova).
+
+### B13 — A tabela e a lista de lances lidas por linha (o portão de 150 DPI)
+
+- **Arquivos.** Suíte: `ocr/layout/rows.py` (novo: `rows_of_tables(result)` — os blocos do
+  Tesseract que ficam **lado a lado** (`x` disjuntos, `y` sobrepostos), semeados por um bloco de
+  células (mediana ≤ `TABLE_CELL_CHARS` caracteres, ou calha interna nas próprias linhas) e
+  crescidos pelos vizinhos cujas linhas casam ≥ 80 % com as linhas do grupo; o grupo sai linha
+  a linha, cada linha da esquerda para a direita, no lugar do primeiro bloco), `ocr/arbiter.py`
+  (`ArbiterConfig.table_rows`; aplicado ao resultado de todo motor raster em PSM 1/3 — o de
+  segmentação própria —, antes do escore), `ingest/pdf/ocr_service.py` (`OcrServiceConfig.
+  table_rows`, um interruptor para a página e as variantes, como o `variant_dpi`),
+  `benchmarks/bench_sol.py` (o interruptor pelo `SOL_CONFIG`), testes.
+- **Briefing.** O PSM 3 segmenta a página em blocos; numa tabela a 150 DPI ou numa lista de
+  lances de duas colunas os blocos são as colunas, e a ordem de leitura é a dos blocos — o
+  texto sai certo e embaralhado (CER 0,47–0,68 com 100 % dos caracteres). A regra é a do
+  RapidOCR, trazida para o Tesseract **pelos blocos dele**: um grupo de blocos lado a lado cujas
+  linhas casam por altura é uma tabela e lê-se por linha; duas colunas de prosa nunca são grupo
+  (linhas longas, sem calha interna, e a linha que não casa derruba o vizinho). A página de duas
+  colunas de prosa não muda: o B1 a parte depois, pela calha principal, como hoje.
+- **Portão.** `bench_sol` com os seis estratos: `scan_degraded_150` CER ≤ **0,020** (o portão
+  absoluto do Sol que está vermelho desde a fase 1); `table:2/4/7` a 150 DPI ≤ 0,05; os três
+  nativos do Dvoretsky abaixo de 0,15; `two-column` e `single` sem regressão fora do IC; ordem
+  1,0000; 0 silenciosas; 0/9 controles. **Sabotagem:** `SOL_CONFIG='{"table_rows": false}'`
+  devolve os números da fase 4; teste com duas colunas de prosa de linhas alinhadas → nenhum
+  grupo.
+- **Saída.** A tabela e a partida em duas colunas no EPUB na ordem em que se leem.
+
+### B14 — A leitura que não cobre a tinta não é aceita, e a variante roda
+
+- **Arquivos.** Suíte: `ocr/coverage.py` (novo: `ink_components(gray, dpi)` — fundo estimado por
+  fechamento morfológico, tinta forte abaixo de uma fração do fundo, componentes do tamanho de
+  letra; `ink_coverage(result, components, box)` — a área de tinta cujo centro cai numa caixa
+  de palavra, sobre a tinta da região, fora das caixas de diagrama), `ingest/pdf/ocr_service.py`
+  (`OcrServiceConfig.ink_coverage` e `min_ink_coverage`; em `_wants_variants` a cobertura baixa
+  pede as variantes mesmo com o original aceito; em `_settle` a leitura incompleta não ancora
+  quando há uma completa, e nenhuma incompleta sai `ACCEPTED` — vira `REVIEW` com «a leitura
+  cobre N % da tinta da região»), `benchmarks/bench_sol.py` (a coluna «aceitos errados» — aceitos
+  com CER > 0,10 — por estrato), `benchmarks/calibrate_sol.py` ou script próprio para ajustar
+  `min_ink_coverage` **só na partição `calib`**, testes.
+- **Briefing.** O escore da arbitragem é confiança por palavra, plausibilidade e concordância —
+  nada nele diz quanto da página ficou sem ler. Uma leitura que perdeu metade das linhas pode ter
+  confiança 0,87 nas que leu, e é aceita; as variantes que leriam o resto (a normalização de
+  sombra, o Sauvola) só rodam quando o original é recusado. A cobertura da tinta é o sinal que
+  faltava: é barata (uma passada morfológica por página), não depende de idioma, e o protótipo
+  separa as leituras incompletas (0,21–0,85) das boas (0,97–1,00). Só leituras de raster; a
+  camada de texto é «o que o PDF diz».
+- **Portão.** `bench_sol` com os seis estratos: aceitos com CER > 0,10 caem de **30** (e nenhum
+  estrato sobe); `photo` CER abaixo de 0,0983 fora do IC; os outros estratos sem regressão fora
+  do IC; 0 silenciosas; 0/9 controles; `s/MP` dito (as variantes rodam mais). **Sabotagem:**
+  `SOL_CONFIG='{"ink_coverage": false}'` devolve os 30; teste com uma leitura que perdeu as
+  últimas linhas → `REVIEW`, e com diagrama na página → a tinta do diagrama não conta.
+- **Saída.** O texto que se perdeu vai para a revisão com a razão, em vez de entrar no livro
+  como se estivesse inteiro — e, quando uma variante o lê inteiro, entra inteiro.
+
+### B15 — O fax, depois do B14
+
+- **Arquivos.** Suíte: `ocr/portfolio.py`/`ingest/pdf/ocr_service.py` só se o número pedir.
+- **Briefing.** A fase 4 nomeou «fax/pontilhado → upscale + segundo motor» com o ganho conhecido
+  (0,0382 → 0,0312). Dos 4 aceitos errados do fax, o `authored:en:21` perdeu uma linha inteira
+  (RapidOCR 0,847 de cobertura) — é o B14. Mede-se o fax depois do B14; a rota pelo sinal de
+  pontilhado só entra se o B14 não devolver o número, e com o seu próprio A/B.
+- **Portão.** `fax_dither` CER ≤ 0,0312 ou a razão medida de não chegar lá. **Sabotagem:** a
+  do passo que entrar.
+- **Saída.** O fax com o número que o produto paga, dito.
+
+### A14 — As ligaduras da camada de texto
+
+- **Arquivos.** Suíte: `ingest/pdf/textlayer.py` (o texto de todo span passa por
+  `engines/normalize.fold_ligatures` — a mesma tabela de sete, **não** NFKC), testes.
+- **Briefing.** O B12 dobrou `ﬁ ﬂ ﬀ ﬃ ﬄ ﬅ ﬆ` na saída dos motores; a camada de texto ficou «o que
+  o PDF diz». No acervo, o Polgar tem 19 ligaduras em 5 páginas: entram no IR, no EPUB e na
+  busca como U+FB01 (um leitor de tela lê «fi» como um caractere desconhecido, a busca por
+  «first» não acha «ﬁrst»).
+- **Portão.** Importar as 5 páginas do Polgar: 0 pontos de código U+FB00–FB06 no IR; teste de
+  fronteira (`½`, `²`, `№` ficam). **Sabotagem:** sem a dobra → as 19 voltam (teste).
+- **Saída.** O IR sem ligaduras também quando o texto vem do PDF.
+
+### C17 — A régua do campo para a decisão do `.pt` (§10.2)
+
+- **Arquivos.** Tronco: `field_eval.py` (`FieldReport.diagrams`: por diagrama casado, livro,
+  página, índice, `legal`, `gate_confidence`, exato na régua anotada e contaminado — somado por
+  `_accumulate`). Suíte: `benchmarks/field_exact.py` (`--por-diagrama` grava as linhas no JSON),
+  `benchmarks/model_ruler.py` (novo: para cada modelo, a curva risco × cobertura do campo — para
+  cada limiar do gate, exportados e exportados-errados —, os exatos totais, e os exportados
+  exatos com no máximo 0/1/2 errados), testes.
+- **Briefing.** A fase 3 comparou as variantes do C4 pelo laboratório e pelos exportados-errados
+  num ponto (gate 0,80); a fase 4 mostrou que essas réguas são cegas ao dano (o `x10` exporta 72
+  em vez de 104 com o **mesmo** laboratório) e que um modelo menos confiante não é pior, é outra
+  escala. Comparar modelos num limiar fixo é comparar escalas. A régua certa é a curva: quantos
+  diagramas certos cada modelo entrega com 0, 1 ou 2 errados no PDF. É medição sobre os
+  checkpoints que já existem (produção, `c4_{aug0,mhsp,mhspe,e}_s4{2,3,4}`, `x10`, `w3`) —
+  nenhum treino; a troca continua da pessoa.
+- **Portão.** A tabela para todos os modelos, com os números do ponto de gate idênticos aos
+  `field_exact` publicados (produção 103 exportados, 102/103 na régua corrigida). **Sabotagem:**
+  uma curva com os rótulos de exatidão embaralhados (semente fixa) não pode ordenar os modelos
+  como a verdadeira (teste).
+- **Saída.** A decisão §10.2 com a régua que vê o dano.
+
+### C18 — A janela cabe no portátil
+
+- **Arquivos.** Tronco: `qt/rodape.py` (a mensagem num `RotuloElidido` — a frase inteira na dica
+  e na lista das últimas 50), o que mais o probe apontar nos painéis do tronco. Suíte:
+  `ui/views/rotulagem.py`, `ui/views/revisao_de_texto.py`, `ui/widgets/cartao_da_linha.py` (os
+  rótulos de estado e de cartão elididos ou com quebra), `ui/audit/capture.py` (ou um arnês
+  próprio: o mínimo da janela em toda área, nas três peles, com e sem livro, e com uma mensagem
+  de 300 caracteres no rodapé), testes.
+- **Briefing.** Um `QLabel` comum pede como largura mínima o texto inteiro. O tronco já resolveu
+  isso para o nome do livro (`RotuloElidido`, F9-C2) e esqueceu a mensagem do rodapé, que é o
+  texto mais variável da janela: cada frase longa empurra a janela para fora da tela. E as abas
+  da suíte têm os seus. A fase 4 mediu 1248×695 lógicos; a área de trabalho de um portátil
+  1920×1080 a 150 % (a configuração de fábrica mais comum em 14") é 1280×672 menos a barra de
+  título.
+- **Portão.** O mínimo da janela ≤ **1250×640** lógicos em toda área, nas três peles, com e sem
+  livro, e com a mensagem de 300 caracteres (cabe em 1920×1080 a 150 % e em 1366×768 a 100 %);
+  o mínimo a 125 % sobre 1366×768 dito com número. **Sabotagem:** a mensagem num `QLabel` comum
+  → o mínimo sobe e o portão reprova.
+- **Saída.** Uma frase longa no rodapé nunca mais decide o tamanho da janela.
+
+### A15 — As invariantes num comando só
+
+- **Arquivos.** Tronco: `tests/test_strings.py` (os identificadores que não são texto de
+  interface — `configuracoes` de comando, `SELECAO` de token, `pagina` de chave, a lista de
+  palavras-vazias — fora da régua de acento, com a razão), os relatórios de campo correntes
+  remedidos (`cvoff-field --json`) para o `ImpressaoDaMedicaoTests` passar sem `--deselect`.
+  Suíte: `tests/unit/ui/test_arquitetura.py` num subprocesso próprio (a afirmação «nenhum
+  binding de Qt em `sys.modules`» é sobre um processo novo, e o teste passa a criá-lo), o
+  `sol.json` publicado medido no commit da fase.
+- **Briefing.** Cada relatório de fase repete «1 reprovado pré-existente», «um `--deselect`», «à
+  parte». Uma invariante com exceção é uma invariante que ninguém confere; a fase 5 deixa os dois
+  comandos do §0 verdes sem exceção.
+- **Portão.** `pytest` do tronco sem `--deselect` e sem reprovado; `pytest` da suíte com PyQt6 e
+  **com** `test_arquitetura.py` na mesma corrida, 0 reprovado. **Sabotagem:** um `import PyQt6`
+  no arnês de auditoria reprova o `test_arquitetura` no subprocesso (hoje só reprova sozinho).
+- **Saída.** O §0 deste roadmap sem asterisco.
+
+### 3d.8 Crítica
+
+Um crítico adversarial (Claude, `CRITIC_CHARTER.md`) sobre os commits da fase, com os portões
+reproduzidos por ele; o veredito transcrito em `OCR_UI_ANALISE_C2_CRITICAS.md` («Fase 5»).
+
+### 3d.9 Humano (inalterado)
+
+0b, crítico visual C3, §10.2 (agora com a régua do C17), §10.4, rotular uma página com `=`.
+
 ## 4. Mutações
 
 | data | passo | mutação | por quê | quem |
@@ -913,3 +1110,12 @@ com `=` (B7).
 | 2026-09-21 | C14 | **alto contraste = «a pele sai do caminho»**, não «≥ 7:1 medido» | Não há como medir a paleta de alto contraste do Windows *offscreen*; a régua honesta é que `aplicar_tema` não aplica folha nem paleta com o modo ligado (teste). Contornos e papéis sem cor são pele nova: C3 | construtor |
 | 2026-09-21 | C15 | **rótulo novo de página de campo vai para `test`, dito** (`training.pin_field_pages`) | O sorteio poria os dois Koblenz «51» (página de campo 50) em `train`/`val`; `test` é retido como o campo. O split `test` passa de 566 a 569 — o `aug0` s42 foi remedido nele para a comparação do C16 valer | construtor |
 | 2026-09-21 | C16 | **10 % de ruído de rótulo quase não aparece no laboratório e aparece inteiro no campo** (`x10` 557/569 × `aug0` 558/569 no teste; **72 × 104 exportados** no campo) | A rede treinada com rótulo sujo fica menos confiante e o gate de 0,80 barra 32 diagramas que antes passavam — e o que passa é todo exato (72/72), com 108 exatos no total contra 103. A régua da fase 3 para o C4 (`board_exact` do teste + exportados-e-errados) era cega ao dano; a que o vê é a taxa de exportação e os exatos totais do campo. `x25` fica na tabela (`LABEL_NOISE_VARIANTS`) para quem quiser a curva | construtor |
+| 2026-09-23 | fase 5 | **a fila de A/B carrega o `SOL_CONFIG` de todos os interruptores da fase** | A primeira fila do B13 começou antes de o B14 existir; o processo `off`, nascendo depois, teria o B14 ligado — a comparação mediria duas coisas. Parada e refeita inteira no código final, cada corrida com `{"table_rows": …, "ink_coverage": …}` explícito | construtor |
+| 2026-09-23 | B13 | **a coluna de células mais alta semeia o grupo** (`rows.table_groups`) | Em ordem de leitura, as duas células de uma linha só da última fila do `table:4` a 150 DPI formavam um grupo próprio e a linha saía partida (CER 0,033 → 0,0036 com a ordem nova); teste `test_the_tallest_column_of_cells_seeds_the_table` | construtor |
+| 2026-09-23 | B13 | **duas regras medidas em página real, não no corpus: a coluna de células não tem linha de prosa, e o grupo não cruza a calha da página** (`rows._is_cells`, `rows._is_column_gutter`) | Os itens de tabela do corpus são recortes. Na página inteira de duas colunas do Levenfis, o bloco da coluna direita (lances curtos e uma linha de prosa, com calha interna) e o ruído lido num diagrama da coluna esquerda semearam grupos que puxaram uma coluna para o meio da outra (p. 40 similaridade 0,857 com o desligado, p. 41 0,290). Teto de 24 caracteres na linha de célula, e a calha: um corredor de ≥ 8 px que ≤ 10 % das linhas **de prosa** que alcançam os dois blocos tocam. Contar toda linha desfez o `table:4` a 150 DPI (nada cruza o vão entre as colunas de uma tabela: 0,0036 → 0,64), medido e travado por teste. Final: os seis itens do corpus como antes; Levenfis 36–52, Estrin 20–27 e Stefaniu 40–47 idênticas ou com a lista de lances lida por linha (`OCR_UI_REPORT_C2_FASE5.md` §B13) | construtor |
+| 2026-09-23 | B14 | **a tinta é letra medida em polegadas, em linha de texto, e cada letra pesa um** (`coverage.ink_map`) | A revisão do construtor com páginas sintéticas achou dois sequestros antes do benchmark: meio-tom (milhares de pontos de 5 px puxaram a mediana e as letras viraram «grandes demais»: cobertura 0,009 numa página lida inteira) e tom contínuo com manchas do tamanho de letra (0,64–0,72). Teto físico do B11, corridas esfregadas que são linhas (largas, baixas, densas) e contagem por letra: 1,00 nos dois, e a leitura que perdeu 3 de 5 linhas segue em 0,40. O primeiro A/B do B14 (medida ingênua) foi descartado | construtor |
+| 2026-09-23 | B14 | **o piso 0,90 reajustado na `calib` com a medida final** (`benchmarks/fit_ink_coverage.py`) | Com a medida refinada a `calib` não separa os pisos de (0,8756; 0,9000]: todos sinalizam as mesmas seis leituras (6/16 perdidas, 0/182 boas, 6/8 aceitas-perdidas); 0,90, o do primeiro ajuste, está no intervalo e fica. A `dev`, só conferida: 21/30 perdidas e 17/21 aceitas-perdidas sinalizadas, 0/359 boas. Na população real (Estrin, Levenfis, Stefaniu pelo importador, 504 regiões medidas) nenhuma região sinalizada | construtor |
+| 2026-09-23 | A14 | **premissa corrigida: o IR do importador já saía sem ligaduras** | `textlayer._text_flags` sempre desligou `TEXT_PRESERVE_LIGATURES`; os três leitores da camada que não desligavam eram o nível 0 (6 + 5 ligaduras nas p. 6 e 9 do Polgar, e o `recognize_page` nem passa pela dobra do B12), as linhas de leiaute por página e o índice de busca. Bandeiras em vez de `fold_result`: o MuPDF divide a caixa da ligadura entre as letras, e o nível 0 guarda caixa por caractere | construtor |
+| 2026-09-23 | C18 | **o mínimo medido com as áreas visitadas: 1538×659, não 1248×695** (`caissa.ui.audit.minimo`) | A recusa do `capture --escala` é lida antes de as áreas serem mostradas. Com elas visitadas e um livro aberto, o motor da largura era a barra de anotação sob o visor (810 px na Foco), não o visor; e a frase do rodapé num `QLabel` comum pedia 1.246. A altura vinha do Resultado (520) e, depois dele, da Galeria do tronco (516: é ela que segura a pele Foco em 640, no teto) | construtor |
+| 2026-09-23 | C18 | **o arnês encerra o processo de trabalho antes do `os._exit`** | Fechar a janela com a leitura do Dataset viva derruba o interpretador (`access violation`, medido), então o arnês sai sem desmontar — e o filho `spawn` do `processo_de_trabalho` não morre com o pai no Windows: seis órfãos vivos, um deles segurando a medição seguinte por minutos | construtor |
+| 2026-09-23 | A15 | **acentos: regras por posição, nenhuma palavra permitida a mais** (`test_strings._literais_visiveis`) | Os seis vermelhos eram identificadores (id de comando, chave de JSON gravado, `SELECAO = "SELECAO"`, palavras dobradas para `.split()`). Pôr `pagina`/`configuracoes` em `PERMITIDOS` deixaria passar o texto de tela; as regras olham a posição do literal e um teste prova que o texto de tela nas mesmas construções continua varrido | construtor |

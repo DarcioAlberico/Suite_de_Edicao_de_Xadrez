@@ -345,6 +345,9 @@ def main(argv: list[str] | None = None) -> int:
             chosen["per_regime"] = {name: _slice(part) for name, part in sorted(report.per_regime.items())}
             chosen["per_book"] = {name: _slice(part) for name, part in sorted(report.per_book.items())}
             chosen["wrong"] = list(report.wrong)
+            # C17: one row per matched diagram, so any threshold can be re-cut from the JSON
+            # (`benchmarks/model_ruler.py` draws the risk × coverage curve from these).
+            chosen["diagrams"] = list(getattr(report, "diagrams", []))
             results.append(chosen)
 
     args.out.mkdir(parents=True, exist_ok=True)

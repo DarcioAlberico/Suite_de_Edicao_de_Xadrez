@@ -300,7 +300,8 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
                     config: FusionConfig | None = None,
                     never_anchor: frozenset[str] = frozenset(),
                     letter_guarded: frozenset[str] = _LETTER_GUARDED,
-                    calibrators: Mapping[str, Calibrator] | None = None) -> FusedRegion | None:
+                    calibrators: Mapping[str, Calibrator] | None = None,
+                    incomplete: frozenset[int] = frozenset()) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
     The thin outer layer: it pins the passo B4 switch of ``config`` to this
@@ -308,14 +309,17 @@ def fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision]
     hands over to :func:`_fuse_candidates`, which holds the algorithm.
     ``calibrators`` maps an engine name to the function that puts its raw
     word confidence on the common scale (passo B6); an engine without one
-    keeps its raw scale.
+    keeps its raw scale.  ``incomplete`` holds the indices of the candidates
+    that left part of the region's ink unread (passo B14): they supply
+    alternatives, and anchor only when no complete candidate may.
     """
     cfg = config or FusionConfig()
     token = _B4.set(cfg.passo_b4)
     try:
         return _fuse_candidates(candidates, lang=lang, image=image, config=cfg,
                                 never_anchor=never_anchor, letter_guarded=letter_guarded,
-                                calibrators=calibrators if cfg.calibrated else None)
+                                calibrators=calibrators if cfg.calibrated else None,
+                                incomplete=incomplete)
     finally:
         _B4.reset(token)
 
@@ -325,7 +329,8 @@ def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision
                     config: FusionConfig | None = None,
                     never_anchor: frozenset[str] = frozenset(),
                     letter_guarded: frozenset[str] = _LETTER_GUARDED,
-                    calibrators: Mapping[str, Calibrator] | None = None) -> FusedRegion | None:
+                    calibrators: Mapping[str, Calibrator] | None = None,
+                    incomplete: frozenset[int] = frozenset()) -> FusedRegion | None:
     """Fuse the candidates of one region.  ``None`` when there is nothing to fuse.
 
     ``never_anchor`` names engines that only ever supply alternatives — the
@@ -336,12 +341,17 @@ def _fuse_candidates(candidates: Sequence[tuple[OcrResult, float, RegionDecision
     ``N`` as ♘, and on a book that prints letters that is an invention.
     """
     cfg = config or FusionConfig()
-    usable = [(r, s, d) for r, s, d in candidates if r.lines and r.text.strip()]
-    if len(usable) < 2:
+    indexed = [(n, r, s, d) for n, (r, s, d) in enumerate(candidates) if r.lines and r.text.strip()]
+    if len(indexed) < 2:
         return None
     rank = {Decision.ACCEPTED: 2, Decision.REVIEW: 1, Decision.ABSTAINED: 0}
-    usable.sort(key=lambda c: (c[0].engine not in never_anchor, rank[c[2].decision], c[1]),
-                reverse=True)
+    # B14: a candidate that covers the region's ink anchors before one that
+    # left some of it unread, whatever their scores -- the score never saw
+    # the missing lines.  Engines that never anchor stay behind both.
+    indexed.sort(key=lambda c: (c[1].engine not in never_anchor, c[0] not in incomplete,
+                                rank[c[3].decision], c[2]),
+                 reverse=True)
+    usable = [(r, s, d) for _, r, s, d in indexed]
     if usable[0][0].engine in never_anchor:
         return None
     anchor_result, anchor_score, anchor_decision = usable[0]

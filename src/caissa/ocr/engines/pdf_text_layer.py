@@ -66,6 +66,7 @@ from ..lexicon import (
 )
 from ..types import BBox, OcrChar, OcrLine, OcrResult, OcrWord, RegionKind, empty_result
 from .base import EngineCapabilities, EngineLevel, OcrEngineBase
+from .normalize import text_layer_flags
 
 __all__ = [
     "PdfTextLayerEngine",
@@ -656,10 +657,10 @@ class PdfTextLayerEngine(OcrEngineBase):
             return self._prose_text(page, clip)
         try:
             rect = self._clip_rect(page, clip)
-            return page.get_text("text", clip=rect) or ""
+            return page.get_text("text", clip=rect, flags=text_layer_flags("text")) or ""
         except Exception:
             try:
-                return page.get_text() or ""
+                return page.get_text(flags=text_layer_flags("text")) or ""
             except Exception:
                 return ""
 
@@ -677,7 +678,7 @@ class PdfTextLayerEngine(OcrEngineBase):
         """
         try:
             rect = self._clip_rect(page, clip)
-            data = page.get_text("dict", clip=rect)
+            data = page.get_text("dict", clip=rect, flags=text_layer_flags("dict"))
         except Exception:
             return self._page_text(page, clip)
         lines: list[str] = []
@@ -726,7 +727,7 @@ class PdfTextLayerEngine(OcrEngineBase):
 
         try:
             rect = self._clip_rect(page, clip)
-            data = page.get_text("dict", clip=rect)
+            data = page.get_text("dict", clip=rect, flags=text_layer_flags("dict"))
         except Exception:
             return 0
 
@@ -881,7 +882,7 @@ class PdfTextLayerEngine(OcrEngineBase):
         """
         try:
             rect = self._clip_rect(page, clip)
-            data = page.get_text("rawdict", clip=rect)
+            data = page.get_text("rawdict", clip=rect, flags=text_layer_flags("rawdict"))
         except Exception:
             return []
 
