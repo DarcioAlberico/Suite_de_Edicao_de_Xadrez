@@ -28,8 +28,10 @@ the same rule, applied to Tesseract **through its own blocks**:
     long lines, several of them, no internal gutter — or, in a column too
     narrow for long lines, four **words** a line (counted cell by cell when the
     block has internal gutters: ``Bona 2008 | Gambito da Dama Recusado | 88``
-    is a row of cells).  A group holds at most one column that **numbers the
-    moves** (consecutive move numbers, bare or followed by a move): two such
+    is a row of cells).  **Notes** are running text too: a block whose lines
+    hold move numbers inside them (``Or 21 Bd6 Rg8 22 g4 Rg6``, a variation in a
+    narrow column) never joins.  A group holds at most one column that **numbers
+    the moves** (consecutive move numbers, bare or followed by a move): two such
     columns side by side are two games, or one game in two page columns, and a
     move column whose own numbers stand between it and the group's numbering
     belongs to those numbers.
@@ -39,9 +41,14 @@ the same rule, applied to Tesseract **through its own blocks**:
     :attr:`TableRowsConfig.gutter_max_share` of at least
     :attr:`TableRowsConfig.gutter_min_lines` lines) — the gap between the
     columns of a table or a move list is crossed by the running text above and
-    below it, a column gutter by nothing but a header.  And on a page the B1
-    layout reads as two columns of prose (:mod:`.scan`), or whose one gutter
-    has a block of prose by words beside it, the same holds by that gutter.
+    below it, a column gutter by nothing but a header.  And the page's gutter
+    holds by itself when the B1 layout reads two columns of prose
+    (:mod:`.scan`), or when one gutter over the whole reading leaves two bands
+    of **comparable width** — prose or no prose: an index of names in two
+    columns has none — or a band of prose beside a narrow one.  Across that
+    gutter only a **move list** is a group: numbers and White's moves on the
+    left, one move a line on the right — the positive evidence of a table that
+    two lists of the same shape never give.
 5.  The group is written out **row by row**: its lines clustered by height,
     each row left to right, in the place of the group's first line.
 
@@ -52,7 +59,10 @@ seeded groups that crossed the page's gutter (pages 40 and 41); and the phase's
 critic found the narrow columns of the Gallagher, where no line is long enough
 to be prose by length and the right column's move numbers pulled the left
 column's notes into their rows (p. 50, CER 0,27 → 0,70), and the pages of two
-numbered columns (``OCR_UI_REPORT_C2_FASE5.md`` §B13).
+numbered columns (``OCR_UI_REPORT_C2_FASE5.md`` §B13); and its second cycle found
+the index of names of the Karpov 2 (p. 268: two columns of names and page numbers,
+no prose at all) joined line by line across the gutter the rule itself had found,
+and notes of variations beside a move list joining it.
 """
 
 from __future__ import annotations
@@ -100,6 +110,13 @@ class TableRowsConfig:
     #: (``21. Anand — Kramnik``, ``Wijk aan Zee 2011``); a move has none.
     prose_word_lines: int = 2
     prose_words: int = 4
+    #: ...whose lines **continue** one another: at least this share of them, after the
+    #: first, begin with a lowercase letter -- a sentence carried over the end of a line
+    #: (``The best chance to get / his rook into the game``).  A column of cells starts
+    #: every line anew: ``Defesa Francesa, Variante Winawer / Gambito da Dama Recusado``
+    #: holds four words a cell and continues nothing (crítico da fase 5, ciclo 2: a table
+    #: with the openings written out read 0,4646 → 0,3456 by the words alone).
+    prose_continued: float = 1 / 3
     #: A block **numbers the moves** when at least this share of its lines open with
     #: consecutive move numbers, bare (``26``, ``27``…) or followed by a move (``22 g4``,
     #: ``21... ♖g8``); a group holds at most one such block.  Two numbered columns side by
@@ -122,6 +139,22 @@ class TableRowsConfig:
     #: p. 53: 20 px against 33, measured); the gap between the cells of a table row is
     #: wider (``table:2`` at 150 DPI: 15 px against 7; at 300 DPI 32–68 against 14).
     cell_gap_ratio: float = 1.5
+    #: One gutter over the whole reading that leaves two bands of comparable width --
+    #: the narrower at least this share of the wider -- is the page's gutter, prose or no
+    #: prose.  The Karpov 2 (``Chess Combinations -- World Champions 2``) p. 268 is an index
+    #: of names in two columns, 552 and 511 px: no line of prose, and its entries were
+    #: joined two by two across the gutter (crítico da fase 5, ciclo 2: CER 0,76 against the
+    #: book's order).  A table's columns leave two gutters or more (``table:2/4/7`` at
+    #: 150 DPI); the Dvoretsky move lists leave one, their bands 0,65–0,85 of each other,
+    #: and cross it as the one group that may: a move list.
+    page_band_share: float = 0.5
+    #: A block is **notes** -- running text, never a member -- when at least this share of
+    #: its lines hold a move number inside the line, not at its start, followed by a move
+    #: (``Or 21 Bd6 Rg8 22 g4 Rg6``).  A column of variations has a word or two a line, and
+    #: beside a numbered move list it joined it (crítico da fase 5, ciclo 2: a page set as
+    #: the Gallagher p. 50, notes of variations beside the game, CER 0,0113 → 0,5845).  A
+    #: move list opens its lines with the number; a table's numbers are years and pages.
+    notes_share: float = 0.5
 
 
 # --------------------------------------------------------------------------- #
@@ -254,11 +287,12 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     length of its lines, and a narrow column never does: on the Gallagher p. 50 the
     right band is a move list under two lines of notes, its median line is a move
     number, and the page read as one column.  Here one gutter over the whole page is
-    enough when a side of it holds a block of prose by :func:`_is_prose` -- words, not
-    characters; the Gallagher p. 53's left column is notes and moves, its right column
-    a game's heading and moves, and a paragraph on either side tells a page from a move
-    list.  A table (two gutters or more) and a move list alone (no prose in either
-    band) return nothing, as in B1.
+    enough when its two bands are of **comparable width** (``page_band_share``) --
+    whatever they hold: the Karpov 2 p. 268 is two columns of names and page numbers,
+    with no prose to judge by -- or when a side of it holds a block of prose by
+    :func:`_is_prose` (words, not characters: the Gallagher p. 53's left column is notes
+    and moves).  A table (two gutters or more) returns nothing; a move list split by one
+    gutter keeps it, and :func:`table_groups` lets a move list, and only it, cross it.
     """
     from .scan import find_gutters
 
@@ -266,6 +300,11 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     if len(gutters) != 1:
         return []
     low, high = gutters[0]
+    boxes = [w.box for line in result.lines for w in line.words if w.text.strip()]
+    left_band = low - min(b.x0 for b in boxes)
+    right_band = max(b.x1 for b in boxes) - high
+    if min(left_band, right_band) >= cfg.page_band_share * max(left_band, right_band):
+        return gutters
     left = [b for b in blocks if b.extent.x1 <= high]
     right = [b for b in blocks if b.extent.x0 >= low]
     if any(_is_prose(b, cfg) for b in left) or any(_is_prose(b, cfg) for b in right):
@@ -299,20 +338,89 @@ def _cell_words(line: OcrLine, spans: Sequence[tuple[float, float]]) -> int:
 
 def _wordy(block: _Block, cfg: TableRowsConfig) -> bool:
     """Prose by words: the lower median line of the block holds ``prose_words`` words
-    in one cell."""
+    in one cell, and the lines carry the sentence over (:func:`_continued`)."""
     if len(block.lines) < cfg.prose_word_lines:
         return False
     words = sorted(_cell_words(line, block.gutter_spans) for line in block.lines)
-    return words[(len(words) - 1) // 2] >= cfg.prose_words
+    if words[(len(words) - 1) // 2] < cfg.prose_words:
+        return False
+    return _continued(block) >= cfg.prose_continued
+
+
+def _continued(block: _Block) -> float:
+    """The share of the block's lines, after the first, whose first letter is lowercase."""
+    starts = []
+    for line in block.lines[1:]:
+        letter = next((ch for ch in line.text if ch.isalpha()), "")
+        starts.append(letter.islower())
+    return sum(starts) / max(1, len(starts))
 
 
 def _is_prose(block: _Block, cfg: TableRowsConfig) -> bool:
     long_lines = (len(block.lines) >= cfg.prose_min_lines
                   and block.median_chars >= cfg.prose_chars and not block.gutters)
-    return long_lines or _wordy(block, cfg)
+    return long_lines or _wordy(block, cfg) or _notes(block, cfg)
 
 
 _MOVE_NUMBER = re.compile(r"^(\d{1,3})(?!\d)(\.{1,3}|…)?(.*)$")
+#: A move as OCR reads it: a square somewhere in it (``Bd6``, ``♖xd4``, ``@g1``, ``\\c3``)
+#: or castling.
+_MOVE_SQUARE = re.compile(r"[a-h][1-8]|[0O]-[0O]")
+_PURE_NUMBER = re.compile(r"^\d+[.,;:]?$")
+
+
+def _inner_move_numbers(text: str) -> int:
+    """Move numbers inside a line -- not its first token -- each followed by a move:
+    ``Or 21 Bd6 Rg8 22 g4 Rg6`` holds two.  A year (``Moscovo 1960``) is not a move
+    number, and a page number ends the line with no move after it."""
+    tokens = text.split()
+    count = 0
+    for i, token in enumerate(tokens[1:], start=1):
+        match = _MOVE_NUMBER.match(token)
+        if match is None:
+            continue
+        rest = match.group(3) or (tokens[i + 1] if i + 1 < len(tokens) else "")
+        if _MOVE_SQUARE.search(rest):
+            count += 1
+    return count
+
+
+def _notes(block: _Block, cfg: TableRowsConfig) -> bool:
+    """Notes of variations: ``notes_share`` of the block's lines hold a move number inside
+    them.  Running text, whatever the number of words."""
+    if len(block.lines) < cfg.prose_word_lines:
+        return False
+    inner = sum(1 for line in block.lines if _inner_move_numbers(line.text) > 0)
+    return inner >= cfg.notes_share * len(block.lines)
+
+
+def _numbers_column(block: _Block, cfg: TableRowsConfig) -> bool:
+    """The left side of a move list split by the page's gutter: consecutive move numbers,
+    each followed by one move at most, as OCR reads them (``1d4``, ``45 @g1``, ``3 exds``),
+    or bare (the numbers cut into a block of their own)."""
+    numbers: list[int] = []
+    moves = 0
+    for line in block.lines:
+        lead = _leading_number(line.text)
+        if lead is None or len(line.text.split()) > 2:
+            continue
+        numbers.append(lead[0])
+        moves += bool(not lead[1] or _MOVE_SQUARE.search(lead[1]))
+    if len(numbers) < 2 or len(numbers) < cfg.numbered_share * len(block.lines):
+        return False
+    steps = sum(1 for a, b in zip(numbers, numbers[1:], strict=False) if b == a + 1)
+    return (steps >= cfg.numbered_share * (len(numbers) - 1)
+            and moves >= cfg.numbered_share * len(numbers))
+
+
+def _move_column(block: _Block, cfg: TableRowsConfig) -> bool:
+    """A column of moves with no numbers of its own: one move a line (Black's replies, or
+    White's moves cut from their numbers).  ``Bennett 218`` is a name and a page."""
+    tokens = [line.text.split() for line in block.lines]
+    if any(len(t) > 2 or any(_PURE_NUMBER.match(x) for x in t) for t in tokens):
+        return False
+    moves = sum(1 for line in block.lines if _MOVE_SQUARE.search(line.text))
+    return moves >= cfg.numbered_share * len(block.lines)
 
 
 def _leading_number(text: str) -> tuple[int, str, bool] | None:
@@ -492,6 +600,21 @@ def table_groups(result: OcrResult, *,
                     return True
         return False
 
+    def crosses(block: _Block, group: Sequence[_Block]) -> bool:
+        """The group would hold blocks on both sides of the page's gutter, and is not a
+        move list split by it: the numbers (and maybe White's moves) on the left, one move
+        a line on the right -- positive evidence of a table, which two lists of the same
+        shape (an index of names and pages) never give."""
+        members = [*group, block]
+        if len({band(m) for m in members}) < 2:
+            return False
+        left = [m for m in members if band(m) == 0]
+        right = [m for m in members if band(m) != 0]
+        numbered = {m.index for m in left if _numbers_column(m, cfg)}
+        return not (numbered
+                    and all(m.index in numbered or _move_column(m, cfg) for m in left)
+                    and all(_move_column(m, cfg) for m in right))
+
     prose = _prose_lines([line for block in blocks for line in block.lines], cfg)
 
     def beside(block: _Block, group: Sequence[_Block]) -> bool:
@@ -512,7 +635,8 @@ def table_groups(result: OcrResult, *,
     # one-line cells of the last row (``Haia 1937``, ``Eslava``) seeded in
     # reading order would form a group of their own and leave that row split in
     # two; the column of page numbers (four lines) seeds the whole table.
-    seeds = sorted((b for b in blocks if _is_cells(b, cfg)), key=lambda b: -len(b.lines))
+    seeds = sorted((b for b in blocks if _is_cells(b, cfg) and not _is_prose(b, cfg)),
+                   key=lambda b: -len(b.lines))
     for seed in seeds:
         if seed.index in taken:
             continue
@@ -522,7 +646,7 @@ def table_groups(result: OcrResult, *,
             grew = False
             for block in blocks:
                 if (block.index in taken or any(block is m for m in group)
-                        or _is_prose(block, cfg) or band(block) != band(seed)
+                        or _is_prose(block, cfg) or crosses(block, group)
                         or numbered_twice(block, group)
                         or not beside(block, group)):
                     continue

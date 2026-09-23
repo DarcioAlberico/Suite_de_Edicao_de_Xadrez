@@ -27,17 +27,23 @@ e a mensagem do rodapé com 0 px ao lado de um nome de livro de 149 caracteres. 
 janela e em 1366×728, em **toda área**: nenhum controle (botão, rótulo com texto, campo, lista de
 escolha) fora da vista **sem uma barra de rolagem que leve a ele**, nenhum controle espremido abaixo
 do próprio mínimo (o Qt espreme quando a área é menor que o leiaute), e o rodapé medido **com a
-linha cheia** -- o nome longo na zona do documento, a frase longa e uma importação em curso, com a
-ocupação e a barra: a mensagem com ao menos `MENSAGEM_LEGIVEL` px à vista e nenhum botão dele
-espremido. A linha cheia é posta pelo arnês, e não esperada da importação do livro: o portão com o
-livro achou o botão das mensagens com 27 de 82 px enquanto a barra estava na linha, e uma medida
-que dependesse de a importação ainda estar correndo naquele instante não seria uma medida.
+linha cheia** -- a frase longa, uma importação em curso com a ocupação e a barra, os dispositivos
+da queda para a CPU, e na zona do documento o nome mais longo do acervo e um comum (`NOMES`): as
+**quatro zonas** à vista -- a mensagem com ao menos `MENSAGEM_LEGIVEL` px, o documento com ao
+menos `DOCUMENTO_LEGIVEL`, os dispositivos e a ocupação inteiros -- e nenhum botão espremido. A
+linha cheia é posta pelo arnês, e não esperada da importação do livro: o portão com o livro achou
+o botão das mensagens com 27 de 82 px enquanto a barra estava na linha, e uma medida que
+dependesse de a importação ainda estar correndo naquele instante não seria uma medida. E as zonas
+de dispositivos e de ocupação entraram na conta depois que o crítico (ciclo 2) as achou com 0 px
+-- a reserva de 480 px da mensagem saía delas, e o portão, que só olhava a mensagem e o
+documento, passava.
 
 **Sabotagens:** `--sabotar rodape` (a frase num `QLabel` comum: o mínimo sobe), `--sabotar corte`
 (toda rolagem sem barra horizontal, como no ciclo 1: sobra conteúdo sem caminho até ele),
-`--sabotar mensagem` (a mensagem sem largura garantida: some ao lado do nome longo) e
+`--sabotar mensagem` (a mensagem sem largura garantida: some ao lado do nome longo),
 `--sabotar aperto` (o botão das mensagens com o piso de um pixel de antes: espremido na linha
-cheia).
+cheia) e `--sabotar reserva` (o rodapé do ciclo 2: 480 px reservados à mensagem e as zonas curtas
+sem mínimo -- os dispositivos e a ocupação cortados).
 
     PYTHONPATH=src;..\\ChessVisionOFF_Puro\\src;.venv-pack\\Lib\\site-packages ^
     QT_QPA_PLATFORM=offscreen .venv\\Scripts\\python.exe -m caissa.ui.audit.minimo ^
@@ -65,7 +71,7 @@ FRASE_LONGA = 300
 """Caracteres da frase escrita no rodapé: mais longa que qualquer frase real medida (a maior
 dos relatórios da fase 4 tem ~180), para que o portão não dependa de qual frase apareceu."""
 
-SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto")
+SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto", "reserva")
 
 MENSAGEM_LEGIVEL = 320
 """Pixels lógicos da mensagem do rodapé que têm de estar à vista, no mínimo da janela e com o nome
@@ -75,6 +81,16 @@ NOME_LONGO = ("Gaprindashvili, Paata - Imagination in Chess. How To Think Creati
               "Foolish Mistakes (Bastford, 2005) 2p 145p_OCR_Aprimorar_Aprimorar.pdf · "
               "p. 1 de 289 · nenhum diagrama nesta página")
 """A zona do documento com o nome mais longo do acervo (149 caracteres): o caso do crítico."""
+
+NOME_COMUM = ("Karpov A - Chess Combinations -World Champions-2 (2011).pdf · p. 268 de 305 · "
+              "nenhum diagrama nesta página")
+"""...e com um nome comum do acervo (58 caracteres), o outro caso que o crítico pediu."""
+
+NOMES = (NOME_LONGO, NOME_COMUM)
+
+DOCUMENTO_LEGIVEL = 120
+"""Pixels lógicos da zona do documento que têm de estar à vista com a linha cheia: ~18
+caracteres, elididos no meio -- o começo do nome e o fim da frase (a página e os diagramas)."""
 
 TAMANHOS = ((1366, 728),)
 """Além do mínimo da janela: um portátil 1366×768 a 100 %, menos o título."""
@@ -121,6 +137,9 @@ def _sabotar_o_rodape() -> None:
         def definir_texto(self, texto: str) -> None:
             self.setText(texto)
 
+        def definir_piso(self, _piso: int) -> None:
+            """Um `QLabel` comum já pede o texto inteiro: não há piso a pôr."""
+
         @property
         def texto_inteiro(self) -> str:
             return self.text()
@@ -133,6 +152,17 @@ def _sabotar_a_mensagem() -> None:
     from chess_diagram_ocr.qt import rodape
 
     rodape.LARGURA_DA_MENSAGEM = 0  # type: ignore[attr-defined]
+
+
+def _sabotar_a_reserva() -> None:
+    """O rodapé do ciclo 2: 480 px reservados à mensagem, e as zonas curtas sem mínimo.
+
+    No aperto o leiaute tirava dos dispositivos e da ocupação a mesma parte que do nome do livro.
+    """
+    from chess_diagram_ocr.qt import rodape
+
+    rodape.LARGURA_DA_MENSAGEM = 480  # type: ignore[attr-defined]
+    rodape.LARGURA_DA_ZONA = 0  # type: ignore[attr-defined]
 
 
 def _sabotar_o_aperto(janela: Any) -> None:
@@ -234,37 +264,62 @@ def _vista(janela: Any, aplicacao: Any, areas: list[Any]) -> dict[str, Any]:
             "espremidos": espremidos, "alcancaveis_pela_barra": alcancaveis}
 
 
-def _linha_cheia(janela: Any) -> None:
-    """O pior caso do rodapé: o nome longo, a frase longa e uma importação com a barra."""
-    from chess_diagram_ocr.ui.busy import BusyOperation
+def _linha_cheia(janela: Any, nome: str = NOME_LONGO) -> None:
+    """O pior caso do rodapé, com ``nome`` na zona do documento.
 
-    janela.rodape.definir_documento(NOME_LONGO)
+    A frase longa, uma importação com a barra e os dispositivos da queda para a CPU.
+    """
+    from chess_diagram_ocr.ui.busy import BusyOperation
+    from chess_diagram_ocr.ui.estado_do_rodape import Dispositivos
+
+    janela.rodape.definir_documento(nome)
     janela.rodape.mostrar(_frase())
+    janela.rodape.definir_dispositivos(Dispositivos(pecas="cpu", caracteres=None))
     janela.rodape.aplicar_ocupacao([BusyOperation(
         name="Importando o livro", loses_work=False, cancellable=True,
         detail="p. 12 de 289", feito=12, total=289)])
 
 
 def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
+    """As quatro zonas do rodapé com a linha cheia, para cada nome de `NOMES`.
+
+    No tamanho em que a janela está.
+    """
     from PyQt6.QtWidgets import QAbstractButton
 
-    _linha_cheia(janela)
-    for _ in range(6):
-        aplicacao.processEvents()
+    rodape = janela.rodape
     # o arnês mede o que o rodapé desenha, e por isso lê os rótulos dele
-    mensagem = janela.rodape._lbl_mensagem
-    documento = janela.rodape._lbl_documento
-    barra = janela.rodape.barra_de_progresso()
+    zonas = {"mensagem": rodape._lbl_mensagem, "documento": rodape._lbl_documento,
+             "dispositivos": rodape._lbl_dispositivos, "ocupacao": rodape._lbl_ocupacao}
 
     def a_vista(widget: Any) -> int:
         return widget.visibleRegion().boundingRect().width() if widget.isVisible() else 0
 
-    espremidos = [_descricao(botao, janela) for botao in janela.rodape.findChildren(QAbstractButton)
-                  if botao.isVisible()
-                  and botao.width() < APERTO_TOLERADO * botao.minimumSizeHint().width()]
-    return {"tamanho": [janela.width(), janela.height()],
-            "mensagem_px": a_vista(mensagem), "documento_px": a_vista(documento),
-            "barra_px": a_vista(barra), "espremidos": espremidos}
+    nomes = []
+    for nome in NOMES:
+        _linha_cheia(janela, nome)
+        for _ in range(6):
+            aplicacao.processEvents()
+        medida: dict[str, Any] = {"nome": nome.split(" · ")[0][:60]}
+        for zona, rotulo in zonas.items():
+            medida[f"{zona}_px"] = a_vista(rotulo)
+        medida["barra_px"] = a_vista(rodape.barra_de_progresso())
+        # uma zona curta só vale inteira: elidida ou sem pixel nenhum, ela está cortada
+        medida["cortadas"] = [zona for zona in ("dispositivos", "ocupacao")
+                              if zonas[zona].texto_inteiro
+                              and (medida[f"{zona}_px"] == 0
+                                   or zonas[zona].text() != zonas[zona].texto_inteiro)]
+        medida["espremidos"] = [
+            _descricao(botao, janela) for botao in rodape.findChildren(QAbstractButton)
+            if botao.isVisible()
+            and botao.width() < APERTO_TOLERADO * botao.minimumSizeHint().width()]
+        nomes.append(medida)
+    return {"tamanho": [janela.width(), janela.height()], "nomes": nomes}
+
+
+def _rodape_a_vista(rodape: dict[str, Any]) -> bool:
+    return all(n["mensagem_px"] >= MENSAGEM_LEGIVEL and n["documento_px"] >= DOCUMENTO_LEGIVEL
+               and not n["cortadas"] and not n["espremidos"] for n in rodape["nomes"])
 
 
 def _motores(janela: Any, limite_w: int, limite_h: int) -> list[dict[str, Any]]:
@@ -319,6 +374,8 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
         _sabotar_o_rodape()
     if sabotar == "mensagem":
         _sabotar_a_mensagem()
+    if sabotar == "reserva":
+        _sabotar_a_reserva()
     from chess_diagram_ocr.qt.janela import JanelaPrincipal
 
     # **A janela não é desmontada aqui.** Visitar a área do Dataset dispara a leitura do
@@ -373,7 +430,7 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     medida["cabe"] = medida["minimo"][0] <= TETO[0] and medida["minimo"][1] <= TETO[1]
     medida["a_vista"] = (
         all(not v["fora_sem_barra"] and not v["espremidos"] for v in vistas)
-        and all(r["mensagem_px"] >= MENSAGEM_LEGIVEL and not r["espremidos"] for r in rodapes))
+        and all(_rodape_a_vista(r) for r in rodapes))
     return medida
 
 
@@ -461,11 +518,16 @@ def _imprimir(medida: dict[str, Any]) -> None:
                   f"{item['largura']}/{item['minimo']} px ({item['cadeia']})")
     for rodape in medida["rodape"]:
         largura, altura = rodape["tamanho"]
-        print(f"    rodapé a {largura}×{altura}: mensagem {rodape['mensagem_px']} px "
-              f"(mínimo {MENSAGEM_LEGIVEL}), documento {rodape['documento_px']} px, "
-              f"barra {rodape['barra_px']} px, {len(rodape['espremidos'])} botões espremidos")
-        for item in rodape["espremidos"]:
-            print(f"      {item['tipo']} {item['texto']!r} {item['largura']}/{item['minimo']} px")
+        for n in rodape["nomes"]:
+            cortadas = f", CORTADAS: {', '.join(n['cortadas'])}" if n["cortadas"] else ""
+            print(f"    rodapé a {largura}×{altura}, {n['nome'][:24]}…: "
+                  f"mensagem {n['mensagem_px']} "
+                  f"(≥ {MENSAGEM_LEGIVEL}), documento {n['documento_px']} (≥ {DOCUMENTO_LEGIVEL}), "
+                  f"dispositivos {n['dispositivos_px']}, ocupação {n['ocupacao_px']}, "
+                  f"barra {n['barra_px']} px, {len(n['espremidos'])} botões espremidos{cortadas}")
+            for item in n["espremidos"]:
+                print(f"      {item['tipo']} {item['texto']!r} "
+                      f"{item['largura']}/{item['minimo']} px")
 
 
 if __name__ == "__main__":

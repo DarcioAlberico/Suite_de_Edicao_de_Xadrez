@@ -304,8 +304,14 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.cartao.alternativa_pedida.connect(self._use_alternative)
         dir_.addWidget(self.cartao)
         # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` as seis ações somavam 466 px, e a
-        # 1248x640 «Pular», «Anterior» e «Próxima» ficavam com 0 px à vista.
-        botoes = FileiraFluida(direita)
+        # 1248x640 «Pular», «Anterior» e «Próxima» ficavam com 0 px à vista. E **fora da rolagem**
+        # (crítico, ciclo 2): dentro dela, abaixo do cartão, no portátil-alvo maximizado (1280x641,
+        # pele Foco) «Aceitar leitura», «Gravar edição» e «Próxima» ficavam abaixo da dobra, com
+        # 0 px à vista, e só se chegava a elas rolando o cartão. O cartão rola; as ações ficam.
+        lado = QWidget(corpo)
+        coluna = QVBoxLayout(lado)
+        coluna.setContentsMargins(0, 0, 0, 0)
+        botoes = FileiraFluida(lado)
         self.acoes: dict[str, QPushButton] = {}
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(Action.ACCEPT)),
@@ -313,21 +319,22 @@ class PainelDeRevisaoDeTexto(QWidget):
             ("Manter como imagem", lambda: self.decide(Action.KEEP_IMAGE)),
             ("Pular", lambda: self.decide(Action.SKIP)),
         ):
-            b = QPushButton(texto, direita)
+            b = QPushButton(texto, lado)
             b.clicked.connect(lambda _c=False, a=acao: a())
             botoes.adicionar(b)
             self.acoes[texto] = b
         paginador = []
         for texto, delta in (("Anterior", -1), ("Próxima", 1)):
-            b = QPushButton(texto, direita)
+            b = QPushButton(texto, lado)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
             botoes.adicionar(b)
             paginador.append(b)
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
-        dir_.addWidget(botoes)
         dir_.addStretch(1)
         rolagem.setWidget(direita)
-        corpo.addWidget(rolagem)
+        coluna.addWidget(rolagem, 1)
+        coluna.addWidget(botoes)
+        corpo.addWidget(lado)
         corpo.setStretchFactor(0, 2)
         corpo.setStretchFactor(1, 3)
         corpo.setSizes([440, 560])

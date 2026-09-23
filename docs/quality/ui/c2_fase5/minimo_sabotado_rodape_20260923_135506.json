@@ -1,0 +1,425 @@
+{
+  "gerado_em": "2026-09-23T13:55:06+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "rodape",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        3318,
+        606
+      ],
+      "ficou": [
+        3318,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            3326,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 28
+        },
+        {
+          "tamanho": [
+            2859,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 17
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            3326,
+            606
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1625,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2084,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            3318,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1617,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2076,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": false,
+      "a_vista": true
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        3318,
+        640
+      ],
+      "ficou": [
+        3318,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            3326,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 28
+        },
+        {
+          "tamanho": [
+            2859,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 18
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            3326,
+            640
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1625,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2084,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            3318,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1617,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2076,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": false,
+      "a_vista": true
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        3308,
+        629
+      ],
+      "ficou": [
+        3300,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            3308,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 35
+        },
+        {
+          "tamanho": [
+            2849,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 16
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            3308,
+            629
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1625,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2084,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            3300,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "mensagem_px": 1617,
+              "documento_px": 1045,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "mensagem_px": 2076,
+              "documento_px": 586,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": false,
+      "a_vista": true
+    }
+  ],
+  "passou": false
+}

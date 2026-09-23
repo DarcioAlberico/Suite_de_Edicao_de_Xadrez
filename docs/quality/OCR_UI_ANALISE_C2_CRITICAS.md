@@ -789,7 +789,12 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > **Ciclo 1: REPROVADO, 3 bloqueantes** — o B13 embaralhando as colunas estreitas da Gallagher, o
 > C18 cabendo porque escondia conteúdo, e a coluna «≤ 0 errados» do C17 zerada por uma grade de
 > limiares que parava em 0,99; o que mudou por item está em `OCR_UI_REPORT_C2_FASE5.md` §0.4.
-> **Ciclo 2:** ⟨pendente⟩.
+> **Ciclo 2: REPROVADO, 2 bloqueantes** — os três do ciclo 1 resolvidos nos casos dados, mas o
+> B13 ainda intercalava as duas colunas de um índice real sem prosa (Karpov 2 p. 268, CER 0,76
+> contra a ordem do livro) através da calha que a própria regra achava, e a reserva de 480 px da
+> mensagem do rodapé saía das zonas de dispositivos e de ocupação (a queda para a CPU de novo em
+> silêncio); o que mudou está em `OCR_UI_REPORT_C2_FASE5.md` §0.5.
+> **Ciclo 3:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -877,3 +882,207 @@ ela. «Tronco da fase» = minha árvore limpa `git worktree add --detach C:\Pyth
 2. **C18:** barra horizontal `AsNeeded` nas rolagens novas (ou conteúdo que reflui — a fileira de botões do cartão numa `BarraFluida`, rótulos com quebra), até nenhum botão ficar fora da vista sem barra a 1248×640 e a 1366×728; o rodapé com prioridade real para a mensagem (teto ou elisão no meio para o documento, ou um mínimo de largura para a mensagem) e um caso de portão com o nome de 149 caracteres; o `caissa.ui.audit.minimo` reprovando quando um controle visível fica cortado sem barra no tamanho medido, com a sabotagem correspondente (rolagem com `AlwaysOff`) reprovando.
 3. **C17:** `best_at_budget` sobre todos os valores distintos de confiança (ou uma grade até 1,0 com passo que separe 0,9979 de 1,0), a tabela e o texto do §C17 refeitos (itens 1 e 2), e um desempate declarado para a AURC (média sobre as ordens dos empates, ou ordenar por confiança e depois por exatidão pior-primeiro, dito).
 4. **Não bloqueantes a fechar no mesmo ciclo:** nota no rastro quando a cobertura não é medida por exclusão total (moldura), e a regra (4) não excluir o que está dentro de um componente do tamanho da página; a regra de desempate do piso escrita antes de olhar a `dev`; a regra do `.split()` com a mesma restrição de forma e o teste anti-brecha cobrindo `.split()` e chave exibida; `_bindings_ao_importar` distinguindo exceção de binding encontrado.
+
+## Crítico Claude — ciclo 2 (REPROVADO, 2 bloqueantes)
+
+VEREDITO: REPROVADO
+CICLO: 2
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Convenções dos comandos: os scripts novos estão em `C:\Python-Chess2\_critico_f5\c2\` e os do ciclo 1 em
+`C:\Python-Chess2\_critico_f5\` (a saída de cada um ao lado, `*.out`/`*.json`); rodados da raiz da suíte com
+`.venv\Scripts\python.exe`. A suíte principal estava no `158f420` com `git status --short src tests` vazio (o
+`src` do `158f420` é o do `4fc0f4d`). «Tronco do ciclo 2» = minha árvore limpa
+`git worktree add --detach C:\Python-Chess2\_critico_f5\tronco 53dd066`; «tronco do ciclo 1» = `tronco_c1`
+(`8243e90`); «suíte do ciclo 1» = `suite_c1` (`99546e9`); `suite_sab` (`158f420`) para as sabotagens do
+`test_arquitetura`. As quatro árvores ficaram limpas e foram removidas com `git worktree remove`. Sondas do
+corpus e das páginas renderizadas com `CAISSA_FIGURINE_TESSDATA=models\tessdata`; importador e janela **sem**
+ela. Nenhum arquivo dos dois checkouts principais foi editado; o `git status` deles terminou igual ao do
+começo (só o trabalho das outras sessões). Nenhum processo meu ficou vivo (o único Python restante, PID 1996,
+já existia às 07:51 e não é meu).
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| B13, Gallagher pp. 50–53 pelo importador | `b13_importador.py "<Gallagher>" 50,51,52,53 …\_critico_f5\b13_gallagher_c2.json` → `b13_gallagher_c2.out`; `gallagher_cer_c2.py` → `gallagher_cer_c2.out` | sim | p. 50 similaridade 0,7970 com a lista de lances por linha; pp. 51–53 idênticas; CER **0,2732 → 0,2028**, WER 0,4076 → 0,3121 — como o relatório |
+| B13, páginas construídas do ciclo 1 | `b13_render.py` → `b13_render_c2.out`; `b13_caso_ruim.py` → `b13_caso_ruim_c2.out` | sim, com ressalva | renderizadas: CER igual ligado/desligado (0,2241; 0,0190; 0); leituras construídas: a partida em duas colunas não agrupa; as duas partidas só juntam os títulos de uma linha (`[[3, 4]]`); **o índice em duas colunas continua agrupado (`[[8, 9]]`)** → novo bloqueante 1 |
+| B13, Kmoch p. 44 | `b13_trace_blocos.py "<Kmoch>" 44 nld+eng 300` → `c2\b13_trace_kmoch44_c2.out`; `b13_corredor.py` → `c2\b13_corredor_c2.out` | sim | GRUPOS `[]` (ciclo 1: `[[20, 12]]`); o corredor continua com 7 px — o conserto é o parágrafo com calha espúria não semear mais |
+| B13, os 24 testes travam os casos do ciclo 1? | `test_table_rows.py` do `158f420` rodado contra o `rows.py` do `99546e9` (árvore `suite_c1`) | sim | 9 de 24 reprovam: 5 por asserção (Gallagher p. 50 `[[1, 6], [2, 3, 4, 7, 8, 9]]`, duas partidas `[[1, 2]]`, a partida nas duas colunas atravessa, Kmoch `[[20, 12]]`, o título partido `[[8, 6]]`) e 4 por parâmetro/função que não existia |
+| B13, a Gallagher inteira | `c2\b13_varredura.py "<Gallagher>" 14-186/4,187-189 eng`, e `15-186/4`, `16-186/4`, `17-186/4` → `c2\b13v_gallagher.*`, `c2\b13v_gal_1[567].*`; diffs por `c2\ver_diff.py` | em parte | **176 páginas: 155 idênticas**; 21 mudam: 3 melhoram (pp. 33, 50, 124 — número e lances na mesma linha), 2 perdem lances (pp. 41, 175 — não bloqueante 3), o resto é ruído de diagrama reordenado ou fólio colado. Nenhum grupo cruzou a calha na Gallagher real |
+| B13, páginas finais (índices, sumários, soluções) de nove livros raster | `c2\b13_varredura.py` em Karpov 2 262–272, Vladimirov 380–385 e 400–405, Silman 376–387, Stean 154–165, Flores Rios 452–465, Aagaard 180–192, Levenfis 296–305, Stefaniu 236–245, Reinfeld 1977 310–319 → `c2\b13v_*.out/json` | **não** | **Karpov 2 p. 268 (índice de jogadores): similaridade 0,4249, 2 grupos** → novo bloqueante 1. Melhoram: Reinfeld 1977 p. 319 (sumário; pelo importador CER 0,2508 → 0,1570 contra `c2\reinf77_p319_verdade.txt`, `c2\b13i_reinf319.*`, embora funda as entradas 1 e 2 numa linha) e Stefaniu p. 242 (sumário). O resto idêntico, cabeçalho+fólio ou ruído |
+| B13, Karpov 2 p. 268 pelo importador, 3 execuções | `b13_importador.py "<Karpov 2>" 268 c2\b13i_karpov268{,_r2,_r3}.json` | **não** | similaridade 0,4255; **CER da leitura ligada contra a desligada (a ordem do livro) 0,7606** (WER 0,9502) nas 3; decisão `review` nos dois lados; nenhuma nota de reordenação |
+| B13, rastro da p. 268 | `b13_trace_blocos.py "<Karpov 2>" 268 eng 300` → `c2\b13_trace_karpov268.out` | — | `find_gutters` sobre todas as linhas acha a calha **(672–1002 px)**; 0 linhas de prosa (≥ 30 car.); `_prose_gutters` = `[]`, `_page_gutters` = `[]`; grupos `[[7, 4, 6], [5, 8, 9]]` — b4 em x 133–685 com b7 em x 1002–1458 |
+| B13, tabelas legítimas no formato e na degradação do corpus | `c2\b13_tabelas.py scan_degraded_150,scan_clean_300` (e com `SUITE_SRC=…\suite_c1\src` para a regra do ciclo 1), 3 execuções → `c2\b13_tabelas_c2.out`, `c2\b13_tabelas_c1.out` | em parte | classificação de torneio com a coluna 1, 2, 3… **não** é recusada (0,1388 → 0,0909 nos dois ciclos); rodadas de um match: nenhum grupo; **aberturas por extenso (4 palavras): 0,4646 → 0,3456 no ciclo 2, 0,0113 no ciclo 1** → não bloqueante 1; índice em duas colunas 0,1824 → 0,6554 nos dois ciclos; as linhas do `table:2` em Times 0,6224 → 0,5280 nos dois ciclos → não bloqueante 2 |
+| B13, colunas estreitas com notas de variantes | `c2\b13_estreita.py` (3 execuções) → `c2\b13_estreita_c2.out`; `c2\b13_fixture_notas.py` → `.out` | **não** | página no leiaute da Gallagher p. 50 (Times 10 pt, 300 DPI, serviço de produção): notas de variantes \| lista numerada **0,0113 → 0,5845** («Or 21 Bd6 Rg8 22 g4 Rg6 26 Re3 Bxd4»); sob um título de largura inteira 0,0102 → 0,5292; lista \| notas: nenhum grupo. A fixture `gallagher_p50()` do próprio teste com as notas trocadas por variantes: não atravessa enquanto o alto da coluna direita é prosa por palavras (`[[7, 8, 9]]`); sem nenhum bloco de prosa, `[[7, 2, 4, 8, 9], [1, 6]]`, atravessa |
+| C17 | `c2\conf_regua_c2.py` → `c2\conf_regua_c2.out` | sim | orçamentos ≤ 0/1/2 = força bruta sobre todo valor distinto, nos 15 modelos; AURC publicada = média de Monte Carlo sobre 4.000 ordens dos empates (±0,00001); a tabela do §C17 bate célula a célula 15/15; linhas do ciclo 2 = ciclo 1 = `docs/quality/campo/f5_c17_regua.json`; sabotagem: AURC pior 15/15, três colunas em 0 em 5/15, tau recalculado **+0,3143** |
+| C18, portão estendido | `c2\minimo_c2.sh` (sem livro, Kemeri, `aperto`, `rodape`, `corte`, `mensagem`) → `c2\minimo\*.log`, `minimo*.json` | sim, no que mede | PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; 0 fora da vista sem barra; 0 espremidos; mensagem 480 px, documento 418–554), ao pixel do construtor; as quatro sabotagens REPROVARAM (1/82 px; 2208 px; 3 controles do Resultado sem barra na Clássica e na Foco; mensagem 0 px); nenhuma pele morta com sete processos de varredura ao lado |
+| C18, o que fica à vista, mais largo que o portão | `c2\c18_vista.sh` (3 peles × com/sem livro × 400x300, 1280x640, 1366x728, 1248x800, 1440x900; também editores, listas, barras; corte por pai que não rola; altura) → `c2\c18_vista_*.out/json` | em parte | 0 controles dos tipos do portão cortados sem barra ou espremidos na largura fora do rodapé; **no rodapé, as zonas de ocupação e de dispositivos com 0 px** → novo bloqueante 2. Os «espremidos na altura» de editor/lista/cabeçalho são `setMaximumHeight` de desenho, iguais ao ciclo 1: descartados |
+| C18, as sondas do ciclo 1 | `c18_visiveis.py` (foco, Kemeri) → `c2\c18_visiveis_c2.out` e, a 1280×641, `c2\c18_visiveis_1280_{foco,classica,fita}.out`; `c18_corte.py` → `c2\c18_corte_c2.out`; `c18_rodape_janela.py` → `c2\c18_rodape_janela_c2.out`; `c18_rodape2.py` → `c2\c18_rodape2_c2.out` | em parte | a barra horizontal do Resultado aparece (550 × 526 com barra); a 1248×640 e a **1280×641** (Foco) os botões do cartão da Revisão de texto têm 0 px à vista e só se chega a eles rolando (não bloqueante 4); rodapé: mensagem 480 px; com o Flores Rios a 1250 a zona de dispositivos desenha «…» |
+| C18, rodapé com os nomes de todo o acervo | `c2\c18_rodape_zonas.py`, `c2\c18_rodape_acervo.py` contra `tronco` (`53dd066`) e `tronco_c1` (`8243e90`) → `*.out`, `*_c1.out` | **não** | zona de dispositivos cortada em **46/46 livros a 1248 e a 1366** (ciclo 1: 2 e 1), com 0 px em 14/46 a 1248 (ciclo 1: 0) → novo bloqueante 2 |
+| C18, o teste de elisão mudado | `c2\c18_teste_elisao.py`; o teste antigo (`git show 8243e90:tests/test_qt_rodape.py`) rodado na árvore `53dd066` | sim | o antigo reprova porque, na faixa de 320 px, o nome desenha `''` (`'…' not found in ''`) — a razão do construtor confere; o novo dá 320 px ao nome e ele elide. Mudança legítima |
+| C18, teclado e ordem do Tab | `c2\teclado_c2.sh` → `c2\teclado\*`; comparação com os JSON do ciclo 1 em `teclado\` | sim | PASSOU a 1280×800 e 1248×640 (Revisão de texto 50/50, Rotulagem 65/65, Galeria 57/57); **ordem do Tab idêntica à do ciclo 1** em Revisão de texto (49), Rotulagem (63), Galeria (53) e Resultado (31), nos dois tamanhos; o `QShortcut` tirado da Revisão de texto era import sem uso |
+| B14, moldura | `b14_moldura_kmoch.py` → `c2\b14_moldura_kmoch_c2.out`; `c2\b14_moldura_c2.py` (5 itens da foto) → `c2\b14_moldura_c2.out` | sim | Kmoch 1.058/1.162/995 letras com a moldura; itens com moldura de 12 px: as mesmas letras que sem ela (209/195/234/187/422) e a cobertura medida (1,0); uma figura de meio-tom de 1,5× a largura do texto ao lado: nenhuma sinalização falsa |
+| B14, piso | `cmp docs\quality\sol\f5_b14_fit3.json benchmarks\reports\sol\f5_b14_fit2.json` | sim, dito | idênticos; a tabela do §B14 confere; a grade do ajuste tem 0,88, que a regra «o menor piso que atinge o máximo» escolheria; o 0,90 vem da «grade de décimos», escrita depois da `dev` — o relatório diz |
+| B14, população (os meus oito livros) | `b14_populacao.py c2\b14_pop "<Stean>:40..43" … "<Vladimirov>:200..203"` → `c2\b14_pop.out` | sim | **95 medidas, 6 sinalizadas**: Gallagher p. 50 (0,896, revisão), Reinfeld pp. 100/102/103 (abstenção), Karpov p. 103 e Vladimirov p. 201 (revisão), ruído de diagrama — como o relatório |
+| B14, Stefaniu p. 49 (83 → 9 regiões) | `c2\stef49.py` (pp. 48–50 ×3, pp. 40–51 ×1, com a variável no ambiente ×1) | em parte | 9 regiões nas cinco; não reproduzi as 83 → não bloqueante 6 |
+| A15, `test_strings` | `a15_brecha.py`, `a15_escondidos.py`, `c2\a15_brecha2.py` (Python do tronco, árvore `53dd066`) → `c2\a15_*.out` | em parte | os casos do ciclo 1 varridos (4/4); as regras escondem só os seis identificadores; três brechas construídas novas escapam → não bloqueante 7 |
+| `test_arquitetura` | árvore `suite_sab` (`158f420`): `SyntaxError` e depois `from PyQt6 import QtCore` no topo de `ui/audit/minimo.py`; `pytest tests/unit/ui/test_arquitetura.py` | sim | «importar caissa.ui.audit.minimo falhou: Traceback…»; «trouxe um binding de Qt junto: PyQt6,PyQt6.QtCore,PyQt6.sip» (código 3); arquivo restaurado, `git status` vazio |
+| A/B e evidência versionada | `c2\conf_sol_c2.py` → `c2\conf_sol_c2.out` | sim, com ressalva | `f5c2_on/b13_off/b14_off` = `f5_on/b13_off/b14_off` item a item (0 diferenças); `sol.json` do `158f420` = `f5c2_on` = `sol.json` do ciclo 1; `f5_ab.json` = JSON das corridas; aceitos com CER > 0,10: 30 → 7; B13 muda 7 itens, B14 27, nenhum pior; ressalvas → não bloqueante 8 |
+| Portões do Sol no `sol.json` do `158f420` | `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json` → `c2\sol_gate_c2.out` | sim | 150 DPI 0,0094 ≤ 0,020 ✓; CER limpo 0,0113, lances 0,9164, 157 inventados ✗; nenhuma regressão contra o `baseline`; `environment.commit` = `4fc0f4d` |
+| Levenfis p. 134 | `b13_raster_paginas.py "<Levenfis>" 134 ron+eng` → `c2\b13_lev134_raster_c2.out`; `b13_importador.py … 134` → `c2\b13i_lev134.*` | sim | raster 19 → 15 regiões; importador 13 → 11, similaridade 0,9906 — como o relatório diz |
+| Testes novos e tocados | suíte: `pytest tests/unit/ocr/test_table_rows.py tests/unit/ocr/test_ink_coverage.py tests/unit/classify/test_model_ruler.py tests/unit/ui/test_arquitetura.py tests/unit/ui/test_fileira_fluida.py tests/unit/ui/test_rotulo_que_encolhe.py tests/unit/ocr/test_sol_metrics.py`; tronco (árvore `53dd066`): `tests/test_qt_janela_cabe.py tests/test_qt_rodape.py tests/test_strings.py "tests/test_field_eval.py::ImpressaoDaMedicaoTests"` | sim | suíte **102 passaram**; tronco **86 passaram** (97 subtestes) |
+| Tronco inteiro | `trunk_full_c2.sh` (árvore `53dd066`, `pytest tests -q -p no:cacheprovider -rfE`) → `trunk_full_c2.out` | sim | **4.786 passaram, 16 pulados, 8 xfail, 1 reprovado** em 540 s; o reprovado é `test_environment::…resolve_para_esta_arvore`, por construção da árvore efêmera; árvore limpa antes e depois. Um pulado a mais que o construtor (os `.pt` fora do git) |
+| Suíte inteira, com o `test_arquitetura` na mesma corrida | `c2\suite_full_c2.sh` (`CAISSA_CVOFF_ROOT` e `PYTHONPATH` = árvore `53dd066`; `--ignore` de `test_packaging.py` e `test_roundtrip_corpus.py`) → `c2\suite_full_c2.out` | sim | **4.011 passaram, 17 pulados, 1 erro, 0 reprovados** em 728 s; 4.011 + 17 + 1 = 4.029 = 4.020 + 9 do construtor. O erro (`test_gpu_parity::test_cuda_actually_computes`) é o do meu ambiente no ciclo 1 (o carregador recusa `CAISSA_CVOFF_ROOT`); os 8 pulados a mais pedem artefatos fora do git |
+
+### Os bloqueantes do ciclo 1
+
+1. **B13 embaralhava as colunas estreitas da Gallagher — resolvido nos casos; não resolvido na classe.**
+   Os casos que dei estão consertados e travados: Gallagher p. 50 pelo importador CER 0,2732 → 0,2028 (era
+   0,7042), pp. 51–53 idênticas; as três páginas construídas idênticas ao desligado; Kmoch p. 44 sem grupo; os
+   testes novos reprovam a regra do ciclo 1 por asserção em 5 casos. Na Gallagher inteira (176 páginas) nenhum
+   grupo cruzou a calha. **Mas o que pedi no ciclo 1 — «o grupo nunca pode ter blocos dos dois lados de uma
+   calha da página, com ou sem prosa para julgar» — não foi feito:** `_page_gutters` só aceita a calha que o
+   próprio `find_gutters` acha quando há um bloco de prosa de um dos lados, e a primeira página real sem prosa
+   que procurei embaralha (novo bloqueante 1).
+
+2. **C18 — a janela cabia escondendo: resolvido nos controles; o conserto do rodapé esvaziou as zonas
+   vizinhas.** Nenhum controle dos tipos do portão fica fora da vista sem barra ou espremido na largura, em 3
+   peles × 5 tamanhos × com e sem livro (`c18_vista.sh`); o portão estendido passa e as quatro sabotagens
+   reprovam; o teclado passa e a ordem do Tab é a do ciclo 1; a mudança do teste de elisão é legítima; a
+   mensagem tem 480 px. Mas os 480 px saíram das zonas de dispositivos e de ocupação, que no ciclo 1 ficavam
+   à vista (novo bloqueante 2).
+
+3. **C17 — a coluna «≤ 0 errados» zerada pela grade: resolvido.** `model_ruler.cuts` = força bruta em todo
+   valor distinto nos 15 modelos; a produção exporta 74 com zero errados (portão 0,998); a AURC é a esperança
+   sobre as ordens dos empates (confere com Monte Carlo); a tabela e as conclusões (1)–(4) do §C17 batem com as
+   linhas; o desempate está declarado; as linhas estão versionadas.
+
+### Defeitos bloqueantes (novos)
+
+1. **B13 intercala as duas colunas de um índice real do acervo, pelo importador de produção — através da calha
+   que a própria regra acha.**
+   - **Onde:** `src/caissa/ocr/layout/rows.py` — `_page_gutters` (a calha única de `find_gutters` só vale «when
+     a side of it holds a block of prose»; «a move list alone (no prose in either band) return nothing»),
+     `_is_column_gutter` (julga só com ≥ 8 linhas de ≥ 30 caracteres), `table_groups`.
+   - **O quê:** Karpov, *Chess Combinations — World Champions 2* (acervo, raster), índice 268 (base 0; página
+     impressa 268): o índice de jogadores em duas colunas estreitas, «Radulescu 8 / Ragozin 24 / … / R. FISCHER /
+     Aaron 249 …» | «Benko 221, 246, 256, 261 / Bennett 218 / … / Saidy 262». Com o B13 desligado o texto sai na
+     ordem do livro; **ligado, cada linha junta dois verbetes das duas colunas** — «Radulescu 8 Benko 991, 246,
+     256, 261», «Ragozin 24 Bennett 218», «Sakharov 47 Byrne 8. 255, 271, 304» — e o cabeçalho «R. FISCHER»
+     cai depois de verbetes da seção dele. **CER da leitura ligada contra a desligada 0,7606, WER 0,9502**, nas
+     três execuções; decisão `review` nos dois lados, sem nenhum aviso de que a ordem foi reescrita. O rastro:
+     `find_gutters` sobre todas as linhas acha a calha da página (672–1002 px de uma página de 1934), 0 linhas de
+     prosa, `_page_gutters` descarta a calha, e os grupos `[[7, 4, 6], [5, 8, 9]]` juntam x 133–685 com
+     x 1002–1458. A mesma classe aparece em mais três formas: o índice construído em duas colunas a 150 DPI
+     (CER 0,1824 → 0,6554); uma página no leiaute da Gallagher p. 50 com notas de variantes (poucas palavras por
+     linha) ao lado da lista numerada, construída e lida pelo serviço de produção (**0,0113 → 0,5845**, 3/3:
+     «Or 21 Bd6 Rg8 22 g4 Rg6 26 Re3 Bxd4», «bishops: 26 Re3 Bxd4 27 32 Rd5 h6»); e a fixture `gallagher_p50()`
+     do próprio teste do construtor, com as notas e o alto da coluna direita trocados por variantes — grupos
+     `[[7, 2, 4, 8, 9], [1, 6]]`. A proteção nova depende de existir na página um bloco de ≥ 2 linhas com
+     mediana de ≥ 4 palavras; índices, sumários, soluções e páginas de variantes não têm.
+   - **Como reproduzir:** `unset CAISSA_FIGURINE_TESSDATA; .venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\b13_importador.py "C:\Python-Chess2\ChessVisionOFF_Puro\PDF\Karpov A - Chess Combinations -World Champions-2 (2011).pdf" 268 <saida.json>`
+     (similaridade 0,4255; o CER pelo trecho em `c2\b13i_karpov268*.json`); rastro:
+     `CAISSA_FIGURINE_TESSDATA=models\tessdata … b13_trace_blocos.py "<Karpov 2>" 268 eng 300`; varredura:
+     `c2\b13_varredura.py "<Karpov 2>" 262-272 eng <saida.json>`; construídos: `c2\b13_tabelas.py`,
+     `c2\b13_estreita.py`, `c2\b13_fixture_notas.py`; imagem da página: `c2\karpov2_p268.png`.
+   - **Por que reprova:** é o bloqueante 1 do ciclo 1 numa página real que não é a Gallagher. O relatório afirma
+     «dentro da coluna da página e nunca através da calha» (§0) e «Nenhum grupo atravessa a calha» (§0.2 e
+     §B13); aqui atravessa, no caminho do produto, com os interruptores de produção, e o texto sai plausível e
+     trocado sem sinal (Carta §3.3, falha silenciosa). Todo livro tem índice; o editor recebe, na revisão e na
+     exportação, um índice com dois verbetes misturados por linha.
+
+2. **C18: o conserto da mensagem do rodapé tirou a largura das zonas de dispositivos e de ocupação — a
+   degradação para CPU volta a ser silenciosa.**
+   - **Onde:** tronco `qt/rodape.py` (`LARGURA_DA_MENSAGEM = 480` como mínimo da mensagem enquanto há
+     mensagem; o documento com mínimo 0 e o nome inteiro como largura desejada; no aperto o `QBoxLayout` tira a
+     mesma quantidade de cada item não fixo, e as zonas curtas chegam a 0 primeiro); suíte
+     `ui/audit/minimo.py` (`_rodape` mede mensagem, documento, barra e botões — não as zonas 3 e 4).
+   - **O quê:** com o nome do livro na zona do documento, uma operação em curso e os dispositivos «peças cpu ·
+     texto sem pesos», para os **46 PDFs do acervo**: a zona de dispositivos fica cortada (elidida ou 0 px) em
+     **46/46 a 1248 e a 1366**, 45/46 a 1440, 22/46 a 1600, e com **0 px em 14/46 a 1248**; no ciclo 1
+     (`8243e90`), cortada em 2 a 1248 e em 1 a 1366, 0 px em nenhum. Com o Flores Rios (87 caracteres):
+     dispositivos 0 / 3 / 28 px de 135 a 1248 / 1366 / 1440 e ocupação («Importando o livro (p. 121 de 289)»)
+     0 / 31 / 56 de 163, enquanto o nome recebe 418–526 px — no ciclo 1, 126/135 e 155/163 a 1248; com o nome de
+     149 caracteres, as duas zonas em 0 px até 1600. Isolado a 1250 com o Flores Rios, a mensagem de 60
+     caracteres usa 303 dos 480 px reservados (177 px vazios) e a zona de dispositivos desenha só «…»; a 1366,
+     «peças …to cpu» (o «cuda» some).
+   - **Como reproduzir:** `QT_QPA_PLATFORM=offscreen PYTHONPATH=src;<árvore 53dd066>\src;.venv-pack\Lib\site-packages .venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c2\c18_rodape_acervo.py <árvore 53dd066>`
+     (e com a árvore `8243e90` para o antes); `c2\c18_rodape_zonas.py`; `c18_rodape2.py` →
+     `c2\c18_rodape2_c2.out`; na janela, `c2\c18_vista.sh` → `c2\c18_vista_*_*.out` (as duas zonas com 0 px no
+     mínimo da janela — 1248×606, 1248×640, 1246×629 — nas três peles, com e sem livro).
+   - **Por que reprova:** pela docstring do próprio tronco (`ui/dispositivos.py`), a zona de dispositivos existe
+     porque «uma máquina com placa mas com o torch `+cpu` instalado roda na CPU em silêncio»; com ela em 0 px ou
+     «…» a queda para CPU volta a ser silenciosa (Carta §3.3, «Degradação não sinalizada quando a GPU não está
+     disponível») — e há reticências onde caberia (177 px vazios ao lado de uma zona em «…»). É o defeito do
+     bloqueante 2 do ciclo 1 (uma zona do rodapé em 0 px) mudado de lugar pelo conserto, e o portão passa porque
+     não mede essas zonas — ele diz medir «a linha do rodapé cheia».
+
+### Defeitos não bloqueantes
+
+1. **A regra de prosa por palavras recusa uma tabela legítima de células de quatro palavras.** A tabela do
+   `table:2` com as aberturas por extenso («Defesa Siciliana, Variante Najdorf», «Gambito da Dama Recusado»), no
+   formato e na degradação do corpus, a 150 DPI: desligado 0,4646, **regra do ciclo 1 0,0113, regra do ciclo 2
+   0,3456** — duas células de abertura saem da linha delas e aparecem depois da tabela («12. Tal = Botvinnik
+   Moscovo 1960 203», sem abertura). A docstring diz «A table's cells run 1–3 words»; o próprio corpus tem
+   «Gambito da Dama Recusado» (`c2\b13_tabelas.py`, 3 execuções).
+2. **O ganho do B13 nas tabelas do corpus não generaliza para outra fonte:** as mesmas cinco linhas do
+   `table:2`, em Times e com a semente de degradação de outro id, saem 0,6224 → 0,5280 nas duas regras (o
+   `table:2` do corpus, em Georgia: 0,0035). O portão de 150 DPI verde se apoia em três itens de tabela.
+3. **O não bloqueante 7 do ciclo 1 (o B13 muda a leitura fora do grupo) aparece em lances na própria
+   Gallagher:** p. 41, 1 → 12 regiões, «33 ♔d3 ♘xb5» (certo no desligado) → «33 ♔dd ♘8b5», «35 ♗xd6! ♔xd6» →
+   «35 ‘Oxd6! @xd6»; p. 175, o 4º lance da partida 55 («♘c3 ♘f6») some da linha dele e «e4 ♘f6» entra na
+   primeira linha com ruído de diagrama («An mWwWN e4 ♘f6 e4 eS») — `c2\ver_diff.py c2\b13v_gal_17.json 41`,
+   `c2\b13v_gal_15.json 175`, imagens `c2\gal_p41_topo.png`, `c2\gal_p175.png`.
+4. **No portátil-alvo maximizado (1280×641, pele Foco, a padrão) as ações principais do cartão da Revisão de
+   texto — «Aceitar leitura», «Gravar edição», «Próxima» — ficam com 0 px à vista** e só se chega a elas
+   rolando o cartão; na Fita, também a 1366×728 (6 botões). O portão as conta como «alcançáveis pela barra»
+   (`c2\c18_visiveis_1280_*.out`).
+5. **O portão da janela não mede altura, nem editores, listas e tabelas, nem as zonas 3 e 4 do rodapé** (é por
+   isso que o bloqueante 2 passa).
+6. **Stefaniu p. 49:** não reproduzi as 83 regiões (9 em cinco corridas, inclusive importando 40–51 juntas e
+   com a variável no ambiente). A corrida que deu 83 (04:15) usou o `rows.py` anterior ao commit do ciclo 1 —
+   o log dela registra «table-merged regions 96» no Stefaniu, e o `rows.py` commitado é o modificado às 05:50
+   —, e comparar com o `99546e9` não testa aquela versão: «a diferença não é da regra» não se sustenta como
+   escrito.
+7. **A15: três brechas construídas ainda escapam** — `combo.addItems("pagina posicao revisao".split())` (lista
+   minúscula que vai para a tela), `QLabel(", ".join(D))` e `combo.addItems([*D])` (`c2\a15_brecha2.py`);
+   nenhuma frase de tela real escondida hoje.
+8. **Evidência versionada incompleta para refazer os números:** `docs/quality/sol/f5_ab.json` não guarda o
+   `answered`, e a média do `native` não se refaz dos itens (0,0143/0,0197 contra 0,0171/0,0235 do relatório; o
+   resumo por estrato está lá, mas não é recalculável); e as corridas `f5c2_*` gravam `commit=99546e9`, sem
+   marca de árvore suja, embora tenham medido o código antes do `4fc0f4d`.
+9. **C17, frase da sabotagem:** «caem a 0 em 5 dos 15 e a quase nada nos outros» — `c4_aug0_s44` fica com
+   71/92, `c4_w3_s42` com 66/88 e `c4_e_s44` com 11/66 nas colunas ≤ 1/≤ 2.
+10. **Piso do B14:** dito, não resolvido — o 0,90 não sai da `calib` pela regra declarada (na grade do ajuste
+    ela daria 0,88).
+
+### O que falta
+
+- A medida da janela na plataforma real (`windows`): tudo aqui foi `offscreen` com a fonte do produto imposta.
+- O portão contra o checkout principal do tronco: não rodei (tem, sem commit, o trabalho de outra sessão).
+- O `bench_sol` inteiro não foi rodado (o briefing proíbe); o A/B foi conferido item a item dos JSON.
+- Varri a Gallagher inteira e as páginas finais de nove livros raster; não varri todas as páginas de todos os
+  livros raster.
+- A comparação às cegas da Carta não se aplica a esta frente e não foi feita.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+1. **B13 — a calha da página vale sem prosa.** Uma calha única de `find_gutters` sobre todas as linhas, que
+   divide a região em duas faixas de largura comparável (a da p. 268: 330 px no meio de 1934), é fronteira do
+   grupo com ou sem prosa. Se isso desfizer as tabelas do corpus, a exceção precisa de evidência **positiva** de
+   tabela (colunas de tipos diferentes, como nome × números; linha de cabeçalho), nunca da falta de prosa; duas
+   colunas com o mesmo formato de linha (nome + números, em ordem alfabética) são duas listas; e uma linha de
+   nota com dois ou mais números de lance embutidos é texto corrido para a regra, e não se junta a uma lista
+   numerada. Travar por teste: a leitura da Karpov 2 p. 268 como fixture, a página de `c2\b13_estreita.py`, a
+   fixture de `c2\b13_fixture_notas.py` sem bloco de prosa e a tabela de aberturas por extenso (aceita, ou dita
+   fora do escopo com o número). Remedir a Gallagher inteira, as páginas finais dos livros raster (os comandos
+   acima) e o A/B.
+2. **C18 — as quatro zonas do rodapé à vista.** Dar às zonas de dispositivos e de ocupação a largura delas (ou
+   um teto para o nome do livro, elidido no meio) e limitar a reserva da mensagem ao que a frase pede
+   (`min(480, largura da frase)`); o portão medindo as quatro zonas com a linha cheia, no mínimo e a 1366×728,
+   com o nome mais longo e um de ~60 caracteres do acervo, e uma sabotagem (a reserva atual) que reprove; um
+   teste no tronco.
+3. **No mesmo ciclo:** o `answered` (ou a média recalculável) na evidência versionada e o commit real das
+   corridas do A/B; a frase da sabotagem do C17; a frase do Stefaniu p. 49; e, se o desenho for manter as ações
+   do cartão da Revisão de texto abaixo da dobra a 1280×641, dizê-lo no relatório com o número.

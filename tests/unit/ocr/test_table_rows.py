@@ -23,10 +23,11 @@ CHAR_W = 9.0
 LINE_H = 20.0
 
 
-def _line(text: str, x: float, y: float, block: int, *, h: float = LINE_H) -> OcrLine:
+def _line(text: str, x: float, y: float, block: int, *, h: float = LINE_H,
+          char_w: float = CHAR_W) -> OcrLine:
     words = []
     for token in text.split():
-        w = CHAR_W * len(token)
+        w = char_w * len(token)
         words.append(OcrWord(text=token, box=BBox(x, y, w, h), confidence=0.9,
                              block_index=block))
         x += w + 7.0
@@ -348,8 +349,9 @@ def test_a_narrow_column_of_notes_never_joins_the_move_list_of_the_other_column(
     assert sorted(sorted(g) for g in groups) == [[7, 8, 9]]
     texts = [line.text for line in rows_of_tables(reading).lines]
     assert "26 Re3 Bxd4" in texts and "The best chance to get" in texts
-    # the sabotage: without the prose by words and the numbering, the columns interleave
-    blind = TableRowsConfig(prose_words=999, numbered_share=2.0)
+    # the sabotage: without the prose by words, the numbering and the page's gutter by width
+    # (crítico da fase 5, ciclo 2), the columns interleave
+    blind = TableRowsConfig(prose_words=999, numbered_share=2.0, page_band_share=2.0)
     assert _crosses(table_groups(reading, config=blind), {1, 2, 3, 4}, {6, 7, 8, 9})
 
 
@@ -362,7 +364,8 @@ def test_two_numbered_columns_are_two_games_not_a_move_list() -> None:
     reading = _reading(left + right)
     assert table_groups(reading) == []
     assert rows_of_tables(reading) is reading
-    assert table_groups(reading, config=TableRowsConfig(numbered_share=2.0)) == [[1, 2]]
+    blind = TableRowsConfig(numbered_share=2.0, page_band_share=2.0)
+    assert table_groups(reading, config=blind) == [[1, 2]]
 
 
 def test_moves_numbered_by_their_own_column_do_not_join_another_numbering() -> None:
@@ -401,7 +404,10 @@ def test_a_paragraph_with_a_stray_gap_is_prose_not_a_row_of_cells() -> None:
     lines.append(_line("Pd5: |", 692.0, 774.0 + 50.0, 12))
     reading = _reading(lines)
     assert table_groups(reading) == []
-    assert table_groups(reading, config=TableRowsConfig(prose_words=999)) == [[20, 12]]
+    # the stray cell (``| 17. Kf2``) puts a move number inside every line, so the notes are
+    # turned off with the prose by words and the page's gutter
+    blind = TableRowsConfig(prose_words=999, page_band_share=2.0, notes_share=2.0)
+    assert table_groups(reading, config=blind) == [[20, 12]]
 
 
 def _split_heading() -> OcrResult:
@@ -440,7 +446,9 @@ def test_the_sabotage_counting_words_across_cells_makes_the_row_prose(monkeypatc
     import caissa.ocr.layout.rows as rows
 
     monkeypatch.setattr(rows, "_cell_words", lambda line, spans: rows._words(line.text))
-    assert rows.table_groups(_merged_cells_reading()) == []
+    # the lines of cells continue nothing, so the continuation is turned off with it
+    assert rows.table_groups(_merged_cells_reading(),
+                             config=TableRowsConfig(prose_continued=0.0)) == []
 
 
 def _merged_cells_reading() -> OcrResult:
@@ -458,6 +466,167 @@ def _merged_cells_reading() -> OcrResult:
                  *_line(row[2], 760.0, y, 3).words]
         lines.append(OcrLine(words=tuple(words), box=BBox.union_of([w.box for w in words]), block_index=3))
     return _reading(lines)
+
+
+# --------------------------------------------------------------------------- #
+# The critic's pages (fase 5, ciclo 2): no prose to judge the gutter by
+# --------------------------------------------------------------------------- #
+
+
+INDEX_LEFT = ["Radulescu 8", "Ragozin 24", "Rashkovsky 132", "Reshko 38, 53", "Ribli 158",
+              "Robatsch 178", "Rytov 137", "Sakharov 47", "Sanguinetti 37", "Santo-Roman 210",
+              "Schmid 69", "Seirawan 165, 179", "Short 166", "Sigurjonsson 156", "Simagin 20",
+              "Smyslov 9"]
+INDEX_RIGHT = ["Bennett 218", "Berliner 258", "Bisguier 240, 260", "Bolbochan 250", "Bredoff 217",
+               "Byrne D. 211", "Byrne R. 255, 271, 304", "Camara 300", "Ciocaltea 251", "Darga 244",
+               "Dely 272", "Di Camillo 212", "Donner 270", "Durao 263", "Eliskases 257"]
+
+
+def karpov2_p268() -> OcrResult:
+    """The Karpov 2 (``Chess Combinations -- World Champions 2``) p. 268 as PSM 3 cut it (the
+    critic's trace): an index of names in two columns -- the folio, the left column (b4), the
+    right column's first entry alone (b6) and the rest of it (b7); every line a name and pages,
+    no line of prose."""
+    lines = [_line("268", 120.0, 77.0, 1)]
+    lines += [_line(t, 133.0, 188.0 + 44.0 * n, 4) for n, t in enumerate(INDEX_LEFT)]
+    lines.append(_line("Benko 221, 246, 256, 261", 1002.0, 187.0, 6))
+    lines += [_line(t, 1002.0, 232.0 + 44.0 * n, 7) for n, t in enumerate(INDEX_RIGHT)]
+    return _reading(lines)
+
+
+def test_an_index_in_two_columns_is_two_lists_not_a_table() -> None:
+    """Karpov 2 p. 268 (crítico da fase 5, ciclo 2): no prose on the page, so the gutter the
+    rule itself found was dropped, and every line joined two entries of the two columns --
+    «Ragozin 24 Bennett 218», CER 0,76 against the book's order.  One gutter that leaves two
+    bands of comparable width is the page's gutter, prose or no prose."""
+    reading = karpov2_p268()
+    assert not _crosses(table_groups(reading), {4}, {6, 7})
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert "Ragozin 24" in texts and "Bennett 218" in texts
+    # the sabotage: the gutter only with prose beside it, as in the second cycle
+    assert _crosses(table_groups(reading, config=TableRowsConfig(page_band_share=2.0)), {4}, {6, 7})
+
+
+def dvoretsky_13_278_52(right: list[str] | None = None) -> OcrResult:
+    """``real:Dvoretsky…:13:278:52`` as PSM 3 cut it, at its own scale (a native page at
+    300 DPI, ~20 px a character): White's column x 0–153, Black's 413–516 -- one gutter, the
+    bands 0,67 of each other."""
+    white = ["30 ♖c1", "31 ♘h1", "32 ♗xc5", "33 ♖xc5"]
+    black = right or ["♗xd4", "♘xc5", "♖xc5", "♕xc5"]
+    lines = [_line(t, 0.0, 1.0 + 58.0 * n, 1, char_w=20.0) for n, t in enumerate(white)]
+    lines += [_line(t, 413.0, 58.0 * n, 2, char_w=20.0) for n, t in enumerate(black)]
+    return _reading(lines)
+
+
+def test_only_a_move_list_crosses_the_page_s_gutter(monkeypatch) -> None:
+    """The Dvoretsky lists leave one gutter too, bands 0,65–0,85 of each other: the numbers and
+    White's moves on the left, one move a line on the right.  That is the positive evidence of
+    a table two lists of names never give -- and a right column with numbers of its own (pages,
+    or its own move numbers) keeps the gutter."""
+    from caissa.ocr.layout.scan import find_gutters
+
+    reading = dvoretsky_13_278_52()
+    assert len(find_gutters(reading.lines)) == 1
+    assert sorted(sorted(g) for g in table_groups(reading)) == [[1, 2]]
+    assert [line.text for line in rows_of_tables(reading).lines][0] == "30 ♖c1 ♗xd4"
+    assert table_groups(dvoretsky_13_278_52(["♗xd4 12", "♘xc5 14", "♖xc5 15", "♕xc5 19"])) == []
+    # the sabotage: without the evidence, the move list stays by columns
+    import caissa.ocr.layout.rows as rows
+
+    monkeypatch.setattr(rows, "_numbers_column", lambda block, cfg: False)
+    assert rows.table_groups(reading) == []
+
+
+VARIATIONS = ["Or 21 Bd6 Rg8 22 g4 Rg6", "23 Bc5 b6 24 Be3 with an", "edge for White.",
+              "21 Be5 Rg8 22 g4 Rg6 23", "b4 b5 24 Bd5 Nd7 25 Bd4", "Bf6! is the game.", "21 Bd6",
+              "Rg8 22 g4 Rg6 23 Bc5 b6", "24 Be3 Nd7 is unclear."]
+VARIATIONS_TAIL = ["26 Bxf6 Nxf6 27 Re7 Rc7", "28 Rxc7 Kxc7 29 Kf3 Nd7", "30 Ke4 Kd6 31 c4 c5 is",
+                   "equal: 32 b3 b6 33 a4", "a5 34 h4 h6 35 g3 Ke6."]
+
+
+def gallagher_p50_with_variations() -> OcrResult:
+    """The Gallagher p. 50 with the notes written as variations (the critic's construction,
+    ciclo 2): a word or two a line, no block of prose anywhere -- not even at the top of the
+    right column."""
+    reading = gallagher_p50()
+    notes = {2: VARIATIONS, 4: VARIATIONS_TAIL, 6: ["26 Bxf6 Nxf6 27 Re7", "Rc7 28 Rxc7 Kxc7 is"]}
+    lines = []
+    for block in (1, 2, 3, 4, 5, 6, 7, 8, 9):
+        members = [line for line in reading.lines if line.block_index == block]
+        if block in notes:
+            members = [_line(text, line.box.x0, line.box.y0, block)
+                       for line, text in zip(members, notes[block], strict=False)]
+        lines += members
+    return _reading(lines)
+
+
+def test_notes_of_variations_are_running_text_not_cells() -> None:
+    """A line with move numbers inside it -- «Or 21 Bd6 Rg8 22 g4 Rg6» -- is a note, not a
+    row: the column of variations never joins the move list of the other column."""
+    reading = gallagher_p50_with_variations()
+    groups = table_groups(reading)
+    assert not _crosses(groups, {1, 2, 3, 4}, {6, 7, 8, 9})
+    # the sabotage: without the notes, the variations join the other column's move list
+    blind = TableRowsConfig(notes_share=2.0, page_band_share=2.0)
+    assert _crosses(table_groups(reading, config=blind), {1, 2, 3, 4}, {6, 7, 8, 9})
+
+
+NOTES_BESIDE_THE_GAME = [
+    "Or 21 Bd6 Rg8 22 g4 Rg6", "23 Bc5 b6 24 Be3 with an", "edge for White.",
+    "21...Rg8 22 g4 Rg6 23 b4", "b5 24 Bd5 Nd7 25 Bd4 Bf6!", "Now Black can swap the",
+    "bishops: 26 Re3 Bxd4 27", "Rxd4 Rd6 28 Bb7 Rf6+ 29", "Kg3 Rc7 30 Bf3 Nb6 31",
+    "Red3 Nc4 32 Rd5 h6 33", "h4 gxh4+ 34 Kxh4 Re7 is", "equal, as 35 g5 hxg5+"]
+THE_GAME = ["26 Re3 Bxd4", "27 Rxd4 Rd6", "28 Bb7 Rf6+", "29 Kg3 Rc7", "30 Bf3 Nb6", "31 Red3 Nc4",
+            "32 Rd5 h6", "33 h4 gxh4+", "34 Kxh4 Re7", "35 g5 hxg5+", "36 Rxg5 Re1", "37 Rd1 Rf4+"]
+
+
+def test_notes_beside_the_game_in_two_narrow_columns_stay_in_their_column() -> None:
+    """The critic's page set as the Gallagher p. 50 (``b13_estreita.py``, ciclo 2): notes of
+    variations on the left, the game's move list on the right, line for line -- read by the
+    service it went 0,0113 → 0,5845 («Or 21 Bd6 Rg8 22 g4 Rg6 26 Re3 Bxd4»).  The notes are
+    running text: they never join, and as prose beside the gutter they keep it.  The widths do
+    not hold this page -- a move list's lines are short, so its band is half the notes' -- the
+    notes do."""
+    lines = [_line(t, 150.0, 300.0 + 50.0 * n, 1) for n, t in enumerate(NOTES_BESIDE_THE_GAME)]
+    lines += [_line(t, 810.0, 300.0 + 50.0 * n, 2) for n, t in enumerate(THE_GAME)]
+    reading = _reading(lines)
+    assert table_groups(reading) == []
+    assert table_groups(reading, config=TableRowsConfig(page_band_share=2.0)) == []
+    # the sabotage: without the notes, the variations and the game interleave
+    assert _crosses(table_groups(reading, config=TableRowsConfig(notes_share=2.0)), {1}, {2})
+
+
+OPENINGS_WRITTEN_OUT = ["Defesa Francesa, Variante Winawer", "Gambito da Dama Recusado"]
+
+
+def _openings_written_out() -> OcrResult:
+    """The ``table:2`` with the openings written out (the critic's table, ciclo 2), as PSM 3
+    cut it at 150 DPI: four words a cell, and the openings of two rows in one block."""
+    lines = [_line("11. Capablanca - Marshall Nova Iorque 1918 Defesa Siciliana, Variante Najdorf 9",
+                   21.0, 22.0, 1)]
+    names = ["12. Tal — Botvinnik", "13. Anand — Kramnik", "14. Carlsen — Nakamura",
+             "15. Steinitz — Zukertort"]
+    lines += [_line(t, 21.0, 61.0 + 32.0 * n, 2) for n, t in enumerate(names)]
+    lines += [_line(t, 289.0, 61.0 + 32.0 * n, 3) for n, t in enumerate(["Moscovo 1960", "Bona 2008"])]
+    lines += [_line(t, 480.0, 61.0 + 32.0 * n, 4) for n, t in enumerate(OPENINGS_WRITTEN_OUT)]
+    lines.append(_line("Wijk aan Zee 2011 Defesa Índia do Rei", 289.0, 125.0, 5))
+    lines.append(_line("St. Louis 1886", 289.0, 157.0, 6))
+    lines.append(_line("Abertura Escocesa, Variante Clássica", 480.0, 157.0, 7))
+    lines += [_line(t, 860.0, 61.0 + 32.0 * n, 8) for n, t in enumerate(["203", "88", "301", "15"])]
+    return _reading(lines)
+
+
+def test_cells_of_four_words_that_continue_nothing_are_still_cells() -> None:
+    """Prose by words needs lines that carry the sentence over (a lowercase start); a column
+    of openings written out starts every line anew.  With the words alone the two openings
+    left their rows and came out after the table (0,4646 → 0,3456; now 0,0113)."""
+    reading = _openings_written_out()
+    assert any(4 in g for g in table_groups(reading))
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert "12. Tal — Botvinnik Moscovo 1960 Defesa Francesa, Variante Winawer 203" in texts
+    # the sabotage: prose by the words alone
+    blind = TableRowsConfig(prose_continued=0.0)
+    assert not any(4 in g for g in table_groups(reading, config=blind))
 
 
 def test_config_shares_are_the_rules_numbers() -> None:

@@ -265,6 +265,14 @@ def environment() -> dict[str, Any]:
         info["commit"] = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True,
             cwd=REPO_ROOT, check=False).stdout.strip()
+        # The code that measures, changed and not committed: a run that records only the commit
+        # says it measured that commit when it measured the working tree (crítico da fase 5,
+        # ciclo 2: the ``f5c2_*`` runs recorded 99546e9 and measured the code of 4fc0f4d).
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all", "--", "src", "benchmarks"],
+            capture_output=True, text=True, cwd=REPO_ROOT, check=False).stdout
+        info["dirty_code"] = sorted(line[3:] for line in status.splitlines()
+                                    if line[3:] and not line[3:].startswith("benchmarks/reports/"))
     try:
         from caissa.ocr.engines.tesseract import TesseractEngine
 
