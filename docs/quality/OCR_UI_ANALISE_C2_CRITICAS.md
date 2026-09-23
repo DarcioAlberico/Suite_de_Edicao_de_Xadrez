@@ -794,7 +794,15 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > contra a ordem do livro) através da calha que a própria regra achava, e a reserva de 480 px da
 > mensagem do rodapé saía das zonas de dispositivos e de ocupação (a queda para a CPU de novo em
 > silêncio); o que mudou está em `OCR_UI_REPORT_C2_FASE5.md` §0.5.
-> **Ciclo 3:** ⟨pendente⟩.
+> **Ciclo 3: REPROVADO, 1 bloqueante** — os dois do ciclo 2 resolvidos (a Karpov 2 p. 268
+> idêntica ao desligado; as quatro zonas do rodapé à vista), mas o B13 ainda juntava, linha a
+> linha, uma coluna de **notas comuns** (três palavras por linha, poucos lances dentro) e a lista
+> de lances da outra coluna, e o importador **aceitava** a página embaralhada (a página construída
+> na medida da Gallagher p. 50: CER 0,0052 → 0,6440, `accepted`); o que mudou está em
+> `OCR_UI_REPORT_C2_FASE5.md` §0.6. As edições de `rows.py` e `test_table_rows.py` que o
+> veredito atribui a «outra sessão» (13:53–13:54) eram do construtor, começando o ciclo 4 depois
+> de ler o rascunho; as sondas do crítico já tinham terminado.
+> **Ciclo 4:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -1086,3 +1094,212 @@ já existia às 07:51 e não é meu).
 3. **No mesmo ciclo:** o `answered` (ou a média recalculável) na evidência versionada e o commit real das
    corridas do A/B; a frase da sabotagem do C17; a frase do Stefaniu p. 49; e, se o desenho for manter as ações
    do cartão da Revisão de texto abaixo da dobra a 1280×641, dizê-lo no relatório com o número.
+
+## Crítico Claude — ciclo 3 (REPROVADO, 1 bloqueante)
+
+VEREDITO: REPROVADO
+CICLO: 3
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Convenções dos comandos: os scripts novos estão em `C:\Python-Chess2\_critico_f5\c3\` (a saída de cada um ao lado,
+`*.out`/`*.json`), os do ciclo 2 em `c2\` e os do ciclo 1 na raiz de `_critico_f5`; rodados da raiz da suíte com
+`.venv\Scripts\python.exe`. A suíte principal estava no `e29a2b5` com `git status --short src tests benchmarks` vazio
+e `git diff 3ff1830 -- src tests benchmarks` vazio (o código medido é o do `3ff1830`) do começo até as 13:53, quando
+**outra sessão** passou a editar, sem commit, `src/caissa/ocr/layout/rows.py` (13:53:02) e
+`tests/unit/ocr/test_table_rows.py` (13:54:08) no checkout principal — o texto novo cita este veredito ainda em
+rascunho; não é objeto deste ciclo e não o toquei. Todas as minhas sondas terminaram antes (a última, `b13_sugestao`,
+às 13:39), e a suíte inteira coletou os módulos às 13:40. «Tronco» =
+minha árvore limpa `git worktree add --detach C:\Python-Chess2\_critico_f5\tronco 885149d`; «tronco_c2» = `53dd066`
+(o antes do C18); `suite_c2` (`158f420`) para rodar os testes novos contra a regra do ciclo 2; `suite_c3`
+(`e29a2b5`) para as sabotagens, feitas por monkeypatch num plugin do pytest (`c3\sabota_rows.py`) — nenhum arquivo
+dos repositórios foi editado. A regra do ciclo 2 foi comparada na mesma corrida carregando o `rows.py` do `158f420`
+ao lado e pondo-o no lugar de `rows_of_tables` (`c3\rows_c2.py`). Sondas do corpus e de páginas renderizadas com
+`CAISSA_FIGURINE_TESSDATA=models\tessdata`; importador e janela sem ela. As quatro árvores ficaram limpas e foram
+removidas com `git worktree remove`. O `git status` do tronco terminou igual ao do começo (só o trabalho de outra
+sessão); o da suíte, com os dois arquivos que outra sessão editou às 13:53–13:54, além dos do começo. Nenhum
+processo meu ficou vivo (as três varreduras que interrompi foram encerradas com os filhos; o único Python restante,
+PID 1996, já existia às 07:51).
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| B13, Karpov 2 p. 268 pelo importador, 3 execuções | `b13_importador.py "<Karpov 2>" 268 c3\b13i_karpov268_r{1,2,3}.json` | sim | idêntica ao desligado nas três (similaridade 1,0000, 0 regiões agrupadas); os três JSON iguais byte a byte (`cmp`) |
+| B13, Gallagher pp. 50–53, Reinfeld 1977 p. 319, Levenfis p. 134 pelo importador | `c3\importador_c3.sh` → `c3\b13i_{gallagher,reinf319,lev134}.*`; `gallagher_cer_c2.py c3\b13i_gallagher.json` | sim | p. 50 CER 0,2732 → **0,2028** (WER 0,4076 → 0,3121), pp. 51–53 idênticas; p. 319 (0,6807) e p. 134 (0,9906) com a mesma saída do ciclo 2 (`cmp` das saídas) |
+| B13, as minhas varreduras do ciclo 2 com o código do ciclo 3 | `c3\varre_c3.sh` (`c2\b13_varredura.py`, 4 filas) → `c3\varre\*`; `c3\cmp_varre_c3.py` → `c3\cmp_varre_c3.out` | sim | **280 páginas**: mudam 46 no ciclo 2 e **43** no 3; a leitura ligada do ciclo 3 é a do ciclo 2 em **275**; a desligada é a mesma nas 280 (determinismo). As cinco diferenças: Karpov 2 pp. 267/268/270/271 passam a idênticas ao desligado, e a Levenfis p. 302 passa a mudar — os números do relatório conferem |
+| B13, Levenfis p. 302 (sumário) | `c3\varre\lev_fim.json`; CER contra a minha transcrição da página (cada título com a sua página) | em parte | CER desligado **0,1221 → 0,0738** ligado: melhora; mas só **3 dos 6** títulos ficam com a página (XXII, XXIII, «Rezolvarea»); as páginas 260/271/272 dos outros três saem **depois** da última entrada, fora de ordem — o «passa a ler cada título com a sua página» do §0.5 não é literal |
+| B13, as construções do ciclo 2 | `c2\b13_tabelas.py` → `c3\b13_tabelas_c3.out`; `c2\b13_estreita.py` ×3 → `c3\b13_estreita_c3_r{1,2,3}.out`; `c2\b13_fixture_notas.py`, `b13_caso_ruim.py`, `b13_render.py` → `c3\*_c3.out` | sim | aberturas por extenso **0,4646 → 0,0113** (ciclo 2: 0,3456); índice 0,1824 = desligado (ciclo 2: 0,6554); classificação 0,1388 → 0,0909; notas de variantes \| lista **0,0113 = desligado** (ciclo 2: 0,5845), sob título 0,0102 (ciclo 2: 0,5292), iguais nas 3 execuções; a fixture com variantes e sem prosa não atravessa (`[[7, 8, 9]]`); as construções do ciclo 1 inalteradas |
+| B13, os 29 testes travam os casos? | `test_table_rows.py` do `e29a2b5` copiado para `suite_c2` e rodado contra o `rows.py` do `158f420` | sim | 29 passam no ciclo 3; contra a regra do ciclo 2 **9 reprovam** — 5 por asserção (índice, Dvoretsky com números próprios, notas de variantes, notas ao lado da partida, aberturas) e 4 por parâmetro que não existia |
+| B13, cada regra nova com a sua sabotagem | `c3\sabota_rows.py` (plugin, `SABOTAGEM=…`) → `c3\sabota_rows.out` | em parte | largura desligada: 2 reprovam; nenhuma lista cruza: 1; toda coluna é lista: 2; sem `_notes`: 2; sem continuação: 1. **A semente sem o filtro de prosa** (`_is_cells(b) and not _is_prose(b)` → `_is_cells(b)`, reescrita no próprio módulo): **29 passam** — o «nunca o semeia» do §0.5 não tem teste |
+| B13, tabelas legítimas de duas colunas | `c3\b13_tabelas3.py` (formato e degradação do corpus; desligado × ciclo 3 × ciclo 2), 3 execuções no caso que muda | **não** | «campeões mundiais (nome \| período)» a 150 DPI: desligado 0,5696, **ciclo 3 0,5696, ciclo 2 0,0000** — a calha única de faixas comparáveis agora a recusa; as outras (emparceiramento, jogador \| rating, abertura \| lances, rodada \| resultado) iguais nos três. Não bloqueante 1 |
+| B13, listas de lances que a evidência positiva recusa | `c3\b13_lista_recusada.py` | **não** | limpa 0,6632 → 0,0632 (como no ciclo 2); com o resultado na última linha, idem; **com as avaliações separadas do lance** («31 Nh1 !?», «Bxd4 +-»): desligado 0,6724, **ciclo 3 0,6724, ciclo 2 0,0603**. Não bloqueante 1 |
+| B13, notas que escapam de `_notes` | `c3\b13_estreita3.py [--justificar]` ×3 → `c3\b13_estreita3*.out`; `c3\b13_notas_reais.py 6`; `c3\b13_pdf_construido.py` + `b13_importador.py c3\construido.pdf 0,1,2,3` ×3; `c3\b13_tabulada.py` | **não** | → **bloqueante novo 1** |
+| B13, prosa em alemão/holandês e a continuação | `c3\continua_idiomas.py`, `c3\prosa_por_palavras.py` (camada de texto de Gunderam, Euwe, Kemeri, Kmoch, Mieses, Nunn, Burgess, Fischer, rejustificada a 22–27 car.) | sim, com ressalva | a continuação tira a «prosa por palavras» de 5/244, 16/364, 14/295 parágrafos alemães de 3 linhas (e ≤ 8 dos de 4+); holandês 0. Mas só 3–39 % dos parágrafos estreitos reais são prosa por palavras, conforme a língua e o tamanho (inglês 9–34 %): a regra de palavras quase nunca segura uma coluna estreita real; quando algo segura, é o comprimento das linhas ou a largura das faixas |
+| B13, livros alemães e holandeses inteiros, três leituras | `c3\b13_varredura3.py`: Estrin 0–87 (`deu+eng`, raster), Gunderam 10–142/2 e Kmoch 10–132 (raster 300 DPI da página) → `c3\v3_*.out/json` | sim | Estrin **88/88** páginas com a leitura ligada do ciclo 3 = a do ciclo 2; 16 mudam do desligado (ruído de diagrama, variante trocada). Gunderam 32 páginas (pp. 10–72, de 2 em 2) e Kmoch 48 (pp. 10–60 e 11–53) — varreduras interrompidas por mim: ciclo 3 = ciclo 2 em todas, 3 e 1 mudam do desligado (ruído, uma legenda, um fólio). Nenhum grupo com blocos dos dois lados da calha reconhecida |
+| C18, portão com as cinco sabotagens | `c3\minimo_c3.sh` → `c3\minimo\*.log`, `minimo*.json` | sim | sem livro e com o Kemeri **PASSOU** (1248×606 / 1248×640 / 1246×629; mensagem 320, documento 272–288, dispositivos 135, ocupação 171; a 1366 documento 390–408), as cinco sabotagens **REPROVARAM** (`reserva`: dispositivos e ocupação 0 px), 0 tracebacks. 3 dos 7 JSON diferem dos do construtor só na primeira medida (dispositivos 162/ocupação 152 num nome, um «espremido» a mais na sabotagem `rodape`): o arnês às vezes mede antes de a linha estar cheia |
+| C18, as zonas com o acervo | `c2\c18_rodape_acervo.py <tronco>` → `c3\c18_rodape_acervo_c3.out`; `c2\c18_rodape_zonas.py` → `c3\c18_rodape_zonas_c3.out` | sim | dispositivos cortados em **0 dos 46** a 1248/1366/1440/1600 (ciclo 2: 46/46/45/22); a frase de 60 car. com a largura dela (303 px), documento 285–297 a 1248 |
+| C18, as zonas com frases e operações reais do produto | `c3\c18_rodape_c3.py <tronco>` (46 livros × 6 larguras × 2 frases × 3 operações) → `c3\c18_rodape_c3.out`; o mesmo contra `tronco_c2` → `c3\c18_rodape_c3_tronco_c2.out` | em parte | dispositivos cortados em 0 em todos os casos; **o nome do livro, no mínimo, 95–96 px** («1937 Ke… página», a página some) a 1246–1248 com a operação real «aquecendo o modelo (<caminho do .pt>)» (ciclo 2: 83 px); a ocupação elidida em 46/46 com ela e em 36–45/46 com «Exportando para EPUB (<nome>.epub)». Não bloqueantes 4 e 5 |
+| C18, a mensagem de 320 px | `c3\c18_caracteres.py <tronco>` → `c3\c18_caracteres.out`; `c3\c18_rodape_c3*.out` | em parte | 320 px são **57 caracteres** (5,6 px/car.), não ~45; a frase de erro do próprio produto sem o `.pt` (`leitura.FRASE_SEM_MODELO`, 84 car., 474 px) sai elidida em **46/46 livros de 1246 a 1440 px**, e a 1600 em 22/46 (com a importação) a 46/46 (com o aquecimento do modelo) (ciclo 2, 480 px: inteira em 46/46 a 1248, 1366 e 1600) |
+| C18, `RotuloElidido(piso=…)` nos outros usos | `grep RotuloElidido` no tronco; `test_qt_rodape.py`, `test_qt_janela_cabe.py` | sim | o único outro uso é `painel_do_pdf.lbl_pdf`, com `piso=0` (o `minimumSizeHint` e o `definir_texto` antigos) |
+| C18, o que fica à vista a 1280×641 | `c18_visiveis.py` nas três peles → `c3\c18_visiveis_1280_*.out` | sim, com ressalva | as seis ações da Revisão de texto à vista; abaixo da dobra a fileira de figurinas (8; na Fita também o rótulo da verdade) — como o relatório diz. **O Resultado** tem 6 controles com 0 px na Foco («Salvar a posição», «Salvar todas as posições da página», «Desfazer», «Refazer», «Limpar», «Esconder incerteza»), 13 na Fita e 1 na Clássica — igual ao ciclo 2 e não dito. Não bloqueante 6 |
+| C18, o que fica à vista, mais largo que o portão | `c2\c18_vista.py` (3 peles × com/sem livro × 5 tamanhos) → `c3\c18_vista_*.out` | sim | 0 controles dos tipos do portão cortados sem barra (ciclo 2: as duas zonas do rodapé com 0 px em todo tamanho); os 5 «espremidos na altura» restantes são o `QLineEdit` do combo de língua da Rotulagem (18 de 22 px), iguais ao ciclo 2. A Clássica com livro passou do tempo do meu `timeout` **na saída** (o `encerrar(esperar=True)` do meu arnês esperava a importação do filho), com a medida completa |
+| C18, teclado e ordem do Tab | `c3\janela_c3.sh` → `c3\teclado\*`; comparação com os JSON do ciclo 2 | **não** | PASSOU a 1280×800 e 1248×640 (Revisão de texto 50/50, Rotulagem 65/65, Galeria 57/57); ordem do Tab idêntica em 7 áreas, mas **na Revisão de texto mudou**: as seis ações vêm logo depois da tabela (posições 11–16) e **antes** do cartão (leitura, alternativas, verdade, figurinas: 17–26). Não bloqueante 3 |
+| A15, brechas | `c3\a15_brecha3.py` (Python do tronco, árvore `885149d`) → `c3\a15_brecha3.out`; `a15_escondidos.py` → `c3\a15_escondidos_c3.out` | em parte | as três do ciclo 2 varridas; **8 novas escapam** (a lista minúscula guardada num nome e depois mostrada, dentro de `sorted()`, juntada para um `QLabel`, capitalizada numa lista; chaves por `map(str.title, D)`, `D.copy()`, `self.D`, `modulo.D`); as regras seguem escondendo só os seis identificadores |
+| Evidência e A/B | `c3\conf_sol_c3.py` → `c3\conf_sol_c3.out` | sim | `f5c3_*`: `commit=3ff1830`, `dirty_code=[]`, `SOL_CONFIG` explícito; **idênticas item a item** às `f5c2_*` e `f5_*` em todo campo numérico por item (CER, decisão, answered, WER, linhas, lances, caracteres, confiança…); o `sol.json` do `e29a2b5` = `f5c3_on` = o do ciclo 2; `f5_ab.json` = os JSON das corridas; médias por estrato refeitas **só** dos itens com `answered` = resumo (maior diferença 0,000004); aceitos com CER > 0,10: 30 → 7; B13 muda 7 itens, B14 27, nenhum para pior. O texto dos itens **não** é gravado nos JSON («idênticos… em texto» não é verificável) |
+| Portões do Sol no `sol.json` do `e29a2b5` | `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json` → `c3\sol_gate_c3.out` | sim | 150 DPI 0,0094 ≤ 0,020 ✓; CER limpo 0,0113, lances 0,9164, 157 inventados ✗; nenhuma regressão contra o baseline |
+| C17, a frase da sabotagem | `model_ruler_20260923_074145_f5_c17_c2_sabotado.json` × `docs\quality\campo\f5_c17_regua.json` | sim | 5/15 com as três colunas em 0; nos outros 10 a «≤ 0» entre 0 e 27 (verdadeira 27–104); 71/92, 66/88, 11/66 contra 105/110, 99/106, 101/108 |
+| Stefaniu p. 49 | relatório linhas 122 e 504 | sim | diz o que medi no ciclo 2 (a corrida de 04:15 mediu um `rows.py` anterior ao commit; as 83 não se refazem) |
+| A transcrição do meu ciclo 2 | `git show 3ff1830 -- docs/quality/OCR_UI_ANALISE_C2_CRITICAS.md` × `veredito_ciclo2.md` | sim | idêntica salvo o nível dos títulos (`##` → `###`) |
+| Testes tocados | suíte: `pytest tests/unit/ocr/test_table_rows.py tests/unit/ui/test_revisao_de_texto_view.py tests/unit/ui/test_arquitetura.py tests/unit/ui/test_fileira_fluida.py tests/unit/ui/test_rotulo_que_encolhe.py tests/unit/ocr/test_ink_coverage.py tests/unit/classify/test_model_ruler.py tests/unit/ocr/test_sol_metrics.py`; tronco (árvore `885149d`): `test_qt_janela_cabe.py test_qt_rodape.py test_strings.py "test_field_eval.py::ImpressaoDaMedicaoTests"` | sim | suíte **114 passaram**; tronco **89 passaram** (97 subtestes) |
+| Tronco inteiro | `c3\testes_full_c3.sh` (árvore `885149d`) → `c3\trunk_full_c3.out` | sim | **4.789 passaram, 16 pulados, 8 xfail, 1 reprovado** em 1.420 s (com as varreduras ao lado); o reprovado é `test_environment::…resolve_para_esta_arvore`, por construção da árvore efêmera; 4.789 + 16 = 4.790 + 15 do construtor (um pulado a mais: artefato fora do git, como no ciclo 2); árvore limpa antes e depois |
+| Suíte inteira, com o `test_arquitetura` na mesma corrida | `c3\testes_full_c3.sh` → `c3\suite_full_c3.out` | sim | **4.016 passaram, 17 pulados, 1 erro, 0 reprovados** em 857 s; 4.016 + 17 + 1 = 4.034 = 4.025 + 9 do construtor; o erro é o `test_gpu_parity::test_cuda_actually_computes` do meu ambiente (o mesmo dos ciclos 1 e 2) e os 8 pulados a mais pedem artefatos fora do git (`.pt`, acervo de PDFs, listas do tronco). Os módulos foram coletados às 13:40, com o código do `3ff1830` (ver as convenções) |
+
+### Os bloqueantes do ciclo 2
+
+1. **B13 intercalava as duas colunas de um índice real — resolvido.** A Karpov 2 p. 268 pelo importador de
+   produção sai idêntica ao desligado nas três execuções (JSON iguais byte a byte); nas varreduras, as pp. 267, 268,
+   270 e 271 passam a idênticas ao desligado; o índice construído a 150 DPI 0,1824 = desligado (era 0,6554); as notas
+   de variantes ao lado da lista 0,0113 = desligado (era 0,5845), sob título 0,0102 (era 0,5292); a fixture de
+   variantes sem prosa não atravessa; as aberturas por extenso 0,0113 (era 0,3456). Os testes novos reprovam a regra
+   do ciclo 2 por asserção em 5 casos. Nas 280 páginas, a leitura ligada é a do ciclo 2 em 275, e as 5 que mudam
+   melhoram. **Mas a classe — duas colunas estreitas juntadas linha a linha através da calha — continua aberta
+   onde as faixas não são comparáveis e a coluna de notas não é «variantes» nem «prosa por palavras»**, e o
+   importador aceita o resultado (bloqueante novo 1).
+
+2. **C18: a reserva da mensagem esvaziava as zonas de dispositivos e de ocupação — resolvido.** Dispositivos
+   cortados em 0/46 livros a 1248–1600 (eram 46/46/45/22); o portão mede as quatro zonas com o nome mais longo e o
+   da Karpov 2, no mínimo e a 1366×728, PASSOU com e sem livro e as cinco sabotagens reprovaram (a `reserva` com as
+   duas zonas em 0 px); há teste no tronco com a sabotagem ao lado. A reserva ficou em `min(320, frase)`, não em
+   `min(480, frase)` como pedi — o custo não está dito (não bloqueante 4).
+
+Os itens do mesmo ciclo: o `answered` na evidência e as médias recalculáveis — feito; o commit real e o
+`dirty_code` das corridas — feito (`3ff1830`, `[]`); a frase da sabotagem do C17 — confere; a do Stefaniu p. 49 —
+confere; as ações da Revisão de texto a 1280×641 — à vista nas três peles, e o que desceu está dito; mas a
+mudança trocou a ordem do Tab (não bloqueante 3).
+
+### Defeitos bloqueantes (novos)
+
+1. **B13 junta, linha a linha, uma coluna de notas comuns e a lista de lances da outra coluna — e o importador de
+   produção aceita a página embaralhada.**
+   - **Onde:** `src/caissa/ocr/layout/rows.py` — `_page_gutters` (a calha única só vale com faixas de largura
+     comparável, `page_band_share = 0.5`, ou com um bloco de «prosa» de um lado), `_is_prose` (prosa = ≥ 3 linhas
+     com mediana ≥ 30 car., **ou** mediana de ≥ 4 palavras e continuação, **ou** `_notes`: metade das linhas com
+     número de lance dentro), `table_groups`.
+   - **O quê:** a página no leiaute da Gallagher p. 50 (Times 10 pt, colunas de 1,95 pol., 300 DPI, notas
+     justificadas na coluna) com a lista de lances da partida **sem tabulação** na outra coluna. As notas são
+     anotação comum — prosa com alguns lances («White could also try / 21 Bd6!?, when after / 21...Rg8 22 g4 Rg6
+     the / position is unclear.») —, com mediana de 20–28 caracteres e de 3 palavras por linha e menos da metade
+     das linhas com número de lance dentro: não são prosa por comprimento, nem por palavras, nem `_notes`; as
+     faixas da calha única têm razão **0,41** (587 e 240 px). Nada segura a calha, e o grupo sai «White could also
+     try 26 Re3 Bxd4 / 21 Bd6!?, when after 27 Rxd4 Rd6 / …». Números (o importador e o `b13_estreita3.py --justificar` em 3 execuções, iguais):
+     - pelo **importador de produção**, a página gravada como PDF raster (`c3\construido.pdf`): p. 0 (inglês)
+       CER **0,0052 → 0,6440, decisão `accepted` nos dois lados, cobertura da tinta 1,0** — a leitura
+       embaralhada sai **aceita**; p. 1 (alemão) 0,2284 → 0,5499; pp. 2 e 3 com **notas reais** da Kmoch
+       (pp. 45 e 77 da camada de texto, holandês, rejustificadas) 0,0367 → **0,5598** e 0,0754 → **0,5748**
+       (`review`, sem aviso de reordenação);
+     - pelo serviço (`b13_estreita3.py --justificar`): inglês 0,0140 → **0,6527** (300 DPI) e 0,0087 → 0,6475
+       (200); alemão 0,2132 → 0,5364 e 0,2335 → 0,6616; a regra do ciclo 2 dá os mesmos números (o defeito vem
+       do ciclo 2 e o conserto do ciclo 3 não o alcança);
+     - com a lista **tabulada** a 45 % da coluna: 0,2373 → **0,6510**; a 60 % (a Gallagher põe as pretas a
+       ~63 %) a página sai certa e melhora: 0,2356 → 0,0140 (`b13_tabulada.py`). A fronteira entre embaralhar e
+       acertar cai no meio da tipografia real;
+     - com notas reais de cinco livros do acervo na mesma medida (`b13_notas_reais.py 6`): a Kmoch embaralha 2 de
+       6 páginas; Nunn, Burgess, Gunderam e Euwe 0 de 6 (nessa medida as linhas deles passam de 30 car. e são prosa
+       por comprimento).
+     Nas páginas reais não achei a configuração: a Gallagher inteira (176), as páginas finais de nove livros (104),
+     a Estrin inteira (88), 32 da Gunderam e 48 da Kmoch. A Gallagher tabula as pretas, e mesmo assim a calha da
+     página dela não é reconhecida pela regra nova: na p. 50 o `find_gutters` acha **duas** calhas (754–817 e
+     1171–1193 — a sonda `scratchpad\probe_calha.out` do próprio construtor), o `_page_gutters` devolve nada, e numa
+     das leituras que o árbitro descarta o grupo **cruza** (o bloco 3, x 266–628, a lista da coluna esquerda, com os
+     blocos 7–9 da direita); a leitura que o importador entrega não cruza (conferido no `c3\b13i_gallagher.json`).
+   - **Como reproduzir:** `CAISSA_FIGURINE_TESSDATA=models\tessdata .venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c3\b13_pdf_construido.py C:\Python-Chess2\_critico_f5\c3\construido.pdf`;
+     depois, **sem** a variável, `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\b13_importador.py C:\Python-Chess2\_critico_f5\c3\construido.pdf 0,1,2,3 <saida.json>`
+     (as verdades em `c3\construido_p{0..3}_verdade.txt`); `c3\b13_estreita3.py --justificar`; `c3\b13_tabulada.py`;
+     na regra, sem OCR: `c3\b13_fixture_notas_comuns.py` (grupos `[[2, 1]]`, atravessa).
+   - **Por que reprova:** é a classe dos bloqueantes 1 dos ciclos 1 e 2 (colunas estreitas embaralhadas pelo B13),
+     agora com a decisão **`accepted`**: a Carta §3.3 reprova sozinhos a falha silenciosa e a «confiança alta em
+     resultado errado». Com o B13 desligado a mesma página sai certa e aceita; ligado sai trocada e aceita. E o
+     relatório diz o contrário: «nunca através da calha» (§0) e, das notas, «é o que segura a página de notas ao
+     lado da partida, onde as faixas não são comparáveis» (§0.5, linha 293) — segura só notas de variantes densas.
+     O que pedi no ciclo 2 (a calha única de faixas **comparáveis** como fronteira, e a nota com números de lance
+     embutidos como texto corrido) foi feito; o defeito está fora dessas duas condições, mas é a mesma classe, e o
+     relatório a dá por fechada. O conserto não é caro: medi uma regra de «texto corrido» sem contar palavras (bloco de ≥ 4 linhas, mediana
+     acima de uma célula, linhas que continuam a frase; `c3\sabota_rows.instalar_sugestao`) — as quatro páginas
+     voltam ao desligado (0,0140 / 0,2132 / 0,0299 / 0,0713), as tabelas do ciclo 2 ficam como estão (aberturas
+     0,0113, classificação 0,0909, índice 0,1824, controle 0,5280; `c3\b13_sugestao.out`) e dos 29 testes só
+     reprovam 4 asserções de **sabotagem** (a regra nova segura o que a sabotagem soltava).
+
+### Defeitos não bloqueantes
+
+1. **As regras novas recusam o que o ciclo 2 lia por linha, e isso não está dito** (volta ao desligado):
+   a tabela de duas colunas «nome \| período» a 150 DPI, **0,0000 no ciclo 2 → 0,5696** (`b13_tabelas3.py`, 3
+   execuções); a lista de lances com as avaliações separadas do lance («31 Nh1 !?», «Bxd4 +-»), **0,0603 →
+   0,6724** (`b13_lista_recusada.py`). A evidência positiva exige ≤ 2 tokens em toda linha da coluna das pretas.
+2. **O filtro de prosa na semente** (`seeds = … if _is_cells(b) and not _is_prose(b)`, novo no ciclo 3) não tem
+   teste: sem ele os 29 passam (`sabota_rows.py`, `SABOTAGEM=semente_de_prosa`).
+3. **A ordem do Tab da Revisão de texto mudou e o relatório diz que não.** Tirar as ações da rolagem pôs as seis
+   ações logo depois da tabela e antes do cartão (posições 11–16; o cartão 17–26) — a ordem do foco deixa de seguir
+   a visual (as ações estão embaixo do cartão). O portão do teclado só conta alcance, e o §C18 (linha 707) diz
+   «as fileiras fluidas não mudaram a ordem de ninguém», com as árvores dos ciclos 2 e 3.
+4. **A reserva de 320 px elide a frase de erro do próprio produto.** `leitura.FRASE_SEM_MODELO` («Modelo de casas
+   não encontrado. Aponte o arquivo .pt em Ferramentas ▸ Configurações…», 84 car., 474 px) e o estado vazio do
+   Resultado (73 car., 409 px) — o primeiro erro de todo clone limpo — saem elididos («Modelo de casas não
+   encont…rramentas ▸ Configurações…») em 46/46 livros de 1246 a 1440 px e, a 1600, em 22/46 a 46/46 conforme a operação; com 480 px (ciclo 2)
+   cabiam inteiros. Pedi `min(480, largura da frase)`; o construtor pôs 320 e escreveu «~45 caracteres» (§0.5 linha
+   323, docstring de `LARGURA_DA_MENSAGEM`): são 57. O custo não está no relatório.
+5. **O nome do livro chega a 95 px com uma operação real, e a ocupação não é «curta e de forma conhecida».** Com
+   «aquecendo o modelo (<caminho do .pt>)» (`qt/leitura.py:192`) a zona do documento do Kemeri — o livro do próprio
+   portão — fica com **95–96 px** a 1246–1248 («1937 Ke… página»: a página some; ciclo 2: 83 px), abaixo dos 120
+   do portão, que só mede a importação; e a ocupação sai elidida em 46/46 com essa operação e em 36–45/46 com a
+   exportação EPUB, contra a docstring de `LARGURA_DA_ZONA` («textos curtos e de forma conhecida»).
+6. **A 1280×641 (portátil-alvo maximizado, pele Foco) as ações do Resultado ficam com 0 px à vista** — «Salvar a
+   posição», «Salvar todas as posições da página», «Desfazer», «Refazer», «Limpar», «Esconder incerteza» (13
+   controles na Fita, 1 na Clássica); só pela barra. Igual ao ciclo 2 e não dito no §0.3, que fala só das figurinas.
+7. **Frases do relatório que não batem:** §0 (linha 45), coluna «depois» do C18: «480 px garantidos à mensagem»
+   (o código dá 320); §0.5: «a Levenfis p. 302 passa a ler cada título com a sua página» (3 de 6; as outras três
+   páginas saem depois da última entrada, embora o CER melhore 0,1221 → 0,0738); «idênticos… em CER, decisão e
+   texto» (os JSON não guardam o texto; todos os campos numéricos por item conferem); «~45 caracteres».
+8. **A15: oito brechas construídas novas escapam** (`a15_brecha3.py`), entre elas a lista minúscula guardada num
+   nome e passada ao `addItems` — que a regra nova isenta por desenho; nenhuma frase de tela real escondida hoje.
+9. **O arnês do portão às vezes mede antes de a linha estar cheia:** 3 dos 7 JSON diferem dos do construtor só no
+   primeiro nome medido (dispositivos 162/ocupação 152, e um «espremido» a mais na sabotagem `rodape`). E os JSON do
+   portão não gravam o commit nem o estado da árvore do tronco medida: a do construtor (`C:\Python-Chess2\_f5c2_tronco`)
+   é um `8243e90` com os arquivos do `885149d` copiados por cima — conferi que são iguais salvo o fim de linha
+   (`diff --strip-trailing-cr`), mas o JSON não diz isso (o `bench_sol` passou a gravar o `dirty_code`; o portão não).
+10. **No caminho sem máscara de diagramas** (o das varreduras de «página real», do construtor e minhas), a Estrin
+    p. 77 (alemão, raster) sai com o bloco do alto da coluna direita («15.La4: Da4: 16.Df3 Sc6 17.b3! / Diese
+    Möglichkeit…» e «Diagramm 105») **antes** da prosa da coluna esquerda — igual no ciclo 2; pelo importador só o
+    ruído do diagrama muda. E a Estrin p. 29 pelo importador troca a variante: «13....Ld4: 14.Lg6! d5 15.Df3+» →
+    «15....Ld4: 14.Lg6! ds 15.Di3+» (e «17.Le6%» → «17.Le6+») — o não bloqueante 3 do ciclo 2, em alemão. A sonda do
+    construtor lê a Estrin com `ron+eng` (`b13_c3_all.sh`).
+11. **Ficam, ditos:** a Gallagher pp. 41/175, o `table:2` em Times, o portão sem altura, o piso do B14.
+
+### O que falta
+
+- A medida da janela na plataforma real (`windows`): tudo `offscreen`, com a fonte do produto imposta.
+- O `bench_sol` inteiro não foi rodado (o briefing proíbe); o A/B foi conferido item a item dos JSON.
+- As varreduras da Gunderam (32 de 67 páginas) e da Kmoch (48 de 123) foram interrompidas por mim, pelo tempo; a Levenfis e
+  a Stefaniu inteiras não foram varridas.
+- Não achei página real com o defeito bloqueante: a prova é a página construída com a medida da Gallagher, notas
+  comuns e notas reais da Kmoch, pelo importador de produção.
+- A comparação às cegas da Carta não se aplica a esta frente.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+1. **B13 — texto corrido nunca entra num grupo, conte ou não quatro palavras.** Uma coluna de notas comuns
+   (poucas palavras por linha, poucos números de lance dentro) ao lado de uma lista de lances sem tabulação, ou
+   tabulada a menos da metade da coluna, não pode ser juntada linha a linha. Um caminho medido: um bloco de ≥ 4
+   linhas, com a linha mediana mais longa que uma célula e linhas que continuam a frase, é texto corrido (ou outro
+   critério, desde que positivo e medido). Travar por teste com as minhas páginas — `c3\construido.pdf` pp. 0–3 pelo
+   importador (a p. 0 não pode sair `accepted` embaralhada), `b13_estreita3.py --justificar`, `b13_tabulada.py`
+   (45 %) — e as sabotagens atualizadas; manter a Karpov 2 p. 268 idêntica, a Gallagher p. 50 em 0,2028, os 7 itens
+   do A/B e as aberturas em 0,0113; remedir as 280 páginas. Corrigir o §0 («nunca através da calha») e o §0.5
+   (linha 293) para o que a regra de fato segura.
+2. **No mesmo ciclo:** (a) a ordem do Tab da Revisão de texto de volta à visual (o cartão, depois as ações — um
+   `setTabOrder`), travada por teste ou pelo portão do teclado comparando a ordem, e o §C18 (linha 707) corrigido;
+   (b) dizer no relatório, com os números, o que as regras novas recusam (a tabela «nome \| período» 0,0000 →
+   0,5696; a lista com avaliações separadas 0,0603 → 0,6724) e dar teste ao filtro de prosa da semente; (c) dizer o
+   custo da reserva de 320 px (a frase sem o `.pt`, 474 px, elidida em 46/46 livros a 1246–1440) e corrigir «~45»
+   para ~57 caracteres — ou voltar a `min(480, largura da frase)`; (d) dizer o documento com 95 px sob «aquecendo o
+   modelo» e as ações do Resultado abaixo da dobra a 1280×641; (e) corrigir o §0 (320, não 480), a frase da Levenfis
+   p. 302 e o «em texto».

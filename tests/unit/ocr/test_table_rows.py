@@ -174,10 +174,10 @@ def test_a_column_of_moves_with_a_line_of_prose_does_not_pull_the_other_column()
     left_prose = _column_prose(1800.0, 5, x=150.0, lines=8, width=650.0)
     reading = _reading(left_prose + left_black + left_white + right)
     # the sabotage: without the ceiling on a cell's longest line and without the gutter
-    # rules (the corridor, and the page's gutter, which needs prose beside it), the right
-    # column seeds and pulls the left fragments
+    # rules (the corridor, and the page's gutter, which needs prose beside it -- by length,
+    # by words or as running text), the right column seeds and pulls the left fragments
     neither = TableRowsConfig(cell_max_chars=999, gutter_min_lines=10**6, prose_words=999,
-                              prose_chars=999)
+                              prose_chars=999, running_lines=10**6)
     assert any(30 in group for group in table_groups(reading, config=neither))
     for alone in (TableRowsConfig(gutter_min_lines=10**6), TableRowsConfig(cell_max_chars=999)):
         assert all(30 not in group for group in table_groups(reading, config=alone))
@@ -349,9 +349,10 @@ def test_a_narrow_column_of_notes_never_joins_the_move_list_of_the_other_column(
     assert sorted(sorted(g) for g in groups) == [[7, 8, 9]]
     texts = [line.text for line in rows_of_tables(reading).lines]
     assert "26 Re3 Bxd4" in texts and "The best chance to get" in texts
-    # the sabotage: without the prose by words, the numbering and the page's gutter by width
-    # (crítico da fase 5, ciclo 2), the columns interleave
-    blind = TableRowsConfig(prose_words=999, numbered_share=2.0, page_band_share=2.0)
+    # the sabotage: without the prose by words, the running text (ciclo 3), the numbering and
+    # the page's gutter by width (ciclo 2), the columns interleave
+    blind = TableRowsConfig(prose_words=999, numbered_share=2.0, page_band_share=2.0,
+                            running_lines=10**6)
     assert _crosses(table_groups(reading, config=blind), {1, 2, 3, 4}, {6, 7, 8, 9})
 
 
@@ -507,11 +508,12 @@ def test_an_index_in_two_columns_is_two_lists_not_a_table() -> None:
     assert _crosses(table_groups(reading, config=TableRowsConfig(page_band_share=2.0)), {4}, {6, 7})
 
 
-def dvoretsky_13_278_52(right: list[str] | None = None) -> OcrResult:
+def dvoretsky_13_278_52(right: list[str] | None = None,
+                        left: list[str] | None = None) -> OcrResult:
     """``real:Dvoretsky…:13:278:52`` as PSM 3 cut it, at its own scale (a native page at
     300 DPI, ~20 px a character): White's column x 0–153, Black's 413–516 -- one gutter, the
     bands 0,67 of each other."""
-    white = ["30 ♖c1", "31 ♘h1", "32 ♗xc5", "33 ♖xc5"]
+    white = left or ["30 ♖c1", "31 ♘h1", "32 ♗xc5", "33 ♖xc5"]
     black = right or ["♗xd4", "♘xc5", "♖xc5", "♕xc5"]
     lines = [_line(t, 0.0, 1.0 + 58.0 * n, 1, char_w=20.0) for n, t in enumerate(white)]
     lines += [_line(t, 413.0, 58.0 * n, 2, char_w=20.0) for n, t in enumerate(black)]
@@ -534,6 +536,21 @@ def test_only_a_move_list_crosses_the_page_s_gutter(monkeypatch) -> None:
     import caissa.ocr.layout.rows as rows
 
     monkeypatch.setattr(rows, "_numbers_column", lambda block, cfg: False)
+    assert rows.table_groups(reading) == []
+
+
+def test_an_evaluation_set_apart_is_part_of_its_move(monkeypatch) -> None:
+    """A move list with its evaluations set apart from the moves (``31 ♘h1 !?``, ``♗xd4 +-``,
+    the critic's list, ciclo 3): three tokens on a line, and the evidence refused it -- the
+    list read by columns, 0,0603 → 0,6724.  An evaluation is part of its move."""
+    reading = dvoretsky_13_278_52(right=["♗xd4 +-", "♘xc5", "♖xc5", "♕xc5 +-"],
+                                  left=["30 ♖c1", "31 ♘h1 !?", "32 ♗xc5", "33 ♖xc5 !?"])
+    assert sorted(sorted(g) for g in table_groups(reading)) == [[1, 2]]
+    assert [line.text for line in rows_of_tables(reading).lines][1] == "31 ♘h1 !? ♘xc5"
+    # the sabotage: the evaluation as a token of its own
+    import caissa.ocr.layout.rows as rows
+
+    monkeypatch.setattr(rows, "_move_tokens", lambda text: text.split())
     assert rows.table_groups(reading) == []
 
 
@@ -629,9 +646,187 @@ def test_cells_of_four_words_that_continue_nothing_are_still_cells() -> None:
     assert not any(4 in g for g in table_groups(reading, config=blind))
 
 
+# --------------------------------------------------------------------------- #
+# The critic's pages (fase 5, ciclo 3): ordinary notes in a narrow column
+# --------------------------------------------------------------------------- #
+
+
+ORDINARY_NOTES = ["White could also try", "21 Bd6!?, when after", "21...Rg8 22 g4 Rg6 the",
+                  "position is unclear.", "Black's knight is", "strong on d7, but",
+                  "White keeps an edge", "thanks to the bishop", "pair. Instead, 22 Bc5",
+                  "b6 23 Be3 is met by", "23...Nd7 with equality.", "After the text move",
+                  "Black is able to ex-", "change the bishops.", "Now 26 Re3 was best.",
+                  "White's rooks are", "active, but Black", "holds the draw."]
+GAME_UNTABBED = ["26 Re3 Bxd4", "27 Rxd4 Rd6", "28 Bb7 Rf6+", "29 Kg3 Rc7", "30 Bf3 Nb6",
+                 "31 Red3 Nc4", "32 Rd5 h6", "33 h4 gxh4+", "34 Kxh4 Re7", "35 g5 hxg5+",
+                 "36 Rxg5 Re1", "37 Rd1 Rf4+", "38 Rg4 Rxg4+", "39 Bxg4 Re4", "40 Rd4 Re3",
+                 "41 Bc8 Rxc3", "42 Bxa6 Na3", "43 Kg5 Rc2"]
+
+
+def _spread(text: str, x0: float, x1: float, y: float, block: int, *,
+            char_w: float = CHAR_W) -> OcrLine:
+    """A line of a justified column: spread to ``x1`` unless it ends its paragraph."""
+    line = _line(text, x0, y, block, char_w=char_w)
+    words = list(line.words)
+    if text.endswith(".") or len(words) < 2:
+        return line
+    space = (x1 - x0 - sum(w.box.w for w in words)) / (len(words) - 1)
+    spread, x = [], x0
+    for word in words:
+        spread.append(replace(word, box=BBox(x, word.box.y0, word.box.w, word.box.h)))
+        x += word.box.w + space
+    return replace(line, words=tuple(spread), box=BBox.union_of([w.box for w in spread]))
+
+
+def ordinary_notes_beside_the_game(*, blocks: tuple[int, ...] = (18,),
+                                   tab: float | None = None) -> OcrResult:
+    """The critic's page set as the Gallagher p. 50 (``b13_fixture_notas_comuns.py``,
+    ``b13_estreita3.py --justificar``, ciclo 3): ordinary notes justified in a column of
+    1,95 in -- three words a line, a move here and there -- and the game's move list, set
+    without tabs, in the other column; Times 10 pt at 300 DPI (~20 px a character, a line
+    every 50 px).  ``blocks`` cuts the notes the way PSM 3 did (4, 3, 6 and 5 lines: blocks
+    1–4), the game one block after them -- or two, with Black's moves at a ``tab`` (a share
+    of the column, ``b13_tabulada.py``)."""
+    lines, start = [], 0
+    for index, size in enumerate(blocks, start=1):
+        lines += [_spread(t, 150.0, 735.0, 300.0 + 50.0 * n, index, char_w=20.0)
+                  for n, t in enumerate(ORDINARY_NOTES[start:start + size], start=start)]
+        start += size
+    game = len(blocks) + 1
+    # set at a tab, the game ends in its result, as the Gallagher's does
+    moves = GAME_UNTABBED if tab is None else [*GAME_UNTABBED, "44 Kf6 1/2-1/2"]
+    for n, text in enumerate(moves):
+        y = 300.0 + 50.0 * n
+        if tab is None:
+            lines.append(_line(text, 811.0, y, game, char_w=20.0))
+            continue
+        white, black = text.rsplit(" ", 1)
+        lines.append(_line(white, 811.0, y, game, char_w=20.0))
+        lines.append(_line(black, 811.0 + tab * 585.0, y, game + 1, char_w=20.0))
+    return _reading(lines)
+
+
+def test_ordinary_notes_beside_a_move_list_are_running_text() -> None:
+    """The critic's page (ciclo 3), whole and as PSM 3 cut it: the notes are not prose by
+    length (a median line of 20 characters), nor by words (three), nor notes of variations
+    (a move number inside a third of the lines), and the gutter's bands are 587 and 240 px
+    -- nothing held the gutter, and the page read «White could also try 26 Re3 Bxd4», CER
+    0,0052 → 0,6440 and *accepted* through the importer.  Lines longer than a cell that
+    carry the sentence over are running text: they never join, and they hold the gutter."""
+    for cut in ((18,), (4, 3, 6, 5)):
+        reading = ordinary_notes_beside_the_game(blocks=cut)
+        game = len(cut) + 1
+        assert not _crosses(table_groups(reading), set(range(1, game)), {game}), cut
+        assert rows_of_tables(reading) is reading
+        # the sabotage: without the running text the notes join the game line by line
+        blind = TableRowsConfig(running_lines=10**6)
+        assert _crosses(table_groups(reading, config=blind), set(range(1, game)), {game}), cut
+        assert rows_of_tables(reading, config=blind).lines[0].text == (
+            "White could also try 26 Re3 Bxd4")
+
+
+def test_a_move_is_not_a_word_that_carries_a_sentence_over() -> None:
+    """``b6 23 Be3 is met by`` opens with a move, not a lowercase word; a column of moves
+    (``33 h4 gxh4+``) or of openings (``1 e4 c5 2 Nf3 d6``) carries nothing over."""
+    from caissa.ocr.layout.rows import _continues
+
+    assert _continues("position is unclear.") and _continues("(and then") and _continues("ex-")
+    assert not _continues("b6 23 Be3 is met by") and not _continues("33 h4 gxh4+")
+    assert not _continues("1 e4 c5 2 Nf3 d6") and not _continues("Black's knight is")
+    assert _continues("so-called “Long") and _continues("l’avantage de")
+
+
+def test_running_text_never_seeds_a_group(monkeypatch) -> None:
+    """A seed is a member whatever it is.  The last block of the critic's notes (ciclo 3:
+    «change the bishops. / Now 26 Re3 was best. / White's rooks are / active, but Black /
+    holds the draw.») is a column of cells by the river its two spread lines open -- and
+    running text: it never seeds (the filter had no test).  On this page the gutter holds
+    first, and a five-line seed could not take the game's eighteen lines anyway (the
+    partner share); the filter is the rule's contract where they do not."""
+    import caissa.ocr.layout.rows as rows
+
+    reading = ordinary_notes_beside_the_game(blocks=(4, 3, 6, 5))
+    cfg = TableRowsConfig()
+    last = next(b for b in rows._blocks(reading.lines, cfg) if b.index == 4)
+    assert last.gutters and rows._is_cells(last, cfg) and rows._running(last, cfg)
+    assert [b.index for b in rows._seeds(rows._blocks(reading.lines, cfg), cfg)] == [5]
+    # the sabotage: every column of cells seeds, running text or not
+    monkeypatch.setattr(rows, "_seeds", lambda blocks, cfg: sorted(
+        (b for b in blocks if rows._is_cells(b, cfg)), key=lambda b: -len(b.lines)))
+    assert 4 in [b.index for b in rows._seeds(rows._blocks(reading.lines, cfg), cfg)]
+
+
+def gallagher_p50_with_the_tab() -> OcrResult:
+    """The Gallagher p. 50 at its own scale (~20 px a character) as a reading the arbiter
+    discarded (the builder's probe, ciclo 3): the game in the right column with Black's
+    moves at a tab, so ``find_gutters`` finds two gutters -- the page's (755–817) and the
+    tab's (1161–1193) --, and the left column's move list with its numbers misread
+    (``21 a.. Hg8``, ``22 94 Hg6``: no numbering to hold it)."""
+    def at(n: int) -> float:
+        return 265.0 + GRID * n
+
+    notes = ["The best chance to get", "his rook into the game, but", "of course the dark squares",
+             "are now terribly weak."]
+    lines = [_spread(t, 145.0, 754.0, at(n), 2, char_w=20.0) for n, t in enumerate(notes)]
+    lines += [_line(t, 266.0, at(4 + n), 3, char_w=20.0) for n, t in enumerate(
+        ["21 a.. Hg8", "22 94 Hg6", "2З b4 b5", "24 Bd5 Nd7", "2S Bd4 Bf6!"])]
+    lines += [_spread(t, 145.0, 754.0, at(9 + n), 4, char_w=20.0) for n, t in enumerate(
+        ["Now Black is able to ex-", "change the bishops under", "more favourable circum-",
+         "stances. Although White", "still has an edge, his own"])]
+    lines.append(_line("Cunningham Defence 51", 897.0, 176.0, 5, char_w=20.0))
+    lines += [_line(t, 817.0, at(n), 6, char_w=14.0) for n, t in enumerate(
+        ["weaknesses give Black just", "enough play to hold the"])]
+    lines.append(_line("draw.", 816.0, at(2), 7, char_w=20.0))
+    lines += [_line(str(26 + n), 936.0, at(3 + n), 7, char_w=20.0) for n in range(15)]
+    white = ["Re3", "Rxd4", "Bb7", "Kg3", "Bf3", "Red3", "Rd5", "h4", "Kxh4", "g5", "Rxg5", "Rd1",
+             "Rg4", "Bxg4", "Rd4"]
+    lines += [_line(t, 1025.0, at(3 + n), 8, char_w=20.0) for n, t in enumerate(white)]
+    black = ["Bxd4", "Rd6", "Rf6+", "Rc7", "Nb6", "Nc4", "h6", "gxh4+", "Re7", "hxg5+", "Re1",
+             "Rf4+", "Rxg4+", "Re4", "1/2-1/2"]
+    lines += [_line(t, 1193.0, at(3 + n), 9, char_w=20.0) for n, t in enumerate(black)]
+    return _reading(lines)
+
+
+def test_of_two_gutters_the_page_s_is_the_one_next_to_the_prose(monkeypatch) -> None:
+    """With two gutters the rule saw no page gutter at all.  With the left column's numbers
+    misread, nothing kept its moves out of the right column's game -- a reading of the
+    Gallagher p. 50 the arbiter discarded joined them (the critic, ciclo 3); and on the
+    critic's page with the game at a tab, the notes that are not prose by any rule joined
+    it.  The page's gutter is the first one past the prose; the tab has the game's own text
+    on both sides.  Prose on *both* sides would miss the second page: its right column is
+    the game alone."""
+    import caissa.ocr.layout.rows as rows
+    from caissa.ocr.layout.scan import find_gutters
+
+    gallagher = gallagher_p50_with_the_tab()
+    tabbed = ordinary_notes_beside_the_game(blocks=(4, 3, 6, 5), tab=0.45)
+    for reading in (gallagher, tabbed):
+        assert len(find_gutters(reading.lines)) == 2
+    assert sorted(sorted(g) for g in rows.table_groups(gallagher)) == [[7, 8, 9]]
+    assert sorted(sorted(g) for g in rows.table_groups(tabbed)) == [[5, 6]]
+    original = rows._page_gutters
+
+    def both_sides(result, blocks, cfg):
+        gutters = find_gutters(result.lines)
+        if len(gutters) < 2:
+            return original(result, blocks, cfg)
+        prose = [b for b in blocks if rows._is_prose(b, cfg)]
+        return [g for g in gutters if any(b.extent.x1 <= g[1] for b in prose)
+                and any(b.extent.x0 >= g[0] for b in prose)]
+
+    # the sabotages: a page gutter only when find_gutters finds one; prose on both sides
+    monkeypatch.setattr(rows, "_page_gutters", lambda result, blocks, cfg: (
+        [] if len(find_gutters(result.lines)) > 1 else original(result, blocks, cfg)))
+    assert _crosses(rows.table_groups(gallagher), {3}, {7, 8, 9})
+    assert _crosses(rows.table_groups(tabbed), {1, 2, 3, 4}, {5, 6})
+    monkeypatch.setattr(rows, "_page_gutters", both_sides)
+    assert _crosses(rows.table_groups(tabbed), {1, 2, 3, 4}, {5, 6})
+
+
 def test_config_shares_are_the_rules_numbers() -> None:
     cfg = TableRowsConfig()
     assert cfg.cell_chars == 12 and cfg.align_share == 0.8 and cfg.overlap == 0.5
+    assert cfg.running_lines == 4 and cfg.prose_continued == 1 / 3
 
 
 # --------------------------------------------------------------------------- #

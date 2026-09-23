@@ -145,6 +145,44 @@ def test_the_panel_mounts_names_its_controls_and_lists_n_and_only_n(app, pdf, tm
     painel.close()
 
 
+def _ordem_do_tab(painel) -> list:
+    """The widgets Tab reaches from the table, in the focus chain's order."""
+    from PyQt6.QtCore import Qt
+
+    ordem, atual = [], painel.table
+    while True:
+        if atual.focusPolicy().value & Qt.FocusPolicy.TabFocus.value and atual.isVisible():
+            ordem.append(atual)
+        atual = atual.nextInFocusChain()
+        if atual is painel.table or len(ordem) > 500:
+            return ordem
+
+
+def test_the_tab_order_follows_the_eye_table_card_then_the_actions(app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 3: taken out of the card's scroll (C18), the six actions entered
+    the focus chain right after the table -- positions 11–16, the card 17–26 --, while the eye
+    reads the card first and the actions below it."""
+    from types import SimpleNamespace as Ns
+
+    import caissa.ui.views.revisao_de_texto as vista
+
+    painel = _panel(app, pdf, tmp_path)
+    ordem = _ordem_do_tab(painel)
+    cartao = [painel.cartao.leitura, painel.cartao.alternativas, painel.cartao.verdade]
+    acoes = list(painel.acoes.values())
+    posicoes = [ordem.index(w) for w in (painel.table, *cartao, *acoes)]
+    assert posicoes == sorted(posicoes), "the table, the card top down, then the actions"
+    figurinas = [w for w in ordem if painel.cartao.isAncestorOf(w)]
+    assert max(ordem.index(w) for w in figurinas) < ordem.index(acoes[0])
+    painel.close()
+    # the sabotage: no explicit order -- the chain the widget tree leaves
+    monkeypatch.setattr(vista, "itertools", Ns(pairwise=lambda _cadeia: ()))
+    painel = _panel(app, pdf, tmp_path)
+    ordem = _ordem_do_tab(painel)
+    assert ordem.index(painel.acoes["Aceitar leitura"]) < ordem.index(painel.cartao.leitura)
+    painel.close()
+
+
 def test_decisions_move_on_save_themselves_and_reach_the_importers_file(app, pdf, tmp_path):
     from caissa.ocr.review import ReviewDecisions
 

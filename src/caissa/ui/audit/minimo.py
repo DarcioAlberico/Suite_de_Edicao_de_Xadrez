@@ -36,7 +36,10 @@ o botão das mensagens com 27 de 82 px enquanto a barra estava na linha, e uma m
 dependesse de a importação ainda estar correndo naquele instante não seria uma medida. E as zonas
 de dispositivos e de ocupação entraram na conta depois que o crítico (ciclo 2) as achou com 0 px
 -- a reserva de 480 px da mensagem saía delas, e o portão, que só olhava a mensagem e o
-documento, passava.
+documento, passava. E a linha medida é a do arnês (crítico, ciclo 3): a visita às áreas acende
+trabalho do próprio produto, que reescreve as zonas depois de o arnês enchê-las; o arnês a põe de
+novo, mede quando ela assenta e grava quantas vezes precisou -- e o JSON grava o commit e o que o
+`src` de cada repositório tem fora dele.
 
 **Sabotagens:** `--sabotar rodape` (a frase num `QLabel` comum: o mínimo sobe), `--sabotar corte`
 (toda rolagem sem barra horizontal, como no ciclo 1: sobra conteúdo sem caminho até ele),
@@ -75,7 +78,9 @@ SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto", "reserva")
 
 MENSAGEM_LEGIVEL = 320
 """Pixels lógicos da mensagem do rodapé que têm de estar à vista, no mínimo da janela e com o nome
-longo: ~45 caracteres -- o começo de qualquer frase de erro."""
+longo: ~57 caracteres na fonte do produto (5,6 px cada, medido pelo crítico da fase 5, ciclo 3) --
+o começo de qualquer frase de erro. Uma frase mais longa sai elidida no meio, com o todo na dica:
+a do produto sem o modelo de casas (84 caracteres, 474 px) sai assim até 1440 px de largura."""
 
 NOME_LONGO = ("Gaprindashvili, Paata - Imagination in Chess. How To Think Creatively And Avoid "
               "Foolish Mistakes (Bastford, 2005) 2p 145p_OCR_Aprimorar_Aprimorar.pdf · "
@@ -109,6 +114,13 @@ quando a régua olhava só a largura)."""
 CADEIA = 4
 """Quantos pais a descrição de um controle nomeia: o bastante para achar o painel."""
 
+VOLTAS_MINIMAS = 6
+"""Voltas do laço de eventos antes de medir o rodapé: as da primeira versão do arnês."""
+
+VOLTAS_MAXIMAS = 200
+"""...e no máximo estas, esperando a linha do arnês assentar: se o produto a reescrever o tempo
+todo, a medida sai marcada fora da linha do arnês, e não passa."""
+
 _VIVOS: list[Any] = []
 """A aplicação e a janela medidas, presas aqui até o `os._exit`. Variáveis locais não bastavam: ao
 sair de `medir_uma_pele` o Python soltava a `QApplication` que ela criou, o PyQt a desmontava com a
@@ -117,6 +129,19 @@ violation` antes de gravar o JSON. Medido nesta fase com `PYTHONFAULTHANDLER`: q
 em dez corridas com a máquina ocupada (o `bench_sol` e a população do B14 ao lado), as quatro no
 retorno de `medir_uma_pele` e com a tarefa do Dataset esperando o processo de trabalho; prender só
 a janela não bastou (a quarta) -- a leitura só perde a corrida quando demora."""
+
+
+def _estado_do_git(pasta: Path) -> dict[str, Any]:
+    """O commit de ``pasta`` e o que o ``src`` dela tem fora dele (``git status --porcelain``)."""
+
+    def git(*argumentos: str) -> str:
+        feito = subprocess.run(  # noqa: S603 - argv nosso
+            ["git", "-C", str(pasta), *argumentos],  # noqa: S607 - o git do PATH
+            capture_output=True, text=True, encoding="utf-8", check=False)
+        return feito.stdout.strip() if feito.returncode == 0 else ""
+
+    return {"caminho": str(pasta), "commit": git("rev-parse", "HEAD"),
+            "fora_do_commit": git("status", "--porcelain", "--", "src").splitlines()}
 
 
 def _frase() -> str:
@@ -264,8 +289,8 @@ def _vista(janela: Any, aplicacao: Any, areas: list[Any]) -> dict[str, Any]:
             "espremidos": espremidos, "alcancaveis_pela_barra": alcancaveis}
 
 
-def _linha_cheia(janela: Any, nome: str = NOME_LONGO) -> None:
-    """O pior caso do rodapé, com ``nome`` na zona do documento.
+def _linha_cheia(janela: Any, nome: str = NOME_LONGO) -> dict[str, str]:
+    """O pior caso do rodapé, com ``nome`` na zona do documento; devolve o texto de cada zona.
 
     A frase longa, uma importação com a barra e os dispositivos da queda para a CPU.
     """
@@ -278,6 +303,16 @@ def _linha_cheia(janela: Any, nome: str = NOME_LONGO) -> None:
     janela.rodape.aplicar_ocupacao([BusyOperation(
         name="Importando o livro", loses_work=False, cancellable=True,
         detail="p. 12 de 289", feito=12, total=289)])
+    return _textos_do_rodape(janela)
+
+
+def _textos_do_rodape(janela: Any) -> dict[str, str]:
+    rodape = janela.rodape
+    # o arnês mede o que o rodapé desenha, e por isso lê os rótulos dele
+    return {"mensagem": rodape._lbl_mensagem.texto_inteiro,
+            "documento": rodape._lbl_documento.texto_inteiro,
+            "dispositivos": rodape._lbl_dispositivos.texto_inteiro,
+            "ocupacao": rodape._lbl_ocupacao.texto_inteiro}
 
 
 def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
@@ -295,12 +330,35 @@ def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
     def a_vista(widget: Any) -> int:
         return widget.visibleRegion().boundingRect().width() if widget.isVisible() else 0
 
+    def larguras() -> tuple[int, ...]:
+        return (*(a_vista(r) for r in zonas.values()), a_vista(rodape.barra_de_progresso()))
+
     nomes = []
     for nome in NOMES:
-        _linha_cheia(janela, nome)
-        for _ in range(6):
+        esperado = _linha_cheia(janela, nome)
+        # Mede a linha do arnês, assentada (crítico da fase 5, ciclo 3: o primeiro nome saía às
+        # vezes com dispositivos 162 e ocupação 152). A visita às áreas acende trabalho do
+        # próprio produto -- a leitura do `labels.csv` do Dataset, a detecção dos dispositivos
+        # --, e ele reescreve as zonas depois de o arnês enchê-las: «leitura do dataset
+        # (labels.csv)» e «peças ainda não · texto desligado» eram as medidas. Quando o produto
+        # reescreve, o arnês põe a linha de novo (e conta); mede quando duas voltas seguidas do
+        # laço de eventos dão as mesmas larguras com a linha dele.
+        antes, voltas, repostas = None, 0, 0
+        while voltas < VOLTAS_MAXIMAS:
             aplicacao.processEvents()
-        medida: dict[str, Any] = {"nome": nome.split(" · ")[0][:60]}
+            voltas += 1
+            if _textos_do_rodape(janela) != esperado:
+                esperado = _linha_cheia(janela, nome)
+                repostas += 1
+                antes = None
+                continue
+            agora = larguras()
+            if voltas >= VOLTAS_MINIMAS and agora == antes:
+                break
+            antes = agora
+        medida: dict[str, Any] = {"nome": nome.split(" · ")[0][:60], "voltas": voltas,
+                                  "linha_reposta": repostas,
+                                  "linha_do_arnes": _textos_do_rodape(janela) == esperado}
         for zona, rotulo in zonas.items():
             medida[f"{zona}_px"] = a_vista(rotulo)
         medida["barra_px"] = a_vista(rodape.barra_de_progresso())
@@ -318,8 +376,10 @@ def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
 
 
 def _rodape_a_vista(rodape: dict[str, Any]) -> bool:
-    return all(n["mensagem_px"] >= MENSAGEM_LEGIVEL and n["documento_px"] >= DOCUMENTO_LEGIVEL
-               and not n["cortadas"] and not n["espremidos"] for n in rodape["nomes"])
+    """As quatro zonas à vista, medidas na linha do arnês (outra linha não é o pior caso)."""
+    return all(n["linha_do_arnes"] and n["mensagem_px"] >= MENSAGEM_LEGIVEL
+               and n["documento_px"] >= DOCUMENTO_LEGIVEL and not n["cortadas"]
+               and not n["espremidos"] for n in rodape["nomes"])
 
 
 def _motores(janela: Any, limite_w: int, limite_h: int) -> list[dict[str, Any]]:
@@ -458,6 +518,10 @@ def medir(saida: Path, *, pdf: Path | None = None, sabotar: str = "",
         "gerado_em": datetime.now(UTC).isoformat(timespec="seconds"),
         "teto": list(TETO),
         "sabotagem": sabotar,
+        # de onde veio o código medido (crítico da fase 5, ciclo 3): o commit e o que a árvore
+        # tinha fora dele, nos dois repositórios
+        "suite": _estado_do_git(Path(__file__).resolve().parents[4]),
+        "tronco": _estado_do_git(caminho_do_tronco),
         "medidas": medidas,
         "passou": all(m["cabe"] and m["a_vista"] for m in medidas),
     }
@@ -520,6 +584,10 @@ def _imprimir(medida: dict[str, Any]) -> None:
         largura, altura = rodape["tamanho"]
         for n in rodape["nomes"]:
             cortadas = f", CORTADAS: {', '.join(n['cortadas'])}" if n["cortadas"] else ""
+            if not n["linha_do_arnes"]:
+                cortadas += ", MEDIDA FORA DA LINHA DO ARNÊS"
+            elif n["linha_reposta"]:
+                cortadas += f" (o produto reescreveu a linha: reposta {n['linha_reposta']}×)"
             print(f"    rodapé a {largura}×{altura}, {n['nome'][:24]}…: "
                   f"mensagem {n['mensagem_px']} "
                   f"(≥ {MENSAGEM_LEGIVEL}), documento {n['documento_px']} (≥ {DOCUMENTO_LEGIVEL}), "

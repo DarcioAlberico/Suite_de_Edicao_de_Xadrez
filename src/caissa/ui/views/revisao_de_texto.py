@@ -21,6 +21,7 @@ minutos — por isso o campo de páginas, para revisar um capítulo de cada vez.
 
 from __future__ import annotations
 
+import itertools
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -95,6 +96,19 @@ def guarda_cega_padrao(manifest: Path | None = None) -> BlindGuard:
 def fila_path(pdf_path: Path | str) -> Path:
     """Where the queue itself (items + audit log) is saved: next to the decisions."""
     return decisions_path(pdf_path).with_suffix(".fila.json")
+
+
+def _focaveis(raiz: QWidget) -> list[QWidget]:
+    """Os descendentes de ``raiz`` que o Tab alcança, na ordem em que a cadeia do foco os tem."""
+    achados: list[QWidget] = []
+    atual = raiz.nextInFocusChain()
+    # a cadeia é circular e passa por `raiz`: a volta termina nela
+    while atual is not None and atual is not raiz:
+        tab = atual.focusPolicy().value & Qt.FocusPolicy.TabFocus.value
+        if tab and raiz.isAncestorOf(atual):
+            achados.append(atual)
+        atual = atual.nextInFocusChain()
+    return achados
 
 
 # --------------------------------------------------------------------------- #
@@ -338,6 +352,12 @@ class PainelDeRevisaoDeTexto(QWidget):
         corpo.setStretchFactor(0, 2)
         corpo.setStretchFactor(1, 3)
         corpo.setSizes([440, 560])
+        # A ordem do Tab segue a visual (crítico da fase 5, ciclo 3): a rolagem recebeu o cartão
+        # depois de as ações nascerem, e a cadeia do foco punha as seis ações logo depois da
+        # tabela, antes do cartão que fica acima delas.
+        cadeia = [self.table, *_focaveis(self.cartao), *self.acoes.values(), *paginador]
+        for antes, depois in itertools.pairwise(cadeia):
+            QWidget.setTabOrder(antes, depois)
 
         self.status = RotuloQueEncolhe("", self)   # C18
         self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
