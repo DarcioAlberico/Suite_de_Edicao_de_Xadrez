@@ -777,6 +777,7 @@ class OcrService:
             base = self._candidate("original", region_outcome)
             candidates = [base]
             candidates.extend(self._engine_candidates(recognizer, region_outcome, task))
+            self._note_engine_failures(region_outcome, task, notes)
             region_ink = self._region_ink(page_ink, region_outcome, task)
             coverage = self._coverage_of(region_outcome.result, region_ink)
             if coverage is not None and coverage < cfg.min_ink_coverage:
@@ -881,6 +882,22 @@ class OcrService:
             decision=decision, score=arbitration.winner.total if arbitration.winner else 0.0,
             outcome=arbitration,
         )
+
+    def _note_engine_failures(self, region_outcome: RegionOutcome, task: PageTask,
+                              notes: list[str]) -> None:
+        """An engine that failed on the region is said on the page, not dropped.
+
+        Crítico da fase 5, ciclo 4: the Stean p. 165 was read by RapidOCR, which runs in this
+        process; without memory its allocation failed, the arbiter kept Tesseract's worse
+        reading, and nothing on the page told it from a page both engines had read.  A failure
+        is the empty reading ``OcrEngineBase.recognize`` marks ``failed``.
+        """
+        for failed in region_outcome.outcome.candidates:
+            if failed.meta.get("failed"):
+                note = (f"região {region_outcome.region.reading_order}: o motor {failed.engine} "
+                        f"falhou e a leitura seguiu sem ele — {'; '.join(failed.warnings)}")
+                notes.append(note)
+                self.log.warning("página %d, %s", task.page_index, note)
 
     @staticmethod
     def _engine_candidates(recognizer: PageRecognizer, region_outcome: RegionOutcome,

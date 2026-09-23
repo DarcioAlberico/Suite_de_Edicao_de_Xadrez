@@ -59,6 +59,7 @@ from caissa.ocr.review import (
 from caissa.ui.theme import pele
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
+from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, focaveis
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
@@ -96,19 +97,6 @@ def guarda_cega_padrao(manifest: Path | None = None) -> BlindGuard:
 def fila_path(pdf_path: Path | str) -> Path:
     """Where the queue itself (items + audit log) is saved: next to the decisions."""
     return decisions_path(pdf_path).with_suffix(".fila.json")
-
-
-def _focaveis(raiz: QWidget) -> list[QWidget]:
-    """Os descendentes de ``raiz`` que o Tab alcança, na ordem em que a cadeia do foco os tem."""
-    achados: list[QWidget] = []
-    atual = raiz.nextInFocusChain()
-    # a cadeia é circular e passa por `raiz`: a volta termina nela
-    while atual is not None and atual is not raiz:
-        tab = atual.focusPolicy().value & Qt.FocusPolicy.TabFocus.value
-        if tab and raiz.isAncestorOf(atual):
-            achados.append(atual)
-        atual = atual.nextInFocusChain()
-    return achados
 
 
 # --------------------------------------------------------------------------- #
@@ -292,6 +280,9 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAccessibleName("Dúvidas do livro")
+        # As setas andam pelas linhas; o Tab sai da tabela (com a navegação do Tab ligada, ele
+        # andava de célula em célula e nunca chegava ao cartão).
+        self.table.setTabKeyNavigation(False)
         self.table.itemSelectionChanged.connect(self._on_table_select)
         corpo.addWidget(self.table)
 
@@ -355,9 +346,14 @@ class PainelDeRevisaoDeTexto(QWidget):
         # A ordem do Tab segue a visual (crítico da fase 5, ciclo 3): a rolagem recebeu o cartão
         # depois de as ações nascerem, e a cadeia do foco punha as seis ações logo depois da
         # tabela, antes do cartão que fica acima delas.
-        cadeia = [self.table, *_focaveis(self.cartao), *self.acoes.values(), *paginador]
+        cadeia = [self.table, *focaveis(self.cartao), *self.acoes.values(), *paginador]
         for antes, depois in itertools.pairwise(cadeia):
             QWidget.setTabOrder(antes, depois)
+        # O foco que entra no cartão vindo de fora da rolagem -- o Shift+Tab das ações -- não
+        # passa pelo `focusNextPrevChild` dela, e a rolagem não descia: a 1280x641 o foco caía em
+        # «Letras → figurinas» com 0 px à vista (crítico da fase 5, ciclo 4).
+        self._rolagem = rolagem
+        self._segue_o_foco = RolagemSegueOFoco(rolagem, direita)
 
         self.status = RotuloQueEncolhe("", self)   # C18
         self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")

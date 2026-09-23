@@ -50,11 +50,21 @@ the same rule, applied to Tesseract **through its own blocks**:
     of **comparable width** — prose or no prose: an index of names in two
     columns has none — or a band of prose (any of the kinds above) beside a
     narrow one; of two gutters or more, the ones next to a block of prose (the
-    others are a table's gaps, or the tab of a move list in one column).
-    Across that gutter only a **move list** is a group: numbers and
+    others are a table's gaps, or the tab of a move list in one column).  Two
+    kinds of page gutter need no prose, however many gutters there are: the one
+    before every column of an **index** but the first — a column whose entries,
+    the lines at its margin (a sub-entry is indented under its name), open with
+    words in alphabetical order (:attr:`TableRowsConfig.list_min_heads` of them
+    at least) — and the one between a **game** (numbered lines with their moves,
+    or a column of move numbers beside a column of moves, as the German books cut
+    them) and a column of text (lines longer than a cell that are not moves),
+    whether or not a rule above calls that text prose.
+    Across a page's gutter only a **move list** is a group: numbers and
     White's moves on the left, one move a line on the right (an evaluation set
     apart, ``31 Nh1 !?``, is part of its move) — the positive evidence of a
-    table that two lists of the same shape never give.  A table of two columns
+    table that two lists of the same shape never give; across two, the numbers
+    in the first band and the bands one after the other — a group never jumps a
+    band.  A table of two columns
     that is not a move list (``Wilhelm Steinitz | 1886–1894``) and leaves one
     gutter of comparable bands is read by columns, as with the rule off.
 5.  The group is written out **row by row**: its lines clustered by height,
@@ -73,13 +83,19 @@ no prose at all) joined line by line across the gutter the rule itself had found
 and notes of variations beside a move list joining it; and its third cycle found
 ordinary notes -- three words a line, a move here and there, justified in a narrow
 column -- beside a move list set without tabs, joined line by line and *accepted* by
-the importer, because nothing called them prose.
+the importer, because nothing called them prose.  Its fourth cycle found the indexes of
+three columns or more -- the Flores pp. 460–464, the Yusupov 4 p. 206, the Nunn p. 288:
+names and pages of two columns joined line by line, the gutters between them read as a
+table's gaps because no prose stood beside them -- and notes that no rule calls prose,
+beside a game, joined to it (the Nunn pp. 29 and 143, the Burgess p. 133).
 """
 
 from __future__ import annotations
 
+import itertools
 import re
-from collections.abc import Sequence
+import unicodedata
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
 from ..types import BBox, OcrLine, OcrResult
@@ -177,6 +193,34 @@ class TableRowsConfig:
     #: the Gallagher p. 50, notes of variations beside the game, CER 0,0113 → 0,5845).  A
     #: move list opens its lines with the number; a table's numbers are years and pages.
     notes_share: float = 0.5
+    #: A band of the page is an **index column** when at least this many of its entries --
+    #: the lines at the column's margin, the sub-entries indented under them left out --
+    #: open with a word, and the words run in alphabetical order: at least
+    #: ``list_sorted_share`` of the consecutive pairs in order, and ``list_rising_share``
+    #: strictly rising (``Rodada 1 / Rodada 2`` is one word repeated, not a list).  Two index
+    #: columns side by side are two lists -- the gutter before the second is the page's,
+    #: found without prose (crítico da fase 5, ciclo 4: with two gutters or more and no
+    #: prose the rule saw no page gutter, and the index of the Flores, ``Chess Structures``,
+    #: pp. 460–464, of the Yusupov 4 p. 206 and of the Nunn p. 288 came out interleaved
+    #: line by line -- «David 412 Galkin 198 / Delchev 108, 198 Gao 365», CER 0,0230 → 0,7217;
+    #: a constructed index in three columns 0,0007 → 0,7791, *accepted*).  A table's column
+    #: is not sorted by its first word (``Haia / Moscovo / Baguio``), and one sorted column
+    #: beside columns of numbers is one list, read with its pages.
+    list_min_heads: int = 6
+    list_sorted_share: float = 0.8
+    list_rising_share: float = 0.5
+    #: ...an entry is at the margin when its left edge is within this many median character
+    #: widths of the leftmost line near it: a scanned page is skewed, and the margin drifts
+    #: 40 px down the Aagaard's index.
+    list_margin_chars: float = 1.5
+    #: A **game** -- at least this many lines that open with consecutive move numbers, each
+    #: followed by a move (``26 Re3 Bxd4``) -- makes the gutter beside it the page's when
+    #: the other side holds text (lines longer than a cell): notes that no rule calls prose
+    #: -- lines opening with a move, a number or a capital -- joined the game line by line
+    #: (crítico da fase 5, ciclo 4: 12 of 29 pages at risk; the Nunn p. 29 notes set as the
+    #: Gallagher p. 50, 0,0824 → 0,6571).  Cells beside a game (Black's replies) cross it as
+    #: the move list they are.
+    game_min_lines: int = 3
 
 
 # --------------------------------------------------------------------------- #
@@ -320,17 +364,27 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     arbiter discarded joined the left column's moves to the right column's game) -- the
     page's are those next to a block of prose, the first on each side of it; a table has
     no prose, and a tab has the column's own text on both sides.
+
+    And two kinds of page need no prose at all (crítico da fase 5, ciclo 4): an **index**
+    -- the gutter before every column whose entries run in alphabetical order, when another
+    column does too (:func:`_index_gutters`) -- and a **game** beside a column of text (the
+    gutter between them, :func:`_game_gutters`).
     """
-    from .scan import find_gutters
+    from .scan import _band_of, find_gutters
 
     gutters = find_gutters(result.lines)
+    if not gutters:
+        return []
+    bands: dict[int, list[_Block]] = {}
+    for block in blocks:
+        bands.setdefault(_band_of(block.extent.cx, gutters), []).append(block)
+    page = set(_index_gutters(gutters, bands, cfg)) | set(_game_gutters(gutters, bands, cfg))
     prose = [b for b in blocks if _is_prose(b, cfg)]
     if len(gutters) > 1:
         # A table's gaps, or the page's gutter beside the tab of a move list set in one of
         # the columns (the Gallagher p. 50: 754–817 and the tab of Black's moves,
         # 1171–1193): the page's gutters are the ones next to a block of prose -- the first
         # gutter past its right edge, the first before its left.  A table has no prose.
-        page: set[tuple[float, float]] = set()
         for block in prose:
             after = [g for g in gutters if g[0] >= block.extent.x1]
             before = [g for g in gutters if g[1] <= block.extent.x0]
@@ -339,16 +393,131 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
             if before:
                 page.add(max(before, key=lambda g: g[1]))
         return sorted(page)
-    if not gutters:
-        return []
     low, high = gutters[0]
     boxes = [w.box for line in result.lines for w in line.words if w.text.strip()]
     left_band = low - min(b.x0 for b in boxes)
     right_band = max(b.x1 for b in boxes) - high
     if min(left_band, right_band) >= cfg.page_band_share * max(left_band, right_band):
         return gutters
-    beside = any(b.extent.x1 <= high or b.extent.x0 >= low for b in prose)
-    return gutters if beside else []
+    if any(b.extent.x1 <= high or b.extent.x0 >= low for b in prose):
+        return gutters
+    return sorted(page)
+
+
+def _index_gutters(gutters: Sequence[tuple[float, float]], bands: dict[int, list[_Block]],
+                   cfg: TableRowsConfig) -> list[tuple[float, float]]:
+    """The gutter before every index column but the first (``list_min_heads``): two
+    alphabetical lists side by side are two lists, whatever stands between them -- the page
+    numbers of the first, the gap between a name and its pages."""
+    columns = sorted(n for n, members in bands.items()
+                     if _index_column([line for m in members for line in m.lines], cfg))
+    return [gutters[n - 1] for n in columns[1:] if 0 < n <= len(gutters)]
+
+
+def _index_column(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> bool:
+    """Whether ``lines`` are the entries of an index: the words that open the lines at the
+    column's margin run in alphabetical order (``list_sorted_share``), rising
+    (``list_rising_share``)."""
+    keys = _entry_words(lines, cfg)
+    if len(keys) < cfg.list_min_heads:
+        return False
+    pairs = list(itertools.pairwise(keys))
+    ordered = sum(1 for a, b in pairs if a <= b)
+    rising = sum(1 for a, b in pairs if a < b)
+    return (ordered >= cfg.list_sorted_share * len(pairs)
+            and rising >= cfg.list_rising_share * len(pairs))
+
+
+def _entry_words(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> list[str]:
+    """The sort keys of a column's entries, top down: the first word of every line at the
+    column's margin -- within ``list_margin_chars`` of the leftmost line near it (six lines
+    up or down: the margin of a scanned page drifts) -- and not a sub-entry indented under
+    it (``Potkin / Carlsen 112``: the games of Potkin, by opponent).  A line that opens with
+    a number or a move (``279, 280``, ``P251``) has no word."""
+    ordered = sorted((ln for ln in lines if ln.text.strip()), key=lambda ln: ln.box.cy)
+    if not ordered:
+        return []
+    widths = [w.box.w / max(1, len(w.text)) for ln in ordered for w in ln.words if w.text.strip()]
+    char = _median_float(widths) or 1.0
+    height = _median_float([ln.box.h for ln in ordered]) or 1.0
+    keys: list[str] = []
+    for line in ordered:
+        near = min(o.box.x0 for o in ordered if abs(o.box.cy - line.box.cy) <= 6 * height)
+        if line.box.x0 > near + cfg.list_margin_chars * char:
+            continue
+        word = _first_word(line.text)
+        if word:
+            keys.append(_sort_key(word))
+    return keys
+
+
+def _first_word(text: str) -> str:
+    """The line's first token when it is a word (letters, with a hyphen, an apostrophe or a
+    period inside: ``Santo-Roman``, ``O'Kelly``, ``J.``), or nothing."""
+    for token in text.split():
+        core = token.strip(_PUNCTUATION)
+        if not core:
+            continue
+        letters = core.replace("-", "").replace("'", "").replace("’", "").replace(".", "")
+        return core if letters.isalpha() else ""
+    return ""
+
+
+def _sort_key(word: str) -> str:
+    """``word`` as an index sorts it: no accents, no case (``Cámpora`` among the C's)."""
+    decomposed = unicodedata.normalize("NFKD", word)
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+
+
+def _game_gutters(gutters: Sequence[tuple[float, float]], bands: dict[int, list[_Block]],
+                  cfg: TableRowsConfig) -> list[tuple[float, float]]:
+    """The gutters with a game (:func:`_game`) on one side and text on the other -- lines
+    longer than a cell that are neither the game nor its moves.
+
+    The gutter is the one next to the game's band, and the text is in the nearest band that
+    holds a block: ``find_gutters`` also finds the river of a column of short justified lines,
+    and the blocks of that column all sit left of it -- the band between the river and the
+    page's gutter is empty (the crítico's notes from the Dvoretsky index, pp. 789–798)."""
+    def text(block: _Block) -> bool:
+        return (block.median_chars > cfg.cell_chars and not _game(block, cfg)
+                and not _numbers_moves(block, cfg) and not _move_column(block, cfg))
+
+    def game(members: Sequence[_Block]) -> bool:
+        # a game in one block, or cut in two: the numbers alone (``26.``, ``27.``: the German
+        # notation's period parts them from the moves) and the moves beside them
+        return any(_game(b, cfg) for b in members) or (
+            any(_numbers_column(b, cfg) for b in members)
+            and any(_move_column(b, cfg) for b in members)
+            and sum(len(b.lines) for b in members if _numbers_column(b, cfg)) >= cfg.game_min_lines)
+
+    filled = sorted(n for n, members in bands.items() if members)
+    found: set[tuple[float, float]] = set()
+    for k, n in enumerate(filled):
+        if not game(bands[n]):
+            continue
+        if k > 0 and 0 < n <= len(gutters) and any(text(b) for b in bands[filled[k - 1]]):
+            found.add(gutters[n - 1])
+        if k + 1 < len(filled) and n < len(gutters) and any(
+                text(b) for b in bands[filled[k + 1]]):
+            found.add(gutters[n])
+    return sorted(found)
+
+
+def _game(block: _Block, cfg: TableRowsConfig) -> bool:
+    """A numbered game: ``game_min_lines`` lines or more that open with consecutive move
+    numbers, each followed by a move in the same line (``26 Re3 Bxd4``, ``21... Rg8``).
+    Bare numbers cut from their moves are not a game on their own."""
+    from ..lexicon import is_move_token
+
+    numbers = []
+    for line in block.lines:
+        lead = _leading_number(line.text)
+        if lead is not None and lead[1] and is_move_token(lead[1].rstrip(",;")):
+            numbers.append(lead[0])
+    if len(numbers) < cfg.game_min_lines or len(numbers) < cfg.numbered_share * len(block.lines):
+        return False
+    steps = sum(1 for a, b in itertools.pairwise(numbers) if b == a + 1)
+    return steps >= cfg.numbered_share * (len(numbers) - 1)
 
 
 #: What a word may carry around it -- stripped before a token is judged a word.
@@ -644,6 +813,27 @@ def _seeds(blocks: Sequence[_Block], cfg: TableRowsConfig) -> list[_Block]:
                   key=lambda b: -len(b.lines))
 
 
+def _crosses_the_page(members: Sequence[_Block], band: Callable[[_Block], int],
+                      cfg: TableRowsConfig) -> bool:
+    """The group would hold blocks on both sides of a page's gutter, and is not a move list
+    split by it: the numbers (and maybe White's moves) in the first band, one move a line in
+    each of the next -- positive evidence of a table, which two lists of the same shape (an
+    index of names and pages) never give.  The bands must follow each other: a group never
+    jumps over a band (numbers | White | Black across two gutters is one move list; two
+    columns of an index with a third between them are not)."""
+    bands = sorted({band(m) for m in members})
+    if len(bands) < 2:
+        return False
+    if bands != list(range(bands[0], bands[-1] + 1)):
+        return True
+    first = [m for m in members if band(m) == bands[0]]
+    rest = [m for m in members if band(m) != bands[0]]
+    numbered = {m.index for m in first if _numbers_column(m, cfg)}
+    return not (numbered
+                and all(m.index in numbered or _move_column(m, cfg) for m in first)
+                and all(_move_column(m, cfg) for m in rest))
+
+
 def table_groups(result: OcrResult, *,
                  config: TableRowsConfig | None = None) -> list[list[int]]:
     """The block indices of every group that reads as a table, seeds first.
@@ -684,22 +874,7 @@ def table_groups(result: OcrResult, *,
         return False
 
     def crosses(block: _Block, group: Sequence[_Block]) -> bool:
-        """The group would hold blocks on both sides of the page's gutter, and is not a
-        move list split by it: the numbers (and maybe White's moves) on the left, one move
-        a line on the right -- positive evidence of a table, which two lists of the same
-        shape (an index of names and pages) never give."""
-        members = [*group, block]
-        bands = sorted({band(m) for m in members})
-        if len(bands) < 2:
-            return False
-        if len(bands) > 2 or bands[1] != bands[0] + 1:
-            return True
-        left = [m for m in members if band(m) == bands[0]]
-        right = [m for m in members if band(m) == bands[1]]
-        numbered = {m.index for m in left if _numbers_column(m, cfg)}
-        return not (numbered
-                    and all(m.index in numbered or _move_column(m, cfg) for m in left)
-                    and all(_move_column(m, cfg) for m in right))
+        return _crosses_the_page([*group, block], band, cfg)
 
     prose = _prose_lines([line for block in blocks for line in block.lines], cfg)
 

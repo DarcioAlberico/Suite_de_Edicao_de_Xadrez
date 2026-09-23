@@ -183,6 +183,71 @@ def test_the_tab_order_follows_the_eye_table_card_then_the_actions(app, pdf, tmp
     painel.close()
 
 
+def _com_a_tecla(app, inicio, tecla, modificadores, passos: int, *, ate=None) -> list:
+    """``(widget, à vista)`` for every widget the real key reaches from ``inicio`` --
+    ``QTest.keyClick`` on whoever has the focus, as the keyboard does --, whether it had a pixel
+    on screen *when it took the focus*, until the focus stops moving or reaches ``ate``."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    inicio.setFocus(Qt.FocusReason.TabFocusReason)
+    app.processEvents()
+    caminho = [(app.focusWidget(), not app.focusWidget().visibleRegion().isEmpty())]
+    for _ in range(passos):
+        antes = app.focusWidget()
+        QTest.keyClick(antes, tecla, modificadores)
+        app.processEvents()
+        agora = app.focusWidget()
+        if agora is antes:
+            break
+        caminho.append((agora, not agora.visibleRegion().isEmpty()))
+        if agora is ate:
+            break
+    return caminho
+
+
+def test_the_tab_key_walks_the_table_the_card_and_the_actions_in_sight(app, pdf, tmp_path):
+    """Crítico da fase 5, ciclo 4: the order held in the focus chain, not under the key -- Tab
+    stopped in the truth field writing tabulations into it, the figurines and the six actions
+    out of reach; and Shift+Tab from «Aceitar leitura» into the card focused «Letras →
+    figurinas» below the fold, 0 px on screen.  Pressed for real, on a window short enough for
+    the card to scroll: from the table to the last action and back, every control in its place
+    and on screen when it takes the focus."""
+    from PyQt6.QtCore import Qt
+
+    tab, sem = Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier
+    volta, shift = Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier
+    painel = _panel(app, pdf, tmp_path)
+    painel.resize(1000, 420)
+    app.processEvents()
+    acoes = list(painel.acoes.values())
+    marcos = [painel.table, painel.cartao.leitura, painel.cartao.verdade, *acoes]
+    frente = _com_a_tecla(app, painel.table, tab, sem, 60, ate=acoes[-1])
+    na_frente = [w for w, _ in frente]
+    assert na_frente[-1] is acoes[-1], "the key reaches the last action"
+    posicoes = [na_frente.index(w) for w in marcos]
+    assert posicoes == sorted(posicoes), "the table, the card, the actions -- by the key"
+    assert [w.accessibleName() for w, a_vista in frente if not a_vista] == []
+    assert "\t" not in painel.cartao.verdade.toPlainText()
+    tras = _com_a_tecla(app, acoes[-1], volta, shift, 60, ate=painel.table)
+    para_tras = [w for w, _ in tras]
+    assert para_tras == na_frente[::-1], "Shift+Tab walks the same path back"
+    assert [w.accessibleName() for w, a_vista in tras if not a_vista] == []
+    # the sabotages: the truth field keeps the Tab; the card no longer scrolls to the focus
+    painel.cartao.verdade.setTabChangesFocus(False)
+    preso = [w for w, _ in _com_a_tecla(app, painel.table, tab, sem, 60, ate=acoes[-1])]
+    assert acoes[0] not in preso
+    assert "\t" in painel.cartao.verdade.toPlainText()
+    painel.cartao.verdade.setPlainText("")
+    painel.cartao.verdade.setTabChangesFocus(True)
+    painel._segue_o_foco.desligar()
+    painel._rolagem.verticalScrollBar().setValue(0)
+    app.processEvents()
+    tras = _com_a_tecla(app, acoes[-1], volta, shift, 60, ate=painel.table)
+    assert [w for w, a_vista in tras if not a_vista], "without the filter the focus hides"
+    painel.close()
+
+
 def test_decisions_move_on_save_themselves_and_reach_the_importers_file(app, pdf, tmp_path):
     from caissa.ocr.review import ReviewDecisions
 

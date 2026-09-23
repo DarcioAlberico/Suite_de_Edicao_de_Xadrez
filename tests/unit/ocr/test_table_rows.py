@@ -175,9 +175,10 @@ def test_a_column_of_moves_with_a_line_of_prose_does_not_pull_the_other_column()
     reading = _reading(left_prose + left_black + left_white + right)
     # the sabotage: without the ceiling on a cell's longest line and without the gutter
     # rules (the corridor, and the page's gutter, which needs prose beside it -- by length,
-    # by words or as running text), the right column seeds and pulls the left fragments
+    # by words or as running text -- or a game beside text), the right column seeds and
+    # pulls the left fragments
     neither = TableRowsConfig(cell_max_chars=999, gutter_min_lines=10**6, prose_words=999,
-                              prose_chars=999, running_lines=10**6)
+                              prose_chars=999, running_lines=10**6, game_min_lines=10**6)
     assert any(30 in group for group in table_groups(reading, config=neither))
     for alone in (TableRowsConfig(gutter_min_lines=10**6), TableRowsConfig(cell_max_chars=999)):
         assert all(30 not in group for group in table_groups(reading, config=alone))
@@ -504,8 +505,10 @@ def test_an_index_in_two_columns_is_two_lists_not_a_table() -> None:
     assert not _crosses(table_groups(reading), {4}, {6, 7})
     texts = [line.text for line in rows_of_tables(reading).lines]
     assert "Ragozin 24" in texts and "Bennett 218" in texts
-    # the sabotage: the gutter only with prose beside it, as in the second cycle
-    assert _crosses(table_groups(reading, config=TableRowsConfig(page_band_share=2.0)), {4}, {6, 7})
+    # the sabotage: the gutter only with prose beside it, as in the second cycle (and without
+    # the index columns of the fourth, which hold it too)
+    blind = TableRowsConfig(page_band_share=2.0, list_min_heads=10**6)
+    assert _crosses(table_groups(reading, config=blind), {4}, {6, 7})
 
 
 def dvoretsky_13_278_52(right: list[str] | None = None,
@@ -584,7 +587,8 @@ def test_notes_of_variations_are_running_text_not_cells() -> None:
     groups = table_groups(reading)
     assert not _crosses(groups, {1, 2, 3, 4}, {6, 7, 8, 9})
     # the sabotage: without the notes, the variations join the other column's move list
-    blind = TableRowsConfig(notes_share=2.0, page_band_share=2.0)
+    # (the game beside text holds the gutter too, since the fourth cycle)
+    blind = TableRowsConfig(notes_share=2.0, page_band_share=2.0, game_min_lines=10**6)
     assert _crosses(table_groups(reading, config=blind), {1, 2, 3, 4}, {6, 7, 8, 9})
 
 
@@ -609,8 +613,10 @@ def test_notes_beside_the_game_in_two_narrow_columns_stay_in_their_column() -> N
     reading = _reading(lines)
     assert table_groups(reading) == []
     assert table_groups(reading, config=TableRowsConfig(page_band_share=2.0)) == []
-    # the sabotage: without the notes, the variations and the game interleave
-    assert _crosses(table_groups(reading, config=TableRowsConfig(notes_share=2.0)), {1}, {2})
+    # the sabotage: without the notes (and the game beside text), the variations and the
+    # game interleave
+    blind = TableRowsConfig(notes_share=2.0, game_min_lines=10**6)
+    assert _crosses(table_groups(reading, config=blind), {1}, {2})
 
 
 OPENINGS_WRITTEN_OUT = ["Defesa Francesa, Variante Winawer", "Gambito da Dama Recusado"]
@@ -718,8 +724,9 @@ def test_ordinary_notes_beside_a_move_list_are_running_text() -> None:
         game = len(cut) + 1
         assert not _crosses(table_groups(reading), set(range(1, game)), {game}), cut
         assert rows_of_tables(reading) is reading
-        # the sabotage: without the running text the notes join the game line by line
-        blind = TableRowsConfig(running_lines=10**6)
+        # the sabotage: without the running text (and the game beside text) the notes join
+        # the game line by line
+        blind = TableRowsConfig(running_lines=10**6, game_min_lines=10**6)
         assert _crosses(table_groups(reading, config=blind), set(range(1, game)), {game}), cut
         assert rows_of_tables(reading, config=blind).lines[0].text == (
             "White could also try 26 Re3 Bxd4")
@@ -821,6 +828,226 @@ def test_of_two_gutters_the_page_s_is_the_one_next_to_the_prose(monkeypatch) -> 
     assert _crosses(rows.table_groups(tabbed), {1, 2, 3, 4}, {5, 6})
     monkeypatch.setattr(rows, "_page_gutters", both_sides)
     assert _crosses(rows.table_groups(tabbed), {1, 2, 3, 4}, {5, 6})
+
+
+# --------------------------------------------------------------------------- #
+# The critic's pages (fase 5, ciclo 4): indexes, games beside text, the bands
+# --------------------------------------------------------------------------- #
+
+
+INDEX_ENTRIES = [
+    "Radulescu 8", "Ragozin 24", "Rashkovsky 139", "Reshko 38, 53", "Ribli 158", "Robatsch 178",
+    "Rytov 137", "Sakharov 47", "Sanguinetti 37", "Santo-Roman 210", "Schmid 69", "Seirawan 165",
+    "Vilup 3, 4", "Vizantiadis 122", "Vranesic 77", "Wirthensohn 180", "Witkowski 43",
+    "Zhu Chen 206", "Zhukhovitsky 25", "Zilberman 143", "Zuk 124", "Zurakhov 17, 18",
+    "Aaron 249", "Acevedo 228", "Geller 279, 280", "Gligoric 229, 264", "Gudmundsson 243",
+    "Hook 301", "Ivkov 268", "Johannessen 265", "Keres 222, 248", "Korchnoi 290", "Kramer 215",
+    "Kupper 230", "Larsen 220, 303", "Letelier 234"]
+
+
+def index_in_three_columns(*, prose_third: bool = False) -> OcrResult:
+    """The critic's index (``c4\\tres.pdf``, Times 9 pt at 300 DPI, ~17 px a character) as PSM 3
+    cut it: one block per column, twelve entries each, a line every 44 px -- two gutters, no
+    prose; or, with ``prose_third``, «índice | índice | prosa»."""
+    lines: list[OcrLine] = []
+    for column, x in enumerate((150.0, 750.0, 1349.0)):
+        if prose_third and column == 2:
+            lines += [_line(t, x, 157.0 + 44.0 * n, 3, char_w=17.0) for n, t in enumerate(
+                ["The endgame is the part", "of the game in which the", "fewest pieces remain on",
+                 "the board, and it is there", "that the value of each", "piece can be judged most",
+                 "exactly. A rook and a", "bishop against a rook is", "usually a draw, but the",
+                 "defender must know where", "to put his king and which",
+                 "side to keep his rook."])]
+            continue
+        entries = INDEX_ENTRIES[12 * column:12 * column + 12]
+        lines += [_line(t, x, 157.0 + 44.0 * n, column + 1, char_w=17.0)
+                  for n, t in enumerate(entries)]
+    return _reading(lines)
+
+
+def test_an_index_in_three_columns_is_three_lists() -> None:
+    """With two gutters and no prose the rule saw no page gutter, and the three columns of an
+    index were joined line by line -- «Radulescu 8 Vilup 3, 4 Geller 279, 280», CER 0,0007 →
+    0,7791 and *accepted* through the importer (crítico da fase 5, ciclo 4).  Each column's
+    entries run in alphabetical order: the gutter before the second list is the page's, and
+    before the third."""
+    from caissa.ocr.layout.scan import find_gutters
+
+    for prose_third in (False, True):
+        reading = index_in_three_columns(prose_third=prose_third)
+        assert len(find_gutters(reading.lines)) == 2
+        groups = table_groups(reading)
+        assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3}), prose_third
+        # the sabotage: without the index columns, the gutters hold only beside prose
+        blind = TableRowsConfig(list_min_heads=10**6)
+        assert _crosses(table_groups(reading, config=blind), {1}, {2}), prose_third
+
+
+GAMES_INDEX = [
+    ["Potkin", "   Carlsen 112", "Predojevic", "   Pashikian 65", "Prohaszka", "   Luther 112",
+     "Pruijssers", "   Ernst 104", "Radjabov", "   Kamsky 174", "   Perunovic 66", "Ragger",
+     "   Morozevich 188", "Rahman", "   Petrosian 113", "Ramis", "   Fidel 182", "Rasulov",
+     "   Safarli 112", "Raznikov", "   Ma Qun 114", "Reinderman", "   Ruijgrok 64",
+     "   Wahono 118", "Reshevsky", "   Bisguier 49", "Rodshtein", "   Zhigalko 118"],
+    ["Savchenko", "   Dauletova 120", "   Dreev 111", "   Shomoev 122", "Schmaltz", "   Graf 131",
+     "Sebag", "   Hou 67, 103", "Seirawan", "   Gulko 56", "Sengupta", "   Gupta 112",
+     "   Istratescu 166", "Sethuraman", "   Krejci 114", "Shanava", "   Mamedyarov 103",
+     "Shanglei", "   Dimakiling 46", "Shankland", "   Michiels 109", "Shengelia",
+     "   Dambacher 47", "Sherif", "   Pogonina 198", "Shimanov", "   Belous 55", "   Inarkiev 48"],
+    ["Smirnov", "   Pantsulaia 55, 59", "Smyslov", "   Geller 56", "   Pilnik 55", "   Timman 123",
+     "Sokolov", "   Georgiev 123", "Spassky", "   Benko 189", "   Dvoiris 115", "   Fischer 70, 71",
+     "   Gipslis 189", "   Gufeld 190", "   Hjartarson 190", "   Kindermann 190", "   Larsen 191",
+     "Speelman", "   Jonathan 179", "Sprenger", "   Stevic 197", "Stefanova", "   Yusupov 108",
+     "Stellwagen", "   Yusupov 184", "Stevic", "   Kummer 69", "   Papaioannou 103"],
+]
+
+
+def games_index() -> OcrResult:
+    """The Yusupov 4 p. 206 («Índice de partidas») as PSM 3 cut it: each player at the margin
+    and the opponents indented under the player, three columns of 28 lines; the scan is skewed,
+    the margin drifting 0,02 px a pixel down the page (the Aagaard's index drifts 40 px)."""
+    lines: list[OcrLine] = []
+    for column, (x, entries) in enumerate(zip((127.0, 680.0, 1233.0), GAMES_INDEX, strict=True)):
+        for n, text in enumerate(entries):
+            y = 193.0 + 49.0 * n
+            indent = 51.0 if text.startswith(" ") else 0.0
+            lines.append(_line(text.strip(), x + indent - 0.02 * y, y, column + 1, char_w=17.0))
+    return _reading(lines)
+
+
+def test_an_index_sorts_its_entries_not_the_lines_under_them() -> None:
+    """The games index: the players at the margin run in alphabetical order, their opponents
+    do not -- the indented lines are sub-entries and stay out of the order; the two columns
+    are two lists (the importer read the page 0,0465 → 0,7915 with the columns joined)."""
+    reading = games_index()
+    groups = table_groups(reading)
+    assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3})
+    # the sabotage: every line counts, the opponents break the order
+    blind = TableRowsConfig(list_margin_chars=1000.0)
+    assert _crosses(table_groups(reading, config=blind), {1, 2}, {3})
+
+
+def index_with_the_pages_apart() -> OcrResult:
+    """The Nunn p. 288 («Index of Players and Composers») as PSM 3 cut it: in each column the
+    names in one block and their pages in another, beside them."""
+    names = [["Polak", "Polgar, J.", "Polugaevsky", "Portisch", "Psakhis", "Radulov", "Ragozin",
+              "Rauzer"],
+             ["Rumiantsev", "Ruszcynski", "Sackmann", "Saidy", "Salov", "Sanguinetti", "Savon",
+              "Sax"]]
+    pages = [["P251", "P305, 412", "R296", "P139, 171, 209", "M61, 79", "R70", "P342",
+              "R231, P26, 110"],
+             ["M30", "P121, 390", "P119", "R48, 479", "M269", "P104", "R204, M3", "M315"]]
+    lines: list[OcrLine] = []
+    for column, (x_name, x_pages) in enumerate(((158.0, 432.0), (817.0, 1086.0))):
+        lines += [_line(t, x_name, 396.0 + 49.0 * n, 2 * column + 1, char_w=17.0)
+                  for n, t in enumerate(names[column])]
+        lines += [_line(t, x_pages, 396.0 + 49.0 * n, 2 * column + 2, char_w=17.0)
+                  for n, t in enumerate(pages[column])]
+    return _reading(lines)
+
+
+def test_an_index_reads_each_name_with_its_pages_and_never_the_next_column() -> None:
+    """Each name with its pages is a row -- what the rule gets right on the Nunn p. 289
+    (0,3027 → 0,0174) -- and the next column's names are another list."""
+    reading = index_with_the_pages_apart()
+    groups = table_groups(reading)
+    assert not _crosses(groups, {1, 2}, {3, 4})
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert "Polak P251" in texts and "Rumiantsev M30" in texts
+    blind = TableRowsConfig(list_min_heads=10**6)
+    assert _crosses(table_groups(reading, config=blind), {1, 2}, {3, 4})
+
+
+FRINGE_NOTES = ["White could play 24 Rd1", "Bxd4 Rxd4 with an edge.", "Black's reply Kf8 holds",
+                "Ke7 and Kd6 is solid,", "Nd7 and Nc5 follow.", "Stronger is 23 Bd3!",
+                "Rd8 and the rook is", "Active, but White keeps", "Bf1 and Rd2 with some",
+                "Pressure on the d-file.", "After 23...Nd7 24 Bf1", "Nc5 Black is fine and",
+                "Rc8 25 Rd2 Nc5 26 f3", "Kf8 draws comfortably.", "Instead 24 Kf2 Rc8 25",
+                "Rd2 is met by Nc5 and", "Kf8 with equality.", "The game went 24 Re2."]
+
+
+def test_notes_that_no_rule_calls_prose_stay_beside_the_game() -> None:
+    """The fringe the critic measured (ciclo 4: 12 of 29 pages at risk joined, the Nunn p. 29
+    notes beside a game 0,0824 → 0,6571): lines that open with a move or a capital -- no third
+    of them carries the sentence over --, a move number inside a third of them, three words a
+    line.  No prose rule holds them; the game beside a column of text makes the gutter the
+    page's, and only a move list crosses it."""
+    from caissa.ocr.layout import rows as rows_module
+
+    notes = [_spread(t, 150.0, 735.0, 300.0 + 50.0 * n, 1, char_w=20.0)
+             for n, t in enumerate(FRINGE_NOTES)]
+    whole = [_line(t, 811.0, 300.0 + 50.0 * n, 2, char_w=20.0) for n, t in enumerate(GAME_UNTABBED)]
+    # the German notation: the period parts the numbers from the moves, and PSM 3 cuts them in
+    # two blocks (the critic's Gunderam and Euwe pages, ciclo 4)
+    cut = [_line(f"{t.split()[0]}.", 811.0, 300.0 + 50.0 * n, 2, char_w=20.0)
+           for n, t in enumerate(GAME_UNTABBED)]
+    cut += [_line(" ".join(t.split()[1:]), 872.0, 300.0 + 50.0 * n, 3, char_w=20.0)
+            for n, t in enumerate(GAME_UNTABBED)]
+    cfg = TableRowsConfig()
+    for game in (whole, cut):
+        reading = _reading(notes + game)
+        block = next(b for b in rows_module._blocks(reading.lines, cfg) if b.index == 1)
+        assert not rows_module._is_prose(block, cfg), "the case: no rule calls these notes prose"
+        assert not _crosses(table_groups(reading), {1}, {2, 3})
+        # the sabotage: without the game beside text, the notes join the game
+        blind = TableRowsConfig(game_min_lines=10**6)
+        assert _crosses(table_groups(reading, config=blind), {1}, {2, 3})
+
+
+def test_a_river_in_the_notes_does_not_hide_the_gutter_beside_the_game(monkeypatch) -> None:
+    """The crítico's Dvoretsky pages (the book's index reflowed in the Gallagher's measure,
+    beside a game; ciclo 4, 4 of 11 still joined in ciclo 5): ``find_gutters`` found the river
+    of the column of short justified lines (551–569) besides the page's gutter (736–811), the
+    notes' blocks sit left of the river, and the band next to the page's gutter was empty -- no
+    text beside the game.  The text is looked for in the nearest band that holds a block."""
+    from caissa.ocr.layout import rows as rows_module
+    from caissa.ocr.layout import scan
+
+    notes = [_spread(t, 150.0, 735.0, 300.0 + 50.0 * n, 1, char_w=20.0)
+             for n, t in enumerate(FRINGE_NOTES)]
+    game = [_line(t, 811.0, 300.0 + 50.0 * n, 2, char_w=20.0) for n, t in enumerate(GAME_UNTABBED)]
+    reading = _reading(notes + game)
+    river, page = (551.0, 569.0), (736.0, 811.0)
+    monkeypatch.setattr(scan, "find_gutters", lambda lines, **kw: [river, page])
+    cfg = TableRowsConfig()
+    blocks = rows_module._blocks(reading.lines, cfg)
+    bands = {0: [b for b in blocks if b.index == 1], 2: [b for b in blocks if b.index == 2]}
+    assert rows_module._game_gutters([river, page], bands, cfg) == [page]
+    assert not _crosses(table_groups(reading), {1}, {2})
+    # the sabotage: without the game beside text, the notes join the game across the river
+    assert _crosses(table_groups(reading, config=TableRowsConfig(game_min_lines=10**6)), {1}, {2})
+
+
+def test_a_move_list_crosses_two_page_gutters_in_order_and_nothing_jumps_a_band(
+        monkeypatch) -> None:
+    """The numbers, White's moves and Black's, split by two gutters of the page: one move list,
+    the bands one after the other.  A group never jumps a band.  (The crítico da fase 5, ciclo
+    4: the rule had no test -- without it, the 34 passed.)"""
+    from caissa.ocr.layout import rows as rows_module
+
+    numbers = [_line(f"{30 + n}.", 0.0, 58.0 * n, 1, char_w=20.0) for n in range(4)]
+    white = [_line(t, 200.0, 58.0 * n, 2, char_w=20.0)
+             for n, t in enumerate(["♖c1", "♘h1", "♗xc5", "♖xc5"])]
+    black = [_line(t, 500.0, 58.0 * n, 3, char_w=20.0)
+             for n, t in enumerate(["♗xd4", "♘xc5", "♖xc5", "♕xc5"])]
+    reading = _reading(numbers + white + black)
+    monkeypatch.setattr(rows_module, "_prose_gutters", lambda result: [])
+    monkeypatch.setattr(rows_module, "_page_gutters",
+                        lambda result, blocks, cfg: [(120.0, 180.0), (320.0, 480.0)])
+    assert sorted(sorted(g) for g in rows_module.table_groups(reading)) == [[1, 2, 3]]
+    assert rows_module.rows_of_tables(reading).lines[0].text == "30. ♖c1 ♗xd4"
+    # nothing in the middle band: numbers and Black's moves would jump it
+    jumping = _reading(numbers + black)
+    assert rows_module.table_groups(jumping) == []
+    # the sabotages: more than two bands always cross (the fourth cycle's first rule), and a
+    # group that may jump a band
+    original = rows_module._crosses_the_page
+    monkeypatch.setattr(rows_module, "_crosses_the_page", lambda members, band, cfg: (
+        len({band(m) for m in members}) > 2 or original(members, band, cfg)))
+    assert rows_module.table_groups(reading) != [[1, 2, 3]]
+    monkeypatch.setattr(rows_module, "_crosses_the_page", lambda members, band, cfg: (
+        False if {band(m) for m in members} == {0, 2} else original(members, band, cfg)))
+    assert rows_module.table_groups(jumping) == [[1, 3]]
 
 
 def test_config_shares_are_the_rules_numbers() -> None:

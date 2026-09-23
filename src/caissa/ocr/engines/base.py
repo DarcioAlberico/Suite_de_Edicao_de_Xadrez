@@ -253,6 +253,9 @@ class OcrEngineBase(abc.ABC):
             )
 
         started = time.perf_counter()
+        # ``failed`` marks the empty reading as a failure, not a page with nothing on it: the
+        # service says it on the page (crítico da fase 5, ciclo 4 -- the RapidOCR of the Stean
+        # p. 165 failing on an allocation without memory, and the page read without it in silence).
         try:
             result = self._recognize(image, lang=lang, psm_hint=psm_hint)
         except OcrError as exc:
@@ -262,6 +265,7 @@ class OcrEngineBase(abc.ABC):
                 duration_s=time.perf_counter() - started,
                 warning=f"{exc.message}",
                 error_detail=exc.detail,
+                failed=True,
             )
         except (OSError, ValueError, RuntimeError) as exc:
             return empty_result(
@@ -269,6 +273,7 @@ class OcrEngineBase(abc.ABC):
                 region_kind=psm_hint,
                 duration_s=time.perf_counter() - started,
                 warning=f"Falha inesperada no motor {self.name}: {exc}",
+                failed=True,
             )
         if result.duration_s <= 0.0:
             result = OcrResult(

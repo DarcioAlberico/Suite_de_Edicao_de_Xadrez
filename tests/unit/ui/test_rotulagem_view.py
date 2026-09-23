@@ -82,6 +82,35 @@ def test_the_tab_mounts_on_an_empty_project_and_names_its_controls(app, tmp_path
     painel.close()
 
 
+def test_the_key_walks_the_tab_both_ways_with_every_control_in_sight(app, tmp_path: Path):
+    """OCR_UI ciclo 2, fase 5, crítico do ciclo 4: the `teclado` gate, pressing the real key, put
+    the focus on «Leitura do motor» with 0 px on screen at 1280x641 -- the card lives in a scroll
+    area, and the scroll area only follows the focus that moves inside it.  Walked with the gate's
+    own instrument (``QTest.keyClick``, Tab and Shift+Tab) on a window short enough to scroll: no
+    control takes the key and keeps it, and each one is on screen when it takes the focus.  The
+    sabotage: the scroll area no longer follows the focus that comes from outside."""
+    from caissa.ui.audit import teclado
+    from caissa.ui.views.rotulagem import PainelDeRotulagem, abrir_projeto
+
+    painel = PainelDeRotulagem(projeto=abrir_projeto(tmp_path / "proj", revisor="ana"))
+    painel.resize(1000, 360)
+    painel.show()
+    app.processEvents()
+    focaveis = teclado._focaveis(painel)
+    for de_volta in (False, True):
+        volta = teclado._volta_da_tecla(painel, focaveis, de_volta=de_volta)
+        assert volta.passou(), volta
+    painel._segue_o_foco.desligar()
+    escondidos = []
+    for de_volta in (False, True):
+        for barra in painel.findChildren(type(painel.truth.verticalScrollBar())):
+            barra.setValue(0)
+        app.processEvents()
+        escondidos += teclado._volta_da_tecla(painel, focaveis, de_volta=de_volta).escondidos
+    assert escondidos, "without the filter the focus hides below the fold"
+    painel.close()
+
+
 def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     pymupdf = pytest.importorskip("pymupdf")
     from caissa.ui.views.rotulagem import DialogoDeTreino, PainelDeRotulagem, abrir_projeto

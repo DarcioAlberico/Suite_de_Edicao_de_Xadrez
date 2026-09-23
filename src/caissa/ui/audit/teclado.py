@@ -38,6 +38,15 @@ lê o código -- ele **anda** pela janela como um teclado andaria, e reporta ond
    responde a clique continua sendo anunciado como **texto estático**, e um leitor de tela nunca
    diz que dá para clicar nele.
 
+4. **A tecla** (crítico da fase 5, ciclo 4). A volta 1 mede a **cadeia**, e a cadeia não vê o
+   controle que guarda a tecla: na Revisão de texto ela dizia «a tabela, o cartão, as ações», e o
+   `Tab` de verdade parava no campo da verdade, escrevendo tabulações nele. `_volta_da_tecla`
+   aperta a tecla (`QTest.keyClick`) em quem tem o foco, do primeiro da cadeia até voltar a ele,
+   com o `Tab` e de volta com o `Shift+Tab`, e diz onde ela **empaca** -- o foco não sai, e a
+   tecla escreveu no texto ou ficou num controle que não a solta -- e quem recebe o foco **sem um
+   pixel à vista** (o `Shift+Tab` das ações da Revisão de texto caía numa figurina abaixo da dobra
+   do cartão); uma área onde a tecla empaca, ou põe o foco onde não se vê, reprova.
+
 **O que este módulo não afirma.** Que a ordem do `Tab` é *boa* -- que ela segue a leitura da tela.
 Isso é julgamento, e um número não o substitui; o relatório lista a ordem inteira para quem quiser
 julgá-la. O que ele afirma é que a ordem **existe, é completa e fecha**.
@@ -464,6 +473,10 @@ class Aba:
     passos_ate_fechar: int = 0
     fechou: bool = False
     """Se a volta voltou ao ponto de partida dentro do teto. Uma cadeia quebrada não fecha."""
+    tecla: VoltaDaTecla = field(default_factory=lambda: VoltaDaTecla(fecha=True))
+    """A volta da **tecla** `Tab` de verdade. Ver `_volta_da_tecla`."""
+    tecla_de_volta: VoltaDaTecla = field(default_factory=lambda: VoltaDaTecla(fecha=True))
+    """...e a do `Shift+Tab`."""
 
     def focaveis(self) -> int:
         return len(self.controles)
@@ -514,6 +527,8 @@ class Aba:
             and not self.anonimos()
             and not self.sem_papel()
             and not self.nomes_vazios()
+            and self.tecla.passou()
+            and self.tecla_de_volta.passou()
         )
 
 
@@ -529,6 +544,8 @@ def _como_json(aba: Aba) -> dict[str, Any]:
         "alcancados_pelo_tab": aba.alcancados(),
         "a_volta_fecha": aba.fechou,
         "passos": aba.passos_ate_fechar,
+        "tecla": asdict(aba.tecla),
+        "tecla_de_volta": asdict(aba.tecla_de_volta),
         "sem_nome": [asdict(c) for c in aba.anonimos()],
         "sem_papel": [asdict(c) for c in aba.sem_papel()],
         "nome_vazio_de_sentido": [
@@ -773,6 +790,111 @@ def _volta_do_tab(janela: Any, focaveis: Sequence[Any]) -> tuple[dict[int, int],
     return visto, passos, len(focaveis) == 1
 
 
+TECLADAS_NUMA_LISTA = 300
+"""Quantas vezes a tecla pode ficar no mesmo controle sem escrever nada antes de ele contar como
+beco: uma tabela com a navegação do `Tab` anda de célula em célula e sai depois da última."""
+
+
+def _texto_de(widget: Any) -> str | None:
+    """O texto de um controle que se escreve, ou `None`."""
+    for metodo in ("toPlainText", "text"):
+        if hasattr(widget, metodo) and not getattr(widget, "isReadOnly", lambda: False)():
+            try:
+                return str(getattr(widget, metodo)())
+            except TypeError:
+                return None
+    return None
+
+
+@dataclass
+class VoltaDaTecla:
+    """Uma volta da tecla de verdade numa tela, com o `Tab` ou de volta com o `Shift+Tab`."""
+
+    alcancados: int = 0
+    """Quantos controles a tecla alcança, do primeiro da cadeia até voltar a ele ou parar."""
+    fecha: bool = False
+    empaca_em: str = ""
+    """O controle que guardou a tecla -- o foco não saiu dele --, ou `""` quando ela anda a volta
+    inteira. É o defeito que a cadeia não vê: um editor que escreve a tabulação."""
+    escreve: bool = False
+    """Se, ao empacar, a tecla escreveu no controle (uma tabulação no texto)."""
+    escondidos: list[str] = field(default_factory=list)
+    """Os controles que receberam o foco pela tecla **sem um pixel à vista**, na ordem."""
+
+    def passou(self) -> bool:
+        return self.fecha and not self.empaca_em and not self.escondidos
+
+
+def _nome_curto(widget: Any) -> str:
+    return _nome_de(widget)[0] or type(widget).__name__
+
+
+def _volta_da_tecla(janela: Any, focaveis: Sequence[Any], *, de_volta: bool = False
+                    ) -> VoltaDaTecla:
+    """Anda a janela com a **tecla** de verdade, como o teclado faz: o `Tab`, ou o `Shift+Tab`.
+
+    `QTest.keyClick` no controle que tem o foco, do primeiro da cadeia até voltar a ele.
+
+    **É a pergunta que `_volta_do_tab` não faz, e o crítico da fase 5 (ciclo 4) mostrou o
+    preço.** A cadeia dizia «a tabela, o cartão, as ações» na Revisão de texto, e a tecla parava
+    no campo da verdade, um `QPlainTextEdit` que guarda o `Tab` e escreve tabulações nele: as
+    figurinas e as seis ações nunca eram alcançadas. E, de volta, o `Shift+Tab` das ações punha o
+    foco numa figurina abaixo da dobra do cartão, com 0×0 px à vista: a rolagem só segue o foco
+    que anda dentro dela. A tecla passa pelos filtros de evento e pelo próprio controle, e é isso
+    que se quer medir aqui; à vista é ter alguma região visível na tela (`visibleRegion`). O que
+    a tecla escreveu é desfeito.
+    """
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication
+
+    volta = VoltaDaTecla()
+    if not focaveis:
+        volta.fecha = True
+        return volta
+    tecla, modificador = ((Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier) if de_volta
+                          else (Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier))
+    focaveis[0].setFocus(Qt.FocusReason.TabFocusReason)
+    QApplication.processEvents()
+    partida = janela.focusWidget()
+    if partida is None:
+        volta.empaca_em = "(nenhum foco)"
+        return volta
+    vistos = {id(partida)}
+    parado = 0
+    for _ in range(TETO_DE_VOLTAS):
+        atual = janela.focusWidget()
+        antes = _texto_de(atual)
+        QTest.keyClick(atual, tecla, modificador)
+        QApplication.processEvents()
+        seguinte = janela.focusWidget()
+        if seguinte is atual:
+            depois = _texto_de(atual)
+            if antes is not None and depois != antes:
+                documento = getattr(atual, "document", None)
+                if documento is not None:
+                    documento().undo()
+                volta.empaca_em, volta.escreve = _nome_curto(atual), True
+                break
+            parado += 1
+            if parado >= TECLADAS_NUMA_LISTA:
+                volta.empaca_em = _nome_curto(atual)
+                break
+            continue
+        parado = 0
+        if seguinte is None:
+            volta.empaca_em = "(o foco saiu da janela)"
+            break
+        if seguinte.visibleRegion().isEmpty():
+            volta.escondidos.append(_nome_curto(seguinte))
+        if seguinte is partida:
+            volta.fecha = True
+            break
+        vistos.add(id(seguinte))
+    volta.alcancados = len(vistos)
+    return volta
+
+
 def peles_registradas(caminho_do_tronco: Path = TRONCO) -> list[str]:
     """Os nomes das peles que o produto registra, na ordem do menu. Lidos de `ui/pele.PELES`.
 
@@ -998,6 +1120,8 @@ def _medir_uma_tela(nome: str, raiz: Any) -> Aba:
     focaveis = _focaveis(raiz)
     visto, passos, fechou = _volta_do_tab(raiz, focaveis)
     aba.passos_ate_fechar, aba.fechou = passos, fechou
+    aba.tecla = _volta_da_tecla(raiz, focaveis)
+    aba.tecla_de_volta = _volta_da_tecla(raiz, focaveis, de_volta=True)
     if not focaveis:
         # Uma tela sem controle nenhum não tem volta para fechar, e `NÃO FECHA` ali seria uma
         # acusação sobre o que não existe. Ver `_controlador_de_treino`.
@@ -1175,7 +1299,7 @@ def auditar(
             f"{aba.nome:<12} {aba.focaveis():>4} focáveis  {aba.alcancados():>4} pelo Tab  "
             f"{'fecha' if aba.fechou else 'NÃO FECHA':<10} "
             f"{len(aba.anonimos()):>3} sem nome  {len(aba.sem_papel()):>3} sem papel  "
-            f"{len(aba.nomes_vazios()):>3} nome vazio"
+            f"{len(aba.nomes_vazios()):>3} nome vazio  {_a_tecla(_como_json(aba))}"
         )
     # **Os diálogos depois das abas, e é a metade que faltava** (F9-C12). Ver
     # `_medir_os_dialogos`: por onze ciclos este portão publicou `0 sem nome` sobre a janela
@@ -1203,6 +1327,12 @@ def auditar(
         },
         "metodo": {
             "volta": "QWidget.focusNextPrevChild(True) em laço, que é o que a tecla Tab chama",
+            "tecla": (
+                "QTest.keyClick(Tab), e de volta QTest.keyClick(Backtab, Shift), no controle que "
+                "tem o foco, do primeiro da cadeia até voltar a ele: onde o foco não sai, a tecla "
+                "empaca (e o que ela escreveu é desfeito); quem recebe o foco com visibleRegion() "
+                "vazia está fora da vista"
+            ),
             "nome": "accessibleName, senão text(), senão a 1a linha da dica -- a ordem do Qt",
             "grupo": (
                 "o accessibleName do conteiner nomeado mais proximo -- a primeira metade do que "
@@ -1373,6 +1503,23 @@ def tabela_das_peles(relatorio: dict[str, Any]) -> str:
     return "\n".join(linhas)
 
 
+def _a_tecla(aba: dict[str, Any]) -> str:
+    """As duas voltas da tecla numa coluna: quanto alcançam, onde empacam, o foco fora da vista."""
+    partes = []
+    for chave, rotulo in (("tecla", "Tab"), ("tecla_de_volta", "Shift+Tab")):
+        volta = aba.get(chave) or {}
+        texto = f"{rotulo} {volta.get('alcancados', 0):>3} "
+        if volta.get("empaca_em"):
+            escreve = ", escreve" if volta.get("escreve") else ""
+            texto += f"EMPACA em {volta['empaca_em']!r}{escreve}"
+        else:
+            texto += "fecha" if volta.get("fecha") else "NÃO FECHA"
+        if volta.get("escondidos"):
+            texto += f", foco FORA DA VISTA em {volta['escondidos'][:3]!r}"
+        partes.append(texto)
+    return " · ".join(partes)
+
+
 def tabela(relatorio: dict[str, Any]) -> str:
     linhas = [relatorio["portao"], ""]
     dialogos = relatorio.get("dialogos", [])
@@ -1382,7 +1529,7 @@ def tabela(relatorio: dict[str, Any]) -> str:
             f"{aba['alcancados_pelo_tab']:>4} pelo Tab  "
             f"{'fecha' if aba['a_volta_fecha'] else 'NÃO FECHA':<10} "
             f"{len(aba['sem_nome']):>3} sem nome  {len(aba['sem_papel']):>3} sem papel  "
-            f"{len(aba['nome_vazio_de_sentido']):>3} nome vazio  "
+            f"{len(aba['nome_vazio_de_sentido']):>3} nome vazio  {_a_tecla(aba)}  "
             f"{aba['veredito']}"
         )
     if dialogos:
@@ -1407,7 +1554,7 @@ def tabela(relatorio: dict[str, Any]) -> str:
                 f"{aba['alcancados_pelo_tab']:>4} pelo Tab  "
                 f"{'fecha' if aba['a_volta_fecha'] else 'NÃO FECHA':<10} "
                 f"{len(aba['sem_nome']):>3} sem nome  {len(aba['sem_papel']):>3} sem papel  "
-                f"{len(aba['nome_vazio_de_sentido']):>3} nome vazio  "
+                f"{len(aba['nome_vazio_de_sentido']):>3} nome vazio  {_a_tecla(aba)}  "
                 f"{aba['veredito']}"
             )
     for aba in [*relatorio["abas"], *dialogos]:

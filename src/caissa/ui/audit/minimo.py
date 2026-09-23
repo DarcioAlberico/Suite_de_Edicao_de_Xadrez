@@ -45,8 +45,10 @@ novo, mede quando ela assenta e grava quantas vezes precisou -- e o JSON grava o
 (toda rolagem sem barra horizontal, como no ciclo 1: sobra conteúdo sem caminho até ele),
 `--sabotar mensagem` (a mensagem sem largura garantida: some ao lado do nome longo),
 `--sabotar aperto` (o botão das mensagens com o piso de um pixel de antes: espremido na linha
-cheia) e `--sabotar reserva` (o rodapé do ciclo 2: 480 px reservados à mensagem e as zonas curtas
-sem mínimo -- os dispositivos e a ocupação cortados).
+cheia), `--sabotar reserva` (o rodapé do ciclo 2: 480 px reservados à mensagem e as zonas curtas
+sem mínimo -- os dispositivos e a ocupação cortados) e `--sabotar linha` (o produto reescrevendo a
+zona dos dispositivos a cada volta do laço de eventos: nenhuma medida sai na linha do arnês, e as
+duas passadas, a da vista e a do rodapé, têm de dizê-lo).
 
     PYTHONPATH=src;..\\ChessVisionOFF_Puro\\src;.venv-pack\\Lib\\site-packages ^
     QT_QPA_PLATFORM=offscreen .venv\\Scripts\\python.exe -m caissa.ui.audit.minimo ^
@@ -74,7 +76,7 @@ FRASE_LONGA = 300
 """Caracteres da frase escrita no rodapé: mais longa que qualquer frase real medida (a maior
 dos relatórios da fase 4 tem ~180), para que o portão não dependa de qual frase apareceu."""
 
-SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto", "reserva")
+SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto", "reserva", "linha")
 
 MENSAGEM_LEGIVEL = 320
 """Pixels lógicos da mensagem do rodapé que têm de estar à vista, no mínimo da janela e com o nome
@@ -204,6 +206,21 @@ def _sabotar_o_corte(janela: Any) -> None:
         rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
 
+def _sabotar_a_linha(janela: Any) -> None:
+    """O produto reescrevendo a zona dos dispositivos a cada volta do laço de eventos.
+
+    É o caso da leitura do `labels.csv` e da detecção dos dispositivos, sem fim: o arnês repõe a
+    linha dele e o produto a desfaz de novo, e nenhuma medida sai na linha do arnês.
+    """
+    from chess_diagram_ocr.ui.estado_do_rodape import Dispositivos
+    from PyQt6.QtCore import QTimer
+
+    relogio = QTimer(janela)
+    relogio.setInterval(0)
+    relogio.timeout.connect(lambda: janela.rodape.definir_dispositivos(Dispositivos()))
+    relogio.start()
+
+
 def _controles(janela: Any) -> list[Any]:
     """Os controles que alguém lê ou clica: botões, rótulos com texto, campos, escolhas."""
     from PyQt6.QtWidgets import QAbstractButton, QAbstractSpinBox, QComboBox, QLabel, QLineEdit
@@ -272,10 +289,20 @@ def _vista(janela: Any, aplicacao: Any, areas: list[Any]) -> dict[str, Any]:
     sem_barra: list[dict[str, Any]] = []
     espremidos: list[dict[str, Any]] = []
     alcancaveis = 0
+    repostas = 0
+    fora_da_linha: list[str] = []
     for area in areas:
         area.mostrar()
         for _ in range(5):
             aplicacao.processEvents()
+        # a linha do arnês, assentada, como na medida do rodapé (crítico da fase 5, ciclo 4: com
+        # a máquina ocupada, esta passada mediu na Clássica, com o livro, a zona de dispositivos
+        # com o texto que o próprio produto tinha escrito nela, «peças ainda …to desligado»,
+        # espremida a 135 de 162 px)
+        _, repostas_da_area, assentou = _assentar_a_linha(janela, aplicacao, NOME_LONGO)
+        repostas += repostas_da_area
+        if not assentou:
+            fora_da_linha.append(area.nome)
         for widget in _controles(janela):
             fora, barra = _fora_da_vista(widget, janela)
             if fora and barra:
@@ -286,7 +313,8 @@ def _vista(janela: Any, aplicacao: Any, areas: list[Any]) -> dict[str, Any]:
                     isinstance(widget, QLabel) and widget.wordWrap()):
                 espremidos.append({"area": area.nome, **_descricao(widget, janela)})
     return {"tamanho": [janela.width(), janela.height()], "fora_sem_barra": sem_barra,
-            "espremidos": espremidos, "alcancaveis_pela_barra": alcancaveis}
+            "espremidos": espremidos, "alcancaveis_pela_barra": alcancaveis,
+            "linha_reposta": repostas, "fora_da_linha_do_arnes": fora_da_linha}
 
 
 def _linha_cheia(janela: Any, nome: str = NOME_LONGO) -> dict[str, str]:
@@ -315,6 +343,48 @@ def _textos_do_rodape(janela: Any) -> dict[str, str]:
             "ocupacao": rodape._lbl_ocupacao.texto_inteiro}
 
 
+def _assentar_a_linha(janela: Any, aplicacao: Any, nome: str) -> tuple[int, int, bool]:
+    """Põe a linha cheia do arnês e espera ela assentar. Devolve `(voltas, repostas, assentou)`.
+
+    Mede a linha do arnês (crítico da fase 5, ciclo 3: o primeiro nome saía às vezes com
+    dispositivos 162 e ocupação 152). A visita às áreas acende trabalho do próprio produto -- a
+    leitura do `labels.csv` do Dataset, a detecção dos dispositivos --, e ele reescreve as zonas
+    depois de o arnês enchê-las: «leitura do dataset (labels.csv)» e «peças ainda não · texto
+    desligado» eram as medidas. Quando o produto reescreve, o arnês põe a linha de novo (e
+    conta); assenta quando duas voltas seguidas do laço de eventos dão as mesmas larguras com a
+    linha dele. Servem a esta espera a medida do rodapé e, desde o ciclo 4 do crítico, a passada
+    da vista.
+
+    Só uma linha assentada conta como a do arnês. Até a sabotagem `linha` (ciclo 5), a resposta
+    era se o texto das zonas, na saída do laço, era o do arnês -- e com o produto reescrevendo a
+    zona sem parar a última volta repunha a linha e saía: a medida dizia «na linha do arnês» e o
+    portão passava sem ela ter assentado nunca.
+    """
+    rodape = janela.rodape
+
+    def larguras() -> tuple[int, ...]:
+        zonas = (rodape._lbl_mensagem, rodape._lbl_documento, rodape._lbl_dispositivos,
+                 rodape._lbl_ocupacao, rodape.barra_de_progresso())
+        return tuple(z.visibleRegion().boundingRect().width() if z.isVisible() else 0
+                     for z in zonas)
+
+    esperado = _linha_cheia(janela, nome)
+    antes, voltas, repostas = None, 0, 0
+    while voltas < VOLTAS_MAXIMAS:
+        aplicacao.processEvents()
+        voltas += 1
+        if _textos_do_rodape(janela) != esperado:
+            esperado = _linha_cheia(janela, nome)
+            repostas += 1
+            antes = None
+            continue
+        agora = larguras()
+        if voltas >= VOLTAS_MINIMAS and agora == antes:
+            return voltas, repostas, True
+        antes = agora
+    return voltas, repostas, False
+
+
 def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
     """As quatro zonas do rodapé com a linha cheia, para cada nome de `NOMES`.
 
@@ -330,35 +400,11 @@ def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
     def a_vista(widget: Any) -> int:
         return widget.visibleRegion().boundingRect().width() if widget.isVisible() else 0
 
-    def larguras() -> tuple[int, ...]:
-        return (*(a_vista(r) for r in zonas.values()), a_vista(rodape.barra_de_progresso()))
-
     nomes = []
     for nome in NOMES:
-        esperado = _linha_cheia(janela, nome)
-        # Mede a linha do arnês, assentada (crítico da fase 5, ciclo 3: o primeiro nome saía às
-        # vezes com dispositivos 162 e ocupação 152). A visita às áreas acende trabalho do
-        # próprio produto -- a leitura do `labels.csv` do Dataset, a detecção dos dispositivos
-        # --, e ele reescreve as zonas depois de o arnês enchê-las: «leitura do dataset
-        # (labels.csv)» e «peças ainda não · texto desligado» eram as medidas. Quando o produto
-        # reescreve, o arnês põe a linha de novo (e conta); mede quando duas voltas seguidas do
-        # laço de eventos dão as mesmas larguras com a linha dele.
-        antes, voltas, repostas = None, 0, 0
-        while voltas < VOLTAS_MAXIMAS:
-            aplicacao.processEvents()
-            voltas += 1
-            if _textos_do_rodape(janela) != esperado:
-                esperado = _linha_cheia(janela, nome)
-                repostas += 1
-                antes = None
-                continue
-            agora = larguras()
-            if voltas >= VOLTAS_MINIMAS and agora == antes:
-                break
-            antes = agora
+        voltas, repostas, assentou = _assentar_a_linha(janela, aplicacao, nome)
         medida: dict[str, Any] = {"nome": nome.split(" · ")[0][:60], "voltas": voltas,
-                                  "linha_reposta": repostas,
-                                  "linha_do_arnes": _textos_do_rodape(janela) == esperado}
+                                  "linha_reposta": repostas, "linha_do_arnes": assentou}
         for zona, rotulo in zonas.items():
             medida[f"{zona}_px"] = a_vista(rotulo)
         medida["barra_px"] = a_vista(rodape.barra_de_progresso())
@@ -430,12 +476,13 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     aplicacao = QApplication.instance() or QApplication(sys.argv)
     _VIVOS.append(aplicacao)
     impor_a_fonte_do_produto(aplicacao)
-    if sabotar == "rodape":
-        _sabotar_o_rodape()
-    if sabotar == "mensagem":
-        _sabotar_a_mensagem()
-    if sabotar == "reserva":
-        _sabotar_a_reserva()
+    # as sabotagens do rodapé mudam o módulo antes de a janela existir; as outras, a janela
+    antes_da_janela = {"rodape": _sabotar_o_rodape, "mensagem": _sabotar_a_mensagem,
+                       "reserva": _sabotar_a_reserva}
+    na_janela = {"corte": _sabotar_o_corte, "aperto": _sabotar_o_aperto,
+                 "linha": _sabotar_a_linha}
+    if sabotar in antes_da_janela:
+        antes_da_janela[sabotar]()
     from chess_diagram_ocr.qt.janela import JanelaPrincipal
 
     # **A janela não é desmontada aqui.** Visitar a área do Dataset dispara a leitura do
@@ -452,10 +499,8 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     if pdf is not None and pdf.exists():
         janela.abrir_pdf(pdf)
         aguardar_a_folha(janela)
-    if sabotar == "corte":
-        _sabotar_o_corte(janela)
-    if sabotar == "aperto":
-        _sabotar_o_aperto(janela)
+    if sabotar in na_janela:
+        na_janela[sabotar](janela)
     todas = list(areas_de_trabalho(janela))
     areas = [area.nome for area in todas]
     for area in todas:
@@ -489,7 +534,8 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     }
     medida["cabe"] = medida["minimo"][0] <= TETO[0] and medida["minimo"][1] <= TETO[1]
     medida["a_vista"] = (
-        all(not v["fora_sem_barra"] and not v["espremidos"] for v in vistas)
+        all(not v["fora_sem_barra"] and not v["espremidos"] and not v["fora_da_linha_do_arnes"]
+            for v in vistas)
         and all(_rodape_a_vista(r) for r in rodapes))
     return medida
 
@@ -574,9 +620,15 @@ def _imprimir(medida: dict[str, Any]) -> None:
         print(f"      {w}×{h}  {motor['cadeia']}  {motor['texto']!r}")
     for vista in medida["vistas"]:
         largura, altura = vista["tamanho"]
+        linha = ""
+        if vista["fora_da_linha_do_arnes"]:
+            linha = (", MEDIDA FORA DA LINHA DO ARNÊS em "
+                     f"{', '.join(vista['fora_da_linha_do_arnes'])}")
+        elif vista["linha_reposta"]:
+            linha = f" (o produto reescreveu a linha: reposta {vista['linha_reposta']}×)"
         print(f"    a {largura}×{altura}: {len(vista['fora_sem_barra'])} fora da vista sem barra, "
               f"{len(vista['espremidos'])} espremidos, "
-              f"{vista['alcancaveis_pela_barra']} alcançáveis pela barra")
+              f"{vista['alcancaveis_pela_barra']} alcançáveis pela barra{linha}")
         for item in (vista["fora_sem_barra"] + vista["espremidos"])[:6]:
             print(f"      [{item['area']}] {item['tipo']} {item['texto']!r} "
                   f"{item['largura']}/{item['minimo']} px ({item['cadeia']})")

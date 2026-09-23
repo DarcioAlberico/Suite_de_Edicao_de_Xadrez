@@ -127,6 +127,10 @@ class CartaoDaLinha(QWidget):
         self.verdade = QPlainTextEdit(self)
         self.verdade.setMaximumHeight(60)
         self.verdade.setAccessibleName("Verdade da linha")
+        # O Tab sai do campo (crítico da fase 5, ciclo 4): com a tecla, ele escrevia tabulações
+        # na verdade da linha e as figurinas e as ações nunca eram alcançadas. A verdade é uma
+        # linha de texto; tabulação não tem lugar nela.
+        self.verdade.setTabChangesFocus(True)
         self.verdade.installEventFilter(self)
         coluna.addWidget(self.verdade)
         # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` as sete teclas somavam a largura

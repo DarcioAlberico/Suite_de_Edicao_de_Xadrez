@@ -194,6 +194,23 @@ SCALE_OF: dict[str, str] = {"tesseract_strips": "tesseract"}
 _SEGMENTING_PSMS = frozenset({1, 3})
 
 
+def _engine_order(result: OcrResult) -> str:
+    """The reading in the order its engine gave it -- before the B13 read its tables by rows.
+
+    The agreement between engines asks whether they read the same text, and the B13 only moves
+    the lines of one of them: measured on the moved lines, it decided the winner (crítico da
+    fase 5, ciclo 4).  On the Nunn p. 288, as a scanned book, the B13 read Tesseract's index
+    right -- CER 0,0193 --, and the moved lines raised the agreement of RapidOCR's reading of it,
+    interleaved line by line (0,7516), from 0,1822 to 0,2936: RapidOCR won, 0,5854 against
+    0,5797, and the page came out worse than with the B13 off (0,3212).  Measuring both
+    directions of ``difflib`` (its junk heuristic makes the two differ on long texts) gave the
+    Nunn back and was measured and dropped: it moved the winner on pages the B13 does not touch
+    -- the Karpov 2 pp. 267/272 and the Vladimirov p. 380 went to RapidOCR's interleaved order
+    (``OCR_UI_REPORT_C2_FASE5.md`` §0.7).
+    """
+    return str(result.meta.get("engine_order_text", result.text))
+
+
 # --------------------------------------------------------------------------- #
 # Configuration
 # --------------------------------------------------------------------------- #
@@ -454,12 +471,13 @@ class Arbiter:
                    others: Sequence[OcrResult]) -> tuple[float, bool]:
         """Best similarity against any other engine's output.
 
-        ``difflib`` rather than an edit distance: it is C-backed, it is a
-        similarity in 0..1 already, and the difference between the two measures
-        is far smaller than the noise in what is being compared.
+        ``difflib`` rather than an edit distance: it is a similarity in 0..1
+        already, and the difference between the two measures is far smaller
+        than the noise in what is being compared.  Each reading is compared in
+        the order its engine read it (:func:`_engine_order`).
         """
-        text = " ".join(result.text.split())
-        candidates = [" ".join(o.text.split()) for o in others
+        text = " ".join(_engine_order(result).split())
+        candidates = [" ".join(_engine_order(o).split()) for o in others
                       if o.engine != result.engine and o.text.strip()]
         if not text or not candidates:
             return 0.0, False
@@ -601,11 +619,18 @@ class Arbiter:
             result = self._invoke(engine, task)
             if cfg.table_rows and result.meta.get("psm") in _SEGMENTING_PSMS:
                 # B13: the engine's own page segmentation cut a table (or a
-                # move list) into column blocks; read it row by row before it
-                # is scored, so every candidate is compared in reading order.
+                # move list) into column blocks; read it row by row -- the
+                # order the reader gets, and the one confidence and
+                # plausibility judge.  The agreement with the other engines
+                # stays on the engine's own order (``engine_order_text``, see
+                # :func:`_engine_order`): the reordering must not decide which
+                # engine wins.
                 from caissa.ocr.layout.rows import rows_of_tables
 
-                result = rows_of_tables(result)
+                reordered = rows_of_tables(result)
+                if reordered is not result:
+                    reordered = reordered.with_meta(engine_order_text=result.text)
+                result = reordered
             results.append(result)
             engines_run.append(engine.name)
 

@@ -802,7 +802,16 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > `OCR_UI_REPORT_C2_FASE5.md` §0.6. As edições de `rows.py` e `test_table_rows.py` que o
 > veredito atribui a «outra sessão» (13:53–13:54) eram do construtor, começando o ciclo 4 depois
 > de ler o rascunho; as sondas do crítico já tinham terminado.
-> **Ciclo 4:** ⟨pendente⟩.
+> **Ciclo 4: REPROVADO, 2 bloqueantes** — o do ciclo 3 resolvido nas páginas dadas (as notas
+> comuns idênticas ao desligado pelo importador), mas o B13 ainda intercalava as colunas de um
+> **índice** quando a página tinha duas calhas ou mais e nenhuma prosa (a Flores pp. 460–464 do
+> acervo, a Yusupov 4 p. 206 e a Nunn p. 288 digitalizadas, e três colunas construídas aceitas
+> trocadas: 0,0007 → 0,7791), e a ordem do Tab da Revisão de texto só existia na cadeia do foco —
+> com a tecla, o Tab parava no campo da verdade escrevendo tabulações, e o Shift+Tab das ações
+> punha o foco numa figurina fora da vista; o que mudou está em `OCR_UI_REPORT_C2_FASE5.md`
+> §0.7. As edições de `rows.py` e dos testes a partir de ~17:20 eram do construtor, começando o
+> ciclo 5 depois de ler o rascunho; o crítico mediu numa árvore limpa do `7d41996`.
+> **Ciclo 5:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -1303,3 +1312,219 @@ mudança trocou a ordem do Tab (não bloqueante 3).
    para ~57 caracteres — ou voltar a `min(480, largura da frase)`; (d) dizer o documento com 95 px sob «aquecendo o
    modelo» e as ações do Resultado abaixo da dobra a 1280×641; (e) corrigir o §0 (320, não 480), a frase da Levenfis
    p. 302 e o «em texto».
+
+## Crítico Claude — ciclo 4 (REPROVADO, 2 bloqueantes)
+
+VEREDITO: REPROVADO
+CICLO: 4
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Convenções dos comandos: os scripts e as saídas deste ciclo estão em `C:\Python-Chess2\_critico_f5\c4\` (a saída de
+cada um ao lado, `*.out`/`*.json`; as filas em `*.sh`, com `runs.log`), os dos ciclos anteriores em `c3\`, `c2\` e na
+raiz; rodados da raiz da suíte com `.venv\Scripts\python.exe`. A suíte principal estava no `7d41996` com
+`git status --short src tests benchmarks` vazio e `git diff 7736617 -- src tests benchmarks` vazio das 16:31
+(`c4\estado_inicio.txt`) até pelo menos as 16:56:50 (`c4\varre\runs.log`, «inicio … src=[0]»); às 17:23:09 («fim …
+src=[1]») o checkout tinha, sem commit, `src/caissa/ocr/layout/rows.py` (última escrita 17:23:21) e depois
+`tests/unit/ocr/test_table_rows.py` — do **construtor**, começando o ciclo 5 a partir de ~17:20 depois de ler o
+rascunho deste veredito (aviso dele; o texto novo cita números do rascunho que só existiam depois das 17:08). Não é
+objeto deste ciclo e não o toquei. A minha última sonda de OCR no checkout principal começou às 17:08 (a Flores), e a
+varredura carregou o módulo às 16:56:50; mesmo assim, o que carregou o `rows.py` do checkout depois das 16:56:50 foi
+refeito numa árvore limpa minha do `7d41996`
+(`git worktree add --detach C:\Python-Chess2\_critico_f5\suite_c4 7d41996`): a Flores pelo importador (JSON igual byte
+a byte ao da primeira medida), as sabotagens (iguais), a Levenfis e a Stean da varredura (as 22 páginas iguais, ligada e desligada, à corrida no checkout e ao ciclo 3); a suíte inteira
+rodou nessa árvore. O código medido é o do `7736617`. «Tronco» = a minha árvore limpa `git worktree add --detach C:\Python-Chess2\_critico_f5\tronco 7cd400a`
+(sem o `.pt`, como todo clone); «suite_c3» = `git worktree add --detach C:\Python-Chess2\_critico_f5\suite_c3 e29a2b5`,
+só para comparar a ordem do Tab com o ciclo 3. A regra do ciclo 3 foi comparada carregando ao lado o `rows.py` do
+`3ff1830` (`c3\rows_3ff1830.py`, conferido igual ao do commit) e pondo-o no lugar de `rows_of_tables`; as sabotagens,
+por monkeypatch num plugin do pytest (`c4\sabota_rows_c4.py`). Sondas do corpus e de páginas renderizadas com
+`CAISSA_FIGURINE_TESSDATA=models\tessdata`; importador, janela e testes sem ela. No máximo três processos de OCR ao
+mesmo tempo (quatro por alguns minutos). Nenhum arquivo dos dois repositórios foi editado. As três árvores minhas
+foram removidas com `git worktree remove` (a da suíte depois de eu apagar as cópias de artefatos que pus nela).
+No fim (17:54, `c4\estado_fim.txt`), a suíte continua no `7d41996` com o trabalho do ciclo 5 do construtor sem
+commit (`rows.py`, `minimo.py`, `teclado.py`, `revisao_de_texto.py`, `cartao_da_linha.py`, dois testes e um novo),
+e o tronco passou ao `37f662b` (commit do construtor durante esta crítica; eu medi a minha árvore do `7cd400a`).
+Nenhum processo meu ficou vivo: o PID 1996 é de antes, e às 17:53 outra sessão rodava a minha
+`c2\b13_varredura.py` (não mexi).
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| Bloqueante do ciclo 3: as minhas páginas pelo importador, 3 execuções | `c4\sondas_c4.sh` (`b13_importador.py c3\construido.pdf 0,1,2,3`) → `c4\b13i_construido_r{1,2,3}.json`; CER pelo `scratchpad\c4\cer_construido.py` do construtor → `c4\cer_construido.out` | sim | p. 0 **0,0052 `accepted` = desligado** (ciclo 3: 0,6440 `accepted`), p. 1 0,2284, p. 2 0,0367, p. 3 0,0754 — as quatro idênticas ao desligado, 0 grupos; os três JSON iguais byte a byte (`cmp`) |
+| Bloqueante do ciclo 3: pelo serviço | `c3\b13_estreita3.py --justificar` → `c4\estreita3_just.out`; `c3\b13_estreita3.py` → `c4\estreita3.out`; `c3\b13_tabulada.py` → `c4\tabulada.out` | sim | inglês 0,0140 / 0,0087 (300/200 DPI) = desligado; alemão 0,2132 = desligado a 300 e **0,0152** a 200 (desligado 0,2335); tabulada a 45 % **0,0157** (desligado 0,2373; ciclo 3 0,6510), a 60 % 0,0140 |
+| Bloqueante do ciclo 3: notas reais e fixture | `c3\b13_notas_reais.py 6` → `c4\notas_reais.out`; `c3\b13_fixture_notas_comuns.py` → `c4\fixture_notas_comuns.out` | sim | 0 de 6 páginas embaralhadas em cada um dos cinco livros (Kmoch: 2 de 6 no ciclo 3); a fixture: grupos `[]` (ciclo 3: `[[2, 1]]`, atravessava) |
+| O que mandei manter | `b13_importador.py` Karpov 2 p. 268 → `c4\b13i_karpov268.json`; Gallagher pp. 50–53 → `c4\b13i_gallagher.json` + `gallagher_cer_c2.py`; `c2\b13_tabelas.py` → `c4\tabelas_c2.out`; `c3\b13_tabelas3.py` → `c4\tabelas3.out`; `c3\b13_lista_recusada.py` → `c4\lista_recusada.out` | sim | Karpov 2 p. 268: JSON **igual byte a byte** ao do ciclo 3; Gallagher p. 50 **0,2028** (WER 0,3121), as quatro páginas com o texto de cada região igual ao do ciclo 3; aberturas **0,0113**, classificação 0,0909, índice 0,1824, controle 0,5280; lista com avaliações separadas **0,0603** (ciclo 3: 0,6724); campeões «nome \| período» 0,5696 = desligado (dito no §0.3/§0.6) |
+| A fila de A/B do ciclo 4 e o `sol.json` | `c4\conf_sol_c4.py` → `c4\conf_sol_c4.out` | sim | `f5c4_*`: `commit=7736617`, `dirty_code=[]`, `SOL_CONFIG` dos dois interruptores; **idênticas item a item** às `f5c3_*`, `f5c2_*` e `f5_*` em todo campo que não é tempo, e no texto (61/66/85 itens com texto nas três corridas, 0 diferem; o «70» do relatório é a `f5c4_on` com os 9 controles); `sol.json` do `7d41996` = `f5c4_on`, `commit=7736617`, sem `SOL_CONFIG`; `f5_ab.json` com as 11 corridas = os JSON, médias refeitas dos itens (maior diferença 0,000004); B13 muda os mesmos 7 itens, B14 os mesmos 27, nenhum para pior; aceitos errados 7 |
+| Portões do Sol | `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json` → `c4\sol_gate_c4.out` | sim | idêntico ao do construtor (`diff`): 150 DPI 0,0094 ✓; CER limpo 0,0113, lances 0,9164, 157 inventados ✗; nenhuma regressão |
+| Os 34 testes do B13 e as sabotagens | `pytest tests\unit\ocr\test_table_rows.py` → `c4\test_table_rows.out`; `SABOTAGEM=… pytest -p sabota_rows_c4` → `c4\sabota_rows_c4.out` (e na árvore limpa → `c4\sabota_rows_c4_limpa.out`, igual) | em parte | 34 passam; sem o texto corrido 3 reprovam; continuação antiga 3; «de duas calhas, nenhuma» 1; avaliação como token 1; semente de prosa 1 (só o teste da própria `_seeds`, como o relatório diz). **A regra nova das três faixas em `crosses`** (faixas não vizinhas ou mais de duas → cruza) **não tem teste**: tirada, os 34 passam. Não bloqueante 3 |
+| Testes tocados | suíte: `pytest tests\unit\ingest\test_table_rows_page.py …\test_table_rows.py tests\unit\ui\test_revisao_de_texto_view.py …\test_arquitetura.py …\test_fileira_fluida.py …\test_rotulo_que_encolhe.py tests\unit\ocr\test_ink_coverage.py tests\unit\classify\test_model_ruler.py tests\unit\ocr\test_sol_metrics.py` → `c4\suite_testes_tocados.out`; tronco (árvore `7cd400a`): `test_qt_janela_cabe.py test_qt_rodape.py test_strings.py "test_field_eval.py::ImpressaoDaMedicaoTests"` → `c4\tronco_testes_tocados.out` | sim | suíte **121 passaram** (o de ponta a ponta com o Tesseract em 20 s); tronco **89 passaram** (97 subtestes), árvore limpa depois |
+| Texto corrido em parágrafos reais (sem OCR) | `c4\corrido_idiomas.py` → `c4\corrido_idiomas.out` (8 livros, 22/25/27 car. por linha, com e sem lances) | sim, com ressalva | a regra nova **ganha** prosa em toda língua e **perde** no máximo 5 blocos por faixa (a «palavra, não lance» quase não tira nada); mas fica fora de toda regra uma parte das notas com lances de 7+ linhas: alemão 20,9 %, holandês 11,3 %, inglês 10,4 % |
+| Texto corrido em páginas reais na medida da Gallagher | `c4\b13_notas_medida.py 6 24 "de Gunderam" "de Euwe" "de Kemeri"` → `c4\notas_medida_de_w24.out` | sim | páginas sorteadas: **0 de 18** embaralhadas (ciclo 3: 7 de 18) |
+| O caso ruim do texto corrido | triagem sem OCR `c4\risco_paginas.py {22,24,27}` → `c4\risco_paginas.out`, `c4\risco_dvoretsky.out`; as páginas em risco com OCR, `b13_notas_medida.py 30 24 --paginas-de=c4\risco_w24.json` → `c4\notas_risco_w24.out`; as inglesas pelo importador → `c4\cer_notas_en.out` | **não** | páginas cujas notas nenhuma regra segura: 0–9 % conforme o livro (Kemeri 7 % a 24 car.; Dvoretsky, notas limpas, só as do índice); dessas, o ciclo 4 embaralha **12 de 29**; pelo importador, Nunn p. 29 0,0824 → 0,6571, p. 143 0,1778 → 0,7276, Burgess p. 133 0,1016 → 0,6213, em **revisão**. Não bloqueante 1 |
+| Ataques às regras novas nas fixtures dos testes | `c4\b13_fixtures_c4.py` → `c4\b13_fixtures_c4.out` | sim | notas cortadas em blocos de 2 ou 3 linhas: algum bloco sempre é prosa por palavras ou notas, a calha segura; a tabulação não vira calha da página (a prosa a cruza) |
+| Páginas de três colunas e tabela ao lado da prosa | `c4\b13_tres_colunas.py` → `c4\tres_colunas.out`; `c4\b13_pdf_tres.py` + `b13_importador.py c4\tres.pdf 0,1,2,3` ×3 → `c4\cer_tres.out` | **não** | → **bloqueante novo 1** |
+| Índices reais | `c4\indices_tres.py` → `c4\indices_tres.out` (camadas de texto: 46 PDFs); `c4\indices_reais.sh` → `c4\indices\*.out`; `c4\indices_raster.py` + importador ×3 → `c4\cer_indices.out`; Flores original ×3 → `c4\cer_flores.out` (verdade: `c4\verdade_colunas.py`), e uma vez na árvore limpa com `c4\b13_importador_arvore.py` → `c4\b13i_flores_limpa.json`, igual byte a byte | **não** | → **bloqueante novo 1** |
+| Ordem do Tab da Revisão de texto, portão | `c4\teclado_c4.sh` (3 peles × 1280×800, 1248×640, 1280×641) → `c4\teclado\*.json` | sim | PASSOU nas 9; a ordem gravada é a tabela, leitura, alternativas, verdade, as 7 figurinas e as 6 ações, crescente nas três peles e nos três tamanhos |
+| Ordem do Tab com a **tecla** | `c4\c18_tab_real.py` (código do ciclo 4 × `suite_c3`) → `c4\c18_tab_real_{c4,c3}.out`; `c4\c18_tab_areas.py` → `c4\c18_tab_areas_{c4,c3}.out` | **não** | → **bloqueante novo 2** |
+| Foco à vista a 1280×641 | `c4\c18_foco_visivel.py` (Tab da tabela) e `c4\c18_foco_visivel_tras.py` (Shift+Tab de «Aceitar leitura») → `c4\c18_foco_visivel*_{foco,classica,fita}.out` | **não** | para a frente o Tab para na verdade (o cartão rola até ela: à vista); para trás, «Letras → figurinas» recebe o foco com **0×0 px** à vista nas três peles → **bloqueante novo 2** |
+| O portão da janela, sete corridas, máquina ocupada | `c4\minimo_c4.sh` → `c4\minimo\*` | em parte | sem livro PASSOU; as cinco sabotagens REPROVARAM (`reserva`: dispositivos 0–22 e ocupação 0–58 px; `rodape` 3318 px; `mensagem` 0–142 px); **com o livro REPROVOU**: na Clássica a 1248×606, «[Dataset] RotuloElidido 'peças ainda …to desligado' 135/162 px» — o texto do próprio produto na zona de dispositivos, espremido, na passada da vista. Repetido três vezes com a máquina quieta (`c4\minimo_livro\livro_r{1,2,3}.log`): **PASSOU** as três, `linha_reposta` 0 em toda medida. Não bloqueante 2 |
+| O «162/152» do arnês | `scratchpad\c4\probe_rodape_primeira2.out` do construtor | sim | depois da visita às áreas as zonas têm os textos do produto: «leitura do dataset (labels.csv)» (152 px) e «peças ainda não · texto desligado» (162 px); o arnês agora repõe a linha e grava `linha_reposta`/`linha_do_arnes` — mas só na medida do rodapé, não na da vista (acima) |
+| O que o JSON do portão grava | os 7 JSON do commit (`docs\quality\ui\c2_fase5\minimo*_20260923_183*.json`) e os meus | sim | `suite`/`tronco` com o commit e o `fora_do_commit` do `src` (`[]` nos dois lados) |
+| O custo da reserva e o nome com 95 px | `git show 7cd400a` (docstrings de `LARGURA_DA_MENSAGEM` e `LARGURA_DA_ZONA`); relatório §0.3 e §0.6 (b)(c) | sim | ~57 caracteres, a frase sem o `.pt` (84 car., 474 px) elidida em 46/46 de 1246 a 1440, o estado vazio do Resultado, a ocupação sem forma fixa, o nome a ~95 px — ditos nos três lugares |
+| As ações do Resultado abaixo da dobra, as frases, o A15 | relatório §0 (linha 51), §0.3, §0.5 (linhas 329–351, 352–355, 365), §0.6, §A15 | sim | 320 e não 480; Levenfis p. 302 «três dos seis»; «em todo campo numérico… o texto só dos itens com CER > 0,05»; «~57»; as oito brechas ditas; as ações do Resultado a 1280×641 no §0.3 |
+| A transcrição do meu ciclo 3 | `git show 7736617:docs/quality/OCR_UI_ANALISE_C2_CRITICAS.md` × `veredito_ciclo3.md` | sim | idêntica salvo o nível dos títulos; a nota das 13:53–13:54 está no cabeçalho da seção |
+| As varreduras | `c4\varre_c4.sh` (Gallagher 14–186/4 e 187–189, Karpov 2 262–272, Levenfis 296–305, Stean 154–165, Estrin 0–87 em `deu+eng`) → `c4\varre\*`; `c4\cmp_varre_c4.py` → `c4\cmp_varre_c4.out`; a Levenfis e a Stean de novo na árvore limpa → `c4\varre_limpa\*` | sim, com ressalva | **168 páginas**: a leitura ligada do ciclo 4 é a do meu ciclo 3 em todas, e a desligada também (determinismo); B13 muda 25; iguais às do construtor, salvo a leitura **desligada** da Stean p. 165, que na corrida dele (máquina sem memória) saiu muito pior — não bloqueante 4. A Levenfis e a Stean refeitas na árvore limpa (`c4\b13_varredura_arvore.py` → `c4\varre_limpa\*`) dão as mesmas 22 páginas. A Gunderam e a Kmoch não refiz. E nas 280 do relatório estão as pp. 460–464 da Flores (bloqueante 1), mudadas igual nos ciclos 2, 3 e 4 |
+| Tronco inteiro | `c4\testes_full_c4.sh so_tronco` (árvore `7cd400a`) → `c4\trunk_full_c4.out` | sim | **4.789 passaram, 16 pulados, 8 xfail, 1 reprovado** em 380 s — o `test_environment::…resolve_para_esta_arvore`, por construção da árvore efêmera (o mesmo do construtor e dos meus ciclos 2 e 3); árvore limpa antes e depois |
+| Suíte inteira | `c4\suite_full_c4.sh` (na minha árvore limpa do `7d41996`, porque o checkout principal passou a ter o `rows.py` do ciclo 5 do construtor; o tronco da minha árvore) → `c4\suite_full_c4.out`; os que falharam, de novo com os artefatos de fora do git copiados para a árvore (`models\tessdata` sem a pasta `work`, `benchmarks\reports\blind3` e `proofsheet*`) → `c4\suite_refeitos.out`, `c4\suite_proofsheet2.out`, `c4\suite_gpu.out` | sim | **4.006 passaram, 29 pulados, 1 reprovado, 5 erros** em 794 s, com o `test_arquitetura`; os seis são da árvore e do meu ambiente: `test_corpus::test_nunn_ocr_layer…` (sem a `models\tessdata` as figurinas não se leem) e os quatro do `test_proofsheet` (PDFs e PNGs de `benchmarks\reports`) **passam** com os artefatos; o `test_gpu_parity::test_cuda_actually_computes` erra na montagem pela minha `CAISSA_CVOFF_ROOT` (o mesmo dos ciclos 1–3) e, sem ela, pula (sem CUDA). 4.006 + 29 + 1 + 5 = 4.041 = 4.032 + 9 do construtor; os 20 pulados a mais pedem o acervo de PDFs, o EPUBCheck e outros artefatos fora do git |
+
+### O bloqueante do ciclo 3
+
+**Resolvido nas páginas dadas.** O `construido.pdf` pp. 0–3 pelo importador de produção sai idêntico ao desligado nas
+três execuções (p. 0: 0,0052 `accepted`, a página certa; os JSON iguais byte a byte); pelo serviço, o inglês e o
+alemão justificados iguais ao desligado a 300 DPI e o alemão a 200 DPI melhor que ele (0,2335 → 0,0152); a lista
+tabulada a 45 % 0,2373 → 0,0157; as notas reais de cinco livros 0 de 6; a fixture sem grupo. O que mandei manter está
+mantido, byte a byte onde havia JSON. O texto corrido (`_running`) ganha prosa em toda língua sem perder quase nada
+(`corrido_idiomas.out`), e 18 páginas alemãs sorteadas na medida da Gallagher saem certas (o ciclo 3 embaralhava 7).
+**A classe fica aberta numa franja** (não bloqueante 1): notas que nenhuma regra chama de prosa — linhas que abrem
+com lance ou com substantivo maiúsculo, menos de 1/3 de continuação, menos da metade com número de lance dentro —
+ainda se juntam à lista ao lado; 12 de 29 páginas em risco embaralham, e pelo importador três páginas inglesas reais
+(com as figurinas como o OCR as lê), em revisão, não aceitas.
+
+### Defeitos bloqueantes (novos)
+
+1. **O B13 intercala as colunas de um índice quando a página tem duas calhas ou mais — páginas reais do acervo, e o
+   importador aceita a construída.** É a classe do bloqueante 1 do ciclo 2 (o índice da Karpov 2 intercalado),
+   em três colunas ou em duas colunas de «nome … páginas».
+   - **Onde:** `src/caissa/ocr/layout/rows.py`, `_page_gutters` (linhas 326–341: de duas calhas ou mais, a da página
+     é só «a vizinha de um bloco de prosa»; sem prosa, `page` fica vazio e **nenhuma** calha vale), `table_groups`
+     (`band` = 0 para todos; `crosses` nunca dispara) e `beside` (o corredor só vale com ≥ 8 linhas de prosa de ≥ 30
+     caracteres, que um índice não tem). O §0 do relatório diz «através da calha da página (…, de duas calhas, a
+     vizinha da prosa) só uma lista de lances passa» — numa página de duas calhas sem prosa não há calha da página, e
+     tudo passa.
+   - **O quê, com números** (importador de produção, três execuções com os JSON iguais byte a byte; CER contra a
+     ordem do livro, coluna por coluna):
+     - **Flores, *Chess Structures* (Quality Chess), pp. 460–464 — o índice de nomes, páginas raster do acervo**, que
+       estão nas 280 páginas das varreduras desde o ciclo 2 (as mesmas similaridades 0,22–0,39 nas minhas dos ciclos
+       2 e 3 e na do construtor; eu também não as julguei): duas colunas de página, cada uma «nome … páginas»; o B13
+       as junta linha a linha — «David 412 Galkin 198 / Delchev 108, 198 Gao 365 / …». p. 462 **0,0230 → 0,7217**
+       (revisão); p. 464 0,4949 → 0,6869; pp. 460, 461 e 463 com CER 0,61–0,72 nos dois lados e a **p. 461 e a
+       p. 463 `accepted` nos dois** (a desligada também troca a ordem: todos os nomes, depois todos os números) —
+       `c4\cer_flores.out`, verdade por coluna com `c4\verdade_colunas.py` conferida contra a imagem
+       (`c4\indices\flores_p461.png`);
+     - **Yusupov 4, *Fundamentos* (La Casa del Ajedrez), p. 206 («Índice de partidas», três colunas)**, a página do
+       livro digitalizado copiada sem a camada de texto (a situação da Karpov 2): **0,0465 → 0,7915** (revisão) —
+       «Potkin Vachier-Lagrave 169 Rublevsky 166 / Carlsen 112 Savchenko Smirnov / …» (`c4\cer_indices.out`,
+       imagem `c4\indices\yusupov4_p206.png`);
+     - **Nunn, *Minor Piece Endings*, p. 288**, igualmente como digitalizada: 0,3212 → **0,7395** («Polak P251
+       Sackmann P60, 113»); na p. 289 o B13 acerta (0,3027 → 0,0174) — ele junta nome e páginas da mesma coluna e,
+       conforme as alturas, a coluna vizinha também: a mesma página tipográfica sai certa ou trocada;
+     - **páginas construídas** (`c4\tres.pdf`, Times 9 pt): índice de 108 verbetes em três colunas a 300 DPI
+       **0,0007 → 0,7791, `accepted` nos dois lados**; 36 verbetes 0,0000 → 0,7429 `accepted`; a 150 DPI desfocado
+       0,0058 → 0,7783 `accepted`; **«índice | índice | prosa» 0,0000 → 0,3575 `accepted`** — a prosa da terceira
+       coluna escolhe só a calha vizinha dela, e as duas colunas de índice se juntam (`c4\cer_tres.out`).
+     A regra do ciclo 3 dá os mesmos números (`c4\tres_colunas.out`: ciclo 3 = ciclo 4 em toda página): o defeito vem
+     de antes, e a regra nova das duas calhas, feita para a Gallagher p. 50, não o alcança.
+   - **Como reproduzir:** `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c4\b13_pdf_tres.py C:\Python-Chess2\_critico_f5\c4\tres.pdf`,
+     depois, sem `CAISSA_FIGURINE_TESSDATA`, `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\b13_importador.py C:\Python-Chess2\_critico_f5\c4\tres.pdf 0,1,2,3 <saida.json>`
+     e `c4\cer_pdf.py <saida.json> c4\tres.pdf`; para a Flores, `b13_importador.py "<PDF>\Mauricio Flores Rios - Chess Structures - A Grandmaster Guide[Quality Chess, 2015].pdf" 460,461,462,463,464 <saida.json>`
+     (as verdades em `c4\flores\flores_p46{0..4}_verdade.txt`); para a Yusupov e a Nunn, `c4\indices_raster.py c4\indices_raster.pdf`
+     e o importador nas pp. 0–4.
+   - **Por que reprova:** é a classe que reprovou o ciclo 2, numa página **real do acervo que o importador lê por
+     OCR** (a Flores, raster) e que já estava nas varreduras que o relatório cita como evidência («43 mudam, a leitura
+     ligada igual à do ciclo 3») sem que alguém dissesse se as mudanças eram para melhor; a Carta §3.3 reprova sozinhas
+     a falha silenciosa e a «confiança alta em resultado errado» — a página construída sai **aceita** trocada, e na
+     Flores a p. 461 e a p. 463 saem **aceitas** com CER ~0,7. Um editor que importa um livro digitalizado recebe o
+     índice de nomes trocado linha a linha, e parte dele aceito.
+
+2. **A ordem do Tab «de volta à visual» só existe na cadeia do foco: com a tecla, o Tab para no campo da verdade
+   antes das ações, e o caminho de volta das ações cai num botão invisível.** É o conserto deste ciclo (o meu não
+   bloqueante 3 do ciclo 3), medido com a tecla.
+   - **Onde:** `src/caissa/ui/views/revisao_de_texto.py` linhas 355–360 (a cadeia `[self.table, *_focaveis(self.cartao),
+     *self.acoes.values(), *paginador]`) sobre o `CartaoDaLinha` (`ui/widgets/cartao_da_linha.py`), cujo campo
+     «Verdade da linha» é um `QPlainTextEdit` com `tabChangesFocus() = False` e cujo `eventFilter` (linhas 221–247)
+     trata Enter, Ctrl+Enter, Ctrl+R, Ctrl+↑/↓, Alt+1/2 e Alt+letra, não o Tab; o cartão rola dentro de um
+     `QScrollArea`.
+   - **O quê, com números** (a janela montada como o arnês, Kemeri aberto, Tab e Shift+Tab por `QTest.keyClick` no
+     controle focado):
+     - **para a frente, da tabela** (`c4\c18_tab_real_c4.out`, 1280×800, Foco): tabela → leitura → alternativas →
+       verdade → **parado** — três Tabs deixam `'\t\t\t'` no texto da verdade; as 7 figurinas e as 6 ações não se
+       alcançam. No ciclo 3 (`c4\c18_tab_real_c3.out`, a `suite_c3`): tabela → as **seis ações** → leitura →
+       alternativas → verdade → parado. O Ctrl+Tab no campo troca de **área** (vai a «Negrito», na aba Texto); só o
+       Shift+Tab ou os atalhos saem dele. Contando a área inteira (`c4\c18_tab_areas_{c4,c3}.out`), a Revisão de texto
+       cai de **20 para 14** controles alcançados pela tecla;
+     - **para trás, das ações, a 1280×641** (o portátil-alvo maximizado; `c4\c18_foco_visivel_tras_{foco,classica,fita}.out`):
+       Shift+Tab em «Aceitar leitura» põe o foco em «Letras → figurinas», abaixo da dobra do cartão, com **0×0 px à
+       vista** nas três peles — a rolagem não desce, porque o foco entra nela vindo de fora; só o Shift+Tab seguinte a
+       faz rolar. No ciclo 3 o mesmo Shift+Tab voltava à tabela, à vista;
+     - o portão do teclado anda por `focusNextPrevChild` e o teste novo por `nextInFocusChain`: nenhum dos dois passa
+       pelo editor nem olha se o controle focado aparece, e os dois dizem «50/50» e «a tabela, o cartão, as ações»
+       (`c4\teclado\*.json`: PASSOU nas três peles e nos três tamanhos). A tecla também empaca no Estudo («Comentário
+       do lance»), no Texto («Folha transcrita») e na Rotulagem («Verdade da linha»), iguais no ciclo 3.
+   - **Como reproduzir:** sem a variável, `QT_QPA_PLATFORM=offscreen`, `PYTHONPATH=<suite>\src;<tronco>\src;.venv-pack\Lib\site-packages`:
+     `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c4\c18_tab_real.py <suite>\src <tronco> foco "<PDF>\1937 Kemeri.pdf"`
+     e `…\c4\c18_foco_visivel_tras.py <suite>\src <tronco> <pele> "<PDF>\1937 Kemeri.pdf" 1280x641`.
+   - **Por que reprova:** a Carta §3.3 põe «estado de foco ausente ou invisível» entre os defeitos que reprovam
+     sozinhos; e o conserto deste ciclo, que o relatório dá por feito («teclado PASSOU, e a ordem do Tab da Revisão de
+     texto segue a visual», §0; §0.6 (a); §C18), tirou das seis ações o alcance pelo Tab que elas tinham no ciclo 3 —
+     quem revisa pelo teclado aperta Tab para chegar a «Aceitar leitura» e escreve tabulações na verdade da linha. O
+     `setTabOrder` foi pedido meu no ciclo 3, e o pedido estava incompleto (eu também medi só a cadeia); o que se julga
+     é o teclado que o produto entrega.
+
+### Defeitos não bloqueantes
+
+1. **O texto corrido deixa uma franja de notas reais fora de toda regra.** 0–9 % das páginas, conforme o livro, têm
+   notas que nenhuma regra chama de prosa (`c4\risco_paginas.out`); com OCR, o ciclo 4 embaralha 12 das 29
+   (`c4\notas_risco_w24.out`; o ciclo 3, 16) — entre elas páginas alemãs cujo «texto» é tabela de resultados ou ruído
+   da camada de texto (Kemeri pp. 62 e 75); as inglesas são notas de verdade. Pelo importador, Nunn p. 29
+   0,0824 → 0,6571, p. 143 0,1778 → 0,7276, Burgess p. 133 0,1016 → 0,6213 (`c4\cer_notas_en.out`), em revisão. São
+   notas de análise densa, com as figurinas como o OCR as lê: linhas que abrem com lance, número ou maiúscula (o bloco
+   de 18 linhas da Nunn p. 29 tem continuação 0,29, abaixo do 1/3). O §0 diz «nunca juntando texto corrido (… linhas
+   que continuam a frase, poucas palavras que tenham)» — a regra exige um terço de linhas que continuam, e estas não
+   têm.
+2. **O arnês espera a linha assentar no rodapé, mas não na passada da vista.** Com a máquina ocupada, uma das quatro
+   corridas com o livro REPROVOU com a zona de dispositivos espremida no texto do próprio produto («peças ainda
+   …to desligado», 135 de 162 px; `c4\minimo\livro.log`); com a máquina quieta, três PASSARAM. O veredito do portão
+   depende da carga — o mesmo defeito do «162/152», noutro ponto do arnês.
+3. **A regra de três faixas em `crosses` não tem teste** (`c4\sabota_rows_c4.out`, `SABOTAGEM=cruza_tres`: 34 passam).
+4. **Degradação sem aviso sob falta de memória, vista pelo construtor e despachada.** A leitura **desligada** da Stean
+   p. 165 da varredura dele (máquina sem memória) é muito pior que a minha e que a do ciclo 3 (`c4\cmp_varre_c4.out`:
+   «$9.95 IN USA» → «£7-75 IN USA», «ISBN-10:0-486-42420-0» → «ISEN-10-486-42420-0», uma linha de lixo no fim); o §0.2
+   e o §0.6 a registram como «outra variante escolhida, com a máquina sem memória» e seguem. Uma leitura que muda com a
+   memória livre é «resultado não reproduzível» e «degradação não sinalizada» (Carta §3.3); não medi a decisão dela.
+5. **As recusas estão ditas, e é o que pedi**: a tabela «nome \| período» 0,5696 e «vitória das brancas» 0,5000,
+   iguais ao desligado. Fica a observação: as duas voltam ao desligado, e o desligado lê errado.
+6. **Ficam, ditos pelo construtor:** as oito brechas do A15, a Estrin pp. 29/77 fora do grupo, o custo da reserva de
+   320 px e o nome a ~95 px, as ações do Resultado abaixo da dobra a 1280×641, o portão só `offscreen`.
+
+### O que falta
+
+- A janela na plataforma real (`windows`): tudo `offscreen`, com a fonte do produto imposta.
+- O `bench_sol` inteiro (o briefing proíbe): a fila foi conferida item a item dos JSON.
+- As varreduras da Gunderam e da Kmoch (o construtor as refez; eu refiz 168 das páginas dele).
+- A suíte inteira no checkout principal: rodou na minha árvore limpa, sem os artefatos de fora do git (os 20
+  pulados a mais); os que dependiam deles rodei de novo com eles.
+- O foco invisível ao entrar no cartão pelo Shift+Tab foi medido na Revisão de texto; a Rotulagem, que usa o mesmo
+  cartão, não medi.
+- A comparação às cegas da Carta não se aplica a esta frente.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+1. **B13 — nenhum índice intercalado, com duas calhas ou mais.** Colunas da mesma forma lado a lado (nome e páginas,
+   jogador e adversários) são listas separadas também quando o `find_gutters` acha duas ou mais calhas, com ou sem
+   prosa: a calha da página tem de ser achada sem prosa (as faixas de largura comparável, como a regra de uma calha
+   já faz) ou o cruzamento de **qualquer** calha tem de pedir a evidência positiva que hoje só a calha «da página»
+   pede. Travar por teste, com a sabotagem, a Flores pp. 460–464 (raster, do acervo), a Yusupov 4 p. 206 e a Nunn
+   p. 288 como digitalizadas, e o `c4\tres.pdf` (três colunas a 300 e a 150 DPI, e «índice | índice | prosa»),
+   mantendo o `table:2/4/7` a 150 DPI, a Karpov 2 p. 268, a Gallagher p. 50 em 0,2028, as minhas páginas do ciclo 3, as
+   aberturas em 0,0113 e o que o B13 acerta hoje (Nunn p. 289 0,0174, Aagaard *Matter* p. 893 0,0769). E julgar as
+   páginas que mudam nas varreduras (melhor ou pior contra a ordem do livro), não só contar que mudam; corrigir o §0.
+2. **O teclado da Revisão de texto com a tecla, não com a cadeia.** O campo da verdade do cartão (na Revisão de texto
+   e na Rotulagem) deixando o Tab sair (`setTabChangesFocus(True)`, ou outra saída pelo Tab que não escreva na
+   verdade); o controle do cartão que recebe o foco rolado para a vista também quando o foco entra vindo de fora da
+   rolagem (o Shift+Tab das ações a 1280×641, nas três peles); um teste que aperte a **tecla** da tabela até a última
+   ação e de volta, conferindo a ordem e que cada controle focado aparece, com a sabotagem ao lado; o portão do teclado
+   dizendo onde a tecla empaca (as quatro áreas de hoje) e se o focado está à vista; corrigir o §0, o §0.6 (a) e o §C18.
+3. **No mesmo ciclo:** (a) dizer no §0.3 a franja do texto corrido com os números (0–9 % das páginas em risco, 12 de
+   29 embaralhadas, as três inglesas pelo importador); (b) a passada da vista do arnês esperando a linha como a do
+   rodapé; (c) um teste para as três faixas de `crosses`; (d) a Stean p. 165 tratada como o que é — a leitura que
+   piora sem aviso quando falta memória: medir a decisão dela e dizer o mecanismo.

@@ -115,6 +115,7 @@ from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVE
 from caissa.ui.views.exportacao import ExportadorDeLivro
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
+from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
@@ -648,6 +649,11 @@ class PainelDeRotulagem(QWidget):
         corpo.setStretchFactor(0, 3)
         corpo.setStretchFactor(1, 2)
         corpo.setSizes([560, 440])
+        # The control that takes the focus inside the scroll area is scrolled into view, also
+        # when the focus comes from outside it (OCR_UI ciclo 2, fase 5, crítico do ciclo 4: the
+        # `teclado` gate with the real key put the focus on «Leitura do motor» with 0 px on screen
+        # at 1280x641 -- the scroll area only follows the focus that moves inside it).
+        self._segue_o_foco = RolagemSegueOFoco(rolagem, direita)
 
         # C18: a linha de estado pedia 2.868 px de largura mínima (o texto inteiro).
         self.status = RotuloQueEncolhe("", self)

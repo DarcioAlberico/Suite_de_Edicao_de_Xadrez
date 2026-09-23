@@ -105,9 +105,11 @@ def test_ordinary_notes_beside_the_game_read_as_with_the_rule_off(tmp_path, monk
     assert "could also try" in on
     assert "holds the draw" in on
     assert on == _read(path, table_rows=False), "the rule changes nothing on this page"
-    # the sabotage: without the running text the notes join the game line by line
+    # the sabotage: without the running text and without the gutter beside the game (the fifth
+    # cycle's: each alone holds this page) the notes join the game line by line
     from caissa.ocr.layout import rows
 
     monkeypatch.setattr(rows, "_running", lambda block, cfg: False)
+    monkeypatch.setattr(rows, "_game_gutters", lambda gutters, bands, cfg: [])
     scrambled = _read(path, table_rows=True)
     assert "could also try 26" in scrambled
