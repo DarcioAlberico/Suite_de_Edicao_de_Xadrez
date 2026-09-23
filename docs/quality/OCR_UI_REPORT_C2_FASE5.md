@@ -10,9 +10,11 @@
 > **Contenção:** as primeiras filas do `bench_sol`, a régua do C17, a suíte do tronco e a checagem
 > de população do B14 correram em paralelo nesta máquina; a fila final de A/B (§0.2) correu quase
 > sozinha (no meio dela, o arnês do C18 e testes unitários curtos). Os tempos (`s/MP`,
-> `s/execução`) desses JSON carregam a contenção e são ditos com ela; o `sol.json` publicado foi
-> medido depois, sozinho, no commit da fase (§A15). Commits: tronco `36d6f65` (código) e `8243e90` (os quatro relatórios de campo
-> remedidos); suíte: este commit (código e documentos) e o seguinte (o `sol.json` medido nele). **Outra sessão** trabalhava no tronco durante a integração
+> `s/execução`) desses JSON carregam a contenção e são ditos com ela. O `sol.json` publicado foi
+> medido no commit da fase (§A15) — com outra sessão rodando a suíte do tronco ao mesmo tempo: os
+> CER e as decisões não dependem de carga (o `f5_before` reproduziu a fase 4, medida sozinha, item
+> a item), o `s/MP` depende. Commits: tronco `36d6f65` (código) e `8243e90` (os quatro relatórios de campo
+> remedidos); suíte `bb41c55` (código e documentos) e o seguinte (o `sol.json` medido no `bb41c55`, e este relatório fechado). **Outra sessão** trabalhava no tronco durante a integração
 > (`qt/janela.py`, `qt/painel_de_texto.py`, `text/rico.py`, `ui/texto_declarado.py` modificados a
 > partir das 05:27): não entram nos commits desta fase, e as medições do tronco feitas depois disso
 > rodaram numa árvore limpa do commit.
@@ -27,7 +29,7 @@
 | o nível 0, o leiaute por página e o índice de busca liam a camada de texto com as ligaduras (`ﬁ`: 19 nas pp. 6–10 do Polgar) | as bandeiras do PyMuPDF sem `TEXT_PRESERVE_LIGATURES` nos três leitores — a caixa por caractere dividida junto | 19 → **0** nos três; `½ ² №` ficam; sabotagem (bandeiras antigas) → a ligadura volta | A14 |
 | a decisão do `.pt` (§10.2) comparava modelos num gate fixo — duas escalas de confiança | a curva risco × cobertura do campo para 15 checkpoints, e o máximo de exatos exportados com ≤ 0/1/2 errados | a produção reproduz o `field_exact` publicado (103 exportados, 102 exatos); sabotagem (rótulos embaralhados sobre as mesmas linhas) → AURC 3–25× pior e a ordem dos modelos a tau +0,20 | C17 |
 | com as áreas visitadas e um livro, a janela pedia **1538×659** lógicos — a barra de anotação somava 810 px e uma frase do rodapé pedia 1.246 | rodapé elidido (a frase inteira na dica), barra do campo fluida, os modos da aba Livro e o cartão da Revisão de texto em rolagem | `caissa.ui.audit.minimo`: Clássica 1248×606, Foco **1248×640**, Fita 1246×629 ≤ 1250×640, com e sem livro — PASSOU; sabotagem (rodapé num `QLabel`) → 2206 px, REPROVOU | C18 |
-| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais), a afirmação do arnês num processo novo, os quatro relatórios de campo remedidos no commit | suíte: **4.004 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida; tronco: ⟨no commit seguinte⟩ | A15 |
+| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais), a afirmação do arnês num processo novo, os quatro relatórios de campo remedidos no commit | suíte: **4.004 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida; tronco numa árvore limpa: 4.781 passaram e o único reprovado é o do ambiente, por construção da árvore efêmera; `ImpressaoDaMedicaoTests` **sem `--deselect`**; `AccentTests` verde | A15 |
 
 ### 0.1 O que a medição mudou no desenho (as armadilhas, cada uma medida)
 
@@ -87,9 +89,10 @@
 | B13 em página real (regra final) | Levenfis pp. 36–52, Estrin pp. 20–27, Stefaniu pp. 40–47: **28 de 33** idênticas; as outras 5 com a lista de lances lida por linha ou ruído de diagrama reordenado; nenhum grupo atravessa a calha | `scratchpad/probe_b13_pages.py <pdf> <páginas> ron+eng` com `CAISSA_FIGURINE_TESSDATA` fora do ambiente |
 | B14 na população real, pelo importador | 504 regiões medidas em três livros digitalizados, **0** sinalizadas (a menor 0,900) | `scratchpad/b14_population.py`, `b14_population2.py` |
 | C17 régua do campo | 15 checkpoints × 3 execuções, linhas idênticas nas três; produção 103/1 no gate = `field_exact`; sabotagem tau +0,20 | `benchmarks\model_ruler.py --runs 3 --tag f5_c17`; `--sabotar embaralhar --linhas-de …` |
+| `sol.json` publicado no commit da fase | `bb41c55`, sem `SOL_CONFIG`: 747 itens idênticos aos da `f5_on`; `sol_gate --report-only` sem regressão fora do IC; os três absolutos do §0.3 bloqueados, o de 150 DPI verde (§A15) | `bench_sol … --label sol --publish`; `sol_gate.py --report-only docs\quality\sol\sol.json` |
 | C18 mínimo da janela | PASSOU (1248×606 / 1248×640 / 1246×629, com e sem livro); sabotagem REPROVOU (2206) | `caissa.ui.audit.minimo` [`--pdf …1937 Kemeri.pdf`] [`--sabotar rodape`] |
 | testes da suíte (com PyQt6, **com** `test_arquitetura.py` na mesma corrida) | **4.004 passaram, 9 pulados, 0 reprovaram** em 998 s (`suite_tests_final.out`; fase 4: 3.931 + 19 à parte) — nenhuma exceção; outra sessão rodava `tests/unit/export` ao mesmo tempo, daí o tempo | `PYTHONPATH=.venv-pack\Lib\site-packages QT_QPA_PLATFORM=offscreen .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` |
-| testes do tronco (sem `--deselect`, numa árvore limpa do `8243e90`) | ⟨no commit seguinte⟩ | `..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider` |
+| testes do tronco (sem `--deselect`, numa árvore limpa do `8243e90`) | **4.781 passaram, 15 pulados, 8 xfail, 1 reprovou** em 523 s (`trunk_tests_final.out`): o reprovado é `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore`, **por construção** na árvore efêmera (ela usa o `.venv` do checkout principal, cuja instalação editável aponta para lá — a mensagem diz isso); os 11 pulados a mais que no checkout principal pedem artefatos fora do git (PDFs, modelos). No checkout principal, `test_environment.py` e `ImpressaoDaMedicaoTests` **17/17** — o `ImpressaoDaMedicaoTests` sem `--deselect` pela primeira vez desde a fase 2. A suíte inteira do tronco não foi rodada no checkout principal para o portão: ele tinha o trabalho em andamento de outra sessão | `cd <árvore> && PYTHONPATH=<árvore>\src QT_QPA_PLATFORM=offscreen ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider`; no checkout principal `…pytest tests/test_environment.py tests/test_field_eval.py::ImpressaoDaMedicaoTests` |
 | `git status --short` | só os caminhos da fase nas duas árvores; fora deles, o trabalho de outras sessões (`packaging/*` e `uv.lock` na suíte; no tronco, `tests/test_qt_resultado_vista_do_impresso.py` e — surgidos durante a integração — `qt/janela.py`, `qt/painel_de_texto.py`, `text/rico.py`, `ui/texto_declarado.py`), não tocado | `git status --short` |
 
 ### 0.3 O que ficou vermelho ou aberto (honesto)
@@ -253,8 +256,8 @@
   (`synth:Dvoretsky…:201:21` 0,786 → 0,007, `authored:en:21` 0,204 → 0,028), **7** ficam (§0.3). Nos
   747 itens o B14 muda 27, **nenhum para pior**; uma leitura em revisão passa a aceita
   (`authored:pt:18@photo` 0,29 → 0). Silenciosas 0, controles 0/9. *O `s/MP` destes JSON carrega a
-  contenção da máquina (§ cabeçalho): a foto paga as variantes (+23 %); o número limpo é o do
-  `sol.json` medido sozinho no commit (§A15).
+  contenção da máquina (§ cabeçalho): a foto paga as variantes (+23 % nesta comparação, entre
+  corridas de contenção parecida).
 - **Sabotagem.** `SOL_CONFIG='{"table_rows": true, "ink_coverage": false}'` devolve os 30 e os
   números da fase 4 nos três estratos que o B14 toca, ao décimo de milésimo (foto 0,0983, fax
   0,0382, sombra 0,0377). Nos testes (`test_the_sabotage_switch_accepts_the_partial_reading_again`):
@@ -423,4 +426,15 @@
   (`field_corrections.json`); pela régua corrigida da suíte são 102/103, o número do §C17. A
   oitava remedição entrou no registro das anteriores (`docs/SPEC_REVISAO.md` do tronco). Com eles,
   `ImpressaoDaMedicaoTests` passa **sem `--deselect`** (§0.2).
-- **`sol.json` no commit.** ⟨no commit seguinte: `bench_sol --publish` sozinho sobre este commit⟩.
+- **`sol.json` no commit.** `docs/quality/sol/sol.json`/`.md` republicados sobre o **`bb41c55`** — o
+  `environment.commit` do JSON é o do commit da fase pela primeira vez (o da fase 4 gravava o
+  `f3bd27e`, a árvore anterior ao commit), sem `SOL_CONFIG` (os padrões de produção: os dois
+  interruptores ligados). Os 747 itens saem **idênticos** aos da `f5_on` em CER e decisão; aceitos
+  errados 7; o `sol.md` ganha a coluna. `sol_gate --report-only`: silenciosas 0, controles 0/9,
+  ordem 1,0000, nenhuma regressão de CER fora do IC contra o `baseline`; bloqueados os mesmos três
+  absolutos do §0.3 (o de 150 DPI verde). O `s/MP` publicado carrega a suíte do tronco que outra
+  sessão rodava ao mesmo tempo (`scan_clean_300`, que o B13 e o B14 não mudam, 1,33 → 1,48: ~11 %
+  de contenção; a foto 7,19 → 9,55 soma a contenção e as variantes do B14). Comando:
+  `CAISSA_FIGURINE_TESSDATA=models	essdata .venv\Scripts\python.exe benchmarksench_sol.py --system sol
+  --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither,photo --label sol
+  --publish`, e `benchmarks\sol_gate.py --report-only docs\quality\sol\sol.json`.
