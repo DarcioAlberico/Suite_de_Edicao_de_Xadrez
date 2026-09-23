@@ -24,8 +24,15 @@ the same rule, applied to Tesseract **through its own blocks**:
     partner** in the group — a line of another block at the same height — at
     least :attr:`TableRowsConfig.align_share` of the time.  A column of prose
     beside a small table has forty lines and five partners; it never joins.
-    And a block of prose (long lines, several of them, no internal gutter) is
-    never a member at all, whatever its partners.
+    And a block of prose is never a member at all, whatever its partners:
+    long lines, several of them, no internal gutter — or, in a column too
+    narrow for long lines, four **words** a line (counted cell by cell when the
+    block has internal gutters: ``Bona 2008 | Gambito da Dama Recusado | 88``
+    is a row of cells).  A group holds at most one column that **numbers the
+    moves** (consecutive move numbers, bare or followed by a move): two such
+    columns side by side are two games, or one game in two page columns, and a
+    move column whose own numbers stand between it and the group's numbering
+    belongs to those numbers.
 4.  A group never crosses a **column gutter**: the gap between two blocks
     holds the page's gutter when a corridor inside it is touched by almost no
     line of prose reaching into the two blocks (at most
@@ -33,20 +40,24 @@ the same rule, applied to Tesseract **through its own blocks**:
     :attr:`TableRowsConfig.gutter_min_lines` lines) — the gap between the
     columns of a table or a move list is crossed by the running text above and
     below it, a column gutter by nothing but a header.  And on a page the B1
-    layout reads as two columns of prose (:mod:`.scan`), the same holds by its
-    decision.
+    layout reads as two columns of prose (:mod:`.scan`), or whose one gutter
+    has a block of prose by words beside it, the same holds by that gutter.
 5.  The group is written out **row by row**: its lines clustered by height,
     each row left to right, in the place of the group's first line.
 
-The rules 2 and 4 were measured on real pages, not on the corpus (whose table
-items are crops): on the two-column scans of the Levenfis the right column's
-move lines, or the noise Tesseract reads in a left-column diagram, seeded
-groups that crossed the page's gutter, and a whole column was pulled into the
-middle of the other (pages 40 and 41; ``OCR_UI_REPORT_C2_FASE5.md`` §B13).
+The rules 2, 3 and 4 were measured on real pages, not on the corpus (whose
+table items are crops): on the two-column scans of the Levenfis the right
+column's move lines, or the noise Tesseract reads in a left-column diagram,
+seeded groups that crossed the page's gutter (pages 40 and 41); and the phase's
+critic found the narrow columns of the Gallagher, where no line is long enough
+to be prose by length and the right column's move numbers pulled the left
+column's notes into their rows (p. 50, CER 0,27 → 0,70), and the pages of two
+numbered columns (``OCR_UI_REPORT_C2_FASE5.md`` §B13).
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
@@ -80,6 +91,21 @@ class TableRowsConfig:
     #: long and no internal gutter is **prose**: it never joins a group.
     prose_min_lines: int = 3
     prose_chars: int = 30
+    #: ...and so is a block of at least this many lines whose median line holds at
+    #: least this many **words** (two letters or more, no digit): the prose of a
+    #: *narrow* column.  The Gallagher (``Winning With the King's Gambit``) sets its
+    #: two columns at 22–27 characters a line, so no line reaches ``prose_chars``, and a
+    #: column of notes joined the move list of the other column (crítico da fase 5,
+    #: ``OCR_UI_REPORT_C2_FASE5.md`` §B13).  A table's cells run 1–3 words
+    #: (``21. Anand — Kramnik``, ``Wijk aan Zee 2011``); a move has none.
+    prose_word_lines: int = 2
+    prose_words: int = 4
+    #: A block **numbers the moves** when at least this share of its lines open with
+    #: consecutive move numbers, bare (``26``, ``27``…) or followed by a move (``22 g4``,
+    #: ``21... ♖g8``); a group holds at most one such block.  Two numbered columns side by
+    #: side are two games, or one game in two page columns -- never a White column and
+    #: its Black replies (crítico da fase 5: two games side by side, CER 0,0190 → 0,5625).
+    numbered_share: float = 0.5
     #: A gap between two blocks is a column gutter when at most this share of
     #: the lines of prose reaching into the two blocks touch it...
     gutter_max_share: float = 0.1
@@ -90,6 +116,12 @@ class TableRowsConfig:
     #: ``scan.ScanLayoutConfig.gutter_min_px``, doubled: the space between two words
     #: of a justified line is never this wide on every line).
     gutter_min_px: int = 8
+    #: A block's **internal** gutter separates cells only when it is this many times
+    #: wider than the block's median space between words that do not cross it.  A
+    #: river through three justified lines is narrower than a word space (Gallagher
+    #: p. 53: 20 px against 33, measured); the gap between the cells of a table row is
+    #: wider (``table:2`` at 150 DPI: 15 px against 7; at 300 DPI 32–68 against 14).
+    cell_gap_ratio: float = 1.5
 
 
 # --------------------------------------------------------------------------- #
@@ -116,7 +148,13 @@ class _Block:
     extent: BBox
     median_chars: int
     max_chars: int
-    gutters: bool
+    #: The internal gutters of the block's own lines (``find_gutters``): the gaps
+    #: between the cells of a row that Tesseract read as one line.
+    gutter_spans: tuple[tuple[float, float], ...] = ()
+
+    @property
+    def gutters(self) -> bool:
+        return bool(self.gutter_spans)
 
     def side_by_side(self, other: _Block) -> bool:
         a, b = self.extent, other.extent
@@ -129,10 +167,36 @@ def _median(values: Sequence[int]) -> int:
     return ordered[len(ordered) // 2] if ordered else 0
 
 
-def _blocks(lines: Sequence[OcrLine]) -> list[_Block]:
+def _cell_gaps(members: Sequence[OcrLine], spans: Sequence[tuple[float, float]],
+               cfg: TableRowsConfig) -> tuple[tuple[float, float], ...]:
+    """The internal gutters that separate cells: wider than ``cell_gap_ratio`` times the
+    median space between words that cross no gutter (the characters' median width when
+    every space crosses one)."""
+    if not spans:
+        return ()
+    spaces: list[float] = []
+    widths: list[float] = []
+    for line in members:
+        words = sorted((w for w in line.words if w.text.strip()), key=lambda w: w.box.x0)
+        widths += [w.box.w / max(1, len(w.text)) for w in words]
+        for left, right in zip(words, words[1:], strict=False):
+            gap = (left.box.x1, right.box.x0)
+            if gap[1] > gap[0] and not any(gap[0] < high and low < gap[1] for low, high in spans):
+                spaces.append(gap[1] - gap[0])
+    scale = _median_float(spaces) if spaces else _median_float(widths)
+    return tuple(span for span in spans if span[1] - span[0] >= cfg.cell_gap_ratio * scale)
+
+
+def _median_float(values: Sequence[float]) -> float:
+    ordered = sorted(values)
+    return ordered[len(ordered) // 2] if ordered else 0.0
+
+
+def _blocks(lines: Sequence[OcrLine], cfg: TableRowsConfig | None = None) -> list[_Block]:
     """The engine's blocks, in the order their first line is read."""
     from .scan import find_gutters
 
+    cfg = cfg or TableRowsConfig()
     grouped: dict[int, list[OcrLine]] = {}
     for line in lines:
         if any(w.text.strip() for w in line.words):
@@ -146,7 +210,7 @@ def _blocks(lines: Sequence[OcrLine]) -> list[_Block]:
             index=index, lines=members, extent=extent,
             median_chars=_median([len(line.text.strip()) for line in members]),
             max_chars=max(len(line.text.strip()) for line in members),
-            gutters=bool(find_gutters(members)),
+            gutter_spans=_cell_gaps(members, find_gutters(members), cfg),
         ))
     return blocks
 
@@ -158,7 +222,10 @@ def _blocks(lines: Sequence[OcrLine]) -> list[_Block]:
 
 def _is_cells(block: _Block, cfg: TableRowsConfig) -> bool:
     short = block.median_chars <= cfg.cell_chars and block.max_chars <= cfg.cell_max_chars
-    return short or block.gutters
+    # An internal gutter makes cells of merged table cells (``Moscovo 1960 | Francesa,
+    # Winawer | 203``), not of a paragraph with a stray gap: the Kmoch p. 44's
+    # «(Een duidelijke wenk tot» seeded a group across the page's gutter (crítico da fase 5).
+    return short or (block.gutters and not _wordy(block, cfg))
 
 
 def _prose_gutters(result: OcrResult) -> list[tuple[float, float]]:
@@ -179,9 +246,121 @@ def _prose_gutters(result: OcrResult) -> list[tuple[float, float]]:
     return gutters
 
 
+def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
+                  cfg: TableRowsConfig) -> list[tuple[float, float]]:
+    """The gutter of a page of two columns whatever the columns hold, or nothing.
+
+    The B1 decision (:func:`_prose_gutters`) wants every band to read as prose by the
+    length of its lines, and a narrow column never does: on the Gallagher p. 50 the
+    right band is a move list under two lines of notes, its median line is a move
+    number, and the page read as one column.  Here one gutter over the whole page is
+    enough when a side of it holds a block of prose by :func:`_is_prose` -- words, not
+    characters; the Gallagher p. 53's left column is notes and moves, its right column
+    a game's heading and moves, and a paragraph on either side tells a page from a move
+    list.  A table (two gutters or more) and a move list alone (no prose in either
+    band) return nothing, as in B1.
+    """
+    from .scan import find_gutters
+
+    gutters = find_gutters(result.lines)
+    if len(gutters) != 1:
+        return []
+    low, high = gutters[0]
+    left = [b for b in blocks if b.extent.x1 <= high]
+    right = [b for b in blocks if b.extent.x0 >= low]
+    if any(_is_prose(b, cfg) for b in left) or any(_is_prose(b, cfg) for b in right):
+        return gutters
+    return []
+
+
+def _words(text: str) -> int:
+    """The words of a line: tokens of two letters or more and no digit -- not a move,
+    not a move number, not a dash."""
+    count = 0
+    for token in text.split():
+        core = token.strip(".,;:!?()[]«»\"'“”‘’—–-…")
+        if len(core) >= 2 and core.isalpha():
+            count += 1
+    return count
+
+
+def _cell_words(line: OcrLine, spans: Sequence[tuple[float, float]]) -> int:
+    """The words of a line's widest cell: the line cut at the block's internal gutters.
+    ``Bona 2008 Gambito da Dama Recusado 88`` (``table:2`` at 150 DPI, three cells) holds
+    four words in one cell, not six in one line of prose."""
+    if not spans:
+        return _words(line.text)
+    cells: dict[int, list[str]] = {}
+    for word in line.words:
+        cell = sum(1 for _low, high in spans if word.box.cx >= high)
+        cells.setdefault(cell, []).append(word.text)
+    return max((_words(" ".join(texts)) for texts in cells.values()), default=0)
+
+
+def _wordy(block: _Block, cfg: TableRowsConfig) -> bool:
+    """Prose by words: the lower median line of the block holds ``prose_words`` words
+    in one cell."""
+    if len(block.lines) < cfg.prose_word_lines:
+        return False
+    words = sorted(_cell_words(line, block.gutter_spans) for line in block.lines)
+    return words[(len(words) - 1) // 2] >= cfg.prose_words
+
+
 def _is_prose(block: _Block, cfg: TableRowsConfig) -> bool:
-    return (len(block.lines) >= cfg.prose_min_lines and block.median_chars >= cfg.prose_chars
-            and not block.gutters)
+    long_lines = (len(block.lines) >= cfg.prose_min_lines
+                  and block.median_chars >= cfg.prose_chars and not block.gutters)
+    return long_lines or _wordy(block, cfg)
+
+
+_MOVE_NUMBER = re.compile(r"^(\d{1,3})(?!\d)(\.{1,3}|…)?(.*)$")
+
+
+def _leading_number(text: str) -> tuple[int, str, bool] | None:
+    """The number a line opens with, what follows it, and whether it is Black's
+    (``21...``); ``None`` when the line does not open with a number."""
+    tokens = text.split()
+    if not tokens:
+        return None
+    match = _MOVE_NUMBER.match(tokens[0])
+    if match is None:
+        return None
+    rest = match.group(3) or (tokens[1] if len(tokens) > 1 else "")
+    return int(match.group(1)), rest, (match.group(2) or "") in ("..", "...", "…")
+
+
+def _numbers_moves(block: _Block, cfg: TableRowsConfig) -> bool:
+    """Whether the block is the column that numbers the moves: its lines open with
+    consecutive numbers, bare or followed by a move.  A table's numbered rows
+    (``21. Anand — Kramnik``) open with a number and a name; its page numbers
+    (``301``, ``15``, ``56``) are bare and not consecutive."""
+    from ..lexicon import is_move_token
+
+    numbers = []
+    for line in block.lines:
+        lead = _leading_number(line.text)
+        if lead is None:
+            continue
+        number, rest, black = lead
+        if not rest or black or is_move_token(rest.rstrip(",;")):
+            numbers.append(number)
+    if len(numbers) < 2 or len(numbers) < cfg.numbered_share * len(block.lines):
+        return False
+    steps = sum(1 for a, b in zip(numbers, numbers[1:], strict=False) if b == a + 1)
+    return steps >= cfg.numbered_share * (len(numbers) - 1)
+
+
+def _lone_number(block: _Block) -> bool:
+    """A block that is one bare number -- a move number Tesseract cut off its column
+    (the ``21`` above ``22.``, ``23.``… of a page column's move list)."""
+    if len(block.lines) != 1:
+        return False
+    tokens = block.lines[0].text.split()
+    match = _MOVE_NUMBER.match(tokens[0]) if len(tokens) == 1 else None
+    return match is not None and not match.group(3)
+
+
+def _shares_rows(a: _Block, b: _Block, cfg: TableRowsConfig) -> bool:
+    return any(_same_height(x.box, y.box, cfg.overlap) for x in a.lines for y in b.lines)
 
 
 def _gap_between(a: BBox, b: BBox) -> tuple[float, float]:
@@ -238,6 +417,35 @@ def _is_column_gutter(gap: tuple[float, float], span: tuple[float, float],
     return best >= cfg.gutter_min_px
 
 
+def _adjacent(block: _Block, group: Sequence[_Block], blocks: Sequence[_Block],
+              cfg: TableRowsConfig) -> bool:
+    """Most of the block's lines meet their nearest partner in the group across empty space:
+    no word of a block outside the group stands between them at that height.
+
+    The cells of a table row touch across white space; two fragments of one line of prose
+    do not.  Gallagher p. 52: Tesseract cut «The so-called “Long» into ``The``, ``“Long``
+    and a paragraph that begins with ``so-called``; the first two looked like a row of two
+    cells, and the line came out «The “Long» with ``so-called`` below it (crítico da fase 5).
+    """
+    inside = {m.index for m in group} | {block.index}
+    members = [line for member in group for line in member.lines]
+    foreign = [word for other in blocks if other.index not in inside
+               for line in other.lines for word in line.words if word.text.strip()]
+    met = clear = 0
+    for line in block.lines:
+        partners = [m for m in members if _same_height(line.box, m.box, cfg.overlap)]
+        if not partners:
+            continue
+        nearest = min(partners, key=lambda m: max(m.box.x0 - line.box.x1, line.box.x0 - m.box.x1))
+        low, high = ((line.box.x1, nearest.box.x0) if line.box.x1 <= nearest.box.x0
+                     else (nearest.box.x1, line.box.x0))
+        met += 1
+        if not any(low < w.box.cx < high and _same_height(line.box, w.box, cfg.overlap)
+                   for w in foreign):
+            clear += 1
+    return met > 0 and 2 * clear >= met
+
+
 def _partner_share(block: _Block, group: Sequence[_Block], cfg: TableRowsConfig) -> float:
     others = [line.box for member in group for line in member.lines]
     found = sum(1 for line in block.lines
@@ -253,15 +461,36 @@ def table_groups(result: OcrResult, *,
     reordered; :func:`rows_of_tables` is the one the pipeline calls.
     """
     cfg = config or TableRowsConfig()
-    blocks = _blocks(result.lines)
+    blocks = _blocks(result.lines, cfg)
     if len(blocks) < 2:
         return []
     from .scan import _band_of
 
-    gutters = _prose_gutters(result)
+    gutters = _prose_gutters(result) or _page_gutters(result, blocks, cfg)
 
     def band(block: _Block) -> int:
         return _band_of(block.extent.cx, gutters) if gutters else 0
+
+    numbering = {b.index for b in blocks if _numbers_moves(b, cfg) or _lone_number(b)}
+
+    def numbered_twice(block: _Block, group: Sequence[_Block]) -> bool:
+        """The group would hold two numberings, or moves another column numbers: a
+        numbering block outside the group stands between one of its numbering members
+        and one of its plain members, at the plain member's heights (the moves of a
+        page column whose numbers Tesseract cut into a block of their own)."""
+        members = [*group, block]
+        numbered = [m for m in members if m.index in numbering]
+        if len(numbered) > 1:
+            return True
+        inside = {m.index for m in members}
+        for n in numbered:
+            for plain in (m for m in members if m.index not in numbering):
+                low, high = sorted((n.extent.x0, plain.extent.x0))
+                if any(x.index in numbering and x.index not in inside
+                       and low < x.extent.x0 < high and _shares_rows(x, plain, cfg)
+                       for x in blocks):
+                    return True
+        return False
 
     prose = _prose_lines([line for block in blocks for line in block.lines], cfg)
 
@@ -294,9 +523,11 @@ def table_groups(result: OcrResult, *,
             for block in blocks:
                 if (block.index in taken or any(block is m for m in group)
                         or _is_prose(block, cfg) or band(block) != band(seed)
+                        or numbered_twice(block, group)
                         or not beside(block, group)):
                     continue
-                if _partner_share(block, group, cfg) >= cfg.align_share:
+                if (_partner_share(block, group, cfg) >= cfg.align_share
+                        and _adjacent(block, group, blocks, cfg)):
                     group.append(block)
                     grew = True
         if len(group) >= 2:

@@ -21,24 +21,27 @@ import numpy as np
 from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt6.QtGui import QImage, QKeySequence, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
-    QHBoxLayout,
     QLabel,
     QListWidget,
     QPlainTextEdit,
     QPushButton,
+    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
-from caissa.ui.theme import pele
-from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 from caissa.ocr.labeling.helpers import FIGURINE_KEYS, letters_to_figurines
+from caissa.ui.theme import pele
+from caissa.ui.widgets.fileira_fluida import FileiraFluida
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = ["CROP_HEIGHT_PX", "CROP_MAX_ZOOM", "CartaoDaLinha", "leitura_em_html", "pixmap_de"]
 
 CROP_HEIGHT_PX = 90
 CROP_MAX_ZOOM = 3.0
+#: Narrower than this, the crop label has not been laid out yet (width 0, or Qt's default 100).
+CROP_LAID_OUT_MIN = 120
 #: Below this share of the doubt threshold a weak word is painted red, not amber.
 RED_SHARE = 0.7
 NOME_DA_PECA = {"♔": "rei", "♕": "dama", "♖": "torre", "♗": "bispo", "♘": "cavalo", "♙": "peão"}
@@ -88,6 +91,11 @@ class CartaoDaLinha(QWidget):
         coluna.setContentsMargins(0, 0, 0, 0)
         self.recorte = QLabel(vazio, self)
         self.recorte.setStyleSheet(f"background:{pele.cor('cartao_fundo_do_recorte')}; padding:2px;")
+        # C18 (crítico da fase 5): o convite «Abra um PDF e importe…» sem quebra de linha, e a
+        # imagem do recorte, pediam a largura inteira deles -- o cartão ficava com 466 px dentro de
+        # uma rolagem de 293. O texto quebra linha; a imagem é escalada para a largura que houver.
+        self.recorte.setWordWrap(True)
+        self.recorte.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.recorte.setMinimumHeight(CROP_HEIGHT_PX + 8)
         self.recorte.setMaximumHeight(CROP_HEIGHT_PX + 8)
         self.recorte.setAccessibleName("Recorte da linha atual")
@@ -121,8 +129,10 @@ class CartaoDaLinha(QWidget):
         self.verdade.setAccessibleName("Verdade da linha")
         self.verdade.installEventFilter(self)
         coluna.addWidget(self.verdade)
-        paleta = QHBoxLayout()
-        paleta.addWidget(QLabel("Figurinas:", self))
+        # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` as sete teclas somavam a largura
+        # mínima do cartão, e a 1248x640 «Letras → figurinas» ficava com 0 px à vista.
+        paleta = FileiraFluida(self)
+        paleta.adicionar(QLabel("Figurinas:", self))
         for key, glyph in FIGURINE_KEYS.items():
             b = QPushButton(glyph, self)
             b.setToolTip(f"Alt+{key.upper()}")
@@ -130,12 +140,11 @@ class CartaoDaLinha(QWidget):
             b.setAccessibleName(f"Figurina {NOME_DA_PECA[glyph]} (Alt+{key.upper()})")
             b.setFixedWidth(34)
             b.clicked.connect(lambda _c=False, g=glyph: self.inserir_figurina(g))
-            paleta.addWidget(b)
+            paleta.adicionar(b)
         conv = QPushButton("Letras → figurinas", self)
         conv.clicked.connect(lambda _c=False: self.letras_para_figurinas())
-        paleta.addWidget(conv)
-        paleta.addStretch(1)
-        coluna.addLayout(paleta)
+        paleta.adicionar(conv)
+        coluna.addWidget(paleta)
 
     # -- showing ------------------------------------------------------------ #
 
@@ -152,7 +161,10 @@ class CartaoDaLinha(QWidget):
     def mostrar_recorte(self, rgb: np.ndarray) -> None:
         """The crop scaled to the card: at most ``CROP_MAX_ZOOM``×, ``CROP_HEIGHT_PX`` high."""
         pixmap = pixmap_de(rgb)
-        avail = max(300, self.recorte.width() - 8)
+        # The label's real width once laid out; 300 before the first layout (width 0 or the
+        # default 100) -- a floor of 300 on a laid-out label drew past a 293 px card (C18).
+        largura = self.recorte.width()
+        avail = largura - 8 if largura > CROP_LAID_OUT_MIN else 300
         ratio = min(
             avail / max(1, pixmap.width()), CROP_HEIGHT_PX / max(1, pixmap.height()), CROP_MAX_ZOOM
         )

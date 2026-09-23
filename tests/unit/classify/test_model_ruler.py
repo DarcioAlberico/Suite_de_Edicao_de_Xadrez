@@ -59,9 +59,30 @@ def test_at_equal_risk_the_cautious_model_exports_more_exact_diagrams() -> None:
 
 
 def test_the_budget_takes_the_lowest_threshold_among_ties() -> None:
-    points = model_ruler.curve(cauteloso())
-    best = model_ruler.best_at_budget(points, 0)
-    assert best["threshold"] == pytest.approx(0.51)
+    best = model_ruler.best_at_budget(model_ruler.cuts(cauteloso()), 0)
+    assert best["threshold"] == pytest.approx(0.72)
+    assert (best["exact"], best["wrong"]) == (8, 0)
+
+
+def test_a_mistake_above_the_grid_does_not_hide_the_exact_diagrams_above_it() -> None:
+    """The critic's case (fase 5): the production's one wrong export sits at 0,9979 and 74
+    exact diagrams sit above it.  A grid that stops at 0,99 finds no gate with zero wrong;
+    every distinct confidence is a gate, and 0,998 exports the 74 with none wrong."""
+    rows = [_row(n, 0.999, True) for n in range(74)]
+    rows += [_row(74, 0.9979, False)] + [_row(75 + n, 0.9, True) for n in range(28)]
+    zero = model_ruler.best_at_budget(model_ruler.cuts(rows), 0)
+    assert (zero["exact"], zero["wrong"], zero["threshold"]) == (74, 0, 0.999)
+    grid = model_ruler.best_at_budget(model_ruler.curve(rows), 0)   # the first version
+    assert grid["exact"] == 0
+
+
+def test_the_aurc_of_a_tie_is_its_expectation_over_every_order() -> None:
+    exact_first = [_row(0, 0.9, True), _row(1, 0.9, False)]
+    wrong_first = [_row(1, 0.9, False), _row(0, 0.9, True)]
+    assert model_ruler.aurc(exact_first) == pytest.approx(0.5)
+    assert model_ruler.aurc(wrong_first) == pytest.approx(0.5)
+    # without ties it is the plain running mean: exact at 0,9 then wrong at 0,8
+    assert model_ruler.aurc([_row(0, 0.9, True), _row(1, 0.8, False)]) == pytest.approx(0.25)
 
 
 def test_the_sabotage_shuffled_labels_break_the_ordering() -> None:

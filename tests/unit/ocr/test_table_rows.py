@@ -173,8 +173,10 @@ def test_a_column_of_moves_with_a_line_of_prose_does_not_pull_the_other_column()
     left_prose = _column_prose(1800.0, 5, x=150.0, lines=8, width=650.0)
     reading = _reading(left_prose + left_black + left_white + right)
     # the sabotage: without the ceiling on a cell's longest line and without the gutter
-    # rule, the right column seeds and pulls the left fragments
-    neither = TableRowsConfig(cell_max_chars=999, gutter_min_lines=10**6)
+    # rules (the corridor, and the page's gutter, which needs prose beside it), the right
+    # column seeds and pulls the left fragments
+    neither = TableRowsConfig(cell_max_chars=999, gutter_min_lines=10**6, prose_words=999,
+                              prose_chars=999)
     assert any(30 in group for group in table_groups(reading, config=neither))
     for alone in (TableRowsConfig(gutter_min_lines=10**6), TableRowsConfig(cell_max_chars=999)):
         assert all(30 not in group for group in table_groups(reading, config=alone))
@@ -197,8 +199,9 @@ def test_a_gap_no_other_line_touches_is_the_page_gutter() -> None:
     moves = [_line(f"{n + 5}. Rd{n}—e7", 600.0, 30.0 * n, 4) for n in range(8)]
     columns = _column_prose(-100.0, 1, lines=10) + moves
     assert table_groups(_reading(columns + cells)) == []
-    # the sabotage: without the gutter rule they join across the page's gutter
-    blind = TableRowsConfig(gutter_min_lines=10**6)
+    # the sabotage: without the gutter rules (the corridor, and the page's gutter, which
+    # needs prose beside it) they join across the page's gutter
+    blind = TableRowsConfig(gutter_min_lines=10**6, prose_words=999, prose_chars=999)
     assert table_groups(_reading(columns + cells), config=blind) == [[2, 3]]
     # the same cells with prose of their own column running across the gap: a move list
     across = _column_prose(200.0, 5, x=100.0, lines=3, width=560.0)
@@ -291,6 +294,170 @@ def test_the_row_keeps_the_leftmost_baseline_on_the_merged_box() -> None:
     assert first.text == "45 ♔g1 ♔g6"
     # the absolute baseline under x0 is the left cell's: 100 + 20 - 4 = 116
     assert abs(first.baseline_y_at(first.box.x0) - 116.0) < 1e-6
+
+
+# --------------------------------------------------------------------------- #
+# The critic's pages (fase 5, ciclo 1): narrow columns, numbered flows, stray gaps
+# --------------------------------------------------------------------------- #
+
+GRID = 49.0   # the Gallagher's baseline grid at 300 DPI
+
+
+def gallagher_p50() -> OcrResult:
+    """The Gallagher (``Winning With the King's Gambit``) p. 50 as PSM 3 cut it (the
+    critic's trace): two columns of 22–27 characters, notes and moves on the left, a move
+    list in three blocks on the right -- the numbers, White's moves, Black's."""
+    def at(n: int) -> float:
+        return 265.0 + GRID * n
+
+    lines = [_line(t, 152.0, at(n), 1) for n, t in enumerate(
+        ["position.", "18 Rad1 a6", "19 Bc4 Rc8", "20 Rhe1 g5!?"])]
+    notes = ["The best chance to get", "his rook into the game, but", "of course the dark squares",
+             "are now terribly weak.", "21 Be5", "It could well have been", "time to part with the two",
+             "bishops. 21 Bd6 looks good", "for White."]
+    lines += [_line(t, 149.0, at(4 + n), 2) for n, t in enumerate(notes)]
+    lines += [_line(t, 266.0, at(13 + n), 3) for n, t in enumerate(
+        ["21... Rg8", "22 g4 Rg6", "23 b4 b5", "24 Bd5 Nd7", "25 Bd4 Bf6!"])]
+    lines += [_line(t, 145.0, at(18 + n), 4) for n, t in enumerate(
+        ["Now Black is able to ex-", "change the bishops under", "more favourable circum-",
+         "stances. Although White", "still has an edge, his own"])]
+    lines.append(_line("Cunningham Defence 51", 897.0, 176.0, 5))
+    lines += [_line(t, 817.0, at(n), 6) for n, t in enumerate(
+        ["weaknesses give Black just", "enough play to hold the"])]
+    lines.append(_line("draw.", 816.0, at(2), 7))
+    lines += [_line(str(26 + n), 936.0, at(3 + n), 7) for n in range(20)]
+    lines += [_line(t, 1025.0, at(3 + n), 8) for n, t in enumerate(["Re3", "Bxd4"])]
+    black = ["Bxd4", "Rd6", "Rf6+", "Rc7", "Nb6", "Nc4", "h6", "gh+", "Re7", "hg+", "Re1", "Rf4+",
+             "Rxg4+", "Re4", "Re3", "Rxc3", "Na3", "Rc2", "Rxa2", "1/2-1/2"]
+    lines += [_line(t, 1193.0, at(3 + n), 9) for n, t in enumerate(black)]
+    return _reading(lines)
+
+
+def _crosses(groups: list[list[int]], left: set[int], right: set[int]) -> bool:
+    return any(set(g) & left and set(g) & right for g in groups)
+
+
+def test_a_narrow_column_of_notes_never_joins_the_move_list_of_the_other_column() -> None:
+    """Gallagher p. 50 (crítico da fase 5): no line reaches 30 characters, so the prose rule
+    by length never fired, the corridor was never judged, and the right column's move numbers
+    pulled the left column's notes and moves into their rows -- CER 0,27 → 0,70 on the page.
+    The notes are prose by **words**, the left column's moves are numbered on their own, and
+    the page's gutter has prose on both sides: the move list pairs up inside its column."""
+    reading = gallagher_p50()
+    groups = table_groups(reading)
+    assert sorted(sorted(g) for g in groups) == [[7, 8, 9]]
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert "26 Re3 Bxd4" in texts and "The best chance to get" in texts
+    # the sabotage: without the prose by words and the numbering, the columns interleave
+    blind = TableRowsConfig(prose_words=999, numbered_share=2.0)
+    assert _crosses(table_groups(reading, config=blind), {1, 2, 3, 4}, {6, 7, 8, 9})
+
+
+def test_two_numbered_columns_are_two_games_not_a_move_list() -> None:
+    """Two games side by side (the critic's page, CER 0,0190 → 0,5625): each column numbers
+    its own moves, and a move list has one column of numbers -- never two."""
+    moves = ["e4 c5", "Nf3 d6", "d4 cxd4", "Nxd4 Nf6", "Nc3 a6", "Bg5 e6", "f4 Be7", "Qf3 Qc7"]
+    left = [_line(f"{n + 1}. {m}", 150.0, 100.0 + 50.0 * n, 1) for n, m in enumerate(moves)]
+    right = [_line(f"{n + 1}. {m}", 850.0, 100.0 + 50.0 * n, 2) for n, m in enumerate(reversed(moves))]
+    reading = _reading(left + right)
+    assert table_groups(reading) == []
+    assert rows_of_tables(reading) is reading
+    assert table_groups(reading, config=TableRowsConfig(numbered_share=2.0)) == [[1, 2]]
+
+
+def test_moves_numbered_by_their_own_column_do_not_join_another_numbering() -> None:
+    """One game in two page columns, 1–20 | 21–40, under a full-width heading (the critic's
+    page, 0,2241 → 0,4152): Tesseract cut the right column's numbers into a block of their
+    own (``21`` alone, then ``22.``, ``23.``…) and left its moves unnumbered, so the right
+    moves looked like the Black replies of the left column.  Their own numbering stands
+    between them and the left one; the right column pairs up with its numbers instead."""
+    heading = ["Game 12  B. Spassky - R. Fischer, Reykjavik 1972",
+               "The sixth game of the match was a quiet Sicilian that turned sharp once White",
+               "castled long and threw his kingside pawns forward; the notes are the winner's."]
+    lines = [_line(t, 151.0, 159.0 + 50.0 * n, 1) for n, t in enumerate(heading)]
+    moves = ["e4 c5", "Nf3 d6", "d4 cxd4", "Nxd4 Nf6", "Nc3 a6", "Bg5 e6", "f4 Be7", "Qf3 Qc7"]
+    lines += [_line(f"{n + 1}. {m}", 151.0, 341.0 + 50.0 * n, 2) for n, m in enumerate(moves)]
+    lines.append(_line("21", 946.0, 341.0, 3))
+    lines += [_line(f"{22 + n}.", 946.0, 391.0 + 50.0 * n, 4) for n in range(7)]
+    lines += [_line(m, 1006.0, 391.0 + 50.0 * n, 5) for n, m in enumerate(moves[1:])]
+    reading = _reading(lines)
+    groups = table_groups(reading)
+    assert not _crosses(groups, {2}, {3, 4, 5})
+    assert sorted(sorted(g) for g in groups) == [[4, 5]]
+    # the sabotage: without the numbering rules the right moves answer the left column
+    assert _crosses(table_groups(reading, config=TableRowsConfig(numbered_share=2.0)), {2}, {5})
+
+
+def test_a_paragraph_with_a_stray_gap_is_prose_not_a_row_of_cells() -> None:
+    """Kmoch p. 44 (crítico da fase 5): a paragraph whose lines end in a stray ``|`` has an
+    internal gutter, and the gutter made it cells -- it seeded a group with a fragment of
+    the other column.  Cut at its gutter, its widest cell holds a line of prose."""
+    paragraph = ["(Een duidelijke wenk tot", "remise, dien de tegenstander", "dadelijk begrijpt nu wel.)"]
+    lines = []
+    for n, text in enumerate(paragraph):
+        y = 774.0 + 50.0 * n
+        words = (*_line(text, 842.0, y, 20).words, *_line("| 17. Kf2", 1300.0, y, 20).words)
+        lines.append(OcrLine(words=words, box=BBox.union_of([w.box for w in words]), block_index=20))
+    lines.append(_line("Pd5: |", 692.0, 774.0 + 50.0, 12))
+    reading = _reading(lines)
+    assert table_groups(reading) == []
+    assert table_groups(reading, config=TableRowsConfig(prose_words=999)) == [[20, 12]]
+
+
+def _split_heading() -> OcrResult:
+    """Gallagher p. 52: «The so-called “Long» cut into ``The``, ``“Long`` and a paragraph
+    that begins with ``so-called`` -- three blocks on one line."""
+    lines = [_line("The", 193.0, 1026.0, 8), _line("“Long", 622.0, 1027.0, 6)]
+    para = ["so-called", "Whip” variation. The fact", "that it is not seen very", "often these days does not"]
+    lines += [_line(t, 290.0 if n == 0 else 145.0, 1026.0 + 48.0 * n, 7) for n, t in enumerate(para)]
+    return _reading(lines)
+
+
+def test_two_words_with_a_third_between_them_are_not_a_row_of_cells() -> None:
+    reading = _split_heading()
+    assert table_groups(reading) == []
+    assert rows_of_tables(reading) is reading
+
+
+def test_the_sabotage_without_adjacency_pairs_the_words_around_the_third(monkeypatch) -> None:
+    import caissa.ocr.layout.rows as rows
+
+    monkeypatch.setattr(rows, "_adjacent", lambda *args: True)
+    assert sorted(sorted(g) for g in rows.table_groups(_split_heading())) == [[6, 8]]
+
+
+def test_merged_cells_count_their_words_cell_by_cell() -> None:
+    """``table:2`` at 150 DPI: Tesseract read three cells of each row as one line
+    (``Bona 2008 | Gambito da Dama Recusado | 88``).  Six words in the line, four in the widest
+    cell: a row of cells, not a line of prose -- the table still reads by rows."""
+    reading = _merged_cells_reading()
+    assert sorted(sorted(g) for g in table_groups(reading)) == [[2, 3]]
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert "13. Anand — Kramnik Bona 2008 Gambito da Dama Recusado 88" in texts
+
+
+def test_the_sabotage_counting_words_across_cells_makes_the_row_prose(monkeypatch) -> None:
+    import caissa.ocr.layout.rows as rows
+
+    monkeypatch.setattr(rows, "_cell_words", lambda line, spans: rows._words(line.text))
+    assert rows.table_groups(_merged_cells_reading()) == []
+
+
+def _merged_cells_reading() -> OcrResult:
+    """``table:2`` at 150 DPI: the header row alone, the names, and the other three cells
+    of each row read as one line with gaps between them."""
+    names = ["12. Tal — Botvinnik", "13. Anand — Kramnik", "14. Carlsen — Nakamura",
+             "15. Steinitz — Zukertort"]
+    cells = [("Moscovo 1960", "Francesa, Winawer", "203"), ("Bona 2008", "Gambito da Dama Recusado", "88"),
+             ("Wijk aan Zee 2011", "Índia do Rei", "301"), ("St. Louis 1886", "Abertura Escocesa", "15")]
+    lines = [_line("11. Capablanca - Marshall Nova Iorque 1918 Ruy López 9", 21.0, 22.0, 1)]
+    for n, (name, row) in enumerate(zip(names, cells, strict=True)):
+        y = 61.0 + 32.0 * n
+        lines.append(_line(name, 21.0, y, 2))
+        words = [*_line(row[0], 289.0, y, 3).words, *_line(row[1], 480.0, y, 3).words,
+                 *_line(row[2], 760.0, y, 3).words]
+        lines.append(OcrLine(words=tuple(words), box=BBox.union_of([w.box for w in words]), block_index=3))
+    return _reading(lines)
 
 
 def test_config_shares_are_the_rules_numbers() -> None:

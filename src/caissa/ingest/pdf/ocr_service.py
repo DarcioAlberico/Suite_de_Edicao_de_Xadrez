@@ -783,6 +783,13 @@ class OcrService:
                 notes.append(
                     f"região {region_outcome.region.reading_order}: a leitura cobre "
                     f"{coverage:.0%} da tinta — variantes pedidas (B14)")
+            elif coverage is None and region_ink is not None:
+                # Said, not silent (crítico da fase 5): a region the measure cannot judge
+                # -- too few letters, or ink the rules left out -- is not a region that
+                # passed it.
+                notes.append(
+                    f"região {region_outcome.region.reading_order}: cobertura da tinta não "
+                    f"medida ({region_ink.count} letras) — o B14 não julga esta região")
             # The independent readings, as thunks, in the order the serial
             # loop produced them; the pool runs them, the list keeps the order.
             readings: list[Callable[[], list[Candidate]]] = []

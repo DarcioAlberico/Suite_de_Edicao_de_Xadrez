@@ -88,9 +88,29 @@ def curve(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return points
 
 
+def cuts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Every gate a model can actually have: one per **distinct** gate confidence of its
+    comparable, legal diagrams (a gate at that value exports every diagram at or above
+    it).  The grid of :data:`THRESHOLDS` stops at 0,99 and cannot tell a mistake at 0,998
+    from the 74 exact diagrams above it -- the ruler's first version zeroed the column
+    «≤ 0 errados» of six models that way (crítico da fase 5)."""
+    ranked = sorted((r for r in comparable(rows) if r["legal"]),
+                    key=lambda r: -r["gate_confidence"])
+    points: list[dict[str, Any]] = []
+    exported = wrong = 0
+    for n, row in enumerate(ranked):
+        exported += 1
+        wrong += int(not row["exact"])
+        last_of_tie = n + 1 == len(ranked) or ranked[n + 1]["gate_confidence"] < row["gate_confidence"]
+        if last_of_tie:
+            points.append({"threshold": row["gate_confidence"], "exported": exported,
+                           "wrong": wrong, "exact": exported - wrong})
+    return points
+
+
 def best_at_budget(points: list[dict[str, Any]], budget: int) -> dict[str, Any]:
-    """The threshold that exports the most exact diagrams with at most ``budget`` wrong
-    (ties: the lower threshold, which exports more).
+    """The gate that exports the most exact diagrams with at most ``budget`` wrong
+    (ties: the lower threshold, which exports more).  ``points`` are :func:`cuts`.
     """
     allowed = [p for p in points if p["wrong"] <= budget]
     if not allowed:
@@ -104,16 +124,31 @@ def aurc(rows: list[dict[str, Any]]) -> float:
     """Area under the risk-coverage curve over the comparable, legal diagrams, ranked by
     gate confidence: the mean of the running error rate as the gate is lowered one diagram
     at a time.  Lower is better; a model that ranks its own mistakes last scores lowest.
+
+    **Ties** (diagrams with the same confidence) have no order a gate could pick, so the
+    rate inside a tie is its expectation over every order of the tie: after ``j`` of the
+    ``k`` tied diagrams, ``j·g/k`` of its ``g`` wrong ones on average (linearity of
+    expectation).  The first version took the order ``sorted`` left, and four models moved
+    by it -- ``c4_mhspe_s44`` from 0,0111 to 0,0134 (crítico da fase 5).
     """
     ranked = sorted((r for r in comparable(rows) if r["legal"]),
                     key=lambda r: -r["gate_confidence"])
     if not ranked:
         return 0.0
-    wrong = 0
     total = 0.0
-    for n, row in enumerate(ranked, start=1):
-        wrong += int(not row["exact"])
-        total += wrong / n
+    seen = wrong = 0
+    start = 0
+    while start < len(ranked):
+        stop = start
+        while stop < len(ranked) and ranked[stop]["gate_confidence"] == ranked[start]["gate_confidence"]:
+            stop += 1
+        size = stop - start
+        tied_wrong = sum(int(not r["exact"]) for r in ranked[start:stop])
+        for j in range(1, size + 1):
+            total += (wrong + j * tied_wrong / size) / (seen + j)
+        seen += size
+        wrong += tied_wrong
+        start = stop
     return total / len(ranked)
 
 
@@ -127,7 +162,7 @@ def summarise(name: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
         "comparable": len(judged),
         "total_exact": sum(1 for r in judged if r["exact"]),
         "gate": {"threshold": GATE, "exported": exported, "wrong": wrong, "exact": exported - wrong},
-        "budgets": [best_at_budget(points, b) for b in BUDGETS],
+        "budgets": [best_at_budget(cuts(rows), b) for b in BUDGETS],
         "aurc": round(aurc(rows), 5),
         "curve": points,
     }
@@ -204,14 +239,14 @@ def rows_for(model: Path, runs: int, motor: str | None) -> tuple[list[dict[str, 
 
 def table(summaries: list[dict[str, Any]]) -> str:
     head = (f"{'modelo':<14}{'exatos':>7}{'gate exp':>9}{'err':>5}"
-            + "".join(f"{f'≤{b} err (lim)':>16}" for b in BUDGETS) + f"{'AURC':>9}")
+            + "".join(f"{f'≤{b} err (lim)':>18}" for b in BUDGETS) + f"{'AURC':>9}")
     lines = [head, "-" * len(head)]
     for s in summaries:
         cells = []
         for budget in s["budgets"]:
             limit = budget["threshold"]
-            cell = str(budget["exact"]) if limit is None else f"{budget['exact']} ({limit:.2f})"
-            cells.append(f"{cell:>16}")
+            cell = str(budget["exact"]) if limit is None else f"{budget['exact']} ({limit:.4f})"
+            cells.append(f"{cell:>18}")
         lines.append(f"{s['model']:<14}{s['total_exact']:>7}{s['gate']['exported']:>9}{s['gate']['wrong']:>5}"
                      f"{''.join(cells)}{s['aurc']:>9.4f}")
     return "\n".join(lines)

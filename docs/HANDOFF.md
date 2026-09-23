@@ -32,7 +32,11 @@ sobre o EPUB do produto ele achou 4 erros (`OPF-028`, prefixo `pdf:`) — corrig
 interruptores novos no `OcrServiceConfig`: `table_rows` (B13, a tabela lida por linha) e
 `ink_coverage`/`min_ink_coverage` (B14, a leitura que não cobre a tinta não é aceita); toda
 corrida de A/B do `bench_sol` passa **os dois** pelo `SOL_CONFIG`. Portão novo do mínimo da
-janela: `caissa.ui.audit.minimo` (teto 1250×640). Ver `docs/quality/OCR_UI_REPORT_C2_FASE5.md`.
+janela: `caissa.ui.audit.minimo` (teto 1250×640) — desde o ciclo 2 do crítico ele mede também o
+que fica **à vista** (nenhum controle fora da vista sem barra, nenhum espremido, a mensagem do
+rodapé legível com a linha cheia), no mínimo e a 1366×728, com quatro sabotagens (`rodape`,
+`corte`, `mensagem`, `aperto`). Grave a saída de cada corrida num arquivo, não num `| grep`: o
+filho órfão de uma pele que morreu segura o pipe. Ver `docs/quality/OCR_UI_REPORT_C2_FASE5.md`.
 
 > **Um teste instável, ainda não diagnosticado (2026-09-10).**
 > `tests/unit/model/test_ids.py::test_a_fresh_id_carries_roughly_the_current_time`

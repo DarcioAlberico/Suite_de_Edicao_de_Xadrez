@@ -27,12 +27,11 @@ from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QKeySequence, QPixmap, QShortcut
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFrame,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -45,7 +44,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from caissa.ui.theme import pele
 from caissa.export.book import PageRangeError, parse_page_range
 from caissa.ingest.pdf import ImportCanceled, PdfImportOptions, import_pdf, open_pdf
 from caissa.ocr.labeling.recognise import render_rgb
@@ -57,7 +55,9 @@ from caissa.ocr.review import (
     blind_guard,
     decisions_path,
 )
+from caissa.ui.theme import pele
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha
+from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
@@ -231,27 +231,30 @@ class PainelDeRevisaoDeTexto(QWidget):
     def _montar(self) -> None:  # noqa: PLR0915 - one widget tree, top to bottom
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(4, 4, 4, 4)
-        barra = QHBoxLayout()
-        raiz.addLayout(barra)
+        # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` a barra somava 767 px e, com a aba
+        # a 538, o Qt espremia os botões abaixo do texto deles.
+        barra = FileiraFluida(self)
+        raiz.addWidget(barra)
 
         def botao(texto: str, acao: Callable[[], Any], *, dica: str = "") -> QPushButton:
             b = QPushButton(texto, self)
             b.clicked.connect(lambda _c=False: acao())
             if dica:
                 b.setToolTip(dica)
-            barra.addWidget(b)
+            barra.adicionar(b)
             return b
 
         self.btn_abrir = botao("Abrir PDF…", self.escolher_pdf)
-        self.doc_label = QLabel("(nenhum PDF)", self)
+        # Elidido: o caminho do PDF pode ter os 149 caracteres de um nome do acervo.
+        self.doc_label = RotuloQueEncolhe("(nenhum PDF)", self)
         self.doc_label.setAccessibleName("Documento aberto")
-        barra.addWidget(self.doc_label, 1)
-        barra.addWidget(QLabel("Páginas:", self))
+        barra.adicionar(self.doc_label)
+        barra.adicionar(QLabel("Páginas:", self))
         self.pages_edit = QLineEdit(self)
         self.pages_edit.setPlaceholderText("todas · ex.: 10-25, 40")
         self.pages_edit.setFixedWidth(150)
         self.pages_edit.setAccessibleName("Páginas a importar")
-        barra.addWidget(self.pages_edit)
+        barra.adicionar(self.pages_edit)
         self.btn_importar = botao(
             "Importar (OCR)", self.importar, dica="Lê as páginas com OCR e monta a fila de dúvidas"
         )
@@ -263,7 +266,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.so_pendentes = QCheckBox("só pendentes", self)
         self.so_pendentes.setChecked(True)
         self.so_pendentes.toggled.connect(lambda _v: self._fill_table())
-        barra.addWidget(self.so_pendentes)
+        barra.adicionar(self.so_pendentes)
 
         corpo = QSplitter(Qt.Orientation.Horizontal, self)
         raiz.addWidget(corpo, 1)
@@ -285,7 +288,10 @@ class PainelDeRevisaoDeTexto(QWidget):
         rolagem = QScrollArea(corpo)
         rolagem.setWidgetResizable(True)
         rolagem.setFrameShape(QFrame.Shape.NoFrame)
-        rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        # A horizontal aparece quando precisa (crítico da fase 5): desligada, o que passava da
+        # largura ficava cortado sem aviso. O conteúdo reflui (fileiras fluidas, texto que quebra
+        # linha) e a barra é a rede para o que ainda não couber.
+        rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         rolagem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         direita = QWidget()
         dir_ = QVBoxLayout(direita)
@@ -297,7 +303,9 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.cartao.andar.connect(self.step)
         self.cartao.alternativa_pedida.connect(self._use_alternative)
         dir_.addWidget(self.cartao)
-        botoes = QHBoxLayout()
+        # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` as seis ações somavam 466 px, e a
+        # 1248x640 «Pular», «Anterior» e «Próxima» ficavam com 0 px à vista.
+        botoes = FileiraFluida(direita)
         self.acoes: dict[str, QPushButton] = {}
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(Action.ACCEPT)),
@@ -307,17 +315,16 @@ class PainelDeRevisaoDeTexto(QWidget):
         ):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, a=acao: a())
-            botoes.addWidget(b)
+            botoes.adicionar(b)
             self.acoes[texto] = b
-        botoes.addStretch(1)
         paginador = []
         for texto, delta in (("Anterior", -1), ("Próxima", 1)):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
-            botoes.addWidget(b)
+            botoes.adicionar(b)
             paginador.append(b)
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
-        dir_.addLayout(botoes)
+        dir_.addWidget(botoes)
         dir_.addStretch(1)
         rolagem.setWidget(direita)
         corpo.addWidget(rolagem)

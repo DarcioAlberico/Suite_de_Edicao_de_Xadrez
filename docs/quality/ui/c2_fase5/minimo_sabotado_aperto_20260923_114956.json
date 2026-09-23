@@ -1,0 +1,763 @@
+{
+  "gerado_em": "2026-09-23T11:49:56+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "aperto",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            749,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 44
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 18
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "mensagem_px": 480,
+          "documento_px": 499,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 617,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            749,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 44
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ],
+          "alcancaveis_pela_barra": 25
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "mensagem_px": 480,
+          "documento_px": 499,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 617,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 82
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "aperto",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            737,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            139,
+            390
+          ],
+          "cadeia": "QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto < QStackedWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ],
+          "alcancaveis_pela_barra": 72
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Estudo",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Dataset",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Galeria",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ],
+          "alcancaveis_pela_barra": 32
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "mensagem_px": 480,
+          "documento_px": 509,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 629,
+          "barra_px": 120,
+          "espremidos": [
+            {
+              "tipo": "QPushButton",
+              "texto": "Mensagens",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 1,
+              "minimo": 76
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    }
+  ],
+  "passou": false
+}

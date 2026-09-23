@@ -155,6 +155,10 @@ def _arneses_de_auditoria() -> list[str]:
     )
 
 
+VEIO_QT = 3
+"""O código de saída do subprocesso quando o import trouxe um binding de Qt."""
+
+
 def _bindings_ao_importar(modulo: str, *, caminho_extra: str = "") -> tuple[int, str]:
     """Importa `modulo` num **processo novo** e devolve (código de saída, bindings de Qt que vieram).
 
@@ -163,6 +167,10 @@ def _bindings_ao_importar(modulo: str, *, caminho_extra: str = "") -> tuple[int,
     que rodasse antes já tinha o PyQt6 carregado, e este teste reprovava por **ordem** -- 15
     vermelhos com `tests/unit/ui` inteiro, verde sozinho, e todo relatório de fase repetia
     «à parte». Num subprocesso a resposta é a mesma em qualquer ordem.
+
+    **Código 3 para «veio Qt», não 1** (crítico da fase 5): um import que quebra também sai com 1,
+    e o teste lia a quebra como um binding encontrado -- reprovava pelo motivo errado. Qualquer
+    saída que não seja 0 nem 3 é falha do import, dita com o `stderr`.
     """
     import os
     import subprocess
@@ -173,14 +181,14 @@ def _bindings_ao_importar(modulo: str, *, caminho_extra: str = "") -> tuple[int,
         f"importlib.import_module({modulo!r})\n"
         "achados = sorted(n for n in sys.modules if n.startswith(('PyQt', 'PySide')))\n"
         "print(','.join(achados))\n"
-        "sys.exit(1 if achados else 0)\n"
+        f"sys.exit({VEIO_QT} if achados else 0)\n"
     )
     ambiente = dict(os.environ)
     caminhos = [caminho_extra] if caminho_extra else []
     ambiente["PYTHONPATH"] = os.pathsep.join([*caminhos, *[p for p in sys.path if p]])
     feito = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True,
                            env=ambiente, timeout=120, check=False)
-    if feito.returncode not in (0, 1):
+    if feito.returncode not in (0, VEIO_QT):
         raise AssertionError(f"importar {modulo} falhou:\n{feito.stderr[-2000:]}")
     return feito.returncode, feito.stdout.strip()
 
@@ -205,4 +213,15 @@ def test_a_sabotagem_um_qt_no_topo_do_arnes_reprova(tmp_path: Path) -> None:
     (pacote / "__init__.py").write_text("", encoding="utf-8")
     (pacote / "com_qt_no_topo.py").write_text("from PyQt6 import QtCore  # noqa\n", encoding="utf-8")
     codigo, bindings = _bindings_ao_importar("arnes_sabotado.com_qt_no_topo", caminho_extra=str(tmp_path))
-    assert codigo == 1 and "PyQt6" in bindings
+    assert codigo == VEIO_QT
+    assert "PyQt6" in bindings
+
+
+def test_um_import_que_quebra_nao_e_lido_como_qt(tmp_path: Path) -> None:
+    """Crítico da fase 5: o import quebrado é falha do import, dita com o erro -- não «veio Qt»."""
+    pacote = tmp_path / "arnes_quebrado"
+    pacote.mkdir()
+    (pacote / "__init__.py").write_text("", encoding="utf-8")
+    (pacote / "quebra.py").write_text("raise ImportError('modulo_que_nao_existe')\n", encoding="utf-8")
+    with pytest.raises(AssertionError, match="modulo_que_nao_existe"):
+        _bindings_ao_importar("arnes_quebrado.quebra", caminho_extra=str(tmp_path))

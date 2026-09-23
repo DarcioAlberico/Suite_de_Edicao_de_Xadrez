@@ -1,0 +1,301 @@
+{
+  "gerado_em": "2026-09-23T11:50:40+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "mensagem",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "mensagem",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 44
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 18
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "mensagem_px": 0,
+          "documento_px": 885,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 0,
+          "documento_px": 925,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "mensagem",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 44
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 25
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "mensagem_px": 0,
+          "documento_px": 885,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 0,
+          "documento_px": 925,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "mensagem",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            139,
+            390
+          ],
+          "cadeia": "QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto < QStackedWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 72
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 32
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "mensagem_px": 0,
+          "documento_px": 891,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "mensagem_px": 0,
+          "documento_px": 931,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    }
+  ],
+  "passou": false
+}

@@ -20,11 +20,28 @@ da Rotulagem com o projeto e as linhas de estado longas), escreve no rodapé uma
 `FRASE_LONGA` caracteres e lê `minimumSizeHint()`. Os «motores» — os widgets-folha que pedem mais
 largura ou altura — vão para o JSON, para o próximo a mexer saber onde olhar.
 
-**Sabotagem** (`--sabotar rodape`): a frase do rodapé volta a um `QLabel` comum antes de a
-janela nascer; o mínimo sobe com a frase e o portão reprova.
+**Caber não basta: o que cabe tem de estar à vista** (crítico da fase 5). A primeira versão lia só
+`minimumSizeHint`, e passou com a janela escondendo conteúdo: dentro das rolagens novas, sem barra
+horizontal, a barra de ações do Resultado e os botões da Revisão de texto ficavam com 0 px à vista,
+e a mensagem do rodapé com 0 px ao lado de um nome de livro de 149 caracteres. Agora, no mínimo da
+janela e em 1366×728, em **toda área**: nenhum controle (botão, rótulo com texto, campo, lista de
+escolha) fora da vista **sem uma barra de rolagem que leve a ele**, nenhum controle espremido abaixo
+do próprio mínimo (o Qt espreme quando a área é menor que o leiaute), e o rodapé medido **com a
+linha cheia** -- o nome longo na zona do documento, a frase longa e uma importação em curso, com a
+ocupação e a barra: a mensagem com ao menos `MENSAGEM_LEGIVEL` px à vista e nenhum botão dele
+espremido. A linha cheia é posta pelo arnês, e não esperada da importação do livro: o portão com o
+livro achou o botão das mensagens com 27 de 82 px enquanto a barra estava na linha, e uma medida
+que dependesse de a importação ainda estar correndo naquele instante não seria uma medida.
 
-    PYTHONPATH=src;..\\ChessVisionOFF_Puro\\src;.venv-pack\\Lib\\site-packages QT_QPA_PLATFORM=offscreen ^
-        .venv\\Scripts\\python.exe -m caissa.ui.audit.minimo --saida benchmarks\\reports\\ui\\c2_fase5\\minimo [--pdf X]
+**Sabotagens:** `--sabotar rodape` (a frase num `QLabel` comum: o mínimo sobe), `--sabotar corte`
+(toda rolagem sem barra horizontal, como no ciclo 1: sobra conteúdo sem caminho até ele),
+`--sabotar mensagem` (a mensagem sem largura garantida: some ao lado do nome longo) e
+`--sabotar aperto` (o botão das mensagens com o piso de um pixel de antes: espremido na linha
+cheia).
+
+    PYTHONPATH=src;..\\ChessVisionOFF_Puro\\src;.venv-pack\\Lib\\site-packages ^
+    QT_QPA_PLATFORM=offscreen .venv\\Scripts\\python.exe -m caissa.ui.audit.minimo ^
+        --saida benchmarks\\reports\\ui\\c2_fase5\\minimo [--pdf X] [--sabotar S]
 """
 
 from __future__ import annotations
@@ -48,7 +65,42 @@ FRASE_LONGA = 300
 """Caracteres da frase escrita no rodapé: mais longa que qualquer frase real medida (a maior
 dos relatórios da fase 4 tem ~180), para que o portão não dependa de qual frase apareceu."""
 
-SABOTAGENS = ("", "rodape")
+SABOTAGENS = ("", "rodape", "corte", "mensagem", "aperto")
+
+MENSAGEM_LEGIVEL = 320
+"""Pixels lógicos da mensagem do rodapé que têm de estar à vista, no mínimo da janela e com o nome
+longo: ~45 caracteres -- o começo de qualquer frase de erro."""
+
+NOME_LONGO = ("Gaprindashvili, Paata - Imagination in Chess. How To Think Creatively And Avoid "
+              "Foolish Mistakes (Bastford, 2005) 2p 145p_OCR_Aprimorar_Aprimorar.pdf · "
+              "p. 1 de 289 · nenhum diagrama nesta página")
+"""A zona do documento com o nome mais longo do acervo (149 caracteres): o caso do crítico."""
+
+TAMANHOS = ((1366, 728),)
+"""Além do mínimo da janela: um portátil 1366×768 a 100 %, menos o título."""
+
+APERTO_TOLERADO = 0.9
+"""Um controle é **espremido** abaixo desta fração do próprio mínimo: o mínimo de um botão tem o
+acolchoamento dentro (8–16 px), e 40 de 42 px come a borda, não o texto; 57 de 107 é meia
+palavra."""
+
+VISIVEL_MINIMO = 2
+"""Pixels abaixo dos quais um controle não conta **quando o mínimo dele também fica aí**: um
+separador, um rótulo elidido sem espaço. Um botão de 82 px de mínimo com 1 px na tela não é
+nenhum dos dois -- é o pior aperto, e conta (a sabotagem `aperto` o mostrou escapando por aqui
+quando a régua olhava só a largura)."""
+
+CADEIA = 4
+"""Quantos pais a descrição de um controle nomeia: o bastante para achar o painel."""
+
+_VIVOS: list[Any] = []
+"""A aplicação e a janela medidas, presas aqui até o `os._exit`. Variáveis locais não bastavam: ao
+sair de `medir_uma_pele` o Python soltava a `QApplication` que ela criou, o PyQt a desmontava com a
+leitura do `labels.csv` do Dataset ainda correndo numa tarefa, e a pele morria em `access
+violation` antes de gravar o JSON. Medido nesta fase com `PYTHONFAULTHANDLER`: quatro peles mortas
+em dez corridas com a máquina ocupada (o `bench_sol` e a população do B14 ao lado), as quatro no
+retorno de `medir_uma_pele` e com a tarefa do Dataset esperando o processo de trabalho; prender só
+a janela não bastou (a quarta) -- a leitura só perde a corrida quando demora."""
 
 
 def _frase() -> str:
@@ -76,6 +128,145 @@ def _sabotar_o_rodape() -> None:
     rodape.RotuloElidido = RotuloComum  # type: ignore[attr-defined]
 
 
+def _sabotar_a_mensagem() -> None:
+    """O rodapé do ciclo 1: a mensagem sem largura garantida, a primeira a encolher."""
+    from chess_diagram_ocr.qt import rodape
+
+    rodape.LARGURA_DA_MENSAGEM = 0  # type: ignore[attr-defined]
+
+
+def _sabotar_o_aperto(janela: Any) -> None:
+    """O botão das mensagens com o piso de um pixel de antes: o primeiro a ceder na linha cheia."""
+    janela.rodape._btn_mensagens.setMinimumWidth(1)   # a sabotagem é o defeito antigo
+
+
+def _sabotar_o_corte(janela: Any) -> None:
+    """As rolagens do ciclo 1: nenhuma barra horizontal, o que passa da largura fica sem caminho."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QScrollArea
+
+    for rolagem in janela.findChildren(QScrollArea):
+        rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+
+def _controles(janela: Any) -> list[Any]:
+    """Os controles que alguém lê ou clica: botões, rótulos com texto, campos, escolhas."""
+    from PyQt6.QtWidgets import QAbstractButton, QAbstractSpinBox, QComboBox, QLabel, QLineEdit
+
+    saida = []
+    tipos = (QAbstractButton, QLabel, QLineEdit, QComboBox, QAbstractSpinBox)
+    for widget in janela.findChildren(tipos):
+        if not widget.isVisible():
+            continue
+        dica = widget.minimumSizeHint()
+        if (min(widget.width(), widget.height()) <= VISIVEL_MINIMO
+                and min(dica.width(), dica.height()) <= VISIVEL_MINIMO):
+            continue
+        if isinstance(widget, QLabel) and not widget.text().strip():
+            continue
+        if (isinstance(widget, QAbstractButton)
+                and not widget.text().strip() and widget.icon().isNull()):
+            continue
+        saida.append(widget)
+    return saida
+
+
+def _descricao(widget: Any, janela: Any) -> dict[str, Any]:
+    texto = widget.text() if hasattr(widget, "text") and callable(widget.text) else ""
+    cadeia, pai = [], widget.parentWidget()
+    while pai is not None and pai is not janela and len(cadeia) < CADEIA:
+        cadeia.append(type(pai).__name__)
+        pai = pai.parentWidget()
+    return {"tipo": type(widget).__name__, "texto": str(texto)[:40], "cadeia": " < ".join(cadeia),
+            "largura": widget.width(), "minimo": widget.minimumSizeHint().width()}
+
+
+def _fora_da_vista(widget: Any, janela: Any) -> tuple[bool, bool]:
+    """(fora da vista, há barra que leve a ele).
+
+    A barra conta quando é a de uma rolagem que contém o controle, na direção em que ele sai da
+    vista dela.
+    """
+    from PyQt6.QtCore import QPoint, QRect
+    from PyQt6.QtWidgets import QAbstractScrollArea
+
+    visivel = widget.visibleRegion().boundingRect()
+    if visivel.width() >= widget.width() - 1 and visivel.height() >= widget.height() - 1:
+        return False, False
+    pai = widget.parentWidget()
+    while pai is not None and pai is not janela:
+        dono = pai.parentWidget()
+        if isinstance(dono, QAbstractScrollArea) and pai is dono.viewport():
+            onde = QRect(widget.mapTo(pai, QPoint(0, 0)), widget.size())
+            vista = pai.rect()
+            fora_h = onde.left() < vista.left() or onde.right() > vista.right()
+            fora_v = onde.top() < vista.top() or onde.bottom() > vista.bottom()
+            if not fora_h and not fora_v:
+                return True, False   # cortado por outro pai, dentro da vista da rolagem
+            barra_h = not fora_h or dono.horizontalScrollBar().isVisible()
+            barra_v = not fora_v or dono.verticalScrollBar().isVisible()
+            return True, barra_h and barra_v
+        pai = dono
+    return True, False
+
+
+def _vista(janela: Any, aplicacao: Any, areas: list[Any]) -> dict[str, Any]:
+    """No tamanho em que a janela está: o que fica fora da vista sem barra, e o que é espremido."""
+    from PyQt6.QtWidgets import QLabel
+
+    sem_barra: list[dict[str, Any]] = []
+    espremidos: list[dict[str, Any]] = []
+    alcancaveis = 0
+    for area in areas:
+        area.mostrar()
+        for _ in range(5):
+            aplicacao.processEvents()
+        for widget in _controles(janela):
+            fora, barra = _fora_da_vista(widget, janela)
+            if fora and barra:
+                alcancaveis += 1
+            elif fora:
+                sem_barra.append({"area": area.nome, **_descricao(widget, janela)})
+            elif widget.width() < APERTO_TOLERADO * widget.minimumSizeHint().width() and not (
+                    isinstance(widget, QLabel) and widget.wordWrap()):
+                espremidos.append({"area": area.nome, **_descricao(widget, janela)})
+    return {"tamanho": [janela.width(), janela.height()], "fora_sem_barra": sem_barra,
+            "espremidos": espremidos, "alcancaveis_pela_barra": alcancaveis}
+
+
+def _linha_cheia(janela: Any) -> None:
+    """O pior caso do rodapé: o nome longo, a frase longa e uma importação com a barra."""
+    from chess_diagram_ocr.ui.busy import BusyOperation
+
+    janela.rodape.definir_documento(NOME_LONGO)
+    janela.rodape.mostrar(_frase())
+    janela.rodape.aplicar_ocupacao([BusyOperation(
+        name="Importando o livro", loses_work=False, cancellable=True,
+        detail="p. 12 de 289", feito=12, total=289)])
+
+
+def _rodape(janela: Any, aplicacao: Any) -> dict[str, Any]:
+    from PyQt6.QtWidgets import QAbstractButton
+
+    _linha_cheia(janela)
+    for _ in range(6):
+        aplicacao.processEvents()
+    # o arnês mede o que o rodapé desenha, e por isso lê os rótulos dele
+    mensagem = janela.rodape._lbl_mensagem
+    documento = janela.rodape._lbl_documento
+    barra = janela.rodape.barra_de_progresso()
+
+    def a_vista(widget: Any) -> int:
+        return widget.visibleRegion().boundingRect().width() if widget.isVisible() else 0
+
+    espremidos = [_descricao(botao, janela) for botao in janela.rodape.findChildren(QAbstractButton)
+                  if botao.isVisible()
+                  and botao.width() < APERTO_TOLERADO * botao.minimumSizeHint().width()]
+    return {"tamanho": [janela.width(), janela.height()],
+            "mensagem_px": a_vista(mensagem), "documento_px": a_vista(documento),
+            "barra_px": a_vista(barra), "espremidos": espremidos}
+
+
 def _motores(janela: Any, limite_w: int, limite_h: int) -> list[dict[str, Any]]:
     """As folhas que pedem ao menos `limite_*` e nenhum filho que peça tanto."""
     from PyQt6.QtCore import Qt
@@ -99,7 +290,8 @@ def _motores(janela: Any, limite_w: int, limite_h: int) -> list[dict[str, Any]]:
                 cadeia.append(type(pai).__name__)
                 pai = pai.parentWidget()
             texto = widget.text()[:80] if isinstance(widget, (QLabel, QAbstractButton)) else ""
-            saida.append({"minimo": [largura, altura], "cadeia": " < ".join(cadeia[:6]), "texto": texto})
+            saida.append({"minimo": [largura, altura], "cadeia": " < ".join(cadeia[:6]),
+                          "texto": texto})
     return sorted(saida, key=lambda m: (-m["minimo"][0], -m["minimo"][1]))[:12]
 
 
@@ -121,9 +313,12 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     )
 
     aplicacao = QApplication.instance() or QApplication(sys.argv)
+    _VIVOS.append(aplicacao)
     impor_a_fonte_do_produto(aplicacao)
     if sabotar == "rodape":
         _sabotar_o_rodape()
+    if sabotar == "mensagem":
+        _sabotar_a_mensagem()
     from chess_diagram_ocr.qt.janela import JanelaPrincipal
 
     # **A janela não é desmontada aqui.** Visitar a área do Dataset dispara a leitura do
@@ -133,22 +328,36 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
     # precisa fechar para medir.
     pasta = Path(tempfile.mkdtemp(prefix="caissa_minimo_"))
     janela = JanelaPrincipal(caminho_do_estado=estado_de_medicao(pasta))
+    _VIVOS.append(janela)
     janela.show()
     for _ in range(5):
         aplicacao.processEvents()
     if pdf is not None and pdf.exists():
         janela.abrir_pdf(pdf)
         aguardar_a_folha(janela)
-    areas = [area.nome for area in areas_de_trabalho(janela)]
-    for area in areas_de_trabalho(janela):
+    if sabotar == "corte":
+        _sabotar_o_corte(janela)
+    if sabotar == "aperto":
+        _sabotar_o_aperto(janela)
+    todas = list(areas_de_trabalho(janela))
+    areas = [area.nome for area in todas]
+    for area in todas:
         area.mostrar()
         for _ in range(3):
             aplicacao.processEvents()
-    janela.rodape.mostrar(_frase())
+    _linha_cheia(janela)
     janela.resize(400, 300)
     for _ in range(6):
         aplicacao.processEvents()
     dica = janela.minimumSizeHint()
+    vistas = [_vista(janela, aplicacao, todas)]
+    rodapes = [_rodape(janela, aplicacao)]
+    for largura, altura in TAMANHOS:
+        janela.resize(largura, altura)
+        for _ in range(6):
+            aplicacao.processEvents()
+        vistas.append(_vista(janela, aplicacao, todas))
+        rodapes.append(_rodape(janela, aplicacao))
     medida = {
         "pele": nome_da_pele,
         "pdf": str(pdf) if pdf else "",
@@ -158,13 +367,19 @@ def medir_uma_pele(nome_da_pele: str, *, pdf: Path | None, sabotar: str,
         "minimo": [dica.width(), dica.height()],
         "ficou": [janela.width(), janela.height()],
         "motores": _motores(janela, 600, 380),
+        "vistas": vistas,
+        "rodape": rodapes,
     }
     medida["cabe"] = medida["minimo"][0] <= TETO[0] and medida["minimo"][1] <= TETO[1]
+    medida["a_vista"] = (
+        all(not v["fora_sem_barra"] and not v["espremidos"] for v in vistas)
+        and all(r["mensagem_px"] >= MENSAGEM_LEGIVEL and not r["espremidos"] for r in rodapes))
     return medida
 
 
 def medir(saida: Path, *, pdf: Path | None = None, sabotar: str = "",
-          caminho_do_tronco: Path = TRONCO, peles: tuple[tuple[str, str], ...] = PELES) -> dict[str, Any]:
+          caminho_do_tronco: Path = TRONCO,
+          peles: tuple[tuple[str, str], ...] = PELES) -> dict[str, Any]:
     """Todas as peles, um subprocesso por pele; grava e devolve o relatório."""
     saida.mkdir(parents=True, exist_ok=True)
     medidas: list[dict[str, Any]] = []
@@ -178,7 +393,8 @@ def medir(saida: Path, *, pdf: Path | None = None, sabotar: str = "",
             argumentos += ["--sabotar", sabotar]
         subprocess.run(argumentos, env=dict(os.environ), check=False)  # noqa: S603 - argv nosso
         if not alvo.exists():
-            raise RuntimeError(f"a pele {nome!r} não mediu: o subprocesso morreu antes de gravar {alvo}")
+            raise RuntimeError(
+                f"a pele {nome!r} não mediu: o subprocesso morreu antes de gravar {alvo}")
         medidas.append(json.loads(alvo.read_text(encoding="utf-8")))
         alvo.unlink()
     relatorio = {
@@ -186,7 +402,7 @@ def medir(saida: Path, *, pdf: Path | None = None, sabotar: str = "",
         "teto": list(TETO),
         "sabotagem": sabotar,
         "medidas": medidas,
-        "passou": all(m["cabe"] for m in medidas),
+        "passou": all(m["cabe"] and m["a_vista"] for m in medidas),
     }
     marca = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     nome = f"minimo{'_sabotado_' + sabotar if sabotar else ''}_{marca}.json"
@@ -204,7 +420,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json-da-pele", type=Path, default=None, help="(interno)")
     args = parser.parse_args(argv)
     if args.pele:
-        medida = medir_uma_pele(args.pele, pdf=args.pdf, sabotar=args.sabotar, caminho_do_tronco=args.tronco)
+        medida = medir_uma_pele(args.pele, pdf=args.pdf, sabotar=args.sabotar,
+                                caminho_do_tronco=args.tronco)
         destino = args.json_da_pele or Path(f"_minimo_{args.pele}.json")
         destino.write_text(json.dumps(medida, indent=2, ensure_ascii=False), encoding="utf-8")
         sys.stdout.flush()
@@ -219,15 +436,36 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:  # noqa: BLE001 - a medida já foi gravada; sair é o que resta
             pass
         os._exit(0)   # ver `medir_uma_pele`: a janela fica montada até o processo acabar
-    relatorio = medir(args.saida, pdf=args.pdf, sabotar=args.sabotar, caminho_do_tronco=args.tronco)
+    relatorio = medir(args.saida, pdf=args.pdf, sabotar=args.sabotar,
+                      caminho_do_tronco=args.tronco)
     for medida in relatorio["medidas"]:
-        largura, altura = medida["minimo"]
-        print(f"  {medida['pele']:<10} mínimo {largura}×{altura} "
-              f"({'cabe' if medida['cabe'] else 'NÃO cabe'} em {TETO[0]}×{TETO[1]})")
-        for motor in medida["motores"][:4]:
-            print(f"      {motor['minimo'][0]}×{motor['minimo'][1]}  {motor['cadeia']}  {motor['texto']!r}")
+        _imprimir(medida)
     print("PASSOU" if relatorio["passou"] else "REPROVOU")
     return 0 if relatorio["passou"] else 1
+
+
+def _imprimir(medida: dict[str, Any]) -> None:
+    largura, altura = medida["minimo"]
+    print(f"  {medida['pele']:<10} mínimo {largura}×{altura} "
+          f"({'cabe' if medida['cabe'] else 'NÃO cabe'} em {TETO[0]}×{TETO[1]})")
+    for motor in medida["motores"][:4]:
+        w, h = motor["minimo"]
+        print(f"      {w}×{h}  {motor['cadeia']}  {motor['texto']!r}")
+    for vista in medida["vistas"]:
+        largura, altura = vista["tamanho"]
+        print(f"    a {largura}×{altura}: {len(vista['fora_sem_barra'])} fora da vista sem barra, "
+              f"{len(vista['espremidos'])} espremidos, "
+              f"{vista['alcancaveis_pela_barra']} alcançáveis pela barra")
+        for item in (vista["fora_sem_barra"] + vista["espremidos"])[:6]:
+            print(f"      [{item['area']}] {item['tipo']} {item['texto']!r} "
+                  f"{item['largura']}/{item['minimo']} px ({item['cadeia']})")
+    for rodape in medida["rodape"]:
+        largura, altura = rodape["tamanho"]
+        print(f"    rodapé a {largura}×{altura}: mensagem {rodape['mensagem_px']} px "
+              f"(mínimo {MENSAGEM_LEGIVEL}), documento {rodape['documento_px']} px, "
+              f"barra {rodape['barra_px']} px, {len(rodape['espremidos'])} botões espremidos")
+        for item in rodape["espremidos"]:
+            print(f"      {item['tipo']} {item['texto']!r} {item['largura']}/{item['minimo']} px")
 
 
 if __name__ == "__main__":

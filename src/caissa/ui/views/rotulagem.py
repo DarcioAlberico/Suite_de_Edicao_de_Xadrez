@@ -114,6 +114,7 @@ from caissa.ocr.training import (
 from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
+from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
 __all__ = [
@@ -435,21 +436,24 @@ class PainelDeRotulagem(QWidget):
     def _montar(self) -> None:  # noqa: PLR0915 - one widget tree, top to bottom
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(4, 4, 4, 4)
-        # Two rows: the pane the trunk gives a tab is ~800 px wide, and one
-        # row of everything was measured truncating every button label.
-        linha1 = QHBoxLayout()
-        raiz.addLayout(linha1)
-        barra = QHBoxLayout()
-        raiz.addLayout(barra)
+        # Two fluid rows (C18, crítico da fase 5): the pane the trunk gives a tab
+        # is ~800 px wide and one row of everything truncated every label; two
+        # `QHBoxLayout` rows still summed more than the tab has with the window
+        # at its minimum of 1248x640, and Qt squeezed fifteen controls under
+        # their text («Adicionar PDF…» at 57 of 107 px).  Fluid rows wrap.
+        linha1 = FileiraFluida(self)
+        raiz.addWidget(linha1)
+        barra = FileiraFluida(self)
+        raiz.addWidget(barra)
 
         def botao(
-            texto: str, acao: Callable[[], Any], *, dica: str = "", em: QHBoxLayout | None = None
+            texto: str, acao: Callable[[], Any], *, dica: str = "", em: FileiraFluida | None = None
         ) -> QPushButton:
             b = QPushButton(texto, self)
             b.clicked.connect(lambda _c=False: acao())
             if dica:
                 b.setToolTip(dica)
-            (em if em is not None else barra).addWidget(b)
+            (em if em is not None else barra).adicionar(b)
             return b
 
         botao("Adicionar PDF…", self.add_pdf, em=linha1)
@@ -461,7 +465,7 @@ class PainelDeRotulagem(QWidget):
         self.doc_box.addItems(sorted(self.project.documents))
         self.doc_box.setAccessibleName("Documento aberto")
         self.doc_box.activated.connect(lambda _i: self._select_document(self.doc_box.currentText()))
-        linha1.addWidget(self.doc_box, 1)
+        linha1.adicionar(self.doc_box)
         b = botao(
             "◀",
             lambda: self.go_page(self.page_index - 1),
@@ -480,9 +484,9 @@ class PainelDeRotulagem(QWidget):
             lambda: self.page_spin.value() != self.page_index
             and self.go_page(self.page_spin.value())
         )
-        linha1.addWidget(self.page_spin)
+        linha1.adicionar(self.page_spin)
         self.page_total = QLabel("/ 0", self)
-        linha1.addWidget(self.page_total)
+        linha1.adicionar(self.page_total)
         b = botao(
             "▶",
             lambda: self.go_page(self.page_index + 1),
@@ -509,7 +513,7 @@ class PainelDeRotulagem(QWidget):
         menu.addAction("Idioma do documento = caixa «idioma»", self.apply_language)
         menu.addAction("Resumo do projeto", self.show_summary)
         exportar.setMenu(menu)
-        linha1.addWidget(exportar)
+        linha1.adicionar(exportar)
         botao("Medir no livro…", self.open_measure, em=linha1)
         botao("Treinar…", self.open_training, em=linha1)
         self.queue_button = botao(
@@ -518,21 +522,21 @@ class PainelDeRotulagem(QWidget):
             dica="Pontua uma amostra do livro pelo que um rótulo mudaria e abre a lista; "
             "clicar de novo durante a pontuação cancela",
         )
-        barra.addWidget(QLabel("DPI", self))
+        barra.adicionar(QLabel("DPI", self))
         self.dpi_spin = QSpinBox(self)
         self.dpi_spin.setAccessibleName("Resolução do reconhecimento")
         self.dpi_spin.setRange(150, 600)
         self.dpi_spin.setSingleStep(50)
         self.dpi_spin.setValue(300)
-        barra.addWidget(self.dpi_spin)
-        barra.addWidget(QLabel("idioma", self))
+        barra.adicionar(self.dpi_spin)
+        barra.adicionar(QLabel("idioma", self))
         self.lang_box = QComboBox(self)
         self.lang_box.setEditable(True)
         self.lang_box.addItems(LANGS)
         self.lang_box.setAccessibleName("Idioma do reconhecimento")
         if self.lang_box.lineEdit() is not None:
             self.lang_box.lineEdit().setAccessibleName("Idioma do reconhecimento, escrito")
-        barra.addWidget(self.lang_box)
+        barra.adicionar(self.lang_box)
         botao(
             "Reconhecer (F5)",
             self.recognise_page,
@@ -541,13 +545,12 @@ class PainelDeRotulagem(QWidget):
         self.draw_button = botao("Desenhar região (D)", self.toggle_drawing)
         self.only_doubtful = QCheckBox("só duvidosas", self)
         self.only_doubtful.toggled.connect(lambda _v: self._fill_table())
-        barra.addWidget(self.only_doubtful)
+        barra.adicionar(self.only_doubtful)
         botao(
             "Aceitar confiáveis",
             lambda: self.accept_confident(),
             dica="Aceita toda linha da página sem palavra fraca nem candidato discordante",
         )
-        barra.addStretch(1)
 
         # Page above, line below: the pane is narrow and tall, so a side-by-side
         # split left the page 180 px wide.

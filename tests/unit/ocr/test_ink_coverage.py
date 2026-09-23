@@ -167,6 +167,17 @@ def test_the_diagram_boxes_the_caller_names_are_left_out() -> None:
     assert ink_coverage(reading(lines[:4]), without_last_lines) == pytest.approx(1.0, abs=0.03)
 
 
+def test_a_scanner_frame_around_the_page_is_not_a_thing_on_it() -> None:
+    """Kmoch (1936), crítico da fase 5: the dark border a scanner leaves around the page is one
+    component the size of the page, and as a «big thing» it took every letter inside it -- 0
+    letters instead of ~1.000.  A box that takes half the image is the page's frame."""
+    page, _lines = draw_page()
+    framed = cv2.copyMakeBorder(page, 12, 12, 12, 12, cv2.BORDER_CONSTANT, value=40)
+    assert ink_map(framed, 300.0).count == ink_map(page, 300.0).count > 100
+    # the sabotage: without the exception for the frame, the border swallows the page
+    assert ink_map(framed, 300.0, config=CoverageConfig(frame_area_share=1.01)).count == 0
+
+
 def test_too_few_letters_say_nothing() -> None:
     page = np.full((120, 400), 255, np.uint8)
     cv2.putText(page, "17", (20, 80), FONT, 1.0, 0, 2)
@@ -266,3 +277,44 @@ def test_an_accepted_but_partial_reading_asks_for_the_variants() -> None:
     assert service._wants_variants(outcome, coverage=0.30) is True
     assert service._wants_variants(outcome, coverage=0.97) is False
     assert service._wants_variants(outcome) is False
+
+
+class _Engine:
+    """An engine that returns a fixed reading, as Tesseract would."""
+
+    name = "tesseract"
+
+    def __init__(self, result: OcrResult) -> None:
+        self.result = result
+
+    def capabilities(self):
+        from caissa.ocr.engines.base import EngineCapabilities, EngineLevel
+
+        return EngineCapabilities(level=EngineLevel.TESSERACT, cost_per_megapixel_s=1.0,
+                                  supports_char_boxes=False, supports_confidence=True)
+
+    def available(self) -> bool:
+        return True
+
+    def supports_language(self, lang: str) -> bool:
+        return True
+
+    def unavailable_reason(self) -> str:
+        return ""
+
+    def recognize(self, image, *, lang="por", psm_hint=RegionKind.PARAGRAPH) -> OcrResult:
+        return self.result
+
+
+def test_a_region_the_measure_cannot_judge_is_said_in_the_trace() -> None:
+    """Crítico da fase 5: a region the measure cannot judge (too few letters, or ink the rules
+    left out) went on as if it had passed.  The trace now says so."""
+    page = np.full((200, 600), 255, np.uint8)
+    cv2.putText(page, "ab", (40, 100), FONT, 1.0, 0, 2, cv2.LINE_AA)
+    word = OcrWord(text="ab", box=BBox(40, 80, 40, 30), confidence=0.95, block_index=1)
+    result = OcrResult(engine="tesseract", lang="eng",
+                       lines=(OcrLine(words=(word,), box=word.box, block_index=1),),
+                       region_kind=RegionKind.PAGE, duration_s=0.1, meta={"psm": 3})
+    service = OcrService([_Engine(result)], config=OcrServiceConfig(**QUIET))
+    notes = service.recognize_image(page, dpi=300.0, lang="eng").trace().get("notes", [])
+    assert any("cobertura da tinta não medida" in note for note in notes)

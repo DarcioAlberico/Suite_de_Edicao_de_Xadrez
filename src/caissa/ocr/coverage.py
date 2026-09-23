@@ -36,7 +36,10 @@ What is text ink, and why each rule (each was measured on a failure):
 4.  **Not inside a big thing**: everything inside the box of a component far
     taller than a line — a board's frame and its pieces, a figure — is not the
     region's text; nor is what lies in the boxes the caller names (the
-    diagrams the importer located).
+    diagrams the importer located).  A component whose box takes half the
+    image or more is the **scanner's frame** around the page, not a figure: the
+    phase's critic measured the Kmoch (1936) pp. 40, 44 and 48 at 0 letters
+    with the dark border and 995–1.162 without it.
 
 A region with fewer than :attr:`CoverageConfig.min_components` letters says
 nothing (``None``): a folio, a caption of two words.
@@ -92,6 +95,9 @@ class CoverageConfig:
     #: thing" (a board, a figure): it is not a letter, and what lies inside its
     #: box is not the region's text.
     big_rel_height: float = 4.0
+    #: ...unless its box takes at least this share of the image: that is the
+    #: dark border a scanner leaves around the page, and inside it is the page.
+    frame_area_share: float = 0.5
     #: A word box is padded by this share of its height before the ink under
     #: it is counted: accents, dots and the tail of a comma sit just outside.
     pad: float = 0.35
@@ -163,8 +169,10 @@ def ink_map(gray: NDArray[np.uint8] | None, dpi: float, *,
     if int(letters.sum()) < 3:
         return _EMPTY
     median = float(np.median(h[letters]))
-    # (4) what is inside a big thing is not text
-    big = h > cfg.big_rel_height * median
+    # (4) what is inside a big thing is not text -- but a frame around the page
+    # is not a thing on it
+    frame = (w * h) >= cfg.frame_area_share * float(gray.shape[0] * gray.shape[1])
+    big = (h > cfg.big_rel_height * median) & ~frame
     holes = [BBox(float(x[i]), float(y[i]), float(w[i]), float(h[i])) for i in np.flatnonzero(big)]
     # (3) in a line of text: smear the letters horizontally and keep the runs
     # that are lines -- wide, and no taller than a line
