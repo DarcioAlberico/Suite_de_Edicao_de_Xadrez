@@ -26,18 +26,24 @@
 > `4fc0f4d`, e este relatório fechado). As medições do ciclo 2 correram com a fila de A/B, a população do B14 e os testes do
 > tronco em paralelo: os tempos carregam a contenção, os CER e as decisões não (a fila refeita dá
 > os 747 itens da primeira, item a item).
+>
+> **Ciclo 3 do crítico** (§0.5). O ciclo 2 reprovou com dois bloqueantes (o B13 intercalando as
+> duas colunas de um índice real sem prosa, e a reserva da mensagem do rodapé esvaziando as zonas
+> de dispositivos e de ocupação); os consertos estão no tronco `885149d` e na suíte `3ff1830` (código e
+> testes) e no seguinte (a fila de A/B e o `sol.json` medidos no `3ff1830`, a evidência e este
+> relatório fechado).
 
 ## §0 — Em uma tela (o que o usuário passa a ter)
 
 | antes | depois | portão | passo |
 |---|---|---|---|
-| uma tabela a 150 DPI e a lista de lances de duas colunas saíam **por coluna** — todos os nomes, depois todos os lugares; todos os lances das brancas, depois os das pretas —, com 100 % dos caracteres certos e CER 0,47–0,68 | os blocos do Tesseract lado a lado cujas linhas casam são lidos **por linha**, dentro da coluna da página e nunca através da calha — e, desde o ciclo 1 do crítico, nunca juntando prosa (contada por palavras), duas numerações de lance, os dois lados de uma calha com prosa de um deles, nem dois blocos com uma palavra de fora entre eles | `bench_sol`: `scan_degraded_150` CER **0,0224 → 0,0094** — o portão absoluto de 150 DPI do Sol, vermelho desde a fase 1, **verde**; `table:2/4/7` 0,465/0,640/0,676 → 0,0035/0,0036/0; nativos do Dvoretsky 0,590/0,381/0,347 → 0,051/0/0; `two-column` idêntico; 7 itens mudam, nenhum para pior (a regra final dá os 747 itens da primeira); páginas reais: a Gallagher de colunas estreitas, que a primeira regra levava de 0,2732 a **0,7042** pelo importador, vai a **0,2028**, e as pp. 51–53 ficam idênticas; Levenfis 15/17, Estrin 7/8, Stefaniu 8/8, Kmoch 5/5 idênticas, as outras com a lista de lances por linha ou ruído de diagrama reordenado; sabotagem `table_rows=false` → os números da fase 4 | B13 |
+| uma tabela a 150 DPI e a lista de lances de duas colunas saíam **por coluna** — todos os nomes, depois todos os lugares; todos os lances das brancas, depois os das pretas —, com 100 % dos caracteres certos e CER 0,47–0,68 | os blocos do Tesseract lado a lado cujas linhas casam são lidos **por linha**, dentro da coluna da página e nunca através da calha — e, desde os ciclos 1 e 2 do crítico, nunca juntando prosa (por palavras, quando as linhas continuam a frase) nem notas de variantes, duas numerações de lance, os dois lados da calha da página (com prosa de um lado ou em faixas de largura comparável: só uma lista de lances a cruza), nem dois blocos com uma palavra de fora entre eles | `bench_sol`: `scan_degraded_150` CER **0,0224 → 0,0094** — o portão absoluto de 150 DPI do Sol, vermelho desde a fase 1, **verde**; `table:2/4/7` 0,465/0,640/0,676 → 0,0035/0,0036/0; nativos do Dvoretsky 0,590/0,381/0,347 → 0,051/0/0; `two-column` idêntico; 7 itens mudam, nenhum para pior (a regra final dá os 747 itens da primeira); páginas reais: a Gallagher de colunas estreitas, que a primeira regra levava de 0,2732 a **0,7042** pelo importador, vai a **0,2028**, e as pp. 51–53 ficam idênticas; o índice da Karpov 2 p. 268, que a regra do ciclo 2 intercalava (0,76), sai idêntico ao desligado; 280 páginas reais varridas (a Gallagher inteira e as páginas finais de nove livros), 43 mudando; Levenfis 15/17, Estrin 7/8, Stefaniu 8/8, Kmoch 5/5 idênticas, as outras com a lista de lances por linha ou ruído de diagrama reordenado; sabotagem `table_rows=false` → os números da fase 4 | B13 |
 | a leitura que perdia o fim de toda linha, ou linhas inteiras, saía **aceita** (a foto `synth:Dvoretsky…:201:21` aceita a 0,872 com CER 0,786), e as variantes que a leriam não rodavam | a fração das letras da região sob as palavras lidas (`ocr/coverage.py`): abaixo de 0,90 as variantes rodam mesmo com o original aceito, a leitura incompleta não ancora, e nunca sai `ACCEPTED`; a moldura escura do scanner não cega a medida, e a região que ela não julga é dita no rastro | aceitos com CER > 0,10 **30 → 7** (nenhum estrato sobe, nenhum entra): 18 lidos inteiros pela variante, 5 para a revisão; `photo` CER **0,0983 → 0,0207**; 27 itens mudam, nenhum para pior; população real pelo importador — 429 regiões de três livros do construtor e 95 de oito livros do crítico — sem sinalizar leitura boa; a Kmoch com moldura, de 0 letras a 1.058; piso ajustado só na `calib`, o desempate dito; sabotagem `ink_coverage=false` → os 30 | B14 |
 | o fax a 0,0382 pelo instrumento honesto da fase 4 | absorvido pelo B14, sem rota própria | `fax_dither` **0,0382 → 0,0249** (≤ 0,0312) | B15 |
 | o nível 0, o leiaute por página e o índice de busca liam a camada de texto com as ligaduras (`ﬁ`: 19 nas pp. 6–10 do Polgar) | as bandeiras do PyMuPDF sem `TEXT_PRESERVE_LIGATURES` nos três leitores — a caixa por caractere dividida junto | 19 → **0** nos três; `½ ² №` ficam; sabotagem (bandeiras antigas) → a ligadura volta | A14 |
 | a decisão do `.pt` (§10.2) comparava modelos num gate fixo — duas escalas de confiança | a curva risco × cobertura do campo para 15 checkpoints, e o máximo de exatos exportados com ≤ 0/1/2 errados | a produção reproduz o `field_exact` publicado (103 exportados, 102 exatos) e, com zero errados, exporta **74** (portão 0,998) — o «≤ k errados» calculado em todo valor distinto de confiança; sabotagem (rótulos embaralhados sobre as mesmas linhas) → AURC pior em todo modelo e a ordem dos modelos a tau +0,31 | C17 |
-| com as áreas visitadas e um livro, a janela pedia **1538×659** lógicos — a barra de anotação somava 810 px e uma frase do rodapé pedia 1.246 | rodapé elidido (a frase inteira na dica) com 480 px garantidos à mensagem, barra do campo fluida, os modos da aba Livro e o cartão da Revisão de texto em rolagem **com barra quando precisa**, e as fileiras de botões que descem de linha (Revisão de texto, cartão, Rotulagem, navegação da Galeria) | `caissa.ui.audit.minimo`: Clássica 1248×606, Foco **1248×640**, Fita 1246×629 ≤ 1250×640, com e sem livro, **e à vista** no mínimo e a 1366×728 — nenhum controle fora da vista sem barra, nenhum espremido, a mensagem com 480 px ao lado do nome de 149 caracteres e com a linha do rodapé cheia: PASSOU; as quatro sabotagens (rodapé em `QLabel` → 2208 px; rolagens sem barra; mensagem sem piso → 0 px; o botão das mensagens com o piso de 1 px → 1/82 px) REPROVARAM; teclado PASSOU | C18 |
-| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais, e sem as três brechas que o crítico construiu), a afirmação do arnês num processo novo (e o import quebrado dito como quebrado), os quatro relatórios de campo remedidos no commit | suíte: **4.020 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida; tronco numa árvore limpa: 4.787 passaram e o único reprovado é o do ambiente, por construção da árvore efêmera; `ImpressaoDaMedicaoTests` **sem `--deselect`**; `AccentTests` verde | A15 |
+| com as áreas visitadas e um livro, a janela pedia **1538×659** lógicos — a barra de anotação somava 810 px e uma frase do rodapé pedia 1.246 | rodapé elidido (a frase inteira na dica) com 480 px garantidos à mensagem, barra do campo fluida, os modos da aba Livro e o cartão da Revisão de texto em rolagem **com barra quando precisa**, e as fileiras de botões que descem de linha (Revisão de texto, cartão, Rotulagem, navegação da Galeria) | `caissa.ui.audit.minimo`: Clássica 1248×606, Foco **1248×640**, Fita 1246×629 ≤ 1250×640, com e sem livro, **e à vista** no mínimo e a 1366×728 — nenhum controle fora da vista sem barra, nenhum espremido, as **quatro zonas** do rodapé à vista com a linha cheia, para o nome mais longo e um comum (mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px no mínimo): PASSOU; as cinco sabotagens (rodapé em `QLabel` → 3318 px; rolagens sem barra; mensagem sem piso → 0 px; o botão das mensagens com o piso de 1 px → 1/82 px; a reserva do ciclo 2 → dispositivos e ocupação com 0 px) REPROVARAM; teclado PASSOU; as ações da Revisão de texto à vista a 1280×641 | C18 |
+| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais, e sem as seis brechas que o crítico construiu nos ciclos 1 e 2), a afirmação do arnês num processo novo (e o import quebrado dito como quebrado), os quatro relatórios de campo remedidos no commit | suíte: **4.025 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida; tronco numa árvore limpa: 4.790 passaram e o único reprovado é o do ambiente, por construção da árvore efêmera; `ImpressaoDaMedicaoTests` **sem `--deselect`**; `AccentTests` verde | A15 |
 
 ### 0.1 O que a medição mudou no desenho (as armadilhas, cada uma medida)
 
@@ -109,15 +115,17 @@
 
 | invariante / portão | resultado | comando |
 |---|---|---|
-| fila final de A/B do `bench_sol` no código final (6 estratos, 747 itens, quatro corridas em sequência, cada uma com o `SOL_CONFIG` dos **dois** interruptores; commit de base `f9ca678` + a árvore da fase) | `f5_on` (os dois ligados), `f5_b13_off`, `f5_b14_off`, `f5_before` (os dois desligados): o `f5_before` reproduz o `sol.json` da fase 4 **item a item** (diferença pareada 0 em todos os estratos e leiautes, os mesmos 30 aceitos errados, os mesmos portões) — os dois interruptores explicam toda a diferença, e o A14 não toca o corpus; 11–13 min por corrida. **Ciclo 2:** a fila refeita no código final (`scratchpad/bench_f5c2.sh`: `f5c2_on`, `f5c2_b13_off`, `f5c2_b14_off`, mesmo comando e os mesmos interruptores) dá os 747 itens **idênticos** aos da primeira, corrida a corrida (`f5c2_on` = `f5_on`, `f5c2_b13_off` = `f5_b13_off`, `f5c2_b14_off` = `f5_b14_off`, em CER e decisão): a regra nova do B13 e a moldura do B14 não mudam nenhum item do corpus — o que mudam está nas páginas reais. Evidência versionada: `docs/quality/sol/f5_ab.json` (por item, o CER e a decisão das cinco corridas; o resumo e os portões de cada uma) | `scratchpad/bench_f5c.sh` (`CAISSA_FIGURINE_TESSDATA=models\tessdata`, `SOL_CONFIG='{"table_rows": …, "ink_coverage": …}' .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither,photo --label <corrida>`); comparação `scratchpad/cmp_f5.py` |
+| fila final de A/B do `bench_sol` no código final (6 estratos, 747 itens, quatro corridas em sequência, cada uma com o `SOL_CONFIG` dos **dois** interruptores; commit de base `f9ca678` + a árvore da fase) | `f5_on` (os dois ligados), `f5_b13_off`, `f5_b14_off`, `f5_before` (os dois desligados): o `f5_before` reproduz o `sol.json` da fase 4 **item a item** (diferença pareada 0 em todos os estratos e leiautes, os mesmos 30 aceitos errados, os mesmos portões) — os dois interruptores explicam toda a diferença, e o A14 não toca o corpus; 11–13 min por corrida. **Ciclo 2:** a fila refeita no código final (`scratchpad/bench_f5c2.sh`: `f5c2_on`, `f5c2_b13_off`, `f5c2_b14_off`, mesmo comando e os mesmos interruptores) dá os 747 itens **idênticos** aos da primeira, corrida a corrida (`f5c2_on` = `f5_on`, `f5c2_b13_off` = `f5_b13_off`, `f5c2_b14_off` = `f5_b14_off`, em CER e decisão): a regra nova do B13 e a moldura do B14 não mudam nenhum item do corpus — o que mudam está nas páginas reais. Evidência versionada: `docs/quality/sol/f5_ab.json` (por item, o CER, a decisão e o `answered` de cada corrida -- a média de cada estrato se refaz dos itens --; o resumo, os portões, o commit e o código não commitado de cada uma). **Ciclo 3:** a fila refeita no commit do código do ciclo 3 (`3ff1830`, `dirty_code` vazio; `scratchpad/bench_f5c3.sh`, as três corridas em paralelo) dá os 747 itens idênticos aos dos ciclos 1 e 2, em CER, decisão e texto | `scratchpad/bench_f5c.sh` (`CAISSA_FIGURINE_TESSDATA=models\tessdata`, `SOL_CONFIG='{"table_rows": …, "ink_coverage": …}' .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither,photo --label <corrida>`); comparação `scratchpad/cmp_f5.py` |
 | portões do Sol em `f5_on` | silenciosas **0**, controles **0/9**, ordem **1,0000**, ambiente reproduz; CER 150 DPI **0,0094 ≤ 0,020 ✓** (vermelho desde a fase 1); CER limpo 0,0113, lances 0,9164, inventados 157 — vermelhos (§0.3) | o próprio `bench_sol` |
-| B13 em página real (regra final, ciclo 2) | Levenfis pp. 36–52 **15 de 17** idênticas, Estrin pp. 20–27 7 de 8, Stefaniu pp. 40–47 8 de 8, Kmoch pp. 28, 40, 44, 48 e 68 5 de 5, Gallagher pp. 48–55 7 de 8 (a p. 50 com a lista de lances por linha); pelo importador, a Gallagher pp. 50–53: p. 50 CER 0,2732 → **0,2028** contra a transcrição do crítico, pp. 51–53 idênticas; as três páginas construídas pelo crítico idênticas ao desligado; nenhum grupo atravessa a calha | `scratchpad/b13_c2_all.sh` → `b13_c2_all2.log` (`probe_b13_pages.py <pdf> <páginas> <lang>` e o `b13_importador.py` do crítico, com `CAISSA_FIGURINE_TESSDATA` fora do ambiente) |
-| B14 na população real, pelo importador (código final) | construtor: Estrin pp. 20–27 (79 regiões medidas, a menor 0,919), Levenfis pp. 40–51 (240, a menor 0,931) e Stefaniu pp. 40–51 (110, a menor **0,900**) — nenhuma das 429 sinalizada. As contagens diferem das 504 do ciclo 1 em dois lugares, nenhum desta regra: a Estrin do ciclo 1 foi medida com o classificador de diagramas indisponível (a `CAISSA_FIGURINE_TESSDATA` no ambiente, que o importador recusa — o log daquela corrida diz isso); e a p. 49 do Stefaniu saiu então em 83 regiões do tamanho de uma linha e sai hoje em 9 de parágrafo — também com o código do ciclo 1 (`99546e9`, numa árvore limpa), então a diferença não é da regra; a causa não foi achada; crítico (a sonda `b14_populacao.py` dele, os mesmos oito livros e páginas do ciclo 1): 95 regiões medidas, 6 sinalizadas — todas já em revisão ou abstenção, 5 delas ruído lido dentro de diagrama (Reinfeld ×3, Karpov, Vladimirov) e a Gallagher p. 50 (0,896, a página de colunas estreitas, CER 0,20); nenhuma leitura boa sinalizada. Kmoch com a moldura do scanner, rasterizada a 300 DPI: 0 → 1.058/1.162/995 letras, 55 regiões medidas, nenhuma sinalizada (a menor 0,953) | `scratchpad/b14_final.sh` (`b14_moldura_final.py` e `…\_critico_f5\b14_populacao.py`) |
+| B13 em página real (ciclo 3: a regra final, com as varreduras do crítico) | **280 páginas** (a Gallagher inteira, 176, e as páginas finais de nove livros raster, 104): 43 mudam (ciclo 2: 46), e a leitura ligada é a do ciclo 2 em 275 -- as pp. 267, 268, 270 e 271 da Karpov 2 (índice) passam a idênticas ao desligado, e a Levenfis p. 302 (sumário) passa a ler cada título com a sua página; a Karpov 2 p. 268 pelo importador, idêntica ao desligado | `scratchpad/c3/varre.sh` (`…\_critico_f5\c2\b13_varredura.py`, quatro filas), `cmp_varre.py` |
+| B13 em página real (ciclo 2) | Levenfis pp. 36–52 **15 de 17** idênticas, Estrin pp. 20–27 7 de 8, Stefaniu pp. 40–47 8 de 8, Kmoch pp. 28, 40, 44, 48 e 68 5 de 5, Gallagher pp. 48–55 7 de 8 (a p. 50 com a lista de lances por linha); pelo importador, a Gallagher pp. 50–53: p. 50 CER 0,2732 → **0,2028** contra a transcrição do crítico, pp. 51–53 idênticas; as três páginas construídas pelo crítico idênticas ao desligado; nenhum grupo atravessa a calha | `scratchpad/b13_c2_all.sh` → `b13_c2_all2.log` (`probe_b13_pages.py <pdf> <páginas> <lang>` e o `b13_importador.py` do crítico, com `CAISSA_FIGURINE_TESSDATA` fora do ambiente) |
+| B14 na população real, pelo importador (código final) | construtor: Estrin pp. 20–27 (79 regiões medidas, a menor 0,919), Levenfis pp. 40–51 (240, a menor 0,931) e Stefaniu pp. 40–51 (110, a menor **0,900**) — nenhuma das 429 sinalizada. As contagens diferem das 504 do ciclo 1 em dois lugares: a Estrin do ciclo 1 foi medida com o classificador de diagramas indisponível (a `CAISSA_FIGURINE_TESSDATA` no ambiente, que o importador recusa — o log daquela corrida diz isso); e a p. 49 do Stefaniu saiu então em 83 regiões do tamanho de uma linha e sai hoje em 9 de parágrafo — a corrida de 04:15 mediu um `rows.py` intermediário, anterior ao commit do ciclo 1 (o log dela registra 96 regiões fundidas no Stefaniu), e o código commitado, o do ciclo 1 (`99546e9`) e o final, dá 9: as 83 eram daquela regra, e o número do ciclo 1 não se refaz com código commitado (crítico, ciclo 2); crítico (a sonda `b14_populacao.py` dele, os mesmos oito livros e páginas do ciclo 1): 95 regiões medidas, 6 sinalizadas — todas já em revisão ou abstenção, 5 delas ruído lido dentro de diagrama (Reinfeld ×3, Karpov, Vladimirov) e a Gallagher p. 50 (0,896, a página de colunas estreitas, CER 0,20); nenhuma leitura boa sinalizada. Kmoch com a moldura do scanner, rasterizada a 300 DPI: 0 → 1.058/1.162/995 letras, 55 regiões medidas, nenhuma sinalizada (a menor 0,953) | `scratchpad/b14_final.sh` (`b14_moldura_final.py` e `…\_critico_f5\b14_populacao.py`) |
 | C17 régua do campo | 15 checkpoints × 3 execuções, linhas idênticas nas três; produção 103/1 no gate = `field_exact`; com zero errados, 74; sabotagem tau +0,31. Evidência versionada: `docs/quality/campo/f5_c17_regua.json` (as linhas por diagrama, o resumo e a sabotagem) | `benchmarks\model_ruler.py --runs 3 --tag f5_c17`; ciclo 2: `--linhas-de …_f5_c17.json --tag f5_c17_c2` e `--sabotar embaralhar --linhas-de …` |
-| `sol.json` publicado no commit da fase | ciclo 2: republicado sobre o **`4fc0f4d`**, sem `SOL_CONFIG`: os 747 itens idênticos aos do `sol.json` do ciclo 1 e aos da `f5c2_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 698 s. Ciclo 1: `bb41c55`, sem `SOL_CONFIG`: 747 itens idênticos aos da `f5_on`; `sol_gate --report-only` sem regressão fora do IC; os três absolutos do §0.3 bloqueados, o de 150 DPI verde (§A15) | `bench_sol … --label sol --publish`; `sol_gate.py --report-only docs\quality\sol\sol.json` |
-| C18 mínimo da janela e o que fica à vista | PASSOU com e sem livro (1248×606 / 1248×640 / 1246×629; 0 fora da vista sem barra e 0 espremidos no mínimo e a 1366×728; a mensagem com 480 px e o nome com 418–554 px, com a linha cheia); as sabotagens `aperto`, `rodape`, `corte` e `mensagem` REPROVARAM; duas corridas completas iguais, nenhuma morte (§0.1); teclado da Foco a 1280×800 e 1248×640 PASSOU em toda área (Revisão de texto 50/50, Rotulagem 65/65, Galeria 57/57) | `scratchpad/minimo_c2d.sh` (`caissa.ui.audit.minimo --tronco <árvore> [--pdf …1937 Kemeri.pdf] [--sabotar S]`, uma saída por corrida); `teclado_c2.sh` (`caissa.ui.audit.teclado --pele foco --pdf … --largura L --altura A`) |
-| testes da suíte (com PyQt6, **com** `test_arquitetura.py` na mesma corrida) | ciclo 2: **4.020 passaram, 9 pulados, 0 reprovaram** em 789 s (`suite_tests_c2.out`; ciclo 1: 4.004 + 9) — nenhuma exceção | `PYTHONPATH=.venv-pack\Lib\site-packages QT_QPA_PLATFORM=offscreen .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` |
-| testes do tronco (sem `--deselect`, numa árvore limpa do `8243e90` com os arquivos do ciclo 2) | ciclo 2: **4.787 passaram, 15 pulados, 8 xfail, 1 reprovou** em 746 s (`trunk_tests_c2.out`; ciclo 1: 4.781 passaram em 523 s): o reprovado é `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore`, **por construção** na árvore efêmera (ela usa o `.venv` do checkout principal, cuja instalação editável aponta para lá — a mensagem diz isso); os 11 pulados a mais que no checkout principal pedem artefatos fora do git (PDFs, modelos). No checkout principal, `test_environment.py` e `ImpressaoDaMedicaoTests` **17/17** — o `ImpressaoDaMedicaoTests` sem `--deselect` pela primeira vez desde a fase 2. A suíte inteira do tronco não foi rodada no checkout principal para o portão: ele tinha o trabalho em andamento de outra sessão | `cd <árvore> && PYTHONPATH=<árvore>\src QT_QPA_PLATFORM=offscreen ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider`; no checkout principal `…pytest tests/test_environment.py tests/test_field_eval.py::ImpressaoDaMedicaoTests` |
+| `sol.json` publicado no commit da fase | ciclo 3: republicado sobre o **`3ff1830`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos do `sol.json` do ciclo 2 e aos da `f5c3_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 741 s. Ciclo 2: republicado sobre o **`4fc0f4d`**, sem `SOL_CONFIG`: os 747 itens idênticos aos do `sol.json` do ciclo 1 e aos da `f5c2_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 698 s. Ciclo 1: `bb41c55`, sem `SOL_CONFIG`: 747 itens idênticos aos da `f5_on`; `sol_gate --report-only` sem regressão fora do IC; os três absolutos do §0.3 bloqueados, o de 150 DPI verde (§A15) | `bench_sol … --label sol --publish`; `sol_gate.py --report-only docs\quality\sol\sol.json` |
+| C18, ciclo 3: as quatro zonas do rodapé | PASSOU com e sem livro (1248×606 / 1248×640 / 1246×629); no mínimo, mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, para o nome de 149 caracteres e o da Karpov 2 (58); a 1366×728 documento 390–408; as sabotagens `aperto`, `rodape` (3318 px), `corte`, `mensagem` e **`reserva`** (dispositivos e ocupação com 0 px) REPROVARAM; sete corridas, nenhuma pele morta; teclado PASSOU (Revisão de texto 50/50); a sonda do crítico sobre o acervo: dispositivos cortados em 0 dos 46 livros a 1248–1600 px (ciclo 2: 46/46/45/22); a 1280×641 as seis ações da Revisão de texto à vista nas três peles | `scratchpad/minimo_c3.sh` → `docs/quality/ui/c2_fase5/minimo*_20260923_1353*–1356*.json`; `teclado_c2.sh`; `…\_critico_f5\c2\c18_rodape_acervo.py`, `…\_critico_f5\c18_visiveis.py` |
+| C18 mínimo da janela e o que fica à vista (ciclo 2) | PASSOU com e sem livro (1248×606 / 1248×640 / 1246×629; 0 fora da vista sem barra e 0 espremidos no mínimo e a 1366×728; a mensagem com 480 px e o nome com 418–554 px, com a linha cheia); as sabotagens `aperto`, `rodape`, `corte` e `mensagem` REPROVARAM; duas corridas completas iguais, nenhuma morte (§0.1); teclado da Foco a 1280×800 e 1248×640 PASSOU em toda área (Revisão de texto 50/50, Rotulagem 65/65, Galeria 57/57) | `scratchpad/minimo_c2d.sh` (`caissa.ui.audit.minimo --tronco <árvore> [--pdf …1937 Kemeri.pdf] [--sabotar S]`, uma saída por corrida); `teclado_c2.sh` (`caissa.ui.audit.teclado --pele foco --pdf … --largura L --altura A`) |
+| testes da suíte (com PyQt6, **com** `test_arquitetura.py` na mesma corrida) | ciclo 3: **4.025 passaram, 9 pulados, 0 reprovaram** em 955 s (`suite_tests_c3.out`); ciclo 2: **4.020 passaram, 9 pulados, 0 reprovaram** em 789 s (`suite_tests_c2.out`; ciclo 1: 4.004 + 9) — nenhuma exceção | `PYTHONPATH=.venv-pack\Lib\site-packages QT_QPA_PLATFORM=offscreen .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` |
+| testes do tronco (sem `--deselect`, numa árvore limpa do `8243e90` com os arquivos dos ciclos 2 e 3) | ciclo 3: **4.790 passaram, 15 pulados, 8 xfail, 1 reprovou** em 547 s (`trunk_tests_c3.out`); ciclo 2: **4.787 passaram, 15 pulados, 8 xfail, 1 reprovou** em 746 s (`trunk_tests_c2.out`; ciclo 1: 4.781 passaram em 523 s): o reprovado é `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore`, **por construção** na árvore efêmera (ela usa o `.venv` do checkout principal, cuja instalação editável aponta para lá — a mensagem diz isso); os 11 pulados a mais que no checkout principal pedem artefatos fora do git (PDFs, modelos). No checkout principal, `test_environment.py` e `ImpressaoDaMedicaoTests` **17/17** — o `ImpressaoDaMedicaoTests` sem `--deselect` pela primeira vez desde a fase 2. A suíte inteira do tronco não foi rodada no checkout principal para o portão: ele tinha o trabalho em andamento de outra sessão | `cd <árvore> && PYTHONPATH=<árvore>\src QT_QPA_PLATFORM=offscreen ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider`; no checkout principal `…pytest tests/test_environment.py tests/test_field_eval.py::ImpressaoDaMedicaoTests` |
 | `git status --short` | só os caminhos da fase nas duas árvores; fora deles, o trabalho de outras sessões (`packaging/*` e `uv.lock` na suíte, e no ciclo 2 `docs/EDITOR_HTML_CSS_ROADMAP.md`, `docs/EDITOR_HTML_CSS_SPEC.md` e `docs/quality/EDITOR_HTML_CSS_CRITICAS.md`; no tronco, `tests/test_qt_resultado_vista_do_impresso.py` e — surgidos durante a integração — `qt/janela.py`, `qt/painel_de_texto.py`, `text/rico.py`, `ui/texto_declarado.py`, e no ciclo 2 `tests/test_qt_texto_digitacao.py` e `tests/test_texto_digitacao.py`), não tocado; os commits do ciclo 2 foram feitos por caminho | `git status --short` |
 
 ### 0.3 O que ficou vermelho ou aberto (honesto)
@@ -137,16 +145,29 @@
   1366×768 a janela continua sem caber — os pisos declarados das duas colunas somam mais que os
   1093 px lógicos (fase 4, inalterado).
 - **A folga do piso do B14 é fina em região pequena**: na população real a menor cobertura do
-  Stefaniu é 0,900 (cartões de ~20 letras), no piso e não abaixo (§B14).
+  Stefaniu é 0,900 (cartões de ~20 letras), no piso e não abaixo (§B14). E o piso é **dito, não
+  resolvido** (não bloqueante 10 do ciclo 2): a regra declarada não escolhe entre 0,8757 e 0,99, e
+  o desempate que dá 0,90 foi escrito depois de a `dev` ter sido vista.
 - **A régua do C17 não decide o `.pt`**: com uma semente por variante, a variância entre sementes é
   maior que a diferença entre variantes (§C17); a troca continua da pessoa (§10.2).
 - **O B13 reordena o ruído que o Tesseract lê dentro dos diagramas** das páginas reais (Estrin
   p. 20, e parte da Levenfis p. 40): ruído antes e depois, só em outra ordem. As pp. 36 e 39 da
   Levenfis, que só isso mudavam na primeira regra, ficam idênticas com a final.
 - **O B13 muda a leitura de linhas vizinhas ao grupo numa página rasterizada** (o não bloqueante 7
-  do crítico, que fica): a região que agrupa escolhe outra variante, e o texto corrido dela muda
-  para melhor e para pior — Levenfis p. 134 na sonda do crítico, `tipicd` → `tipică` mas
-  `1...De7` → `1...De?`. Pelo importador, na mesma página, só o ruído de um diagrama muda.
+  do ciclo 1 e o 3 do ciclo 2 do crítico, que ficam): a região que agrupa escolhe outra variante,
+  e o texto corrido dela muda para melhor e para pior — Levenfis p. 134 na sonda do crítico,
+  `tipicd` → `tipică` mas `1...De7` → `1...De?`; na Gallagher p. 41 «33 ♔d3 ♘xb5» (certo
+  desligado) → «33 ♔dd ♘8b5», e na p. 175 um lance sai da linha dele. Pelo importador, na
+  Levenfis p. 134, só o ruído de um diagrama muda.
+- **O ganho do B13 nas tabelas não generaliza para outra fonte** (não bloqueante 2 do ciclo 2): as
+  linhas do `table:2` compostas em Times, com outra semente de degradação, saem 0,6224 → 0,5280
+  (o `table:2` do corpus, em Georgia, 0,0035); o portão de 150 DPI verde se apoia em três itens de
+  tabela.
+- **A 1280×641 (o portátil-alvo maximizado) o cartão da Revisão de texto rola**: as seis ações
+  ficam à vista, mas a fileira de figurinas (8 controles) desce abaixo da dobra, e na Fita também
+  o rótulo da verdade; chega-se a elas pela barra do cartão.
+- **O portão da janela não mede altura, nem editores, listas e tabelas** (não bloqueante 5 do
+  ciclo 2): mede os controles de texto e de clique, na largura, e as quatro zonas do rodapé.
 - **O B14 sinaliza leitura ruim que já ia para a revisão** nos livros do crítico: 5 regiões de
   ruído lido em diagrama e a Gallagher p. 50 (0,896, com CER 0,20). Nenhuma leitura boa, mas o
   piso continua com folga fina (a menor da população do construtor, 0,900 no Stefaniu; §B14).
@@ -243,13 +264,96 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   região que agrupa escolhe outra variante — `tipicd` → `tipică` e `De7—a5di` → `De7—a5`, mas
   `1...De7` → `1...De?` (`scratchpad/b13_lev_raster_c2.out`); fica dito em §0.3.
 
+### 0.5 O ciclo 2 do crítico: REPROVADO com dois bloqueantes, e o que mudou
+
+O crítico refez as próprias reproduções do ciclo 1 com o código do ciclo 2 e deu os três
+bloqueantes por resolvidos nos casos dados (a Gallagher, a janela, a régua), mas reprovou por dois
+defeitos que os consertos deixavam passar ou criavam (veredito em
+`OCR_UI_ANALISE_C2_CRITICAS.md` «Fase 5», ciclo 2). O construtor não contestou nenhum.
+
+- **1. O B13 intercalava as duas colunas de um índice real** (bloqueante 1 do ciclo 2). A Karpov 2
+  (*Chess Combinations — World Champions 2*, raster) p. 268 é um índice de nomes em duas colunas
+  estreitas, sem uma linha de prosa: a regra do ciclo 2 só aceitava a calha única de
+  `find_gutters` com prosa de um dos lados, descartava a calha que ela mesma achava (672–1002 px)
+  e juntava os verbetes dois a dois — «Ragozin 24 Bennett 218», CER **0,7606** da leitura ligada
+  contra a desligada (a ordem do livro), sem aviso. A mesma classe em mais três formas: um índice
+  construído a 150 DPI (0,1824 → 0,6554), notas de variantes ao lado da lista de lances numerada
+  («Or 21 Bd6 Rg8 22 g4 Rg6 26 Re3 Bxd4», 0,0113 → 0,5845) e a fixture do próprio teste com as
+  notas trocadas por variantes e nenhum bloco de prosa. O que mudou (`rows.py`), cada regra com
+  teste e sabotagem (`test_table_rows.py`, 24 → 29):
+  1. **a calha da página vale sem prosa**: uma calha única de `find_gutters` sobre todas as linhas
+     que deixa duas faixas de **largura comparável** — a estreita com ao menos metade da larga
+     (`page_band_share`; a p. 268: 552 e 511 px) — é fronteira do grupo, com ou sem prosa;
+  2. **só uma lista de lances a cruza**, e por evidência **positiva**: os números (e os lances das
+     brancas) à esquerda, um lance por linha à direita, sem número próprio (`_numbers_column`,
+     `_move_column`) — as listas do Dvoretsky, cuja calha única deixa faixas de 0,65–0,85 uma da
+     outra, continuam lidas por linha; duas colunas da mesma forma (nome e páginas) são duas listas;
+  3. **notas de variantes são texto corrido**: um bloco em que metade das linhas tem um número de
+     lance **dentro** da linha, seguido de um lance, nunca entra num grupo nem o semeia
+     (`_notes`, `notes_share`) — é o que segura a página de notas ao lado da partida, onde as
+     faixas não são comparáveis (a lista de lances tem linhas curtas);
+  4. **prosa por palavras pede continuação**: um terço das linhas, depois da primeira, começando
+     por minúscula (`prose_continued`) — a tabela com as aberturas por extenso (4 palavras por
+     célula, o não bloqueante 1 do ciclo 2) volta a ser lida por linha: **0,4646 → 0,0113** (no
+     ciclo 2, 0,3456).
+
+  **Remedido**: a Karpov 2 p. 268 pelo importador sai **idêntica** ao desligado; as construções do
+  crítico também (o índice a 150 DPI 0,1824, as notas ao lado da lista 0,0113, sob um título de
+  largura inteira 0,0102), e as duas fixtures de notas deixam de atravessar a calha; a
+  classificação de torneio segue melhorando (0,1388 → 0,0909). As varreduras do crítico refeitas
+  com a regra final (`…\_critico_f5\c2\b13_varredura.py`, quatro filas): **280 páginas** — a
+  Gallagher inteira (176) e as páginas finais (índices, sumários, soluções) de nove livros raster
+  (104) —, **43 mudam** contra 46 no ciclo 2, e a leitura ligada é a do ciclo 2 em 275. As cinco
+  diferenças: as pp. 267, 268, 270 e 271 da Karpov 2 (índice) passam a sair idênticas ao
+  desligado, e a Levenfis p. 302 (o sumário) passa a ler cada título com a sua página
+  («Capitolul XXIII : SCOALA DE SAH RUSĂ SI SOVIETICĂ 283»; desligado, as páginas vão todas para o
+  fim) — as linhas em maiúsculas não continuam frase, e a regra 4 deixou de tomá-las por prosa.
+  A fila de A/B, refeita no commit: `f5c3_on`, `f5c3_b13_off` e `f5c3_b14_off`, no `3ff1830` com o código que mede limpo
+  (`dirty_code` vazio), dão os 747 itens idênticos aos do ciclo 2 — e aos do ciclo 1 — em CER,
+  decisão e texto: o corpus não tem índice, sumário nem nota de variante em coluna estreita, e o
+  que as regras novas mudam está nas páginas reais. E as páginas reais do ciclo 2 (Levenfis,
+  Estrin, Stefaniu, Kmoch, Gallagher pp. 48–55, a Gallagher pelo importador, os itens de tabela do
+  corpus) saem com o mesmo resumo, página a página (`scratchpad/b13_c3_all.sh`).
+- **2. O conserto da mensagem do rodapé esvaziava as zonas vizinhas** (bloqueante 2 do ciclo 2).
+  A reserva de 480 px da mensagem saía das zonas de **dispositivos** e de **ocupação**: no aperto o
+  leiaute tira de cada item não fixo a mesma parte, e as zonas curtas chegavam a 0 px antes do nome
+  do livro — dispositivos cortados em **46 dos 46** livros do acervo a 1248 e a 1366 px, a queda
+  para a CPU de novo em silêncio; e o portão passava porque só olhava a mensagem e o documento. O
+  que mudou: no tronco (`qt/rodape.py`, `qt/rotulo.py`) a reserva da mensagem é a largura da
+  frase até **320 px** (`LARGURA_DA_MENSAGEM`; ~45 caracteres, o limiar de legibilidade do portão),
+  as zonas de dispositivos e de ocupação têm o texto inteiro garantido até **240 px**
+  (`LARGURA_DA_ZONA`), e quem cede é o nome do livro, elidido no meio; os pisos são do próprio
+  rótulo elidido (`RotuloElidido(piso=…)`, o `minimumSizeHint` medido com a fonte de agora) —
+  um `setMinimumWidth` calculado quando o texto chegava media com a fonte de antes do estilo, e a
+  zona saía «peças cpu … sem pesos». Na suíte, o portão mede **as quatro zonas** com a linha cheia
+  (a frase longa, a importação com a barra, os dispositivos da queda para a CPU), para o nome mais
+  longo do acervo e um comum (a Karpov 2, 58 caracteres), no mínimo e a 1366×728, com a sabotagem
+  nova `reserva` (o rodapé do ciclo 2). **Remedido**: a sonda do crítico sobre o acervo, zona de
+  dispositivos cortada em **0 dos 46** livros a 1248, 1366, 1440 e 1600 px (ciclo 2: 46, 46, 45 e
+  22); o portão PASSOU — no mínimo da janela mensagem 320, documento 272–288, dispositivos 135,
+  ocupação 171; a 1366, documento 390–408 —, e a `reserva` REPROVOU (dispositivos e ocupação com 0 px), como as
+  quatro sabotagens antigas; sete corridas, nenhuma pele morta; o teclado passou.
+- **Os itens do mesmo ciclo.** (a) As ações do cartão da Revisão de texto saíram da rolagem: a
+  1280×641 as seis ficam à vista nas três peles (no ciclo 2, 0 px na Foco); o que desce abaixo da
+  dobra, dentro do cartão que rola, é a fileira de figurinas (8 controles; na Fita também o rótulo
+  da verdade). (b) A evidência do A/B guarda o `answered` de cada item — a média de cada estrato se
+  refaz dos itens (conferido em todas as corridas) — e o `bench_sol` grava o código não commitado
+  que mediu (`dirty_code`); a fila do ciclo 3 correu no commit. (c) A frase da sabotagem do C17 e a
+  do Stefaniu p. 49 corrigidas (§C17, §B14). (d) As três brechas novas do `test_strings`: a lista
+  minúscula passada direto a uma chamada que escreve na tela, `", ".join(D)` e `[*D]` são varridas.
+- **O que fica, dito.** O B13 muda a leitura de linhas vizinhas ao grupo (o não bloqueante 3 do
+  ciclo 2: na Gallagher p. 41, «33 ♔d3 ♘xb5» → «33 ♔dd ♘8b5»; p. 175, um lance sai da linha dele);
+  o ganho nas tabelas não generaliza para outra fonte (as linhas do `table:2` em Times, 0,6224 →
+  0,5280); o portão da janela não mede altura, editores, listas e tabelas; o piso do B14 é dito,
+  não resolvido (§0.3).
+
 ## §B13 — A tabela e a lista de lances lidas por linha
 
 - **Arquivos.** Suíte: `ocr/layout/rows.py` (novo: `rows_of_tables`, `table_groups`,
   `TableRowsConfig`), `ocr/arbiter.py` (`ArbiterConfig.table_rows`; aplicado ao resultado de todo
   motor em PSM 1/3 — o de segmentação própria —, antes do escore), `ingest/pdf/ocr_service.py`
   (`OcrServiceConfig.table_rows`, levado ao árbitro da página e das variantes),
-  `tests/unit/ocr/test_table_rows.py` (novo, 16 → **24** no ciclo 2). O `bench_sol` já entrega o
+  `tests/unit/ocr/test_table_rows.py` (novo, 16 → 24 no ciclo 2 → **29** no ciclo 3). O `bench_sol` já entrega o
   `SOL_CONFIG` inteiro ao `OcrServiceConfig`: nenhuma linha nova lá.
 - **A regra** (a docstring de `rows.py` tem os números e a razão de cada um): blocos **lado a lado**
   (`x` disjuntos, `y` sobrepostos); o grupo nasce num bloco de **células** — linha mediana de até
@@ -264,7 +368,10 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   solto conta); a calha da página achada sobre **todas** as linhas e valendo quando há prosa de um
   dos lados; a calha interna de um bloco só faz células quando é 1,5× mais larga que o espaço
   mediano entre palavras; e **adjacência** — um bloco entra quando a maioria das suas linhas
-  encontra o parceiro com espaço vazio entre eles.
+  encontra o parceiro com espaço vazio entre eles. **Ciclo 3** (§0.5): a calha única com duas
+  faixas de largura comparável vale sem prosa, e só uma lista de lances a cruza (números à
+  esquerda, um lance por linha à direita); notas de variantes (metade das linhas com um número de
+  lance dentro delas) são texto corrido; e a prosa por palavras pede linhas que continuam a frase.
 - **Duas regras que o corpus não pedia e a página real pediu.** Os itens de tabela do corpus são
   recortes. Na página inteira, a primeira versão puxou uma coluna para o meio da outra no Levenfis
   (1962, digitalizado, duas colunas): p. 40 com similaridade **0,857** com o desligado, p. 41
@@ -394,7 +501,7 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   cartões de ~20 letras, onde duas letras fora já dão 0,90 — no piso, não abaixo. Se o campo
   mostrar revisão demais nessas, a alavanca é um mínimo de letras perdidas (uma palavra), não o piso.
   **Ciclo 2, com o código final** (`scratchpad/b14_final.sh`): nos mesmos três livros,
-  Estrin pp. 20–27 (79 regiões medidas, a menor 0,919), Levenfis pp. 40–51 (240, a menor 0,931) e Stefaniu pp. 40–51 (110, a menor **0,900**) — nenhuma das 429 sinalizada. As contagens diferem das 504 do ciclo 1 em dois lugares, nenhum desta regra: a Estrin do ciclo 1 foi medida com o classificador de diagramas indisponível (a `CAISSA_FIGURINE_TESSDATA` no ambiente, que o importador recusa — o log daquela corrida diz isso); e a p. 49 do Stefaniu saiu então em 83 regiões do tamanho de uma linha e sai hoje em 9 de parágrafo — também com o código do ciclo 1 (`99546e9`, numa árvore limpa), então a diferença não é da regra; a causa não foi achada. Nos oito livros e páginas que o crítico mediu no ciclo 1, pela sonda dele
+  Estrin pp. 20–27 (79 regiões medidas, a menor 0,919), Levenfis pp. 40–51 (240, a menor 0,931) e Stefaniu pp. 40–51 (110, a menor **0,900**) — nenhuma das 429 sinalizada. As contagens diferem das 504 do ciclo 1 em dois lugares: a Estrin do ciclo 1 foi medida com o classificador de diagramas indisponível (a `CAISSA_FIGURINE_TESSDATA` no ambiente, que o importador recusa — o log daquela corrida diz isso); e a p. 49 do Stefaniu saiu então em 83 regiões do tamanho de uma linha e sai hoje em 9 de parágrafo — a corrida de 04:15 mediu um `rows.py` intermediário, anterior ao commit do ciclo 1 (o log dela registra 96 regiões fundidas no Stefaniu), e o código commitado, o do ciclo 1 (`99546e9`) e o final, dá 9: as 83 eram daquela regra, e o número do ciclo 1 não se refaz com código commitado (crítico, ciclo 2). Nos oito livros e páginas que o crítico mediu no ciclo 1, pela sonda dele
   (`b14_populacao.py`): Stean, Aagaard (a menor 0,976), Flores Rios (0,999) e Silman sem nenhuma;
   **6 sinalizadas de 95 medidas**, todas já em revisão ou abstenção — Reinfeld 1977 pp. 100/102/103
   (0,571–0,775, abstenções: ruído lido em diagrama), Karpov p. 103 (0,709) e Vladimirov p. 201
@@ -505,7 +612,9 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   `field_exact` publicado. **Sabotagem** (`--sabotar embaralhar --linhas-de …_f5_c17.json`: os
   rótulos de exatidão redistribuídos com semente fixa sobre as **mesmas** linhas;
   `model_ruler_20260923_074145_f5_c17_c2_sabotado.json`): o AURC de todo modelo piora (produção
-  0,0063 → 0,0579), as três colunas «≤ k err» caem a 0 em 5 dos 15 e a quase nada nos outros, e a
+  0,0063 → 0,0579), as três colunas «≤ k err» caem a 0 em 5 dos 15 e, nos outros 10, a «≤ 0» fica
+  entre 0 e 27 (verdadeira: 27–104) — as de ≤ 1 e ≤ 2 guardam uma parte em três (`c4_aug0_s44`
+  71/92, `c4_w3_s42` 66/88, `c4_e_s44` 11/66, contra 105/110, 99/106 e 101/108 de verdade) —, e a
   ordem dos modelos pelo AURC fica com **tau de Kendall +0,31** contra a verdadeira — a régua lê a
   verdade, não as confianças. Nos testes: a mesma sabotagem sobre dois modelos construídos; o caso
   do crítico (um erro a 0,9979 com 74 exatos acima: a grade antiga acha 0, os cortes acham 74); e a
@@ -584,8 +693,16 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   com a sabotagem ao lado). O teste de elisão do rodapé (`test_sem_folga_ele_volta_a_elidir`)
   montava uma faixa inteira de 320 px, que a janela nunca tem, e passou a dar os 320 px **ao nome**,
   somados ao mínimo da faixa.
+- **Ciclo 3: as quatro zonas do rodapé, e as ações da Revisão de texto fora da rolagem** (§0.5). A
+  reserva da mensagem é a frase até 320 px, dispositivos e ocupação têm o texto inteiro até 240 px,
+  e cede o nome do livro; os pisos são do `RotuloElidido` (`piso=…`, medidos com a fonte de agora).
+  O portão mede as quatro zonas, com o nome mais longo e um comum, e a sabotagem `reserva` (o
+  rodapé do ciclo 2) reprova com as duas zonas em 0 px. Nos testes do tronco
+  (`test_qt_janela_cabe.py`, 14 → 17): a garantia de cada zona curta, a reserva de uma frase curta
+  e a sabotagem -- a garantia é cobrada na fonte que o teste tiver (o Qt desta instalação não acha
+  a Segoe UI fora da suíte), os números do produto são os do portão.
 - **Teclado** (`caissa.ui.audit.teclado --pele foco --pdf …Kemeri`, o comando do crítico no ciclo 1,
-  com a árvore do ciclo 2): **PASSOU** a 1280×800 e a 1248×640 — toda área com o `Tab` alcançando
+  com as árvores dos ciclos 2 e 3): **PASSOU** a 1280×800 e a 1248×640 — toda área com o `Tab` alcançando
   todos os focáveis e fechando (Resultado 37/37, Revisão de texto 50/50, Rotulagem 65/65, Galeria
   57/57): as fileiras fluidas não mudaram a ordem de ninguém.
 - **A Foco fica no teto, e quem a segura é a Galeria do tronco.** Descendo pelo filho mais alto de
@@ -623,7 +740,12 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   Revisao".split())` e `{"pagina": 1, "posicao": 2}` com `addItems(list(...))`) entraram no teste
   anti-brecha, e as regras continuam escondendo só os seis identificadores de cima (as sondas do
   crítico, `a15_brecha.py` e `a15_escondidos.py`, apontadas para a árvore do ciclo 2: os três
-  literais varridos, e nenhum escondido além daqueles).
+  literais varridos, e nenhum escondido além daqueles). **Ciclo 3** (não bloqueante 7 do ciclo 2):
+  enumerar é também `", ".join(D)` e `[*D]`, e a lista de palavras minúsculas não escapa quando vai
+  direto a uma chamada que escreve na tela (`CHAMADAS_DE_TELA`: `addItems`, `setText`, `QLabel`…) --
+  num `frozenset(...)` de palavras dobradas ela continua identificador. A sonda nova do crítico
+  (`a15_brecha2.py`): os seis casos varridos; e as regras seguem escondendo só os seis
+  identificadores.
 - **`test_arquitetura` (suíte), «à parte» em todo relatório.** A afirmação «importar o arnês não
   traz um binding de Qt» agora roda num **processo novo** por arnês; com um teste de janela antes
   na mesma corrida continua verde (23/23 com `test_importacao_view.py` primeiro).
@@ -657,8 +779,9 @@ contestou nenhum; cada um foi medido de novo, consertado e travado por teste com
   (`field_corrections.json`); pela régua corrigida da suíte são 102/103, o número do §C17. A
   oitava remedição entrou no registro das anteriores (`docs/SPEC_REVISAO.md` do tronco). Com eles,
   `ImpressaoDaMedicaoTests` passa **sem `--deselect`** (§0.2).
-- **`sol.json` no commit.** (No ciclo 2 do crítico, republicado pelo mesmo comando sobre o
-  **`4fc0f4d`**: os 747 itens idênticos aos de baixo, em CER e decisão; o `s/MP` de
+- **`sol.json` no commit.** (No ciclo 3 do crítico, republicado pelo mesmo comando sobre o
+  **`3ff1830`**, o código que mede sem nada por commitar: os 747 itens idênticos aos do ciclo 2. No
+  ciclo 2, sobre o **`4fc0f4d`**: os 747 itens idênticos aos de baixo, em CER e decisão; o `s/MP` de
   `scan_clean_300` 1,48 → 1,27 com a máquina mais livre. O parágrafo abaixo é o do ciclo 1.)
   `docs/quality/sol/sol.json`/`.md` republicados sobre o **`bb41c55`** — o
   `environment.commit` do JSON é o do commit da fase pela primeira vez (o da fase 4 gravava o
