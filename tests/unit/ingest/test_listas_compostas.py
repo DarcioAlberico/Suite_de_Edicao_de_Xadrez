@@ -63,6 +63,51 @@ TABLE = [("Aljechin", "7½"), ("Keres", "7"), ("Flohr", "6½"), ("Petrov", "6"),
          ("Stahlberg", "3"), ("Book", "2½"), ("Mikenas", "2")]
 
 
+#: Fifty-seven surnames for the pages of the sixth cycle, in alphabetical order.
+SURNAMES = ["Aagaard", "Abramovic", "Adams", "Akopian", "Alburt", "Alekhine", "Anand", "Andersson",
+            "Aronian", "Averbakh", "Bareev", "Beliavsky", "Benko", "Bisguier", "Bologan",
+            "Botvinnik", "Bronstein", "Byrne", "Capablanca", "Chiburdanidze", "Chigorin",
+            "Dolmatov", "Dvoretsky", "Euwe", "Fischer", "Flohr", "Geller", "Gelfand", "Gligoric",
+            "Gulko", "Hort", "Ivanchuk", "Kamsky", "Karpov", "Kasparov", "Keres", "Korchnoi",
+            "Kramnik", "Larsen", "Lasker", "Ljubojevic", "Makogonov", "Marshall", "Nimzowitsch",
+            "Petrosian", "Polugaevsky", "Portisch", "Reshevsky", "Rubinstein", "Short", "Smyslov",
+            "Spassky", "Stein", "Tal", "Timman", "Topalov", "Yusupov"]
+STANDINGS_IN_HALVES = ["Aljechin 7½", "Keres 7", "Flohr 6½", "Petrov 6", "Fine 5½", "Reshevsky 5",
+                       "Tartakower 4½", "Steiner 4", "Lilienthal 3½", "Stahlberg 3", "Book 2½",
+                       "Mikenas 2", "Apsenieks 2", "Bondarevsky 1½", "Feigins 1", "Hasenfuss ½"]
+PAIRS = [("Carlsen", 2830, "Caruana", 2800), ("Ding", 2780, "Nepomniachtchi", 2790),
+         ("Aronian", 2760, "Giri", 2750), ("So", 2770, "Mamedyarov", 2740),
+         ("Anand", 2750, "Grischuk", 2745), ("Nakamura", 2760, "Radjabov", 2740),
+         ("Karjakin", 2735, "Topalov", 2730), ("Rapport", 2725, "Firouzja", 2720),
+         ("Duda", 2715, "Wojtaszek", 2705), ("Harikrishna", 2700, "Vitiugov", 2710),
+         ("Artemiev", 2695, "Andreikin", 2690), ("Eljanov", 2685, "Navara", 2680)]
+
+
+def _four_digit_index() -> list[str]:
+    """An index of problem numbers of four digits, two entries with two numbers (the critic's
+    ``indice_4dig``): set in three columns, only the first two hold a line with two numbers."""
+    entries = [f"{name} {1000 + (733 * k + 211) % 4000}" for k, name in enumerate(SURNAMES)]
+    entries[5] = f"{SURNAMES[5]} 1204, 3318"
+    entries[27] = f"{SURNAMES[27]} 2087, 4410"
+    return entries
+
+
+def _table(rows: list[list[str]], xs: list[float], *, points: float = 10.0):
+    """A table set row by row, a cell at each ``xs`` (inches), 12 pt apart, as the critic's."""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont
+
+    font = ImageFont.truetype(str(TIMES), int(points / 72 * DPI))
+    lead, margin = int(12 / 72 * DPI), int(0.5 * DPI)
+    size = (int((xs[-1] + 1.6) * DPI) + 2 * margin, 2 * margin + lead * (len(rows) + 1))
+    image = Image.new("L", size, 255)
+    draw = ImageDraw.Draw(image)
+    for n, row in enumerate(rows):
+        for x, cell in zip(xs, row, strict=True):
+            draw.text((margin + x * DPI, margin + n * lead), cell, font=font, fill=0)
+    return np.asarray(image)
+
+
 def _players() -> list[str]:
     """Each player of the standings and, indented under the player, two or three opponents with a
     page -- the critic's «jogador / adversários»."""
@@ -163,12 +208,74 @@ def _juntas(texto: str) -> list[str]:
 def paginas(tmp_path_factory) -> dict[str, Path]:
     pasta = tmp_path_factory.mktemp("listas")
     players = _players()
+    four = _four_digit_index()
+    entries = [f"{name} {9 + (37 * k) % 380}" for k, name in enumerate(SURNAMES)]
     return {
         "jogadores": _as_scanned_pdf(_compose([players[0:22], players[22:44], players[44:66]],
                                               [0.0, 2.0, 4.0]), pasta, "jogadores"),
         "ultima": _as_scanned_pdf(_compose([INDEX[0:28], INDEX[28:33]], [0.0, 2.6], pages_at=1.2),
                                   pasta, "ultima"),
+        # the pages of the sixth cycle: a page of lists whose columns differ in form
+        "quatro": _as_scanned_pdf(_compose([four[0:19], four[19:38], four[38:57]],
+                                           [0.0, 1.7, 3.4]), pasta, "quatro"),
+        "so_nomes": _as_scanned_pdf(_compose([entries[0:19], SURNAMES[19:38], entries[38:57]],
+                                             [0.0, 1.6, 3.2]), pasta, "so_nomes"),
+        "metades": _as_scanned_pdf(_compose([STANDINGS_IN_HALVES[0:8], STANDINGS_IN_HALVES[8:16]],
+                                            [0.0, 2.6], pages_at=1.4), pasta, "metades"),
     }
+
+
+@pytest.mark.timeout(900)
+@requires_tesseract
+@requires_times
+def test_a_page_of_lists_reads_as_with_the_rule_off_whatever_the_forms(paginas):
+    """Crítico da fase 5, ciclo 6: an index whose third column has four-digit numbers and no line
+    with two (0,0026 → 0,4916 *accepted*), and a column of names only between two of entries
+    (0,0032 → 0,7747 *accepted*), joined line by line.  Every column a list: read as with the rule
+    off, no line with two entries."""
+    for nome in ("quatro", "so_nomes"):
+        ligada = _importar(paginas[nome])
+        assert ligada == _importar(paginas[nome], table_rows=False), nome
+        assert _juntas(ligada) == [], (nome, _juntas(ligada)[:3])
+
+
+@pytest.mark.timeout(900)
+@requires_tesseract
+@requires_times
+def test_the_standings_in_two_halves_are_no_worse_than_with_the_rule_off(paginas):
+    """The builder's page of the sixth cycle: the OCR lost the scores of the second half and read
+    the half points of the first as ``%``; the halves joined line by line, 0,3316 → 0,7053
+    *accepted*.  No line holds a player of each half, and the page is no worse than with the rule
+    off."""
+    from caissa.ocr.metrics import score_text
+
+    verdade = "\n".join(STANDINGS_IN_HALVES)
+    ligada = _importar(paginas["metades"])
+    desligada = _importar(paginas["metades"], table_rows=False)
+    primeira = {t.split()[0] for t in STANDINGS_IN_HALVES[0:8]}
+    segunda = {t.split()[0] for t in STANDINGS_IN_HALVES[8:16]}
+    juntas = [linha for linha in ligada.splitlines()
+              if set(linha.split()) & primeira and set(linha.split()) & segunda]
+    assert juntas == [], juntas
+    assert score_text(verdade, ligada).cer <= score_text(verdade, desligada).cer
+
+
+@pytest.mark.timeout(900)
+@requires_tesseract
+@requires_times
+def test_a_pairing_with_the_ratings_apart_is_read_by_rows():
+    """The critic's pairing with the ratings in columns of their own (``emparc_sep_sm``, read by
+    rows): a page of lists would read it by columns -- the band of ratings, Black players and
+    their ratings is a table's, a column of numbers beside the names."""
+    texto = _pairing_text()
+    assert [linha for linha in texto.splitlines() if "Carlsen" in linha and "Caruana" in linha]
+
+
+def _pairing_text() -> str:
+    servico = OcrService(None, config=OcrServiceConfig(ink_coverage=False))
+    rows = [[w, str(rw), b, str(rb)] for w, rw, b, rb in PAIRS]
+    return servico.recognize_image(_table(rows, [0.0, 1.4, 2.0, 3.4]), dpi=float(DPI),
+                                   lang="eng").text
 
 
 @pytest.mark.timeout(900)
@@ -219,3 +326,27 @@ def test_the_sabotages_join_the_lists_and_the_game_to_the_table(paginas, monkeyp
     jogadores = [name for name, _score in TABLE]
     assert [linha for linha in texto.splitlines()
             if re.match(r"^\d+\s", linha) and any(j in linha for j in jogadores)], texto
+
+
+@pytest.mark.timeout(900)
+@requires_tesseract
+@requires_times
+def test_the_sabotages_of_the_sixth_cycle(paginas, monkeypatch):
+    """Without the page of lists the four-digit index and the names between entries join line by
+    line; with ``6%`` no score the halves of the standings join; without the numbers beside the
+    names the pairing is read by columns."""
+    from caissa.ocr.layout import rows
+
+    monkeypatch.setattr(rows, "_page_of_lists", lambda forms: ())
+    assert _juntas(_importar(paginas["quatro"])), "sabotaged: the index joins"
+    assert _importar(paginas["so_nomes"]) != _importar(paginas["so_nomes"], table_rows=False)
+    monkeypatch.undo()
+    monkeypatch.setattr(rows, "_SCORE", re.compile(r"^(\d{0,2}[½=]|\d{1,2}[.,]5)[,;.]?$"))
+    primeira = {t.split()[0] for t in STANDINGS_IN_HALVES[0:8]}
+    segunda = {t.split()[0] for t in STANDINGS_IN_HALVES[8:16]}
+    assert [linha for linha in _importar(paginas["metades"]).splitlines()
+            if set(linha.split()) & primeira and set(linha.split()) & segunda], "the halves join"
+    monkeypatch.undo()
+    monkeypatch.setattr(rows, "_numbers_beside", lambda lines, cfg: 0)
+    texto = _pairing_text()
+    assert not [linha for linha in texto.splitlines() if "Carlsen" in linha and "Caruana" in linha]
