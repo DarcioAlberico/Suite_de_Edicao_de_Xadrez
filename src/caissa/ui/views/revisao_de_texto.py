@@ -61,6 +61,7 @@ from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, focaveis
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
+from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
 
 __all__ = [
     "TITULO",
@@ -272,7 +273,9 @@ class PainelDeRevisaoDeTexto(QWidget):
 
         corpo = QSplitter(Qt.Orientation.Horizontal, self)
         raiz.addWidget(corpo, 1)
-        self.table = QTableWidget(0, len(COLUNAS), corpo)
+        # PgUp, PgDn, Home e End andam pelas dúvidas com o foco na tabela, e não viram a página do
+        # livro atrás da aba (`TabelaDeLinhas`; crítico da fase 5, ciclo 6)
+        self.table = TabelaDeLinhas(0, len(COLUNAS), corpo)
         self.table.setHorizontalHeaderLabels(list(COLUNAS))
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)

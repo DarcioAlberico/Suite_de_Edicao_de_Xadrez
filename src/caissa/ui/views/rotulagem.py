@@ -117,6 +117,7 @@ from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas, pixmap
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
+from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
 
 __all__ = [
     "TITULO",
@@ -635,7 +636,9 @@ class PainelDeRotulagem(QWidget):
             paginador.append(b)
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
         dir_.addLayout(botoes)
-        self.table = QTableWidget(0, 5, direita)
+        # PgUp, PgDn, Home e End andam pelas linhas com o foco na tabela, e não viram a página do
+        # livro (`TabelaDeLinhas`; crítico da fase 5, ciclo 6: o PgDn esvaziava a tabela)
+        self.table = TabelaDeLinhas(0, 5, direita)
         self.table.setHorizontalHeaderLabels(["#", "reg.", "estado", "conf.", "texto"])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)

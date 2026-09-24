@@ -53,7 +53,8 @@ NOME_DA_PECA = {"♔": "rei", "♕": "dama", "♖": "torre", "♗": "bispo", "�
 def pelas_setas(tabela: QAbstractItemView) -> bool:
     """Se a linha da ``tabela`` mudou pela tecla, com o foco nela -- e não pelo mouse.
 
-    Quem anda pelas linhas com as setas (ou o PgUp/PgDn) continua na tabela, e o cartão mostra a
+    Quem anda pelas linhas com as setas (ou o PgUp, o PgDn, o Home e o End, que a
+    `tabela_de_linhas.TabelaDeLinhas` guarda da janela) continua na tabela, e o cartão mostra a
     linha sem tomar o foco (crítico da fase 5, ciclo 5: a primeira seta mandava o foco ao campo
     da verdade, e as seguintes ficavam nele).
     """

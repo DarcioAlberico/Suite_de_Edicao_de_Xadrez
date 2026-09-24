@@ -122,6 +122,79 @@ def test_each_way_starts_with_the_scroll_areas_at_the_top(app):
     tela.janela.close()
 
 
+def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_click(
+        app, monkeypatch):
+    """Crítico da fase 5, ciclo 6: the follower scrolled on the click -- Qt gives the focus on the
+    *press* -- and the *release* fell outside the control; the gate walked only the key.  It clicks,
+    through the ``QWindow``, every control half in sight in a scroll area that follows the focus,
+    press and release at the same point, a filter swallowing both (no action runs).  With the guard
+    the click stays where it was given; the sabotage ``clique`` (the followers scroll on the mouse's
+    focus again) loses it, and the screen fails."""
+    import importlib
+
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtWidgets import (
+        QCheckBox,
+        QLineEdit,
+        QPushButton,
+        QScrollArea,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
+
+    janela = QWidget()
+    coluna = QVBoxLayout(janela)
+    rolagem = QScrollArea(janela)
+    rolagem.setWidgetResizable(True)
+    conteudo = QWidget(rolagem)
+    pilha = QVBoxLayout(conteudo)
+    for k in range(3):
+        pilha.addWidget(QLineEdit(f"campo {k}", conteudo))
+    marca = QCheckBox("Esconder incerteza", conteudo)
+    pilha.addWidget(marca)
+    for k in range(6):
+        pilha.addWidget(QLineEdit(f"depois {k}", conteudo))
+    rolagem.setWidget(conteudo)
+    rolagem.setFixedHeight(60)     # shorter than the content: the content keeps its own height
+    coluna.addWidget(rolagem)
+    coluna.addWidget(QPushButton("Abrir PDF", janela))
+    RolagemSegueOFoco(rolagem)
+    janela.resize(360, 400)
+    janela.show()
+    app.processEvents()
+    # the area cuts through the check box: 9 px of it in sight, with the area at the top
+    topo = marca.mapTo(conteudo, QPoint(0, 0)).y()
+    rolagem.setFixedHeight(topo + 9 + rolagem.height() - rolagem.viewport().height())
+    app.processEvents()
+
+    cliques = teclado._cliques_meio_a_vista(janela)
+    assert [c["controle"] for c in cliques] == ["Esconder incerteza"], cliques
+    assert cliques[0]["no_lugar"]
+    assert cliques[0]["rolou_px"] == 0
+    assert cliques[0]["a_vista_px"][1] == 9
+    assert not marca.isChecked(), "the filter swallows the click: no action runs"
+    assert not teclado.Aba(nome="Janela", cliques=cliques).cliques_perdidos()
+
+    for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
+        try:
+            modulo = importlib.import_module(nome)
+        except ImportError:
+            continue
+        monkeypatch.setattr(modulo, "veio_do_mouse", modulo.veio_do_mouse)  # undone at teardown
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "clique")
+    teclado._sabotar(janela)
+    cliques = teclado._cliques_meio_a_vista(janela)
+    assert cliques, cliques
+    assert not cliques[0]["no_lugar"], cliques
+    assert cliques[0]["rolou_px"] > 0, cliques
+    assert not cliques[0]["soltar_dentro"]
+    assert teclado.Aba(nome="Janela", cliques=cliques).cliques_perdidos()
+    janela.close()
+
+
 def test_the_key_walk_passes_once_the_tab_leaves_the_editor_and_the_scroll_follows(app):
     from caissa.ui.audit import teclado
 

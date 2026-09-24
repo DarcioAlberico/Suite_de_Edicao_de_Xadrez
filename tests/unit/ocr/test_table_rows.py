@@ -10,6 +10,7 @@ must never touch: two columns of prose whose lines sit at the same heights.
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 
 import numpy as np
@@ -1128,6 +1129,175 @@ def test_two_lines_at_one_height_are_one_row() -> None:
     tall = rows._blocks([_line("Aaron 249", 100.0, 100.0, 2, h=55.0)], cfg)[0]
     assert rows._one_row_high(beside, pair, cfg)
     assert not rows._one_row_high(tall, pair, cfg)
+
+
+NAMES_A = ["Aagaard", "Abramovic", "Adams", "Alekhine", "Anand", "Andersson", "Aronian",
+           "Averbakh", "Bareev", "Beliavsky", "Benko", "Bogoljubow", "Botvinnik", "Bronstein",
+           "Byrne", "Capablanca", "Carlsen", "Caruana", "Chandler"]
+NAMES_B = ["Chiburdanidze", "Chigorin", "Dolmatov", "Dreev", "Euwe", "Fine", "Fischer", "Flohr",
+           "Gelfand", "Geller", "Grischuk", "Gulko", "Hort", "Ivanchuk", "Kamsky", "Karjakin",
+           "Karpov", "Kasparov", "Keres"]
+NAMES_C = ["Larsen", "Lasker", "Ljubojevic", "Makogonov", "Marshall", "Nimzowitsch", "Petrosian",
+           "Polugaevsky", "Portisch", "Reshevsky", "Rubinstein", "Short", "Smyslov", "Spassky",
+           "Tal", "Timman", "Topalov", "Vallejo", "Zukertort"]
+
+
+def _three_columns(columns: list[list[str]]) -> OcrResult:
+    """Three columns of 19 lines as PSM 3 cuts the critic's pages (Times 9 pt at 300 DPI, a line
+    every 44 px): one block each, at the x of his ``indice_4dig``."""
+    lines: list[OcrLine] = []
+    for column, (x, texts) in enumerate(zip((150.0, 661.0, 1169.0), columns, strict=True)):
+        lines += [_line(t, x, 157.0 + 44.0 * n, column + 1, char_w=17.0)
+                  for n, t in enumerate(texts)]
+    return _reading(lines)
+
+
+def _two_entries(texts: list[str]) -> list[str]:
+    return [t for t in texts if re.search(r"\d[,.]?\s+[A-Z][a-z]", t)]
+
+
+def test_a_page_of_lists_is_lists_whatever_the_form_of_each_column(monkeypatch) -> None:
+    """Crítico da fase 5, ciclo 6: the gutter between two lists was the page's only when the two
+    had the same form, and a detail of one column made it another form -- an index of problem
+    numbers of four digits, whose third column has no line with two numbers (``E | E | V``: 0,0026
+    → 0,4916 *accepted*, 19 lines with two entries), and a column of names only between two of
+    entries (``E | W | E``: 0,0032 → 0,7747 *accepted*).  On a page of lists -- every column
+    entries, names with values or names -- every gutter between them is the page's.  The sabotage:
+    no page of lists, and the columns join line by line."""
+    from caissa.ocr.layout import rows
+
+    def numbers(k: int, *, two: bool) -> str:
+        first = 1000 + (733 * k + 211) % 4000
+        return f"{first}, {first + 1117}" if two and k % 5 == 1 else str(first)
+
+    four = _three_columns([
+        [f"{n} {numbers(k, two=True)}" for k, n in enumerate(NAMES_A)],
+        [f"{n} {numbers(k + 19, two=True)}" for k, n in enumerate(NAMES_B)],
+        [f"{n} {numbers(k + 38, two=False)}" for k, n in enumerate(NAMES_C)]])
+    names_between = _three_columns([
+        [f"{n} {20 + 7 * k}" for k, n in enumerate(NAMES_A)], list(NAMES_B),
+        [f"{n} {130 + 9 * k}" for k, n in enumerate(NAMES_C)]])
+    for reading in (four, names_between):
+        texts = [line.text for line in rows_of_tables(reading).lines]
+        assert _two_entries(texts) == [], _two_entries(texts)[:3]
+        assert texts == [line.text for line in reading.lines], "read as with the rule off"
+    monkeypatch.setattr(rows, "_page_of_lists", lambda forms: ())
+    for reading in (four, names_between):
+        texts = [line.text for line in rows.rows_of_tables(reading).lines]
+        pares = [t for t in texts for a, b in zip(NAMES_A, NAMES_B, strict=True)
+                 if a in t and b in t]
+        assert _two_entries(texts) or pares, texts[:3]
+
+
+def standings_in_two_halves(scores: tuple[str, ...] = ("Th", "6%", "5%", "4%")) -> OcrResult:
+    """The standings of a tournament in two halves (the builder's page, ``scratchpad/c6/paginas``)
+    as the importer read it: the names of each half a block, and of the scores only the half points
+    of the first half, each a block of one line -- «7½» as ``Th``, «6½» as ``6%`` -- the whole
+    points and every score of the second half lost."""
+    left = ["Aljechin", "Keres", "Flohr", "Petrov", "Fine", "Reshevsky", "Tartakower", "Steiner"]
+    right = ["Lilienthal", "Stahlberg", "Book", "Mikenas", "Apsenieks", "Bondarevsky", "Feigins",
+             "Hasenfuss"]
+    lines = [_line(t, 150.0, 157.0 + 45.0 * n, 1, char_w=17.0) for n, t in enumerate(left)]
+    lines += [_line(s, 572.0, 157.0 + 90.0 * n, 2 + n, char_w=17.0) for n, s in enumerate(scores)]
+    lines += [_line(t, 930.0, 157.0 + 45.0 * n, 6, char_w=17.0) for n, t in enumerate(right)]
+    return _reading(lines)
+
+
+def test_the_standings_in_two_halves_whose_points_the_ocr_lost_are_two_lists(monkeypatch) -> None:
+    """The builder's page of the sixth cycle, left open and taken up by the critic: the second half
+    lost its scores, its form became names only, and it joined the first half line by line --
+    «Aljechin Th Lilienthal», 0,3316 → 0,7053 *accepted*.  The ``%`` is the ½ Tesseract reads in a
+    book's type, and a name and its score in two lines at one height are a name with a value: the
+    first half is a list of names with values, the second of names, and the page is a page of
+    lists.  The sabotage: ``6%`` is not a score, and the halves join."""
+    from caissa.ocr.layout import rows
+
+    left = {"Aljechin", "Keres", "Flohr", "Petrov", "Fine", "Reshevsky", "Tartakower", "Steiner"}
+    right = {"Lilienthal", "Stahlberg", "Book", "Mikenas", "Apsenieks", "Bondarevsky", "Feigins",
+             "Hasenfuss"}
+
+    def joined(texts: list[str]) -> list[str]:
+        return [t for t in texts if set(t.split()) & left and set(t.split()) & right]
+
+    texts = [line.text for line in rows_of_tables(standings_in_two_halves()).lines]
+    assert joined(texts) == [], joined(texts)
+    assert "Flohr 6%" in texts, "the first half by rows: a name and its score"
+    monkeypatch.setattr(rows, "_SCORE", re.compile(r"^(\d{0,2}[½=]|\d{1,2}[.,]5)[,;.]?$"))
+    texts = [line.text for line in rows.rows_of_tables(standings_in_two_halves()).lines]
+    assert joined(texts), texts[:4]
+
+
+def test_a_game_beside_a_column_of_ratings_is_a_game_and_a_column(monkeypatch) -> None:
+    """The critic's game beside a column of ratings (fase 5, ciclo 6: ``part_numeros``, through
+    the service 0,0170 → 0,6136): the game joined the numbers, «1 e4 e5 2830».  A column of numbers
+    or scores that does not number the moves is a table's, never a game's.  The sabotage: no such
+    column, and the game joins it."""
+    from caissa.ocr.layout import rows
+
+    ratings = ["2830", "2800", "2780", "2790", "2760", "2750", "2740", "2735", "2730", "2725",
+               "2720", "2710"]
+    lines = [_line(t, 151.0, 157.0 + 50.0 * n, 1, char_w=20.0)
+             for n, t in enumerate(GAME_ON_THE_LEFT)]
+    lines += [_line(t, 811.0, 157.0 + 50.0 * n, 2, char_w=20.0) for n, t in enumerate(ratings)]
+    reading = _reading(lines)
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert texts[:12] == GAME_ON_THE_LEFT
+    assert texts[12:] == ratings
+    monkeypatch.setattr(rows, "_values", lambda block, cfg: False)
+    texts = [line.text for line in rows.rows_of_tables(reading).lines]
+    assert texts[0] == "1 e4 e5 2830", texts[:2]
+
+
+def test_a_game_whose_numbers_tesseract_cut_off_is_a_game_still(monkeypatch) -> None:
+    """The critic's game in German notation beside the standings (fase 5, ciclo 6: ``part_alema``,
+    through the service 0,3308 → 0,7519): Tesseract read the move numbers 1–9 as one tall line and
+    left their periods with the moves (``. Lb5 a6``); the block was no game, no column of moves,
+    and it joined the players.  A period alone is not a move, and lines of one or two moves, some
+    after their number, are a game.  The sabotage: no such game, and the moves join the players."""
+    from caissa.ocr.layout import rows
+
+    moves = [".e4e5", "Sf3 Sc6", ". Lb5 a6", ". La4 Sf6", "0-0 Le7", ". Te1 b5", ". Lb3 d6",
+             ". c3 0-0", ". h3 Sb8", "10 d4 Sbd7", "11 Sbd2 Lb7", "12 Lc2 Te8"]
+    lines = [_line(t, 155.0, 157.0 + 50.0 * n, 1, char_w=20.0) for n, t in enumerate(moves)]
+    lines.append(_line("CH NIAARWNE", 151.0, 159.0, 2, h=378.0, char_w=2.0))
+    lines += [_line(t, 810.0, 157.0 + 50.0 * n, 3, char_w=20.0) for n, t in enumerate(PLAYERS)]
+    lines += [_line(t, 1217.0, 157.0 + 50.0 * n, 4 + n, char_w=20.0) for n, t in enumerate(POINTS)]
+    reading = _reading(lines)
+
+    def with_a_player(texts: list[str]) -> list[str]:
+        return [t for t in texts if any(m in t for m in moves[1:]) and any(p in t for p in PLAYERS)]
+
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert with_a_player(texts) == [], with_a_player(texts)[:2]
+    monkeypatch.setattr(rows, "_cut_game", lambda block, cfg: False)
+    texts = [line.text for line in rows.rows_of_tables(reading).lines]
+    assert with_a_player(texts), texts[:3]
+
+
+def test_a_column_of_numbers_beside_the_names_makes_the_band_a_table_s() -> None:
+    """A pairing with the ratings in columns of their own (the critic's ``emparc_sep``, read by rows
+    0,7408 → 0,0789): the reading left one gutter, and the band right of it held a column of
+    ratings, the Black players and their ratings -- a table's band, not a list of names with values,
+    or the page of lists would read it by columns.  A name and its pages at one height (the Flores
+    p. 460) are an entry, and are not numbers beside the names."""
+    from caissa.ocr.layout import rows
+
+    cfg = TableRowsConfig()
+    pairing = []
+    for n, (black, rating) in enumerate(zip(PLAYERS, ("2710", "2780", "2700", "2690", "2750",
+                                                      "2740", "2730", "2720", "2705", "2715",
+                                                      "2695", "2685"), strict=True)):
+        y = 157.0 + 45.0 * n
+        pairing += [_line(str(2790 - 5 * n), 676.0, y, 3), _line(black, 855.0, y, 4),
+                    _line(rating, 1276.0, y, 5)]
+    assert rows._numbers_beside(pairing, cfg) == 12
+    assert rows._band_form(pairing, cfg) == ""
+    index = []
+    for n, (name, pages) in enumerate(zip(NAMES_A[:12], [f"{400 + 3 * k}, {430 + 5 * k}"
+                                                          for k in range(12)], strict=True)):
+        index += [_line(name, 700.0, 157.0 + 45.0 * n, 1), _line(pages, 900.0, 157.0 + 45.0 * n, 1)]
+    assert rows._numbers_beside(index, cfg) == 0
+    assert rows._band_form(index, cfg) == "E"
 
 
 def tournament_table(countries: list[str]) -> OcrResult:

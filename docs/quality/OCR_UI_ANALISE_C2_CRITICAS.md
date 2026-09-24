@@ -820,7 +820,16 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > uma página de linhas prendia o Tab, e o Shift+Tab que entra nas rolagens do tronco (os modos da aba
 > Livro, a Galeria) punha o foco a 0×0 px com a rolagem no topo; o que mudou está em
 > `OCR_UI_REPORT_C2_FASE5.md` §0.8.
-> **Ciclo 6:** ⟨pendente⟩.
+> **Ciclo 6: REPROVADO, 3 bloqueantes** — os dois do ciclo 5 resolvidos nas páginas dadas (as listas
+> do ataque, a partida × a classificação, tudo o que ele mandou manter igual byte a byte; a Rotulagem
+> com linhas e as rolagens com o foco à vista), mas: o B13 intercalava listas cujas colunas têm
+> **formas** diferentes (um índice com números de quatro algarismos, 0,0026 → 0,4916 **aceito**; a
+> coluna do meio só de nomes; a classificação em duas metades) — a calha dependia de as duas colunas
+> terem a mesma forma; o seguidor de foco rolava no **clique** do mouse, entre o pressionar e o soltar
+> (um lance que ninguém jogou no Estudo, um rádio que não marca); e o item de página sem leitura,
+> aceito com o Enter, virava a aceitação verificada da leitura seguinte da página inteira; o que
+> mudou está em `OCR_UI_REPORT_C2_FASE5.md` §0.9.
+> **Ciclo 7:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -1777,3 +1786,259 @@ rolagem»); o portão não vê nenhum dos dois (bloqueante novo 2).
    tecla chega a elas e as mostra», linha 703; e o item 2), o §C18, o roadmap e o `HANDOFF.md`.
 3. **No mesmo ciclo:** julgar (ou dizer que não se julgou) as páginas em que o B13 muda o desligado; o «24» → 23; a Flores
    p. 461 dita como é; e a nota do motor que falhou chegando a quem revisa (ou dito que só o traço a guarda).
+
+## Crítico Claude — ciclo 6 (REPROVADO, 3 bloqueantes)
+
+VEREDITO: REPROVADO
+CICLO: 6
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Convenções dos comandos: os scripts e as saídas deste ciclo estão em `C:\Python-Chess2\_critico_f5\c6\` (a saída de cada
+um ao lado ou na pasta dele; as filas em `*.sh`, com `runs.log`). Todo o código medido é o dos commits: a suíte numa árvore
+minha, `git worktree add --detach C:\Python-Chess2\_critico_f5\suite_c6 9eb401c` (o `src` do `9eb401c` é o do `99ad8d7`:
+`git diff --stat 99ad8d7 9eb401c -- src tests benchmarks` vazio; o OCR é o do `7f839f0`; `models\` copiada do checkout sem
+`tessdata\work`, e para a suíte inteira os artefatos de `benchmarks\reports` que o git não guarda), e o tronco noutra,
+`git worktree add --detach C:\Python-Chess2\_critico_f5\tronco 6e68315` (sem o `.pt`, como todo clone). Para comparar
+regras, as três versões do `rows.py` tiradas do git (`c6\rows\rows_{4e42158,2c81e36,7f839f0}.py`). `git status` das duas
+árvores vazio do começo ao fim (as linhas `status=[0]` dos `runs.log`). Sondas do corpus e de páginas renderizadas com
+`CAISSA_FIGURINE_TESSDATA=models\tessdata`; importador, janela e testes sem ela. Memória virtual livre gravada a cada 3 s
+(`c6\memoria.log`, `c6\monitor_mem.ps1`): caiu a **702 MB** às 01:11:49, no primeiro minuto da fila das sondas (abaixo de
+2 GB de 01:11:36 a 01:12:16, com a suíte inteira do tronco de outra sessão ao lado); nenhuma sonda registrou falha de motor
+(`grep "falhou\|bad alloc\|MemoryError"` nas saídas: 0) e as do primeiro minuto saíram iguais byte a byte às do ciclo 5.
+A sessão foi interrompida por limite de uso da API e retomada (a fila das sondas tinha terminado); nada ficou rodando.
+Nenhum arquivo dos dois repositórios foi editado. Processos meus que encerrei: uma sonda da Rotulagem parada a 0 % de CPU
+depois de gravar tudo (a armadilha 7.2 da Carta, no `processo_de_trabalho().encerrar(esperar=True)`; troquei a saída das
+minhas sondas por `c6\saida_limpa.py`), seis filhos `multiprocessing.spawn` órfãos que as minhas sondas de clique
+deixaram (criados às 10:30:29–10:32:10, na saída delas) e as duas corridas da sonda do clique na linha, paradas a 0 % de
+CPU; o PID 1996 é de antes e ficou. Nenhum processo meu ficou vivo. No fim (11:04) as minhas três árvores (a da suíte, a do
+tronco e uma do `aa22702`) foram removidas com `git worktree remove`; o checkout da suíte está como no começo
+(`9eb401c`, os mesmos arquivos de outras sessões modificados) e o do tronco avançou de `6e68315` para `aa22702`, commit de
+outra sessão (`c6\estado_inicio.txt`, `c6\estado_fim.txt`); o `labeling/project.json` do usuário, o mesmo hash e a mesma
+data de 2026-09-15.
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| Bloqueante 1 do ciclo 5, as páginas que dei, pelo importador, 3 execuções | `c6\sondas_c6.sh` (`c4\b13_importador_arvore.py`) → `c6\sondas\b13i_ataque_r{1,2,3}.json`; `c6\cer_c6.py` → `c6\cer_sondas_parcial.out`, `…parcial2.out` | sim | `indices_ataque.pdf` p. 8 («jogador / adversários» pela classificação) **0,0000 `accepted` = desligado**; p. 4 (a última página, cinco verbetes) 0,6634 → **0,0048** `accepted`, 0 linhas com dois verbetes; p. 5 0,0028; as três execuções iguais byte a byte |
+| O que mandei manter, pelo importador, 3 execuções | mesma fila → `c6\sondas\b13i_{flores,tres,indices}_r{1,2,3}.json`, `b13i_{construido,karpov268,gallagher,notas_en}.json`; `cer_c6.py --igual` | sim | **todos iguais byte a byte aos do meu ciclo 5**: a Flores pp. 460–464 0,0438/0,0853/0,0230/0,0202/0,0364; o `tres.pdf` 0,0007/0/0/0,0058; a Yusupov p. 206 0,0465, a Nunn pp. 288/289 0,0193/0,0174, a Aagaard pp. 892/893 0,0958/0,0769 `accepted`; o `construido.pdf`, a Karpov 2 p. 268, a Gallagher pp. 50–53 (p. 50 **0,2028**, `gallagher_cer_c2.py` → `c6\gallagher_cer.out`), as notas inglesas |
+| Partida × tabela e tabela em ordem, pelo serviço (quatro regras: desligado, commit, 2c81e36, ciclo 5) | `c6\b13_servico_regras.py` → `c6\servico\partida_tabela.out`, `tabela_em_ordem.out` | sim | P\|T 0,2218 → **0,1418** (ciclo 5 0,7564); P\|Tn 0,3185 → 0,2611 (2c81e36 0,3376); T\|P 0,2182 → 0,2109; Pt\|T 0,5055 → 0,1527; P\|T3 0,3185 → 0,2611; a tabela com os nomes em ordem 0,7448 → 0,1207 e com os países em ordem 0,7509 → **0,1280** (ciclo 5 0,6367) — os números do construtor |
+| As outras sondas do serviço | `c6\sondas\{estreita3_just,estreita3,tabulada,lista_recusada,tabelas3,tabelas_c2}.out` × as do ciclo 5 (`md5` das linhas de CER) | sim | iguais, menos uma linha da `tabelas3`: a classificação (1, 2, 3…) a 150 DPI 0,1818 → 0,1866 (o construtor a diz, §0.8); as aberturas 0,0113 |
+| A franja | `c6\lib\b13_franja_espelho.py 100` → `c6\sondas\franja_espelho.out`; `b13_notas_medida.py 100 24` → `notas_risco_w24.out` | sim | **0 de 41** nos quatro leiautes (a Dvoretsky p. 789 N\|Pt 0,5052 → 0,3720); notas de risco 0 |
+| As 1.622 leituras guardadas | `c6\todas_leituras_c6.py` (meu; só a leitura guardada é do construtor) → `c6\todas_leituras_c6.out` | sim | 4e42158 → 2c81e36: **8**; 2c81e36 → 7f839f0: **26**; o ciclo inteiro: 33; o corpus (1.048): 0 — os números dele, pelas mesmas listas de leituras |
+| As seis páginas de leitura não escolhida, pelo serviço | `c6\varre_seis.sh` → `c6\varre_seis\`; `c6\cmp_seis.py` → `c6\cmp_seis.out` | sim | as seis iguais às do construtor no `7f839f0`, ligadas e desligadas; cinco iguais ao desligado; a Reinfeld 1977 p. 319 melhor (os dois títulos) |
+| As 59/66 páginas julgadas | `scratchpad\c6\b13_muda_c7.out` e `b13_muda_c7\*.txt` | em parte | conferi as onze de ruído com menos fração de ruído (Estrin pp. 20, 29, 43, 48, 51, 58, 78; Gallagher pp. 137, 170; Aagaard pp. 183, 188): todas ruído de diagrama e coordenadas; as 7 que saem da lista no `7f839f0` são as que a minha reordenação acha. Não recontei as 66 |
+| A fila de A/B e o `sol.json` | `c6\conf_sol_c6.py` → `c6\conf_sol_c6.out` | sim | `f5c6_*` (2c81e36) e `f5c7_*` (7f839f0), `dirty_code=[]`, iguais às `f5c5_*` em todo campo por item (o texto: 61/66/85 itens, 0 diferem); o `sol.json` do `9eb401c` com `commit=99ad8d7`, `dirty_code=[]`, igual à `f5c7_on` e ao do ciclo 5 item a item; `f5_ab.json` com as 20 corridas igual aos JSON; aceitos errados 7; `table:2/4/7` 0,0035/0,00364/0 |
+| A transcrição do meu ciclo 5 | `c6\transcricao_c5.out` | sim | as 222 linhas não vazias do meu veredito estão em `OCR_UI_ANALISE_C2_CRITICAS.md` (linhas 1541–1779), salvo o nível dos títulos |
+| Ataques à regra nova, pelo serviço (17 páginas compostas, quatro regras) | `c6\ataques_c6.py` → `c6\ataques\`; `c6\b13_servico_regras.py c6\ataques` → `c6\servico\ataques.out` | **não** | → **bloqueante novo 1**; as outras no não bloqueante 3 |
+| Os ataques que quebram, pelo importador, 3 execuções | `c6\importador_c6.sh` → `c6\importador\`; `cer_c6.py` → `c6\importador_cer_parcial.out`, `…parcial2.out` | **não** | índice de quatro algarismos 0,0026 → **0,4916 `accepted`**; lista com a coluna do meio de outra forma 0,0032 → **0,7747 `accepted`**; 19 linhas com dois verbetes em cada; as três execuções iguais byte a byte |
+| As páginas que o construtor deixou abertas, pelo importador | `c6\paginas_construtor.py` → `c6\paginas_construtor\`; importador + `cer_c6.py` → `c6\paginas_construtor.out` | **não** | a classificação em duas metades 0,3316 `accepted` → **0,7053 `accepted`** (bloqueante novo 1 (c)); o emparceiramento 0,6853 `accepted` ligado = desligado; a partida ao lado de um índice 0,6978 `accepted` ligado = desligado, 11 linhas juntas (não bloqueante 2) |
+| Os índices reais degradados como o estrato de 150 DPI | `c6\indices_150.py` → `c6\i150\indices_150.pdf`; importador ×3 → `c6\i150_cer.out` | em parte | 7 de 9 saem intercalados com o B13 ligado **ou** desligado (0,70–0,78, `review`); o B13 melhora a Flores pp. 461 e 463 (0,3642 → 0,1269 `accepted`; 0,7088 → 0,1358); três execuções iguais (não bloqueante 6) |
+| Bloqueante 2 do ciclo 5: a Rotulagem com a Gallagher p. 51 (66 linhas), na janela inteira, 1280×641, três peles | `c6\rotulagem_c6.py` → `c6\tecla\rotulagem_{classica,foco,fita}.out` | sim | o instrumento do portão passa nos dois sentidos (58/62/82 alcançados, nenhum escondido); as setas ↓ andam as linhas com o foco na tabela e o cartão acompanhando; nenhum controle com 0 px (a tabela recebe o foco com 69–76 % à vista na Clássica e na Foco, 42 % na Fita) |
+| As voltas com as rolagens no topo | `c6\tecla_vista_c6.py` (três peles a 1280×641 e a Fita a 1246×629) → `c6\tecla\volta_*.out` | sim | toda área anda nos dois sentidos, **nenhum foco a 0 px**; só o Texto empaca («Folha transcrita», arquivo de outra sessão) |
+| O Shift+Tab que entra nas rolagens do tronco | `c6\foco_fora_c6.py` → `c6\tecla\foco_fora_*.out` | sim | do primeiro controle, o Shift+Tab dá a volta inteira no Resultado, Estudo, Revisão e Galeria das três peles sem um controle sem pixel à vista (no ciclo 5: «Esconder incerteza» a 0×0 em duas teclas) |
+| O portão, rodado por mim | `c6\portao_c6.sh` → `c6\portao\`; `c6\resumo_portao.py` → `c6\portao\resumo.out` | sim | Clássica e Fita a 1280×641 com o Kemeri: a Rotulagem medida com **47 linhas na medida**, só o Texto REPROVOU; `--sabotar foco` reprova Resultado, Galeria, Rotulagem, Revisão de texto e o diálogo com 40 bases; `--sabotar tabela` reprova a Rotulagem; `minimo` sem livro PASSOU, `--sabotar linha` REPROVOU |
+| O portão escreve no `labeling/`? | `c6\estado_arvores.py` antes e depois (o `labeling/` do usuário copiado para a minha árvore, que é o que `default_project_dir()` abre nela) | sim | 1.512 arquivos, **0 mudaram**; `project.json` com o mesmo hash e a mesma data (2026-09-15 05:49:26), como o do checkout do usuário. A janela do tronco escreve o `data/games_positions.sqlite` (o cache de posições) da árvore do tronco que abre — não é do ciclo |
+| O seguidor fora das rolagens: outra janela, rolagem morta | `c6\rolagem_morta.py` → `c6\rolagem_morta.out` | sim | o diálogo de bases destruído e depois trocas de foco: 0 exceções; o foco num campo de outra janela: 0 rolagens mexem; mas o diálogo aberto e fechado fica vivo como filho da janela com o seguidor ligado à aplicação (7 → 16 seguidores em 20 aberturas; não bloqueante 7) |
+| O seguidor e o **mouse** | `c6\clique_parcial.py` (clique pelo `QWindow`: pressionar e soltar no mesmo ponto da janela) → `c6\tecla\clique2_*.out`; `c6\tabuleiro_salta.py` → `c6\tabuleiro_salta.out`; `c6\radio_salta.py` → `c6\radio_salta.out` | **não** | → **bloqueante novo 2** |
+| As teclas de lista nas tabelas | `c6\teclas_de_lista.py` → `c6\tecla\teclas_de_lista_classica.out` | **não** | → não bloqueante 1 |
+| A falha do motor na revisão | `c6\pagina_abstida_enter.py` → `c6\pagina_abstida_enter.out`; `c6\pagina_abstida_aceita.py` → `c6\pagina_abstida_aceita_gal53.out` | **não** | a região aceita com um motor a menos indo para revisão, com a falha entre os motivos, é certo (lido em `OcrService._with_failures` e no teste dele, que passou; não medido à parte); o item de página abstido → **bloqueante novo 3** (no produto o painel nasce sem `pasta`, `qt/painel_de_revisao_de_texto.py:50`, e grava em `decisions_path(pdf)`, o arquivo que o importador lê) |
+| A «Folha transcrita» no `aa22702` (outra sessão; não é objeto) | árvore minha do `aa22702`, `c6\tecla_vista_c6.py` → `c6\tecla\volta_aa22702_foco.out` | sim | com ele o Texto anda nos dois sentidos (45 controles, fecha) na Foco a 1280×641: o item aberto do §0.3 se fecha fora deste ciclo |
+| Testes novos e tocados | `c6\testes_c6.sh` → `c6\suite_testes_tocados.out`, `c6\tronco_testes_tocados.out` | sim | suíte **162 passaram** em 115 s (`test_table_rows`, `test_listas_compostas`, `test_indices_do_acervo`, `test_ocr_service`, `test_importer`, `test_table_rows_page`, `test_arbiter`, `test_foco_a_vista`, `test_revisao_de_texto_view`, `test_rotulagem_view`, `test_teclado_tecla`; nenhum pulado); tronco 61 passaram (+4 subtestes) |
+| Suítes inteiras | `c6\testes_full_c6.sh` → `c6\trunk_full_c6.out`, `c6\suite_full_c6.out` | sim | tronco (árvore `6e68315`): **4.798 passaram, 16 pulados, 8 xfail, 1 reprovou** em 445 s — o `test_environment::…resolve_para_esta_arvore`, por construção da árvore efêmera (o mesmo do construtor); suíte (árvore `9eb401c`, com o `test_arquitetura`): **4.055 passaram, 25 pulados, 1 erro** em 806 s — o `test_gpu_parity::test_cuda_actually_computes` na montagem, pela minha `CAISSA_CVOFF_ROOT` (o mesmo dos ciclos 1–5); 4.055 + 25 + 1 = 4.081 = a conta do construtor (4.072 + 9); as duas árvores limpas antes e depois |
+| O mouse na tabela da Rotulagem | `c6\clique_na_linha.py` → `c6\clique_na_linha.out` | não conclusivo | com a rolagem no topo, a 1280×641, na Clássica e na Foco, a sonda não achou uma linha inteira de «Linhas da página» à vista para clicar; e a segunda corrida parou a 0 % de CPU (encerrada por mim). Pelo código, o clique numa linha continua mandando o foco à verdade (`pelas_setas` é falso com o botão apertado): o mouse não perde nada com as setas; perde com o seguidor (bloqueante novo 2) |
+| As frases que corrigi no ciclo 5 | `grep` no relatório, no roadmap e no `HANDOFF.md` do `9eb401c` | em parte | a Flores p. 461, o «42 → 0», «a tecla chega a elas e as mostra» e a Rotulagem vazia estão ditos como são; o «24» ficou em dois lugares (não bloqueante 8) |
+
+### Os bloqueantes do ciclo 5
+
+**1. Uma lista ao lado de outra é lista — resolvido nas páginas que dei; não resolvido na classe, e a regra nova tem um
+buraco que a do ciclo 5 não tinha.** As páginas: a p. 8 do `indices_ataque.pdf` sai igual ao desligado (0,0000,
+`accepted`), a p. 4 0,6634 → 0,0048 sem linha que junte dois verbetes, três execuções iguais; a partida ao lado da
+classificação 0,2218 → 0,1418; a tabela em ordem por linhas; e tudo o que mandei manter saiu igual byte a byte ao meu
+ciclo 5 (a Flores, a Nunn, a Yusupov, a Aagaard, o `tres.pdf`, o `construido.pdf`, a Karpov 2 p. 268, a Gallagher p. 50
+em 0,2028, as aberturas em 0,0113, o `table:2/4/7`, a franja em 0 de 41). Mas a calha entre duas listas só é da página
+quando as duas têm **a mesma forma** (`_list_gutters`, `rows.py:518–546`), e a forma de uma coluna de lista muda por
+detalhes que colunas vizinhas da mesma lista não compartilham: uma linha com dois números, um número de quatro algarismos
+(`_band_form`, `rows.py:508`: sem lista e com quatro algarismos é «nome com valor»), a coluna sem números. Onde a forma
+difere, as colunas voltam a ser intercaladas e aceitas (bloqueante novo 1) — páginas que a regra alfabética do ciclo 5 lia
+certo. O §0.8 (linha 803) diz «a forma das colunas faz o trabalho dela em toda página que ela fazia»: não faz.
+
+**2. O teclado onde o usuário o usa — resolvido.** A Rotulagem com a Gallagher p. 51 reconhecida (66 linhas) anda nos
+dois sentidos nas três peles a 1280×641, com as setas guardando o foco na tabela; com as rolagens no topo nenhum foco
+fica a 0 px em área nenhuma (três peles e o mínimo da Fita), e o Shift+Tab de fora dá a volta inteira nas quatro áreas do
+tronco; o portão mede cada sentido com as rolagens no topo e a Rotulagem com 47 linhas, e as duas sabotagens reprovam
+onde devem (rodado por mim); o `labeling/` não é tocado. Mas o conserto — o seguidor que ouve **toda** troca de foco da
+aplicação e rola até o controle inteiro — rola também no clique do mouse, entre o pressionar e o soltar (bloqueante
+novo 2).
+
+### Defeitos bloqueantes (novos)
+
+1. **O B13 intercala listas cujas colunas têm formas diferentes — e o importador aceita.**
+   - **Onde:** `src/caissa/ocr/layout/rows.py`, `_band_form` (linhas 489–515: uma faixa é «verbetes», `E`, se tem uma
+     linha com dois números ou todos os números com até três algarismos, `_PAGE_DIGITS = 3`, linha 437; senão «nomes com
+     valor», `V`; só nomes, `W`) e `_list_gutters` (linhas 518–546: a calha é da página só entre duas unidades **da mesma
+     forma**, e `W` só numa página que é toda `W`).
+   - **O quê, com números** (páginas compostas como um livro digitalizado, Times 9 pt a 300 DPI, como as do ciclo 5;
+     pelo **importador de produção**, três execuções iguais byte a byte; CER contra a ordem do livro;
+     `c6\importador_cer_parcial.out`):
+     - **(a) um índice de jogadores com números de problema de quatro algarismos em três colunas** (o formato de uma
+       coleção de milhares de problemas; `c6\ataques\indice_4dig.pdf`): duas colunas têm uma linha com dois números
+       («Alekhine 1204, 3318», «Gelfand 2087, 4410») e a terceira não — formas `E`, `E`, `V` (`c6\servico\ataques.out`):
+       **0,0026 `accepted` → 0,4916 `accepted`**, 19 linhas «Chiburdanidze 4377 Larsen 2131»; a regra do ciclo 5 lia
+       0,0026;
+     - **(b) uma lista cuja coluna do meio tem outra forma** (verbetes | só nomes | verbetes, `nomes_so_verb.pdf`, o
+       ataque que o briefing pedia): formas `E`, `W`, `E`: **0,0032 `accepted` → 0,7747 `accepted`**, as três colunas
+       juntas linha a linha («Aagaard 54 Chiburdanidze Larsen 314»); o ciclo 5 lia 0,0032.
+     - **(c) a classificação de um torneio em duas metades que o próprio construtor compôs e deixou aberta** (§0.3,
+       `scratchpad\c6\paginas\classificacao_2metades.png`, passada por mim pelo importador,
+       `c6\paginas_construtor.py` → `c6\paginas_construtor.out`): **0,3316 `accepted` → 0,7053 `accepted`** — o OCR perde os
+       pontos de uma metade, a forma dela vira «só nomes», e a calha entre as metades deixa de ser da página. O relatório a
+       dá como «dito, não resolvido»; não é aceitável deixar: é o mesmo defeito, por outro detalhe.
+     Nas (a) e (b) o desligado e a regra do ciclo 5 leem certo, e as duas regras do ciclo 6 (`2c81e36` e `7f839f0`) erram
+     igual: é a regra das formas, não a da linha alta. No acervo não achei página com essa forma
+     (`c6\acha_indices_4dig.py` → `acha_indices_4dig.out`: o índice da Karpov 1 tem quatro algarismos, mas em duas
+     colunas com linhas de dois números nas duas); as páginas do ciclo 5 que estabeleceram o bloqueante também eram
+     compostas.
+   - **Como reproduzir:** na árvore da suíte, com `CAISSA_FIGURINE_TESSDATA=models\tessdata`,
+     `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c6\ataques_c6.py` (grava as páginas e as verdades) e
+     `…\c6\b13_servico_regras.py C:\Python-Chess2\_critico_f5\c6\ataques` (as quatro regras); sem a variável,
+     `SUITE_REPO=<árvore> .venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c4\b13_importador_arvore.py C:\Python-Chess2\_critico_f5\c6\ataques\indice_4dig.pdf 0 <saida.json>`
+     e `…\c6\cer_c6.py <saida.json> --pdf …\c6\ataques\indice_4dig.pdf`; a página do construtor:
+     `…\c6\paginas_construtor.py <pasta>` e o mesmo par de comandos em `<pasta>\classificacao_2metades.pdf`.
+   - **Por que reprova:** é a classe do bloqueante 1 dos ciclos 2, 4 e 5 e o texto do item 1 que pedi («uma lista ao lado
+     de outra é lista, em ordem alfabética ou não, curta ou longa»); numa página que o desligado e o ciclo 5 leem certo, o
+     B13 do ciclo 6 produz um texto trocado linha a linha e o importador o **aceita** — confiança alta em resultado
+     errado (Carta §3.3).
+
+2. **O seguidor de foco rola a rolagem no clique do mouse, entre o pressionar e o soltar: o clique se perde, e no
+   Estudo o tabuleiro joga um lance que ninguém jogou.**
+   - **Onde:** `qt/foco_a_vista.py` do tronco (`6e68315`, linhas 65–70) e `ui/widgets/foco_a_vista.py` da suíte
+     (`2c81e36`, linhas 76–81): `_foco_mudou` chama `mostrar` em **toda** troca de foco, também a que o clique dá — e o Qt
+     dá o foco no pressionar, antes de entregar o evento; ligado aos modos da aba Livro (`qt/painel_principal.py:127`), à
+     lateral da Galeria e ao diálogo de bases. O tabuleiro do Estudo completa o lance no soltar, na casa sob o ponteiro
+     (`qt/tabuleiro_de_jogo.py:162–179`).
+   - **O quê, com números** (a janela a 1280×641 com o Kemeri, as rolagens no topo como o usuário as encontra; o clique
+     pelo `QWindow` — pressionar e soltar no mesmo ponto da janela, o que um mouse parado faz):
+     - **em todo controle meio à vista numa rolagem que segue o foco, o soltar cai fora dele: 15 de 15** nas três peles
+       (`c6\tecla\clique2_*.out`: a rolagem salta +13 a +129 px no pressionar); com o seguidor desligado, 0 de 15 e
+       nada rola;
+     - **o lance fantasma** (`c6\tabuleiro_salta.out`): na pele **Foco** (a padrão), o «Tabuleiro da partida» do Estudo
+       fica com 13 px abaixo da dobra; depois de 1.e4 (as pretas jogam) e com o foco no campo da FEN, **um** clique na
+       parte de baixo da casa e7 — para selecionar o peão — rola +19 px e **joga 1…e6** (a pilha vira `['e2e4','e7e6']`,
+       as brancas passam a jogar); com o seguidor desligado o mesmo clique só seleciona e7. Na Fita o salto é de 129 px;
+     - **o clique perdido** (`c6\radio_salta.out`): na Foco, os botões de rádio «Brancas» / «Pretas» do Resultado (o lado
+       que joga na posição lida) ficam com 9 de 22 px à vista; o clique rola +19 px e **não marca** (continua desmarcado);
+       com o seguidor desligado, marca. Quem acerta o lado a jogar e salva sem conferir grava a FEN errada. O «Gravar» da
+       Galeria na Clássica perde o clique do mesmo jeito (`clique2_classica.out`).
+     Pelo código do ciclo 5 da suíte (o filtro de `FocusIn` com `ensureWidgetVisible`), a classe já existia nas duas abas
+     da suíte para botões — lido no código, não medido; o ciclo 6 a leva ao controle inteiro e às áreas do tronco.
+   - **Como reproduzir:** sem a variável, `QT_QPA_PLATFORM=offscreen`,
+     `PYTHONPATH=<suíte>\src;<tronco>\src;<checkout>\.venv-pack\Lib\site-packages`:
+     `.venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c6\tabuleiro_salta.py <suíte>\src <tronco> foco 1280 641 "<PDF>\1937 Kemeri.pdf" 3`;
+     `…\c6\radio_salta.py <suíte>\src <tronco> foco 1280 641 "<PDF>\1937 Kemeri.pdf"`;
+     `…\c6\clique_parcial.py <suíte>\src <tronco> classica 1280 641 "<PDF>\1937 Kemeri.pdf" <saida.json>`.
+   - **Por que reprova:** «qualquer coisa que trema, salte ou pisque durante interação» reprova sozinho (Carta §3.3); aqui
+     o salto ainda muda o resultado: um lance que o usuário não fez entra no estudo dele, e um clique no lado a jogar se
+     perde sem aviso — na pele padrão, no portátil-alvo, com a janela como ele a encontra.
+
+3. **O item de página abstido, aceito com o Enter, vira a aceitação silenciosa — verificada — da leitura seguinte da
+   página inteira.**
+   - **Onde:** `ingest/pdf/importer.py:1000–1017` (`_failed_for_review`, `2c81e36`: o item `kind="page"`,
+     `decision="abstained"`, o retângulo da página inteira, texto vazio); `ui/views/revisao_de_texto.py:611–616` (o Enter
+     com a verdade vazia é «Aceitar leitura»); `ocr/review.py:333–346` (`decisions()` grava o aceite sem olhar o tipo) e
+     `467–535` (`ReviewDecisions.apply` casa a decisão com toda região não aceita da página com IoU ≥ 0,5 contra o
+     retângulo); o produto aplica o arquivo sozinho na importação e na exportação seguintes (`ui/views/importacao.py:162`,
+     `export/book.py:534`; no tronco `qt/importador_de_livro.py:289`).
+   - **O quê, com números** (a Gallagher p. 54, pelo importador de produção; `c6\pagina_abstida_enter.out`,
+     `c6\pagina_abstida_aceita_gal53.out`): com o OCR levantando `MemoryError`, a página sai `image-only` e a Revisão de
+     texto mostra, no topo da fila (risco 1,30), «O OCR falhou nesta página (o provedor falhou: bad allocation): ela não
+     foi lida.», a verdade vazia e o foco nela; o **Enter** grava `accept`, retângulo (0, 0, 381, 597), texto `""`. Na
+     importação seguinte, a região da página (IoU 1,00 com o retângulo), que o árbitro mandava para revisão com «5
+     palavra(s) fora da geometria das linhas» e «sequência de lances repetida … suspeita de invenção», sai **`accepted`,
+     «aceita pelo revisor», `verified=True`**, e a página some da fila de revisão (0 itens; o controle sem as decisões:
+     1 item). O mesmo mecanismo já alcançava o item de página da camada contestada sem resposta
+     (`_contested_without_answer`, desde a fase 1, `a921641`); o `2c81e36` põe nele a página cujo OCR levanta — o
+     caminho que eu pedi no item 3 do ciclo 5.
+   - **Como reproduzir:** sem a variável, `SUITE_REPO=<árvore> .venv\Scripts\python.exe C:\Python-Chess2\_critico_f5\c6\pagina_abstida_aceita.py "<PDF>\GALLAGHER - Winning With the King's Gambit.pdf" 53 eng`;
+     a janela: `…\c6\pagina_abstida_enter.py <suíte>\src <tronco> "<PDF>\GALLAGHER - Winning With the King's Gambit.pdf" 53`.
+   - **Por que reprova:** falha silenciosa e confiança alta em resultado que ninguém viu (Carta §3.3): o revisor aceitou
+     «nada» numa página que não foi lida, e o produto transforma isso em «revisado» para a leitura que vier depois, e a
+     tira da fila. É o menos frequente dos três (pede um `MemoryError` numa página), e o mais grave em consequência.
+
+### Defeitos não bloqueantes
+
+1. **As teclas de lista nas tabelas vão para os atalhos da janela** (`c6\tecla\teclas_de_lista_classica.out`, Clássica
+   1280×641): com o foco em «Linhas da página» (a Rotulagem com a Gallagher p. 51), o **PgDn leva a aba à página
+   seguinte do livro** (p. 52, a tabela vazia, o cartão vazio; o PgUp volta), o End manda a janela à última página (191),
+   o Home à primeira; em «Dúvidas do livro», PgDn/End/Home viram a página do livro atrás da aba e a linha da lista não se
+   mexe. A guarda de atalhos do tronco (`qt/atalhos.GuardaDeAtalhos`) só cede essas teclas a campos de texto, e o ciclo 6
+   agora guarda o foco na tabela; o `pelas_setas` (`cartao_da_linha.py:56`) promete «as setas (ou o PgUp/PgDn)».
+2. **Uma partida ao lado de uma coluna só de números** (`part_numeros`): pelo serviço 0,0170 → 0,6136 (revisão), igual
+   no ciclo 5 — o `mixes` só protege a coluna de nomes. E **pelo importador a partida ao lado de outra coluna sai
+   intercalada e aceita com o B13 ligado ou desligado**: a coluna de números 0,6080 `accepted`, e a partida ao lado de
+   um índice que o construtor compôs 0,6978 `accepted` com 11 linhas juntas (`c6\paginas_construtor.out`; ele a mediu no
+   nível do B13, 0,0149) — o intercalado vem do caminho do importador, fora do código deste ciclo, mas é a classe que o
+   B13 existe para resolver e sai com confiança alta.
+3. **Os outros ataques** (`c6\servico\ataques.out`, `c6\importador_cer_parcial2.out`): o emparceiramento com os ratings
+   em coluna própria sai por linhas (importador 0,7577 → 0,0958); com o rating na célula do nome é lido por colunas
+   (0,6563 aceito, igual ao desligado e ao ciclo 5 — o «tabela só de nomes lida como listas» do §0.3 vale também para
+   nome com valor); a tabela de matches com meio ponto 0,7318 → 0,6642 aceito; a partida em notação alemã ao lado da
+   classificação pelo serviço 0,3308 → 0,7519 (revisão; o Tesseract corta os números «1.»… numa linha alta e a coluna de
+   lances não é vista como partida; pelo importador ligado = desligado, 0,7256); a partida com figurinas 0,3307 → 0,2480;
+   o índice de partidas com travessão, com «1/2-1/2» e o de ECO: ligado = desligado (o de ECO abstido, CER 1,0, dos dois
+   lados); a regra da linha alta: a célula de duas linhas 0,3755 → 0,3537, o corpo maior igual, a tabela apertada
+   0,6036 → 0,6081, a grade igual.
+4. **A Rotulagem na Fita a 1280×641**: a tabela recebe o foco com 42–45 % à vista (81–87 de 192 px; o seguidor mostra o
+   começo dela, que não cabe; `volta_fita_*.out`), igual ao ciclo 5 (não bloqueante 7 de lá).
+5. **A leitura desligada que o B13 às vezes piora pouco**: a classificação (1, 2, 3…) a 150 DPI 0,1818 → 0,1866 (dita);
+   a Euwe p. 69 N\|P na franja 0,5016 → 0,5212 (abaixo do limiar de 0,05).
+6. **Índices reais a 150 DPI**: 7 de 9 páginas saem intercaladas com o B13 ligado ou desligado (0,70–0,78, em
+   revisão; `c6\i150_cer.out`) — o intercalado é do motor, fora do B13 (o §0.3 o diz só da Nunn p. 288).
+7. **O diálogo «Base de partidas» nunca é destruído** (`perguntar_bases`, `qt/dialogos.py:363–365`): cada abertura deixa
+   um diálogo filho da janela com um seguidor ligado à aplicação (7 → 16 em 20 aberturas; `c6\rolagem_morta.out`).
+8. **Números e frases do relatório**: o «24» corrigido no §0 e no §0.8 ficou no §0.2 (linha 147, «o ciclo 4, 24») e no
+   roadmap (linha 1133); o §0.3 (linha 278) e o §0.8 (linha 1001) dizem que a publicação foi «refeita no `7f839f0`», e o
+   §0.2 (linha 152) e o `sol.json` dizem `99ad8d7`; o §0.8 (linha 803), «a forma das colunas faz o trabalho dela em toda
+   página que ela fazia» (bloqueante novo 1).
+9. **Ficam, ditos pelo construtor:** a coluna de um verbete só, a tabela só de nomes lida como listas (o emparceiramento
+   dele, «Brancas | Pretas», pelo importador 0,6853 `accepted` ligado e desligado — `c6\paginas_construtor.out`; aceito
+   por colunas, mas não pior que o desligado), o ponto inteiro sozinho tomado por número de lance, o RapidOCR intercalando a
+   Nunn p. 288 pelo serviço, a última página de três colunas lida junta pelo Tesseract, o `bench_sol` que grava a
+   procedência no fim, o portão do teclado sem o commit das árvores; das fases anteriores, as oito brechas do A15, a
+   Estrin pp. 29/77, o custo da reserva de 320 px e o nome a ~95 px, o portão só `offscreen`. A «Folha transcrita» do
+   Texto se fecha no `aa22702` (outra sessão; medido por mim, não é objeto).
+
+### O que falta
+
+- A janela na plataforma real (`windows`): tudo `offscreen`. O clique foi imitado pelo `QWindow` do Qt (o despacho que o
+  mouse usa); num mouse de verdade o soltar cai no mesmo lugar da janela, que é o que medi.
+- O `bench_sol` inteiro (o briefing proíbe): a fila foi conferida item a item dos JSON.
+- As 1.622 leituras guardadas são do construtor (o `OcrResult` de antes do B13); o script que as reordena é meu. Não
+  recontei as 66 páginas julgadas.
+- A comparação às cegas da Carta não se aplica a esta frente.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+1. **B13 — uma lista ao lado de outra é lista, qualquer que seja o detalhe de cada coluna.** A calha entre duas faixas
+   que são listas (verbetes, nomes com números, só nomes) não pode depender de as duas terem a mesma forma: uma coluna sem
+   a linha de dois números, com números de quatro algarismos ou sem números continua sendo coluna da mesma lista — ou o
+   cruzamento pede evidência positiva de tabela. Travar por teste, com a sabotagem, pelo importador,
+   `c6\ataques\indice_4dig.pdf` e `c6\ataques\nomes_so_verb.pdf` (têm de sair como o desligado, 0,0026 e 0,0032, sem linha
+   com dois verbetes) e a classificação em duas metades do construtor (não pior que o desligado, 0,3316), mantendo tudo o
+   que hoje confere (as páginas do ciclo 5, a Flores, a Nunn, a Yusupov, a Aagaard, o
+   `tres.pdf`, o `construido.pdf`, a Karpov 2 p. 268, a Gallagher p. 50 em 0,2028, as aberturas em 0,0113, o
+   `table:2/4/7`, a franja em 0 de 41, a partida × tabela e o emparceiramento com os ratings em coluna própria por linhas);
+   e corrigir a frase do §0.8 (linha 803).
+2. **O seguidor não rola no foco que o mouse dá** (na suíte e no tronco) — ou rola sem tirar o controle de baixo do
+   ponteiro entre o pressionar e o soltar —, mantendo o que o teclado ganhou (o Tab e o Shift+Tab de fora com o controle
+   inteiro à vista). Travar por teste com o clique pelo `QWindow` (pressionar e soltar no mesmo ponto da janela) e a
+   sabotagem: na Foco a 1280×641 com a rolagem no topo, o clique na parte de baixo de e7 com as pretas a jogar só seleciona
+   o peão (nenhum lance), e o clique em «Pretas» marca «Pretas»; e o portão do teclado (ou o da janela) com esse clique.
+3. **O aceite de um item sem leitura não vira decisão sobre outra leitura.** O Enter/«Aceitar leitura» num item de página
+   (ou sem texto) não grava um `accept` que o importador aplique às regiões da página — recusado, ou sem efeito na
+   importação —, para o item do `MemoryError` e para o da camada contestada. Travar por teste: `MemoryError` na página,
+   Enter no item, importação de novo → nenhuma região «aceita pelo revisor», e a página continua na fila; com a sabotagem,
+   aceita.
+4. **No mesmo ciclo** (não bloqueantes): as teclas de lista nas duas tabelas (ou a tabela as guarda, ou o comentário para
+   de prometer o PgUp/PgDn); o «24» do §0.2 (linha 147) e do roadmap (linha 1133); o «refeita no `7f839f0`» do §0.3 e do
+   §0.8 contra o `99ad8d7`.

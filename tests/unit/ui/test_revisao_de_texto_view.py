@@ -337,6 +337,46 @@ def test_decisions_move_on_save_themselves_and_reach_the_importers_file(app, pdf
     painel2.close()
 
 
+def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 6: the page item of an OCR that raised (no reading, the whole
+    page's rectangle) comes first in the queue with the focus on its empty truth, and the Enter
+    recorded an accept that the next import applied to the whole page.  The Enter is refused with
+    the phrase and nothing is recorded; writing the page's text, or keeping it as a picture, is
+    what the reviewer can do.  The sabotage: the accept of nothing goes through and reaches the
+    importer's file."""
+    from caissa.ocr import review
+    from caissa.ocr.review import ReviewDecisions
+
+    pagina = SimpleNamespace(
+        page_index=0, rect=(0.0, 0.0, 612.0, 792.0), kind="page", decision="abstained",
+        reasons=("O OCR falhou nesta página (o provedor falhou: bad allocation): ela não foi "
+                 "lida.",),
+        text="", engine="", score=0.0, alternatives=())
+    report = SimpleNamespace(review_items=[pagina], ocr_traces={}, pages=[1, 2, 3])
+    painel = _panel(app, pdf, tmp_path, report=report)
+    assert painel.current.kind == "page"
+    assert painel.cartao.texto_da_verdade() == ""
+    painel._on_enter()
+    app.processEvents()
+    assert "Recusado: não há leitura para aceitar" in painel.status.text()
+    assert painel.queue.log == [], "nothing recorded"
+    assert not painel.decide(Action.ACCEPT)
+    painel.cartao.verdade.setPlainText("1.e4 e5")
+    painel._on_enter()
+    app.processEvents()
+    assert [e.action for e in painel.queue.log] == [Action.EDIT]
+    painel.close()
+
+    monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
+    sabotado = _panel(app, pdf, tmp_path / "s", report=report)
+    sabotado._on_enter()
+    app.processEvents()
+    assert [e.action for e in sabotado.queue.log] == [Action.ACCEPT]
+    saved = ReviewDecisions.load(tmp_path / "s" / "proj" / "revisao" / "Livro X.json")
+    assert [d.action for d in saved.entries] == [Action.ACCEPT], "the importer's file has it"
+    sabotado.close()
+
+
 def test_a_correction_on_a_blind_page_is_refused_with_the_phrase(app, pdf, tmp_path):
     ids = [f"real:Livro X:{n}:100" for n in range(200)]
     blind_pages = [int(i.split(":")[2]) for i in ids if partition_for(i) is Partition.BLIND]

@@ -182,14 +182,94 @@ def test_keep_image_abstains_the_region_and_accept_verifies_it():
     assert kept.apply(recognition, _Frame()) == 1
     assert recognition.regions[0].decision.decision is Decision.ABSTAINED
     assert recognition.regions[0] in recognition.abstained_regions
-    accepted = ReviewDecisions(entries=(Decided(3, rect, Action.ACCEPT),))
+    # an accept records the reading it accepted (ReviewQueue.decide)
+    accepted = ReviewDecisions(entries=(Decided(3, rect, Action.ACCEPT, text="the r0ok belongs"),))
     recognition = _recognition()
     assert accepted.apply(recognition, _Frame()) == 1
     assert recognition.regions[0].verified
     assert recognition.regions[0].result.text == "the r0ok belongs", "accept keeps the OCR's text"
     # A box that does not overlap the region is not the region.
-    elsewhere = ReviewDecisions(entries=(Decided(3, (300.0, 300.0, 400.0, 320.0), Action.ACCEPT),))
+    elsewhere = ReviewDecisions(entries=(
+        Decided(3, (300.0, 300.0, 400.0, 320.0), Action.ACCEPT, text="the r0ok belongs"),))
     assert elsewhere.apply(_recognition(), _Frame()) == 0
+
+
+#: The two page items of the importer, the page's whole rectangle and no reading: the OCR that
+#: raised (``PdfImporter._failed_for_review``) and the contested text layer the OCR could not
+#: answer (``PdfImporter._contested_without_answer``).
+PAGE_ITEMS = {
+    "ocr-que-levantou": ("abstained", (
+        "O OCR falhou nesta página (o provedor falhou: bad allocation): ela não foi lida.",)),
+    "camada-contestada": ("review", (
+        "camada de texto acusada: notação danificada",
+        "OCR de contestação sem resultado: o provedor falhou: bad allocation")),
+}
+
+
+def _page_item_report(which: str = "ocr-que-levantou"):
+    """A report whose one review item is a page item of :data:`PAGE_ITEMS`."""
+    decision, reasons = PAGE_ITEMS[which]
+    return SimpleNamespace(review_items=[SimpleNamespace(
+        page_index=3, rect=(0.0, 0.0, 612.0, 792.0), kind="page", decision=decision,
+        reasons=reasons, text="", engine="", score=0.0, alternatives=())], ocr_traces={})
+
+
+def _whole_page_recognition():
+    """The next import of that page: one region over the whole page, for review."""
+    from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+    from caissa.ocr.decision import Decision, RegionDecision
+    from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+    box = BBox(0.0, 0.0, 2550.0, 3300.0)       # 612 × 792 pt at 300 DPI
+    words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                  for w in ("1", "e4", "e5", "2", "e4", "e5"))
+    result = OcrResult(engine="tesseract", lang="eng", lines=(
+        OcrLine(words=words, box=box, kind=RegionKind.PARAGRAPH),))
+    return PageRecognition(page_index=3, dpi=300.0, regions=[RegionRecognition(
+        reading_order=0, kind=RegionKind.PARAGRAPH, box_px=box, result=result,
+        decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                ("sequência de lances repetida: suspeita de invenção",)),
+        engine="tesseract", variant="base", score=0.6)],
+        portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+
+
+@pytest.mark.parametrize("which", sorted(PAGE_ITEMS))
+def test_an_accept_of_no_reading_is_refused_left_out_and_never_applied(monkeypatch, which):
+    """Crítico da fase 5, ciclo 6: the page item of a ``MemoryError``, accepted with the Enter on
+    the empty truth, was an accept over the whole page, and the next import applied it to the
+    reading that came then -- «aceita pelo revisor», verified, out of the queue; the contested
+    page the OCR could not answer is the same item.  The window refuses it, the decisions leave it
+    out, and a file written before is not applied.  The sabotage: an accept of nothing counts
+    again, and the whole page is accepted."""
+    from caissa.ocr import review
+    from caissa.ocr.decision import Decision
+    from caissa.ocr.review import Decided, ReviewDecisions
+
+    queue = ReviewQueue.from_import(_page_item_report(which), document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
+    assert queue.refusal(item.key, Action.EDIT) == ""
+    assert queue.refusal(item.key, Action.KEEP_IMAGE) == ""
+    queue.decide(item.key, Action.ACCEPT)          # an old window, or a script
+    assert len(queue.decisions()) == 0
+    old_file = ReviewDecisions(entries=(Decided(3, item.rect, Action.ACCEPT, reviewer="ana"),))
+    recognition = _whole_page_recognition()
+    assert old_file.apply(recognition, _Frame()) == 0
+    assert recognition.regions[0].decision.decision is Decision.REVIEW
+    assert not recognition.regions[0].verified
+    # what the reviewer can do with a page nobody read: write its text, or keep it as a picture
+    typed = ReviewDecisions(entries=(Decided(3, item.rect, Action.EDIT, text="1 e4 e5"),))
+    recognition = _whole_page_recognition()
+    assert typed.apply(recognition, _Frame()) == 1
+    assert recognition.regions[0].result.text == "1 e4 e5"
+
+    monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
+    assert queue.refusal(item.key, Action.ACCEPT) == ""
+    assert len(queue.decisions()) == 1
+    recognition = _whole_page_recognition()
+    assert old_file.apply(recognition, _Frame()) == 1
+    assert recognition.regions[0].verified
+    assert "aceita pelo revisor" in recognition.regions[0].decision.reasons_pt
 
 
 def test_a_blind_page_refuses_accept_and_edit_with_the_phrase_but_not_the_image():
