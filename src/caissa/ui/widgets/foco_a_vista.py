@@ -1,4 +1,4 @@
-"""O controle que recebe o foco numa rolagem fica à vista, também quando o foco vem de fora dela.
+"""O controle que recebe o foco numa rolagem fica à vista, inteiro, venha o foco de onde vier.
 
 `QScrollArea.focusNextPrevChild` só rola até o foco que anda **dentro** da rolagem: o foco que entra
 nela vindo de fora — o Shift+Tab de uma ação abaixo dela, o Tab de uma lista ao lado — cai onde o
@@ -7,12 +7,25 @@ Revisão de texto a 1280×641 o Shift+Tab das ações punha o foco em «Letras �
 fase 5, ciclo 4), e na Rotulagem o Tab da lista punha na «Leitura do motor» (o portão do teclado com
 a tecla, ciclo 5). A «Carta» do crítico põe o foco invisível entre os defeitos que reprovam
 sozinhos.
+
+**A troca de foco da aplicação, e não um filtro por controle.** A primeira versão punha um filtro
+de evento em cada controle que a rolagem tinha ao nascer; um controle criado depois (uma lista que
+se redesenha) ficava de fora. `QApplication.focusChanged` diz todo foco novo, e a rolagem pergunta
+se ele é dela.
+
+**O controle inteiro, e não o cursor.** `ensureWidgetVisible` rola até a `microFocus` de um campo de
+texto — o retângulo do cursor —, e a «Leitura do motor» da Revisão de texto recebia o foco com 28
+de 48 px à vista na pele Fita (crítico da fase 5, ciclo 5). :func:`mostrar` rola até o retângulo do
+controle; quando ele é maior que a vista, até o começo dele.
 """
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QObject, Qt
-from PyQt6.QtWidgets import QScrollArea, QWidget
+from PyQt6.QtCore import QObject, QPoint, QRect, Qt, pyqtSlot
+from PyQt6.QtWidgets import QApplication, QScrollArea, QScrollBar, QWidget
+
+#: A folga em volta do controle que a rolagem mostra, em px: a moldura do foco fica à vista.
+FOLGA = 6
 
 
 def focaveis(raiz: QWidget) -> list[QWidget]:
@@ -28,25 +41,45 @@ def focaveis(raiz: QWidget) -> list[QWidget]:
     return achados
 
 
+def _encaixar(barra: QScrollBar, inicio: int, fim: int, vista: int) -> None:
+    """Põe o intervalo ``[inicio, fim)`` do conteúdo dentro dos ``vista`` px que a barra mostra."""
+    atual = barra.value()
+    if fim - inicio + 2 * FOLGA > vista or inicio - FOLGA < atual:
+        alvo = inicio - FOLGA
+    elif fim + FOLGA > atual + vista:
+        alvo = fim + FOLGA - vista
+    else:
+        return
+    barra.setValue(max(barra.minimum(), min(barra.maximum(), alvo)))
+
+
+def mostrar(rolagem: QScrollArea, controle: QWidget) -> None:
+    """Rola ``rolagem`` até ``controle`` ficar inteiro à vista, ou o começo dele quando não cabe."""
+    conteudo = rolagem.widget()
+    if conteudo is None or not conteudo.isAncestorOf(controle):
+        return
+    alvo = QRect(controle.mapTo(conteudo, QPoint(0, 0)), controle.size())
+    vista = rolagem.viewport().size()
+    _encaixar(rolagem.verticalScrollBar(), alvo.top(), alvo.top() + alvo.height(), vista.height())
+    _encaixar(rolagem.horizontalScrollBar(), alvo.left(), alvo.left() + alvo.width(), vista.width())
+
+
 class RolagemSegueOFoco(QObject):
-    """Pede à ``rolagem`` que mostre o controle de ``raiz`` que recebe o foco, venha de onde vier.
+    """Mostra, na ``rolagem``, todo controle dela que recebe o foco, venha o foco de onde vier."""
 
-    Os controles são os de ``raiz`` quando o filtro nasce (`focaveis`): monte-o depois do conteúdo.
-    """
-
-    def __init__(self, rolagem: QScrollArea, raiz: QWidget) -> None:
+    def __init__(self, rolagem: QScrollArea) -> None:
         super().__init__(rolagem)
         self._rolagem = rolagem
-        self.controles = focaveis(raiz)
-        for controle in self.controles:
-            controle.installEventFilter(self)
+        self._ligado = True
+        aplicacao = QApplication.instance()
+        if isinstance(aplicacao, QApplication):
+            aplicacao.focusChanged.connect(self._foco_mudou)
 
-    def eventFilter(self, obj: QObject, event: QEvent) -> bool:  # noqa: N802 - assinatura do Qt
-        if event.type() == QEvent.Type.FocusIn and isinstance(obj, QWidget):
-            self._rolagem.ensureWidgetVisible(obj)
-        return False
+    @pyqtSlot(QWidget, QWidget)
+    def _foco_mudou(self, _antigo: QWidget | None, novo: QWidget | None) -> None:
+        if self._ligado and novo is not None:
+            mostrar(self._rolagem, novo)
 
     def desligar(self) -> None:
-        """Tira o filtro de todo controle — o antes, para a sabotagem dos testes."""
-        for controle in self.controles:
-            controle.removeEventFilter(self)
+        """A rolagem volta a seguir só o foco que anda dentro dela — o antes, para a sabotagem."""
+        self._ligado = False

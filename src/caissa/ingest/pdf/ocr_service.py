@@ -353,6 +353,9 @@ class RegionRecognition:
     #: (:mod:`caissa.ocr.coverage`); ``None`` when not measured (a text layer,
     #: too few letters, the switch off).
     ink_coverage: float | None = None
+    #: The engines that failed on the region, and why (:meth:`OcrService._with_failures`):
+    #: the region says so to whoever reviews it, and is not accepted in silence.
+    engine_failures: tuple[str, ...] = ()
 
     @property
     def emits_text(self) -> bool:
@@ -381,6 +384,7 @@ class RegionRecognition:
             "legality": self.legality,
             "fusion": self.fusion,
             "ink_coverage": None if self.ink_coverage is None else round(self.ink_coverage, 4),
+            "engine_failures": list(self.engine_failures),
             "chars": self.result.char_count,
             "mean_confidence": round(self.result.mean_confidence, 4),
             "estimated_cer": self.estimated_cer,
@@ -777,7 +781,7 @@ class OcrService:
             base = self._candidate("original", region_outcome)
             candidates = [base]
             candidates.extend(self._engine_candidates(recognizer, region_outcome, task))
-            self._note_engine_failures(region_outcome, task, notes)
+            failures = self._note_engine_failures(region_outcome, task, notes)
             region_ink = self._region_ink(page_ink, region_outcome, task)
             coverage = self._coverage_of(region_outcome.result, region_ink)
             if coverage is not None and coverage < cfg.min_ink_coverage:
@@ -810,8 +814,9 @@ class OcrService:
                         if c is not None])
             for extra in self._run_readings(readings):
                 candidates.extend(extra)
-            regions.append(self._settle(region_outcome, candidates, task, recognizer,
-                                        body_size=body_size, ink=region_ink))
+            settled = self._settle(region_outcome, candidates, task, recognizer,
+                                   body_size=body_size, ink=region_ink)
+            regions.append(self._with_failures(settled, failures) if failures else settled)
 
         # A page where every region died inside the engine is not "a page
         # with nothing to read": it is a setup fault (a tessdata folder
@@ -884,20 +889,46 @@ class OcrService:
         )
 
     def _note_engine_failures(self, region_outcome: RegionOutcome, task: PageTask,
-                              notes: list[str]) -> None:
-        """An engine that failed on the region is said on the page, not dropped.
+                              notes: list[str]) -> list[str]:
+        """An engine that failed on the region is said on the page, not dropped; the failures.
+
+        They are returned for the region too (:meth:`_with_failures`).
 
         Crítico da fase 5, ciclo 4: the Stean p. 165 was read by RapidOCR, which runs in this
         process; without memory its allocation failed, the arbiter kept Tesseract's worse
         reading, and nothing on the page told it from a page both engines had read.  A failure
         is the empty reading ``OcrEngineBase.recognize`` marks ``failed``.
         """
+        failures = []
         for failed in region_outcome.outcome.candidates:
             if failed.meta.get("failed"):
-                note = (f"região {region_outcome.region.reading_order}: o motor {failed.engine} "
-                        f"falhou e a leitura seguiu sem ele — {'; '.join(failed.warnings)}")
+                failure = (f"o motor {failed.engine} falhou e a leitura seguiu sem ele — "
+                           f"{'; '.join(failed.warnings)}")
+                note = f"região {region_outcome.region.reading_order}: {failure}"
                 notes.append(note)
+                failures.append(failure)
                 self.log.warning("página %d, %s", task.page_index, note)
+        return failures
+
+    @staticmethod
+    def _with_failures(region: RegionRecognition, failures: Sequence[str]) -> RegionRecognition:
+        """The region an engine failed on tells whoever reviews it, and is not accepted in silence.
+
+        Crítico da fase 5, ciclo 5: the page's note went to the trace and nowhere else -- the
+        review item of the Stean p. 165 said «Escore 0.749 abaixo do limite», and a region
+        accepted after a failure would have said nothing at all.  The failure is one of the
+        region's reasons, and a region the arbiter accepted with an engine missing goes to
+        review: the agreement it was accepted on is one engine short.
+        """
+        decision = region.decision
+        reasons = (*decision.reasons_pt,
+                   *(f"{failure[0].upper()}{failure[1:]}." for failure in failures))
+        if decision.decision is Decision.ACCEPTED:
+            decision = replace(decision, decision=Decision.REVIEW, demoted=True,
+                               reasons_pt=reasons)
+        else:
+            decision = replace(decision, reasons_pt=reasons)
+        return replace(region, decision=decision, engine_failures=tuple(failures))
 
     @staticmethod
     def _engine_candidates(recognizer: PageRecognizer, region_outcome: RegionOutcome,

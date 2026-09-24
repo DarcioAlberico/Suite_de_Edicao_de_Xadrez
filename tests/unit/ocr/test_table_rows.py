@@ -506,8 +506,8 @@ def test_an_index_in_two_columns_is_two_lists_not_a_table() -> None:
     texts = [line.text for line in rows_of_tables(reading).lines]
     assert "Ragozin 24" in texts and "Bennett 218" in texts
     # the sabotage: the gutter only with prose beside it, as in the second cycle (and without
-    # the index columns of the fourth, which hold it too)
-    blind = TableRowsConfig(page_band_share=2.0, list_min_heads=10**6)
+    # the lists of one form of the sixth, which hold it too)
+    blind = TableRowsConfig(page_band_share=2.0, list_listed_share=2.0)
     assert _crosses(table_groups(reading, config=blind), {4}, {6, 7})
 
 
@@ -868,9 +868,9 @@ def index_in_three_columns(*, prose_third: bool = False) -> OcrResult:
 def test_an_index_in_three_columns_is_three_lists() -> None:
     """With two gutters and no prose the rule saw no page gutter, and the three columns of an
     index were joined line by line -- «Radulescu 8 Vilup 3, 4 Geller 279, 280», CER 0,0007 →
-    0,7791 and *accepted* through the importer (crítico da fase 5, ciclo 4).  Each column's
-    entries run in alphabetical order: the gutter before the second list is the page's, and
-    before the third."""
+    0,7791 and *accepted* through the importer (crítico da fase 5, ciclo 4).  Each column is a
+    list of entries -- a name and its pages --: the gutter between two lists of one form is the
+    page's."""
     from caissa.ocr.layout.scan import find_gutters
 
     for prose_third in (False, True):
@@ -878,8 +878,8 @@ def test_an_index_in_three_columns_is_three_lists() -> None:
         assert len(find_gutters(reading.lines)) == 2
         groups = table_groups(reading)
         assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3}), prose_third
-        # the sabotage: without the index columns, the gutters hold only beside prose
-        blind = TableRowsConfig(list_min_heads=10**6)
+        # the sabotage: without the lists of one form, the gutters hold only beside prose
+        blind = TableRowsConfig(list_listed_share=2.0)
         assert _crosses(table_groups(reading, config=blind), {1}, {2}), prose_third
 
 
@@ -915,15 +915,15 @@ def games_index() -> OcrResult:
     return _reading(lines)
 
 
-def test_an_index_sorts_its_entries_not_the_lines_under_them() -> None:
-    """The games index: the players at the margin run in alphabetical order, their opponents
-    do not -- the indented lines are sub-entries and stay out of the order; the two columns
-    are two lists (the importer read the page 0,0465 → 0,7915 with the columns joined)."""
+def test_a_games_index_is_three_lists_of_players_and_their_opponents() -> None:
+    """The games index: each player and, under the player, the opponents with their pages -- a
+    list of entries, the players' lines among them; the three columns are three lists (the
+    importer read the page 0,0465 → 0,7915 with the columns joined)."""
     reading = games_index()
     groups = table_groups(reading)
     assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3})
-    # the sabotage: every line counts, the opponents break the order
-    blind = TableRowsConfig(list_margin_chars=1000.0)
+    # the sabotage: no list of one form
+    blind = TableRowsConfig(list_listed_share=2.0)
     assert _crosses(table_groups(reading, config=blind), {1, 2}, {3})
 
 
@@ -954,8 +954,197 @@ def test_an_index_reads_each_name_with_its_pages_and_never_the_next_column() -> 
     assert not _crosses(groups, {1, 2}, {3, 4})
     texts = [line.text for line in rows_of_tables(reading).lines]
     assert "Polak P251" in texts and "Rumiantsev M30" in texts
-    blind = TableRowsConfig(list_min_heads=10**6)
+    blind = TableRowsConfig(list_listed_share=2.0)
     assert _crosses(table_groups(reading, config=blind), {1, 2}, {3, 4})
+
+
+# --------------------------------------------------------------------------- #
+# The critic's pages (fase 5, ciclo 5): lists out of order, short lists, a game
+# beside a table, a table whose columns rise in order by chance
+# --------------------------------------------------------------------------- #
+
+
+STANDINGS = ["Carlsen", "Caruana", "Ding", "Nepomniachtchi", "Aronian", "Giri", "So", "Mamedyarov",
+             "Anand", "Grischuk", "Nakamura", "Vachier-Lagrave", "Karjakin", "Radjabov", "Topalov",
+             "Rapport", "Firouzja", "Duda"]
+
+
+def players_by_the_standings() -> OcrResult:
+    """The critic's «jogador / adversários» (``c5\\ataque\\indices_ataque.pdf`` p. 8, Times 9 pt at
+    300 DPI) as PSM 3 cut it: the players by the standings -- not in alphabetical order --, the
+    opponents indented under each with a page, three columns of 22 lines, one block each."""
+    lines: list[OcrLine] = []
+    rows: list[str] = []
+    for i, player in enumerate(STANDINGS):
+        others = [p for p in STANDINGS if p != player]
+        rows += [player, *(f"   {others[(i * 3 + k) % len(others)]} {40 + 7 * i + 3 * k}"
+                           for k in range(2 + i % 2))]
+    for column, x in enumerate((150.0, 740.0, 1330.0)):
+        for n, text in enumerate(rows[22 * column:22 * column + 22]):
+            indent = 51.0 if text.startswith(" ") else 0.0
+            lines.append(_line(text.strip(), x + indent, 157.0 + 44.0 * n, column + 1, char_w=17.0))
+    return _reading(lines)
+
+
+def test_players_by_the_standings_are_three_lists_not_a_table() -> None:
+    """Out of alphabetical order the rule of the fourth cycle saw no index, and the three columns
+    were joined line by line -- «Carlsen Caruana 82 Nepomniachtchi 127», 0,0000 → 0,6577 and
+    *accepted* through the importer (crítico da fase 5, ciclo 5).  Three lists of one form -- a
+    player, the opponents with their pages -- in any order: the gutters between them are the
+    page's.  The sabotage: no list of one form, and the columns join."""
+    reading = players_by_the_standings()
+    groups = table_groups(reading)
+    assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3})
+    blind = TableRowsConfig(list_listed_share=2.0)
+    assert _crosses(table_groups(reading, config=blind), {1}, {2, 3})
+
+
+def index_last_page(entries_right: int) -> OcrResult:
+    """The critic's «nome | páginas» index (p. 4): the pages set apart from the names, as the Nunn
+    sets them, two columns -- and on the last page the second column holds five entries."""
+    names = [t.split()[0] for t in INDEX_ENTRIES]
+    pages = [t.split(" ", 1)[1] for t in INDEX_ENTRIES]
+    lines: list[OcrLine] = []
+    for column, (x_name, x_pages, count) in enumerate(((150.0, 510.0, 28), (930.0, 1290.0,
+                                                                               entries_right))):
+        first = 0 if column == 0 else 28
+        for n in range(count):
+            y = 170.0 + 45.0 * n
+            lines.append(_line(names[(first + n) % len(names)], x_name, y, 2 * column + 1,
+                               char_w=17.0))
+            lines.append(_line(pages[(first + n) % len(pages)], x_pages, y, 2 * column + 2,
+                               char_w=17.0))
+    return _reading(lines)
+
+
+def test_the_last_page_of_an_index_is_two_lists_however_short_the_second() -> None:
+    """With five entries in the second column the rule of the fourth cycle saw one index column
+    (six heads at least) and no gutter: the first five rows joined two entries each, «Aaron 249
+    Ivkov 268», 0,6634 → 0,3196 *accepted* (crítico da fase 5, ciclo 5).  A name and its pages are
+    a row; the second column is another list, however short -- from two entries: a column of one
+    line is not a column to ``find_gutters`` (no gutter before it), and its entry joins the first
+    row, one line (said in the report)."""
+    for right in (5, 2, 28):
+        reading = index_last_page(right)
+        groups = table_groups(reading)
+        assert not _crosses(groups, {1, 2}, {3, 4}), right
+        texts = [line.text for line in rows_of_tables(reading).lines]
+        assert texts[0] == INDEX_ENTRIES[0], right
+        blind = TableRowsConfig(list_listed_share=2.0)
+        assert _crosses(table_groups(reading, config=blind), {1, 2}, {3, 4}), right
+
+
+def test_columns_of_names_and_nothing_else_are_lists() -> None:
+    """A page of names in three columns -- no pages, no values -- in alphabetical order or not:
+    lists (the rule of the fourth cycle held the ones in order by their order, and the form of a
+    list of entries needs the pages).  The sabotage: no list of one form."""
+    names = sorted(t.split()[0] for t in INDEX_ENTRIES)
+    for order in (names, names[::-1]):
+        lines = [_line(order[12 * column + n], x, 157.0 + 44.0 * n, column + 1, char_w=17.0)
+                 for column, x in enumerate((150.0, 750.0, 1349.0)) for n in range(12)]
+        reading = _reading(lines)
+        groups = table_groups(reading)
+        assert not _crosses(groups, {1}, {2}) and not _crosses(groups, {2}, {3})
+        blind = TableRowsConfig(list_listed_share=2.0)
+        assert _crosses(table_groups(reading, config=blind), {1}, {2, 3})
+
+
+GAME_ON_THE_LEFT = ["1 e4 e5", "2 Nf3 Nc6", "3 Bb5 a6", "4 Ba4 Nf6", "5 O-O Be7", "6 Re1 b5",
+                    "7 Bb3 d6", "8 c3 O-O", "9 h3 Nb8", "10 d4 Nbd7", "11 Nbd2 Bb7", "12 Bc2 Re8"]
+POINTS = ["7½", "7", "6½", "6", "5½", "5", "4½", "4", "3½", "3", "2½", "2"]
+PLAYERS = ["Aljechin", "Keres", "Flohr", "Petrov", "Fine", "Reshevsky", "Tartakower", "Steiner",
+           "Lilienthal", "Stahlberg", "Book", "Mikenas"]
+
+
+def game_beside_the_standings() -> OcrResult:
+    """The critic's ``c5\\partida_tabela\\P_T.png`` as PSM 3 cut it: the game (b1), the players of
+    the standings (b2) and their points, one block each (b3–b14) -- as a tournament book sets a
+    round's game beside the table."""
+    lines = [_line(t, 151.0, 157.0 + 50.0 * n, 1, char_w=20.0)
+             for n, t in enumerate(GAME_ON_THE_LEFT)]
+    lines += [_line(t, 810.0, 157.0 + 50.0 * n, 2, char_w=20.0) for n, t in enumerate(PLAYERS)]
+    lines += [_line(t, 1221.0, 157.0 + 50.0 * n, 3 + n, char_w=20.0) for n, t in enumerate(POINTS)]
+    return _reading(lines)
+
+
+def test_a_game_beside_the_standings_is_a_game_and_a_table() -> None:
+    """The game's lines joined to the standings' rows -- «1 e4 e5 Aljechin 7½», 0,2218 → 0,7564
+    (crítico da fase 5, ciclo 5; the same in the fourth cycle): the gutter beside a game is the
+    page's only when the other side is text, and the first column of a table is cells.  A group
+    never holds a game and a column of names: the game stays as the engine read it, the standings
+    are read by rows.  The sabotage: no column of names, and the game joins the table."""
+    reading = game_beside_the_standings()
+    groups = table_groups(reading)
+    assert not _crosses(groups, {1}, {2})
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert texts[:12] == GAME_ON_THE_LEFT
+    # the standings by rows (a whole point alone, «7», is taken for a move number and joins one
+    # row only -- the rule of the numbering, as before)
+    assert "Aljechin 7½" in texts and "Book 2½" in texts
+    blind = TableRowsConfig(names_share=2.0)
+    assert _crosses(table_groups(reading, config=blind), {1}, {2})
+
+
+def tournament_table(countries: list[str]) -> OcrResult:
+    """The critic's tournament table (``c5\\b13_tabela_em_ordem.py``): name | country | rating |
+    points, twelve players, the names in alphabetical order -- one block a column."""
+    names = ["Alekhine", "Bogoljubow", "Capablanca", "Duras", "Euwe", "Flohr", "Grünfeld",
+             "Hromadka", "Ilyin", "Janowski", "Keres", "Lasker"]
+    ratings = ["2690", "2620", "2725", "2580", "2650", "2640", "2600", "2560", "2570", "2590",
+               "2660", "2700"]
+    lines: list[OcrLine] = []
+    for column, (x, cells) in enumerate(((150.0, names), (600.0, countries), (1000.0, ratings),
+                                          (1200.0, POINTS))):
+        lines += [_line(t, x, 157.0 + 50.0 * n, column + 1, char_w=17.0)
+                  for n, t in enumerate(cells)]
+    return _reading(lines)
+
+
+def test_a_table_whose_columns_rise_in_order_by_chance_is_one_table(monkeypatch) -> None:
+    """The names in alphabetical order, and the countries too, by chance: the rule of the fourth
+    cycle took the two for index columns and read the names alone, 0,7509 → 0,6367 (crítico da
+    fase 5, ciclo 5, não bloqueante 11) -- with the countries out of order, 0,1207.  A name, a
+    country, a rating and a score are not two lists of one form: the table is read by rows, in
+    order or not.  The sabotage: every column a list of entries."""
+    import caissa.ocr.layout.rows as rows
+
+    in_order = ["Argentina", "Bélgica", "Cuba", "Dinamarca", "Escócia", "Finlândia", "Grécia",
+                "Hungria", "Irlanda", "Japão", "Letônia", "Malta"]
+    out_of_order = ["França", "Alemanha", "Cuba", "Holanda", "Escócia", "Suécia", "Áustria",
+                    "Tchecoslováquia", "URSS", "Polônia", "Estônia", "EUA"]
+    for countries in (in_order, out_of_order):
+        texts = [line.text for line in rows_of_tables(tournament_table(countries)).lines]
+        assert texts[0] == f"Alekhine {countries[0]} 2690 7½", texts[0]
+    monkeypatch.setattr(rows, "_band_form", lambda lines, cfg: "E")
+    texts = [line.text for line in rows.rows_of_tables(tournament_table(in_order)).lines]
+    assert texts[0] != f"Alekhine {in_order[0]} 2690 7½"
+
+
+def test_the_kinds_of_a_row() -> None:
+    """What a line of a list holds (``rows._row_kind``): the numbers after a name are a list's
+    (pages, or four digits in a list: the Karpov 1 index, «999, 1046»); a year, a rating or a
+    score are a table's values; a move is neither."""
+    from caissa.ocr.layout.rows import _band_form, _row_kind
+
+    assert _row_kind("Aaron 249") == ("numbered", ["249"])
+    assert _row_kind("Keres 222, 248")[0] == "numbered"
+    assert _row_kind("Polugaevsky — 999, 1046") == ("numbered", ["999,", "1046"])
+    assert _row_kind("Pogosiants R352, 441, P29")[0] == "numbered"
+    assert _row_kind("Van den Ende M60")[0] == "numbered"
+    assert _row_kind("Carlsen – Caruana 1–0 45") == ("numbered", ["45"])
+    assert _row_kind("Aljechin 7½") == ("value", ["7½"])
+    assert _row_kind("231, 246")[0] == "refs"
+    assert _row_kind("7½")[0] == "score"
+    assert _row_kind("Carlsen") == ("word", [])
+    assert _row_kind("1 e4 e5") == ("", [])
+    assert _row_kind("1. Kasparov – Karpov") == ("", [])
+    cfg = TableRowsConfig()
+    column = [_line(t, 0.0, 50.0 * n, 1) for n, t in enumerate(
+        ["Moscovo 1985", "Reykjavik 1972", "Nova Iorque 1918", "Bona 2008", "Haia 1937"])]
+    assert _band_form(column, cfg) == "V", "one year a line: a table's values, not a list"
+    index = [_line(t, 0.0, 50.0 * n, 1) for n, t in enumerate(
+        ["Polugaevsky — 999, 1046", "Porath — 1012", "Portisch — 1015, 1030", "Averkin — 1934"])]
+    assert _band_form(index, cfg) == "E", "four digits in a list: an index"
 
 
 FRINGE_NOTES = ["White could play 24 Rd1", "Bxd4 Rxd4 with an edge.", "Black's reply Kf8 holds",

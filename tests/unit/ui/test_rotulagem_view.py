@@ -111,6 +111,147 @@ def test_the_key_walks_the_tab_both_ways_with_every_control_in_sight(app, tmp_pa
     painel.close()
 
 
+class _PaginaDeLinhas:
+    """A service that reads ``n`` lines in one region: the tab in its working state, the table
+    full -- the critic of cycle 5 recognised the Gallagher p. 51 in the panel itself (66 lines),
+    where the gate and the test above had only ever measured the empty table."""
+
+    lang = "eng"
+
+    def __init__(self, n: int = 12) -> None:
+        self.n = n
+
+    def recognize_image(self, image, *, dpi, lang="", page_index=0):
+        from types import SimpleNamespace
+
+        from caissa.ocr.types import BBox
+
+        s = dpi / 72.0
+        linhas = []
+        for k in range(self.n):
+            y = (60 + 14 * k) * s
+            words = (
+                SimpleNamespace(text=f"linha{k}", confidence=0.5,
+                                box=BBox(50 * s, y, 40 * s, 10 * s)),
+                SimpleNamespace(text="fraca", confidence=0.4, box=BBox(95 * s, y, 30 * s, 10 * s)),
+            )
+            linhas.append(SimpleNamespace(words=words, text=f"linha{k} fraca", confidence=0.4,
+                                          box=BBox(50 * s, y, 75 * s, 10 * s), block_index=0,
+                                          paragraph_index=0))
+        result = SimpleNamespace(lines=tuple(linhas))
+        decision = SimpleNamespace(decision="review", reasons_pt=())
+        region = SimpleNamespace(reading_order=0, kind="paragraph",
+                                 box_px=BBox(0, 0, 400 * s, 600 * s), result=result,
+                                 decision=decision, engine="tesseract", variant="original",
+                                 score=0.5,
+                                 candidates=(SimpleNamespace(variant="original", engine="tesseract",
+                                                             result=result),))
+        return SimpleNamespace(dpi=dpi, regions=[region], engines={"tesseract": "5.5"}, notes=[])
+
+
+def _rotulagem_com_linhas(app, tmp_path: Path, n: int = 12):
+    """The tab with a book open and its page recognised by the panel itself (F5), ``n`` lines."""
+    import time
+
+    pymupdf = pytest.importorskip("pymupdf")
+    from caissa.ui.views.rotulagem import PainelDeRotulagem, abrir_projeto
+
+    pdf = tmp_path / "Livro L.pdf"
+    doc = pymupdf.open()
+    doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    project = abrir_projeto(tmp_path / "proj", revisor="ana")
+    project.languages["Livro L"] = "eng"
+    painel = PainelDeRotulagem(projeto=project, pdf_inicial=pdf)
+    painel.show()
+    app.processEvents()
+    painel.service = _PaginaDeLinhas(n)
+    painel.recognise_page()
+    deadline = time.monotonic() + 30
+    while painel.fila.busy and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.02)
+    app.processEvents()
+    assert painel.table.rowCount() == n
+    return painel
+
+
+def _no_topo(painel, app) -> None:
+    """Every scroll area as the user finds it: at the top."""
+    from PyQt6.QtWidgets import QScrollArea
+
+    for rolagem in painel.findChildren(QScrollArea):
+        rolagem.verticalScrollBar().setValue(0)
+        rolagem.horizontalScrollBar().setValue(0)
+    app.processEvents()
+
+
+def test_with_a_page_of_lines_the_key_walks_every_control_both_ways_in_sight(app, tmp_path: Path):
+    """OCR_UI ciclo 2, fase 5, crítico do ciclo 5: with a page recognised (66 lines of the Gallagher
+    p. 51), Tab went from cell to cell of «Linhas da página» -- the Qt default -- and every change
+    of line sent the focus to «Verdade da linha»: the key never left the loop, and Shift+Tab reached
+    23 of 37 controls, never the figurines nor the six actions.  The test above measured the empty
+    table.  Walked with the gate's instrument, both ways, every scroll area at the top before each
+    way: every control reached, each on screen when it takes the focus.  The sabotage: the table
+    keeps the Tab again."""
+    from caissa.ui.audit import teclado
+
+    painel = _rotulagem_com_linhas(app, tmp_path)
+    painel.resize(1000, 360)
+    app.processEvents()
+    focaveis = teclado._focaveis(painel)
+    assert painel.table in focaveis
+    # a stop per control: the editable combo box and its line edit are one (the focus proxy)
+    paradas = len({id(w.focusProxy() or w) for w in focaveis})
+    for de_volta in (False, True):
+        _no_topo(painel, app)
+        volta = teclado._volta_da_tecla(painel, focaveis, de_volta=de_volta)
+        assert volta.passou(), volta
+        assert volta.alcancados == paradas, (de_volta, volta.alcancados, paradas)
+    painel.table.setTabKeyNavigation(True)
+    voltas = []
+    for de_volta in (False, True):
+        _no_topo(painel, app)
+        voltas.append(teclado._volta_da_tecla(painel, focaveis, de_volta=de_volta))
+    assert not all(v.passou() and v.alcancados == paradas for v in voltas), voltas
+    painel.close()
+
+
+def test_the_arrows_walk_the_lines_with_the_focus_in_the_table_and_enter_goes_to_the_truth(
+        app, tmp_path: Path, monkeypatch):
+    """Crítico da fase 5, ciclo 5 (the same in «Revisão de texto»): the first arrow in the table
+    moved to the next line and sent the focus to the truth field, where the next arrows stayed.
+    The arrows walk the lines and the card follows them; Enter takes the focus to the truth.  The
+    sabotage: the card takes the focus on every line, as before."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    import caissa.ui.views.rotulagem as vista
+
+    painel = _rotulagem_com_linhas(app, tmp_path)
+    painel.table.setFocus()
+    app.processEvents()
+    vistas = [painel.current[1]]
+    for _ in range(3):
+        QTest.keyClick(painel.table, Qt.Key.Key_Down)
+        app.processEvents()
+        assert app.focusWidget() is painel.table, "the arrow keeps the focus in the table"
+        assert painel.current[1] is not vistas[-1], "the arrow moved to the next line"
+        assert painel.truth.toPlainText() == painel.current[1].hypothesis, "the card follows"
+        vistas.append(painel.current[1])
+    QTest.keyClick(painel.table, Qt.Key.Key_Return)
+    app.processEvents()
+    assert app.focusWidget() is painel.truth
+    monkeypatch.setattr(vista, "pelas_setas", lambda _tabela: False)
+    painel.table.setFocus()
+    app.processEvents()
+    QTest.keyClick(painel.table, Qt.Key.Key_Down)
+    app.processEvents()
+    assert app.focusWidget() is painel.truth, "sabotaged: the card takes the focus"
+    painel.close()
+
+
 def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     pymupdf = pytest.importorskip("pymupdf")
     from caissa.ui.views.rotulagem import DialogoDeTreino, PainelDeRotulagem, abrir_projeto

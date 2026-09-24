@@ -101,6 +101,27 @@ def test_the_key_walk_finds_the_editor_that_keeps_the_tab_and_the_focus_out_of_s
     tela.janela.close()
 
 
+def test_each_way_starts_with_the_scroll_areas_at_the_top(app):
+    """Crítico da fase 5, ciclo 5: the Shift+Tab walk ran right after the Tab walk, with the scroll
+    areas left scrolled down by it -- the focus that enters a scroll area from outside landed on a
+    control already in sight, and the gate said PASSOU on the Resultado and the Galeria (0x0 px
+    with the area at the top, as the user finds it), and with the fix of cycle 4 undone.  Here the
+    editor lets the Tab go and nothing follows the focus: walked the old way (``no_topo=False``,
+    after a Tab walk) the hidden figurine is not seen; each way from the top, it is."""
+    from caissa.ui.audit import teclado
+
+    tela = _Janela(app)
+    tela.editor.setTabChangesFocus(True)
+    focaveis = teclado._focaveis(tela.janela)
+    teclado._volta_da_tecla(tela.janela, focaveis, no_topo=False)
+    cega = teclado._volta_da_tecla(tela.janela, focaveis, de_volta=True, no_topo=False)
+    assert cega.escondidos == [], "the old walk: the area left at the bottom by the Tab walk"
+    teclado._volta_da_tecla(tela.janela, focaveis)
+    atenta = teclado._volta_da_tecla(tela.janela, focaveis, de_volta=True)
+    assert "Figurina 5" in atenta.escondidos
+    tela.janela.close()
+
+
 def test_the_key_walk_passes_once_the_tab_leaves_the_editor_and_the_scroll_follows(app):
     from caissa.ui.audit import teclado
 

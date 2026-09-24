@@ -57,7 +57,7 @@ from caissa.ocr.review import (
     decisions_path,
 )
 from caissa.ui.theme import pele
-from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha
+from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, focaveis
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
@@ -280,10 +280,13 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAccessibleName("Dúvidas do livro")
-        # As setas andam pelas linhas; o Tab sai da tabela (com a navegação do Tab ligada, ele
-        # andava de célula em célula e nunca chegava ao cartão).
+        # As setas andam pelas linhas -- o cartão mostra a dúvida e o foco fica na tabela -- e o
+        # Enter leva ao campo da verdade; o Tab sai da tabela (com a navegação do Tab ligada, ele
+        # andava de célula em célula e nunca chegava ao cartão). Até o ciclo 5 do crítico da fase
+        # 5, a primeira seta mandava o foco à verdade, e as seguintes ficavam nela.
         self.table.setTabKeyNavigation(False)
         self.table.itemSelectionChanged.connect(self._on_table_select)
+        self.table.activated.connect(lambda _indice: self.cartao.verdade.setFocus())
         corpo.addWidget(self.table)
 
         # C18: o cartão numa rolagem vertical. Solto, ele punha esta aba em 501 px de altura -- a
@@ -353,7 +356,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         # passa pelo `focusNextPrevChild` dela, e a rolagem não descia: a 1280x641 o foco caía em
         # «Letras → figurinas» com 0 px à vista (crítico da fase 5, ciclo 4).
         self._rolagem = rolagem
-        self._segue_o_foco = RolagemSegueOFoco(rolagem, direita)
+        self._segue_o_foco = RolagemSegueOFoco(rolagem)
 
         self.status = RotuloQueEncolhe("", self)   # C18
         self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
@@ -526,7 +529,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         if not rows or self.queue is None:
             return
         key = self.table.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
-        self._show_item(self.queue.open(key))
+        self._show_item(self.queue.open(key), focar=not pelas_setas(self.table))
 
     def _select_row(self, row: int) -> None:
         if 0 <= row < self.table.rowCount():
@@ -554,7 +557,7 @@ class PainelDeRevisaoDeTexto(QWidget):
 
     # -- the card ----------------------------------------------------------- #
 
-    def _show_item(self, item: ReviewItem) -> None:
+    def _show_item(self, item: ReviewItem, *, focar: bool = True) -> None:
         self.current = item
         if self.pdf is not None:
             x0, y0, x1, y1 = item.rect
@@ -596,7 +599,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         if item.suggestion:
             reasons.append(f"sugestão (não aplicada): {item.suggestion}")
         self.cartao.motivo.setText(" · ".join(reasons))
-        self.cartao.mostrar_verdade(entry.text if entry and entry.text else item.text)
+        self.cartao.mostrar_verdade(entry.text if entry and entry.text else item.text, focar=focar)
 
     def _use_alternative(self, index: int) -> None:
         texto = self.cartao.alternativa(index)

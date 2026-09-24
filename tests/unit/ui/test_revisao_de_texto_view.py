@@ -248,6 +248,40 @@ def test_the_tab_key_walks_the_table_the_card_and_the_actions_in_sight(app, pdf,
     painel.close()
 
 
+def test_the_arrows_walk_the_doubts_with_the_focus_in_the_table_and_enter_goes_to_the_truth(
+        app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 5: the comment said «the arrows walk the lines», and the first ↓
+    moved to the next doubt and sent the focus to «Verdade da linha», where the next arrows stayed.
+    The arrows walk the doubts and the card follows them; Enter takes the focus to the truth.  The
+    sabotage: the card takes the focus on every doubt, as before."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    import caissa.ui.views.revisao_de_texto as vista
+
+    painel = _panel(app, pdf, tmp_path)
+    painel.table.setFocus()
+    app.processEvents()
+    vistas = [painel.current.key]
+    for _ in range(2):
+        QTest.keyClick(painel.table, Qt.Key.Key_Down)
+        app.processEvents()
+        assert app.focusWidget() is painel.table, "the arrow keeps the focus in the table"
+        assert painel.current.key != vistas[-1], "the arrow moved to the next doubt"
+        assert painel.cartao.verdade.toPlainText() == painel.current.text, "the card follows"
+        vistas.append(painel.current.key)
+    QTest.keyClick(painel.table, Qt.Key.Key_Return)
+    app.processEvents()
+    assert app.focusWidget() is painel.cartao.verdade
+    monkeypatch.setattr(vista, "pelas_setas", lambda _tabela: False)
+    painel.table.setFocus()
+    app.processEvents()
+    QTest.keyClick(painel.table, Qt.Key.Key_Up)
+    app.processEvents()
+    assert app.focusWidget() is painel.cartao.verdade, "sabotaged: the card takes the focus"
+    painel.close()
+
+
 def test_decisions_move_on_save_themselves_and_reach_the_importers_file(app, pdf, tmp_path):
     from caissa.ocr.review import ReviewDecisions
 

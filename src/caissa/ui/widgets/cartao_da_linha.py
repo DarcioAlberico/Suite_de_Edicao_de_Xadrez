@@ -21,6 +21,8 @@ import numpy as np
 from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
 from PyQt6.QtGui import QImage, QKeySequence, QPixmap, QTextCursor
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
+    QApplication,
     QLabel,
     QListWidget,
     QPlainTextEdit,
@@ -36,7 +38,8 @@ from caissa.ui.theme import pele
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 
-__all__ = ["CROP_HEIGHT_PX", "CROP_MAX_ZOOM", "CartaoDaLinha", "leitura_em_html", "pixmap_de"]
+__all__ = ["CROP_HEIGHT_PX", "CROP_MAX_ZOOM", "CartaoDaLinha", "leitura_em_html", "pelas_setas",
+           "pixmap_de"]
 
 CROP_HEIGHT_PX = 90
 CROP_MAX_ZOOM = 3.0
@@ -45,6 +48,16 @@ CROP_LAID_OUT_MIN = 120
 #: Below this share of the doubt threshold a weak word is painted red, not amber.
 RED_SHARE = 0.7
 NOME_DA_PECA = {"♔": "rei", "♕": "dama", "♖": "torre", "♗": "bispo", "♘": "cavalo", "♙": "peão"}
+
+
+def pelas_setas(tabela: QAbstractItemView) -> bool:
+    """Se a linha da ``tabela`` mudou pela tecla, com o foco nela -- e não pelo mouse.
+
+    Quem anda pelas linhas com as setas (ou o PgUp/PgDn) continua na tabela, e o cartão mostra a
+    linha sem tomar o foco (crítico da fase 5, ciclo 5: a primeira seta mandava o foco ao campo
+    da verdade, e as seguintes ficavam nele).
+    """
+    return tabela.hasFocus() and QApplication.mouseButtons() == Qt.MouseButton.NoButton
 
 
 def pixmap_de(rgb: np.ndarray) -> QPixmap:
@@ -201,9 +214,15 @@ class CartaoDaLinha(QWidget):
             return self._alternativas[index][1]
         return None
 
-    def mostrar_verdade(self, texto: str) -> None:
+    def mostrar_verdade(self, texto: str, *, focar: bool = True) -> None:
+        """Põe ``texto`` no campo da verdade e, com ``focar``, o foco nele.
+
+        Quem escolhe a linha com o mouse, ou a acabou de decidir, escreve em seguida; quem anda
+        pelas linhas da tabela com as setas continua na tabela (``focar=False``).
+        """
         self.verdade.setPlainText(texto)
-        self.verdade.setFocus()
+        if focar:
+            self.verdade.setFocus()
         self.verdade.moveCursor(QTextCursor.MoveOperation.End)
 
     def texto_da_verdade(self) -> str:

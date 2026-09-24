@@ -113,7 +113,7 @@ from caissa.ocr.training import (
 )
 from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
-from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
+from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas, pixmap_de
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
@@ -643,7 +643,14 @@ class PainelDeRotulagem(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAccessibleName("Linhas da página")
+        # As setas andam pelas linhas e o Enter leva ao campo da verdade; o Tab sai da tabela.
+        # Com a navegação do Tab ligada (o padrão do Qt), o Tab andava de célula em célula, e cada
+        # troca de linha mandava o foco à verdade: com uma página reconhecida, a tecla não saía do
+        # laço, e de volta o Shift+Tab nunca chegava às figurinas nem às ações (crítico da fase 5,
+        # ciclo 5: 23 de 37 controles).
+        self.table.setTabKeyNavigation(False)
         self.table.itemSelectionChanged.connect(self._on_table_select)
+        self.table.activated.connect(lambda _indice: self.truth.setFocus())
         dir_.addWidget(self.table, 1)
         corpo.addWidget(rolagem)
         corpo.setStretchFactor(0, 3)
@@ -653,7 +660,7 @@ class PainelDeRotulagem(QWidget):
         # when the focus comes from outside it (OCR_UI ciclo 2, fase 5, crítico do ciclo 4: the
         # `teclado` gate with the real key put the focus on «Leitura do motor» with 0 px on screen
         # at 1280x641 -- the scroll area only follows the focus that moves inside it).
-        self._segue_o_foco = RolagemSegueOFoco(rolagem, direita)
+        self._segue_o_foco = RolagemSegueOFoco(rolagem)
 
         # C18: a linha de estado pedia 2.868 px de largura mínima (o texto inteiro).
         self.status = RotuloQueEncolhe("", self)
@@ -1088,7 +1095,7 @@ class PainelDeRotulagem(QWidget):
             return
         line = next((c for c in region.lines if c.index == line_index), None)
         if line is not None and (self.current is None or line is not self.current[1]):
-            self._select_line(region, line, from_table=True)
+            self._select_line(region, line, from_table=True, focar=not pelas_setas(self.table))
 
     def _select_first_pending(self) -> None:
         pairs = self._visible_lines()
@@ -1101,19 +1108,19 @@ class PainelDeRotulagem(QWidget):
             self._show_line(None)
 
     def _select_line(
-        self, region: RegionLabel, line: LineLabel, *, from_table: bool = False
+        self, region: RegionLabel, line: LineLabel, *, from_table: bool = False, focar: bool = True
     ) -> None:
         self._flush_timer()
         self.current = (region, line)
         self.selected_region = region
         self.opened_at = time.perf_counter()
         self._draw_boxes()
-        self._show_line(line)
+        self._show_line(line, focar=focar)
         self.visor.centralizar(line.box)
         if not from_table:
             self._fill_table()
 
-    def _show_line(self, line: LineLabel | None) -> None:
+    def _show_line(self, line: LineLabel | None, *, focar: bool = True) -> None:
         if line is None or self.page is None:
             self.cartao.limpar()
             return
@@ -1157,7 +1164,7 @@ class PainelDeRotulagem(QWidget):
                 f"{len(line.alternatives)} leitura(s) alternativa(s) — Alt+1/Alt+2 copia"
             )
         self.reason_label.setText(" · ".join(reasons))
-        self.cartao.mostrar_verdade(line.text if line.done else line.hypothesis)
+        self.cartao.mostrar_verdade(line.text if line.done else line.hypothesis, focar=focar)
 
     def _use_alternative(self, *, index: int | None = None) -> None:
         if index is None:

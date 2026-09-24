@@ -21,6 +21,7 @@ from __future__ import annotations
 import io
 import itertools
 import re
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -85,15 +86,21 @@ def _juntas(texto: str) -> list[str]:
     return [linha for linha in texto.splitlines() if DOIS_VERBETES.search(linha)]
 
 
+def _chave(palavra: str) -> str:
+    """``palavra`` as an index sorts it: no accents, no case (``Cámpora`` among the C's)."""
+    decomposta = unicodedata.normalize("NFKD", palavra)
+    return "".join(ch for ch in decomposta if not unicodedata.combining(ch)).casefold()
+
+
 def _descidas(texto: str) -> tuple[int, int]:
     """How often the alphabetical order of the entries goes down, and how many entries."""
-    from caissa.ocr.layout.rows import _first_word, _sort_key
+    from caissa.ocr.layout.rows import _first_word
 
     chaves = []
     for linha in texto.splitlines():
         palavra = _first_word(linha)
         if len(palavra) > 1 and palavra[0].isupper():
-            chaves.append(_sort_key(palavra))
+            chaves.append(_chave(palavra))
     return sum(1 for a, b in itertools.pairwise(chaves) if b < a), len(chaves)
 
 
@@ -135,13 +142,13 @@ def test_the_scanned_indexes_of_the_nunn_and_the_yusupov_keep_their_lists(digita
 @pytest.mark.timeout(900)
 @requires_tesseract
 def test_the_sabotages_interleave_the_flores_and_the_nunn(monkeypatch, tmp_path):
-    """Without the index's gutters the Flores p. 462 joins its lists line by line; with the
-    agreement measured on the lines the B13 moved (the before), the arbiter takes RapidOCR's
-    interleaved Nunn p. 288."""
+    """Without the gutter between two lists of one form the Flores p. 462 joins its lists line by
+    line; with the agreement measured on the lines the B13 moved (the before), the arbiter takes
+    RapidOCR's interleaved Nunn p. 288."""
     from caissa.ocr import arbiter
     from caissa.ocr.layout import rows
 
-    monkeypatch.setattr(rows, "_index_gutters", lambda gutters, bands, cfg: [])
+    monkeypatch.setattr(rows, "_list_gutters", lambda gutters, bands, cfg: [])
     assert len(_juntas(_ler(corpus_file("Flores Rios - Chess Structures"), [462])[462])) > 10
     monkeypatch.undo()
     monkeypatch.setattr(arbiter, "_engine_order", lambda result: result.text)

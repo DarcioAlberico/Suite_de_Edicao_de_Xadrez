@@ -37,7 +37,9 @@ the same rule, applied to Tesseract **through its own blocks**:
     the moves** (consecutive move numbers, bare or followed by a move): two such
     columns side by side are two games, or one game in two page columns, and a
     move column whose own numbers stand between it and the group's numbering
-    belongs to those numbers.
+    belongs to those numbers.  And a group never holds a game and a column of
+    **names**: a move list beside the standings of the tournament is a game and
+    a table, never one table (``1 e4 e5 Aljechin 7½``).
 4.  A group never crosses a **column gutter**: the gap between two blocks
     holds the page's gutter when a corridor inside it is touched by almost no
     line of prose reaching into the two blocks (at most
@@ -52,13 +54,14 @@ the same rule, applied to Tesseract **through its own blocks**:
     narrow one; of two gutters or more, the ones next to a block of prose (the
     others are a table's gaps, or the tab of a move list in one column).  Two
     kinds of page gutter need no prose, however many gutters there are: the one
-    before every column of an **index** but the first — a column whose entries,
-    the lines at its margin (a sub-entry is indented under its name), open with
-    words in alphabetical order (:attr:`TableRowsConfig.list_min_heads` of them
-    at least) — and the one between a **game** (numbered lines with their moves,
-    or a column of move numbers beside a column of moves, as the German books cut
-    them) and a column of text (lines longer than a cell that are not moves),
-    whether or not a rule above calls that text prose.
+    between two **lists of one form** side by side — two units of entries (a name
+    and its pages in one band, ``Aaron 249``; a name in one band and its pages in
+    the next, ``Aaron | 249``; a player and the opponents under the player) or
+    two of names with values (``Aljechin 7½``), in any order and however short —
+    and the one between a **game** (numbered lines with their moves, or a column
+    of move numbers beside a column of moves, as the German books cut them) and a
+    column of text (lines longer than a cell that are not moves), whether or not
+    a rule above calls that text prose.
     Across a page's gutter only a **move list** is a group: numbers and
     White's moves on the left, one move a line on the right (an evaluation set
     apart, ``31 Nh1 !?``, is part of its move) — the positive evidence of a
@@ -87,14 +90,18 @@ the importer, because nothing called them prose.  Its fourth cycle found the ind
 three columns or more -- the Flores pp. 460–464, the Yusupov 4 p. 206, the Nunn p. 288:
 names and pages of two columns joined line by line, the gutters between them read as a
 table's gaps because no prose stood beside them -- and notes that no rule calls prose,
-beside a game, joined to it (the Nunn pp. 29 and 143, the Burgess p. 133).
+beside a game, joined to it (the Nunn pp. 29 and 143, the Burgess p. 133).  The rule that
+answered it -- a column whose heads rise in alphabetical order is a list -- was not the class:
+its fifth cycle found «jogador / adversários» by the standings (0,0000 → 0,6577, *accepted*),
+the last page of an index with five entries in its second column, a game beside the standings of
+a tournament joined to them, and a table whose names and countries rose in order by chance read
+as two lists.  What makes two columns two lists is their form, not their order.
 """
 
 from __future__ import annotations
 
 import itertools
 import re
-import unicodedata
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
@@ -193,26 +200,27 @@ class TableRowsConfig:
     #: the Gallagher p. 50, notes of variations beside the game, CER 0,0113 → 0,5845).  A
     #: move list opens its lines with the number; a table's numbers are years and pages.
     notes_share: float = 0.5
-    #: A band of the page is an **index column** when at least this many of its entries --
-    #: the lines at the column's margin, the sub-entries indented under them left out --
-    #: open with a word, and the words run in alphabetical order: at least
-    #: ``list_sorted_share`` of the consecutive pairs in order, and ``list_rising_share``
-    #: strictly rising (``Rodada 1 / Rodada 2`` is one word repeated, not a list).  Two index
-    #: columns side by side are two lists -- the gutter before the second is the page's,
-    #: found without prose (crítico da fase 5, ciclo 4: with two gutters or more and no
-    #: prose the rule saw no page gutter, and the index of the Flores, ``Chess Structures``,
-    #: pp. 460–464, of the Yusupov 4 p. 206 and of the Nunn p. 288 came out interleaved
-    #: line by line -- «David 412 Galkin 198 / Delchev 108, 198 Gao 365», CER 0,0230 → 0,7217;
-    #: a constructed index in three columns 0,0007 → 0,7791, *accepted*).  A table's column
-    #: is not sorted by its first word (``Haia / Moscovo / Baguio``), and one sorted column
-    #: beside columns of numbers is one list, read with its pages.
-    list_min_heads: int = 6
-    list_sorted_share: float = 0.8
-    list_rising_share: float = 0.5
-    #: ...an entry is at the margin when its left edge is within this many median character
-    #: widths of the leftmost line near it: a scanned page is skewed, and the margin drifts
-    #: 40 px down the Aagaard's index.
-    list_margin_chars: float = 1.5
+    #: A band of the page is a **list of entries** (:func:`_band_form`) when at least this share of
+    #: its rows are a name and its numbers -- the «jogador / adversários» columns of the Yusupov 4
+    #: p. 206 hold 52–63 % entries, the rest the players they are listed under --, and at least
+    #: ``list_listed_share`` of its rows are names, entries or numbers.  Two lists of one form side
+    #: by side are two lists: the gutter between them is the page's, found without prose and
+    #: without order (crítico da fase 5, ciclos 4 e 5: the Flores pp. 460–464, the Yusupov 4
+    #: p. 206 and the Nunn p. 288 interleaved line by line, «David 412 Galkin 198», CER 0,0230 →
+    #: 0,7217; the players by the standings «Carlsen Caruana 82 Nepomniachtchi 127», 0,0000 →
+    #: 0,6577 *accepted*; the last page of an index, five entries in the second column).  A
+    #: table's columns are not two lists of one form: a name, a place and a year, an opening and
+    #: its page (``table:2/4/7``); a name, a country, a rating and a score.
+    list_entry_share: float = 0.3
+    list_listed_share: float = 0.8
+    #: A block is a column of **names** -- never grouped with a game -- when it has at least
+    #: ``names_min_lines`` lines of a cell's length at most (``cell_max_chars``) and at least
+    #: ``names_share`` of them are names, alone or with a value or numbers (:func:`_names`).  One
+    #: line that reads as a word is OCR's noise as often as a name (``(hi?`` for a Black move of
+    #: the Gallagher p. 33), and a line of text is not a cell (``Zurück zur Textvariante: 1.``,
+    #: the Gunderam p. 20).
+    names_share: float = 0.6
+    names_min_lines: int = 3
     #: A **game** -- at least this many lines that open with consecutive move numbers, each
     #: followed by a move (``26 Re3 Bxd4``) -- makes the gutter beside it the page's when
     #: the other side holds text (lines longer than a cell): notes that no rule calls prose
@@ -365,10 +373,9 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     page's are those next to a block of prose, the first on each side of it; a table has
     no prose, and a tab has the column's own text on both sides.
 
-    And two kinds of page need no prose at all (crítico da fase 5, ciclo 4): an **index**
-    -- the gutter before every column whose entries run in alphabetical order, when another
-    column does too (:func:`_index_gutters`) -- and a **game** beside a column of text (the
-    gutter between them, :func:`_game_gutters`).
+    And two kinds of page need no prose at all (crítico da fase 5, ciclos 4 e 5): **two lists of
+    one form** side by side -- the gutter between them (:func:`_list_gutters`) -- and a **game**
+    beside a column of text (the gutter between them, :func:`_game_gutters`).
     """
     from .scan import _band_of, find_gutters
 
@@ -378,7 +385,7 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     bands: dict[int, list[_Block]] = {}
     for block in blocks:
         bands.setdefault(_band_of(block.extent.cx, gutters), []).append(block)
-    page = set(_index_gutters(gutters, bands, cfg)) | set(_game_gutters(gutters, bands, cfg))
+    page = set(_list_gutters(gutters, bands, cfg)) | set(_game_gutters(gutters, bands, cfg))
     prose = [b for b in blocks if _is_prose(b, cfg)]
     if len(gutters) > 1:
         # A table's gaps, or the page's gutter beside the tab of a move list set in one of
@@ -404,53 +411,6 @@ def _page_gutters(result: OcrResult, blocks: Sequence[_Block],
     return sorted(page)
 
 
-def _index_gutters(gutters: Sequence[tuple[float, float]], bands: dict[int, list[_Block]],
-                   cfg: TableRowsConfig) -> list[tuple[float, float]]:
-    """The gutter before every index column but the first (``list_min_heads``): two
-    alphabetical lists side by side are two lists, whatever stands between them -- the page
-    numbers of the first, the gap between a name and its pages."""
-    columns = sorted(n for n, members in bands.items()
-                     if _index_column([line for m in members for line in m.lines], cfg))
-    return [gutters[n - 1] for n in columns[1:] if 0 < n <= len(gutters)]
-
-
-def _index_column(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> bool:
-    """Whether ``lines`` are the entries of an index: the words that open the lines at the
-    column's margin run in alphabetical order (``list_sorted_share``), rising
-    (``list_rising_share``)."""
-    keys = _entry_words(lines, cfg)
-    if len(keys) < cfg.list_min_heads:
-        return False
-    pairs = list(itertools.pairwise(keys))
-    ordered = sum(1 for a, b in pairs if a <= b)
-    rising = sum(1 for a, b in pairs if a < b)
-    return (ordered >= cfg.list_sorted_share * len(pairs)
-            and rising >= cfg.list_rising_share * len(pairs))
-
-
-def _entry_words(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> list[str]:
-    """The sort keys of a column's entries, top down: the first word of every line at the
-    column's margin -- within ``list_margin_chars`` of the leftmost line near it (six lines
-    up or down: the margin of a scanned page drifts) -- and not a sub-entry indented under
-    it (``Potkin / Carlsen 112``: the games of Potkin, by opponent).  A line that opens with
-    a number or a move (``279, 280``, ``P251``) has no word."""
-    ordered = sorted((ln for ln in lines if ln.text.strip()), key=lambda ln: ln.box.cy)
-    if not ordered:
-        return []
-    widths = [w.box.w / max(1, len(w.text)) for ln in ordered for w in ln.words if w.text.strip()]
-    char = _median_float(widths) or 1.0
-    height = _median_float([ln.box.h for ln in ordered]) or 1.0
-    keys: list[str] = []
-    for line in ordered:
-        near = min(o.box.x0 for o in ordered if abs(o.box.cy - line.box.cy) <= 6 * height)
-        if line.box.x0 > near + cfg.list_margin_chars * char:
-            continue
-        word = _first_word(line.text)
-        if word:
-            keys.append(_sort_key(word))
-    return keys
-
-
 def _first_word(text: str) -> str:
     """The line's first token when it is a word (letters, with a hyphen, an apostrophe or a
     period inside: ``Santo-Roman``, ``O'Kelly``, ``J.``), or nothing."""
@@ -463,10 +423,123 @@ def _first_word(text: str) -> str:
     return ""
 
 
-def _sort_key(word: str) -> str:
-    """``word`` as an index sorts it: no accents, no case (``Cámpora`` among the C's)."""
-    decomposed = unicodedata.normalize("NFKD", word)
-    return "".join(ch for ch in decomposed if not unicodedata.combining(ch)).casefold()
+#: A number a list gives after a name: a page, or the number of a game or an exercise (the Karpov
+#: 1 index runs to four digits: «999, 1046»), with a letter before it (the Nunn's «R352», «P29»)
+#: or a comma after it.
+_NUMBER = re.compile(r"^[A-Z]?\d{1,4}[a-z]?[,;.]?$")
+#: A page number has at most this many digits; a number of four is a page only in a list of them
+#: (``999, 1046``) -- alone it is a year or a rating (``Moscovo 1985``).
+_PAGE_DIGITS = 3
+#: A score (``7½``, ``½``, ``=``): a value, never a page.
+_SCORE = re.compile(r"^(\d{0,2}[½=]|\d{1,2}[.,]5)[,;.]?$")
+#: What stands between a name and its numbers in an index (``Polugaevsky — 999``).
+_BETWEEN = frozenset({"—", "–", "-", "…", "...", ":"})
+#: The result of a game, part of a name in a list of games (``Carlsen – Caruana 1–0 45``).
+_RESULT = re.compile(r"^(1|0|½)[-–:](1|0|½)[,;.]?$")
+
+
+def _row_kind(text: str) -> tuple[str, list[str]]:
+    """What a row of a band holds, and its numbers: ``refs`` (numbers only: ``231, 246``),
+    ``numbered`` (a name and its numbers: ``Aaron 249``, ``Polugaevsky — 999, 1046``, ``Moscovo
+    1985``), ``score`` (a score alone: ``7½``), ``value`` (a name and a score: ``Aljechin 7½``),
+    ``word`` (words, no digit: ``Carlsen``), or ``""``."""
+    tokens = [t for t in text.split() if t not in _BETWEEN]
+    if not tokens:
+        return "", []
+    if all(_NUMBER.match(t) or _SCORE.match(t) for t in tokens):
+        return ("score" if any(_SCORE.match(t) for t in tokens) else "refs"), tokens
+    if not _first_word(text):
+        return "", []
+    tail = len(tokens)
+    while tail > 1 and (_NUMBER.match(tokens[tail - 1]) or _SCORE.match(tokens[tail - 1])):
+        tail -= 1
+    head, numbers = tokens[:tail], tokens[tail:]
+    if any(ch.isdigit() for token in head if not _RESULT.match(token) for ch in token):
+        return "", []
+    if not numbers:
+        return "word", []
+    return ("value" if any(_SCORE.match(t) for t in numbers) else "numbered"), numbers
+
+
+def _line_kinds(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> list[tuple[str, list[str]]]:
+    """The kind of every line of a band (:func:`_row_kind`), a name and its numbers read as two
+    lines at one height counted as one entry: the Flores p. 460 sets the pages apart from the
+    names in its second column, and Tesseract read «Berzinsh» and «436, 459» side by side.  Line
+    by line, and not row by row: a band that holds two columns of entries (a gutter the reading did
+    not leave) would make every row two entries and no entry."""
+    kinds = [_row_kind(line.text) for line in lines]
+    taken: set[int] = set()
+    for i, (line, (kind, _numbers)) in enumerate(zip(lines, kinds, strict=True)):
+        if kind != "word":
+            continue
+        pages = next((j for j, (other, (other_kind, _n)) in enumerate(zip(lines, kinds, strict=True))
+                      if other_kind == "refs" and j not in taken and other.box.x0 > line.box.x1
+                      and _same_height(line.box, other.box, cfg.overlap)), None)
+        if pages is not None:
+            taken.add(pages)
+            kinds[i] = ("numbered", kinds[pages][1])
+    return [kind for j, kind in enumerate(kinds) if j not in taken]
+
+
+def _band_form(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> str:
+    """The form of a band of the page (:func:`_line_kinds`): ``E`` a list of entries -- a third of
+    the lines or more are a name and its numbers, nearly all are names, entries or numbers (the
+    heads and the sub-entries of «jogador / adversários», the continuation lines of a long entry),
+    and the numbers are a list somewhere (``999, 1046``) or short (pages: ``249``) --; ``V`` names
+    with values (a year, a rating: ``Moscovo 1985``; a score: ``Aljechin 7½``); ``W`` names only;
+    ``R`` numbers only; ``S`` scores only; ``""`` anything else."""
+    rows = _line_kinds(lines, cfg)
+    n = len(rows)
+    if not n:
+        return ""
+    count = {k: sum(1 for kind, _ in rows if kind == k)
+             for k in ("refs", "numbered", "value", "word", "score")}
+    listed = cfg.list_listed_share * n
+    if (count["numbered"] >= cfg.list_entry_share * n
+            and count["numbered"] + count["word"] + count["refs"] >= listed):
+        numbers = [nums for kind, nums in rows if kind in ("numbered", "refs")]
+        a_list = any(len(nums) > 1 for nums in numbers)
+        short = all(sum(ch.isdigit() for ch in t) <= _PAGE_DIGITS for nums in numbers for t in nums)
+        return "E" if a_list or short else "V"
+    if (count["value"] >= cfg.list_entry_share * n
+            and count["value"] + count["word"] >= listed):
+        return "V"
+    for kind, form in (("word", "W"), ("refs", "R"), ("score", "S")):
+        if count[kind] >= listed:
+            return form
+    return ""
+
+
+def _list_gutters(gutters: Sequence[tuple[float, float]], bands: dict[int, list[_Block]],
+                  cfg: TableRowsConfig) -> list[tuple[float, float]]:
+    """The gutter between two lists of the same form, side by side: two units of entries -- a band
+    of entries (``Aaron 249``), or a band of names followed by a band of their references (the name
+    and its pages set apart: ``Aaron | 249``) --, or two units of names with values.  Whatever their
+    order and however short: a list beside a list is two lists, and the gutter before the second is
+    the page's (crítico da fase 5, ciclo 5: «jogador / adversários» by the standings, 0,0000 →
+    0,6577 *accepted*; the last page of an index, five entries in the second column, joined to the
+    first).
+    A table's columns are not two lists of one form: a name, a place and a year, an opening, a page
+    (``table:2/4/7``); a name, a country, a rating and a score."""
+    filled = sorted(n for n, members in bands.items() if members)
+    forms = {n: _band_form([ln for m in bands[n] for ln in m.lines], cfg) for n in filled}
+    units: list[tuple[int, str]] = []   # (first band, form)
+    k = 0
+    while k < len(filled):
+        n, form = filled[k], forms[filled[k]]
+        after = forms[filled[k + 1]] if k + 1 < len(filled) else ""
+        if form == "W" and after in ("R", "S"):
+            units.append((n, "E" if after == "R" else "V"))
+            k += 2
+            continue
+        units.append((n, form))
+        k += 1
+    # a page of names and nothing else, in columns: lists, in order or not (the table of names --
+    # White | Black -- that this reads by columns is what one gutter of comparable bands already
+    # did: ``page_band_share``)
+    lists = ("E", "V", "W") if len(units) > 1 and all(f == "W" for _n, f in units) else ("E", "V")
+    return [gutters[second - 1] for (_first, a), (second, b) in itertools.pairwise(units)
+            if a == b and a in lists and 0 < second <= len(gutters)]
 
 
 def _game_gutters(gutters: Sequence[tuple[float, float]], bands: dict[int, list[_Block]],
@@ -704,6 +777,25 @@ def _lone_number(block: _Block) -> bool:
     return match is not None and not match.group(3)
 
 
+def _moveish(block: _Block, cfg: TableRowsConfig) -> bool:
+    """A block of a move list: a game, a column of moves, or move numbers with their moves."""
+    return (_game(block, cfg) or _move_column(block, cfg)
+            or (_numbers_column(block, cfg)
+                and any(_MOVE_SQUARE.search(line.text) for line in block.lines)))
+
+
+def _names(block: _Block, cfg: TableRowsConfig) -> bool:
+    """A column of names -- a table's cells, not a game's: ``names_min_lines`` short lines or more,
+    ``names_share`` of them names, alone or with a value or page references (``Aljechin``,
+    ``Aljechin 7½``).  A game's
+    columns misread by OCR (``R£6+``, ``Hc?``, a stray «draw.» over the move numbers) are not."""
+    if len(block.lines) < cfg.names_min_lines or block.median_chars > cfg.cell_max_chars:
+        return False
+    names = sum(1 for line in block.lines
+                if _row_kind(line.text)[0] in ("word", "value", "numbered"))
+    return names >= cfg.names_share * len(block.lines)
+
+
 def _shares_rows(a: _Block, b: _Block, cfg: TableRowsConfig) -> bool:
     return any(_same_height(x.box, y.box, cfg.overlap) for x in a.lines for y in b.lines)
 
@@ -876,6 +968,16 @@ def table_groups(result: OcrResult, *,
     def crosses(block: _Block, group: Sequence[_Block]) -> bool:
         return _crosses_the_page([*group, block], band, cfg)
 
+    kind = {b.index: ("moves" if _moveish(b, cfg) else "names" if _names(b, cfg) else "")
+            for b in blocks}
+
+    def mixes(block: _Block, group: Sequence[_Block]) -> bool:
+        """A game and a table in one group: a move list beside the standings of the tournament
+        (crítico da fase 5, ciclo 5: «1 e4 e5 Aljechin 7½», 0,2218 → 0,7564).  A game's own
+        columns are moves and numbers; a column of names is a table's."""
+        kinds = {kind[m.index] for m in (*group, block)}
+        return {"moves", "names"} <= kinds
+
     prose = _prose_lines([line for block in blocks for line in block.lines], cfg)
 
     def beside(block: _Block, group: Sequence[_Block]) -> bool:
@@ -902,7 +1004,7 @@ def table_groups(result: OcrResult, *,
             for block in blocks:
                 if (block.index in taken or any(block is m for m in group)
                         or _is_prose(block, cfg) or crosses(block, group)
-                        or numbered_twice(block, group)
+                        or numbered_twice(block, group) or mixes(block, group)
                         or not beside(block, group)):
                     continue
                 if (_partner_share(block, group, cfg) >= cfg.align_share

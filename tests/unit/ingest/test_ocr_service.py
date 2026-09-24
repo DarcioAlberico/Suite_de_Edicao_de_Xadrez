@@ -428,6 +428,10 @@ def test_an_engine_that_fails_on_the_region_is_said_on_the_page(monkeypatch):
     assert len(falhas) == 1, recognition.notes
     assert "rapidocr" in falhas[0]
     assert "bad allocation" in falhas[0]
+    # and the region says it to whoever reviews it (crítico da fase 5, ciclo 5)
+    region = recognition.regions[0]
+    assert region.engine_failures and "rapidocr" in region.engine_failures[0]
+    assert any("rapidocr falhou" in r and "bad allocation" in r for r in region.decision.reasons_pt)
     # the sabotage: the empty reading without the mark, as OcrEngineBase gave it before
     import caissa.ocr.engines.base as base_module
 
@@ -437,6 +441,56 @@ def test_an_engine_that_fails_on_the_region_is_said_on_the_page(monkeypatch):
     silent = OcrService([MockRaster(confidence=0.40), SemMemoria()], config, lang="eng")
     assert not [n for n in silent.recognize_image(inked_page(), dpi=300, lang="eng").notes
                 if "falhou" in n]
+
+
+def test_a_region_accepted_with_an_engine_short_goes_to_review(monkeypatch):
+    """Crítico da fase 5, ciclo 5: the failure was said in the page's notes -- the trace -- and a
+    region accepted after an engine failed would have said nothing to whoever reviews.  The
+    engine that fails runs first here (Tesseract's level), the next one reads well and the
+    arbiter accepts: the region goes to review, the failure among its reasons.  The sabotage: the
+    region as the arbiter settled it, accepted in silence."""
+    from caissa.ocr.engines.base import OcrEngineBase
+
+    class FalhaPrimeiro(OcrEngineBase):
+        name = "tesseract"
+        version = "sem memória"
+
+        def _probe(self) -> tuple[bool, str | None]:
+            return True, None
+
+        def _discover_languages(self) -> set[str]:
+            return {"eng", "por"}
+
+        def capabilities(self) -> EngineCapabilities:
+            return EngineCapabilities(level=EngineLevel.TESSERACT, cost_per_megapixel_s=0.1,
+                                      supports_char_boxes=False, supports_confidence=True,
+                                      handles_layout=True)
+
+        def _recognize(self, image, *, lang: str, psm_hint: RegionKind) -> OcrResult:
+            raise RuntimeError("bad allocation")
+
+    class LeBemDepois(MockRaster):
+        name = "mock_paddle"
+
+        def capabilities(self) -> EngineCapabilities:
+            return EngineCapabilities(level=EngineLevel.PADDLE, cost_per_megapixel_s=1.0,
+                                      supports_char_boxes=False, supports_confidence=True,
+                                      handles_layout=True)
+
+    config = OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                              glyph_candidates=False)
+
+    def reconhecer():
+        service = OcrService([FalhaPrimeiro(), LeBemDepois(confidence=0.97)], config, lang="eng")
+        return service.recognize_image(inked_page(), dpi=300, lang="eng").regions[0]
+
+    region = reconhecer()
+    assert region.engine == "mock_paddle"
+    assert region.decision.decision is Decision.REVIEW, region.decision.describe_pt()
+    assert region.decision.demoted
+    assert any("tesseract falhou" in r for r in region.decision.reasons_pt)
+    monkeypatch.setattr(OcrService, "_with_failures", staticmethod(lambda region, failures: region))
+    assert reconhecer().decision.decision is Decision.ACCEPTED, "sabotaged: accepted in silence"
 
 
 def test_the_books_model_takes_the_anchor_seat_only_inside_its_book(tmp_path: Path, monkeypatch):

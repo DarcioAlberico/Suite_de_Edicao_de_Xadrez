@@ -251,16 +251,28 @@ def test_an_ocr_provider_takes_over_a_page_without_text(pdf_file):
     assert block.provenance.confidence == pytest.approx(0.7)
 
 
-def test_a_failing_ocr_provider_does_not_lose_the_book(pdf_file):
+def test_a_failing_ocr_provider_does_not_lose_the_book(pdf_file, monkeypatch):
+    """And the page it failed on is in the review queue, not only in the notes (crítico da fase 5,
+    ciclo 5: a ``MemoryError`` left «OCR falhou na página 165» in the notes and no review item --
+    the page was gone from the list someone reads page by page).  The sabotage: the page is not
+    listed."""
     spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
     path = pdf_file([spec])
 
     def broken(*_args):
-        raise RuntimeError("motor caiu")
+        raise MemoryError("bad allocation")
 
     result = import_pdf(path, PdfImportOptions(ocr=broken))
     assert result.report.pages[0].source == "image-only"
-    assert any("motor caiu" in note for note in result.report.notes)
+    assert any("bad allocation" in note for note in result.report.notes)
+    review = [i for i in result.report.review_items if i.page_index == 0]
+    assert len(review) == 1, review
+    assert review[0].kind == "page" and review[0].decision == "abstained"
+    assert "O OCR falhou nesta página" in review[0].reasons[0]
+    assert "bad allocation" in review[0].reasons[0]
+    monkeypatch.setattr(PdfImporter, "_failed_for_review", lambda self, frame, ocr: None)
+    sabotaged = import_pdf(path, PdfImportOptions(ocr=broken))
+    assert sabotaged.report.review_items == []
 
 
 def test_figures_and_inline_images_are_placed_and_written(pdf_file, tmp_path):

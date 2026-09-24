@@ -975,6 +975,7 @@ class PdfImporter:
             ocr = self._try_ocr(page, frame, verdict)
             if ocr.text is not None:
                 return "ocr", reason, ocr.confidence, ocr.text
+            self._failed_for_review(frame, ocr)
             if text.is_empty and not text.images:
                 return "blank", reason, 0.0, text
             return "image-only", reason, 0.0, text
@@ -982,6 +983,7 @@ class PdfImporter:
             ocr = self._try_ocr(page, frame, verdict)
             if ocr.text is not None:
                 return "ocr", verdict.reason, ocr.confidence, ocr.text
+            self._failed_for_review(frame, ocr)
             return "rejected", verdict.describe_pt(), 0.0, text
         if verdict.notation_damaged and self.options.ocr_contests_text_layer:
             ocr = self._try_ocr(page, frame, verdict)
@@ -994,6 +996,25 @@ class PdfImporter:
                 # report names it.  Never the layer's own 0,98 again.
                 return self._contested_without_answer(frame, verdict, text, ocr)
         return "text-layer", verdict.reason, verdict.confidence, text
+
+    def _failed_for_review(self, frame: PageFrame, ocr: OcrAttempt) -> None:
+        """The page whose OCR raised is listed for review, not only in the notes.
+
+        Crítico da fase 5, ciclo 5: a ``MemoryError`` in the middle of a page left «OCR falhou na
+        página 165» in the report's notes and nothing in the review queue -- the page was gone
+        from the one list someone reads page by page.
+        """
+        if not ocr.failed:
+            return
+        self.report.review_items.append(
+            ReviewItem(
+                page_index=frame.index,
+                rect=(0.0, 0.0, float(frame.width), float(frame.height)),
+                kind="page",
+                decision="abstained",
+                reasons=(f"O OCR falhou nesta página ({ocr.reason}): ela não foi lida.",),
+            )
+        )
 
     def _contested_without_answer(
         self, frame: PageFrame, verdict: TextLayerVerdict, text: PageText, ocr: OcrAttempt

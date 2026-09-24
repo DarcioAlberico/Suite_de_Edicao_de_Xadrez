@@ -63,6 +63,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -829,11 +830,28 @@ def _nome_curto(widget: Any) -> str:
     return _nome_de(widget)[0] or type(widget).__name__
 
 
-def _volta_da_tecla(janela: Any, focaveis: Sequence[Any], *, de_volta: bool = False
-                    ) -> VoltaDaTecla:
+def _rolagens_no_topo(janela: Any) -> None:
+    """Toda `QScrollArea` da tela no topo e à esquerda: como quem chega à área a encontra."""
+    from PyQt6.QtWidgets import QApplication, QScrollArea
+
+    for rolagem in janela.findChildren(QScrollArea):
+        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().minimum())
+        rolagem.horizontalScrollBar().setValue(rolagem.horizontalScrollBar().minimum())
+    QApplication.processEvents()
+
+
+def _volta_da_tecla(janela: Any, focaveis: Sequence[Any], *, de_volta: bool = False,
+                    no_topo: bool = True) -> VoltaDaTecla:
     """Anda a janela com a **tecla** de verdade, como o teclado faz: o `Tab`, ou o `Shift+Tab`.
 
     `QTest.keyClick` no controle que tem o foco, do primeiro da cadeia até voltar a ele.
+
+    **Cada volta começa com as rolagens no topo** (`no_topo`, :func:`_rolagens_no_topo`), como quem
+    chega à área as encontra. O crítico da fase 5 (ciclo 5) mostrou o preço de não o fazer: a volta
+    do `Shift+Tab` corria logo depois da do `Tab`, com as rolagens já descidas por ela, e o foco que
+    entra numa rolagem vindo de fora -- a 0x0 px no Resultado e na Galeria das três peles com a
+    rolagem no topo -- aparecia à vista; o portão dizia PASSOU até com o conserto do ciclo 4
+    desfeito.
 
     **É a pergunta que `_volta_do_tab` não faz, e o crítico da fase 5 (ciclo 4) mostrou o
     preço.** A cadeia dizia «a tabela, o cartão, as ações» na Revisão de texto, e a tecla parava
@@ -854,6 +872,8 @@ def _volta_da_tecla(janela: Any, focaveis: Sequence[Any], *, de_volta: bool = Fa
         return volta
     tecla, modificador = ((Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier) if de_volta
                           else (Qt.Key.Key_Tab, Qt.KeyboardModifier.NoModifier))
+    if no_topo:
+        _rolagens_no_topo(janela)
     focaveis[0].setFocus(Qt.FocusReason.TabFocusReason)
     QApplication.processEvents()
     partida = janela.focusWidget()
@@ -1026,10 +1046,27 @@ def _dialogo_de_estatisticas(sala: _Sala) -> list[tuple[str, Any]]:
     return [("JanelaDeEstatisticas (Dataset)", JanelaDeEstatisticas(corpo, sala.janela))]
 
 
+BASES_DE_MENTIRA = 40
+"""Quantas bases o diálogo «Base de partidas» recebe na segunda tela: a lista rola, e a caixa que
+recebe o foco de fora (o Shift+Tab de «Marcar todas», abaixo dela) tem de ficar à vista -- o crítico
+da fase 5 (ciclo 5) disse que não o mediu «com bases bastantes para rolar»."""
+
+
 def _dialogo_de_bases(sala: _Sala) -> list[tuple[str, Any]]:
+    import atexit
+    import shutil
+
     from chess_diagram_ocr.qt.dialogos import DialogoDeBases
 
-    return [("DialogoDeBases (Estudo | Bases)", DialogoDeBases(sala.janela))]
+    pasta = Path(tempfile.mkdtemp(prefix="portao_teclado_bases_"))
+    atexit.register(shutil.rmtree, pasta, ignore_errors=True)
+    for k in range(BASES_DE_MENTIRA):
+        (pasta / f"base_{k:02d}.pgn").write_bytes(b"x" * (1000 + k))
+    return [
+        ("DialogoDeBases (Estudo | Bases)", DialogoDeBases(sala.janela)),
+        (f"DialogoDeBases com {BASES_DE_MENTIRA} bases",
+         DialogoDeBases(sala.janela, folder=pasta, nota=lambda _bases: "")),
+    ]
 
 
 def _dialogo_de_escopo(sala: _Sala) -> list[tuple[str, Any]]:
@@ -1114,6 +1151,131 @@ def _sala_de_dialogos(janela: Any) -> _Sala:
     )
 
 
+SABOTAGENS = ("foco", "tabela")
+"""As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 e 5) e que
+o portão tem de reprovar: ``foco`` desliga todo seguidor de foco das rolagens (`foco_a_vista`, da
+suíte e do tronco) -- o foco que entra numa rolagem de fora volta a cair fora da vista; ``tabela``
+devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a página reconhecida, a tecla volta a
+não sair do laço."""
+
+_PASSADA: dict[str, str] = {"sabotagem": ""}
+"""A sabotagem desta passada (`auditar`), posta também em cada diálogo que o portão abre."""
+
+
+def _sabotar(raiz: Any) -> None:
+    """Aplica a sabotagem da passada em ``raiz`` (a janela, ou um diálogo recém-aberto)."""
+    sabotagem = _PASSADA["sabotagem"]
+    if sabotagem == "foco":
+        from PyQt6.QtCore import QObject
+
+        for objeto in raiz.findChildren(QObject):
+            if type(objeto).__name__ == "RolagemSegueOFoco":
+                objeto.desligar()
+    elif sabotagem == "tabela":
+        from PyQt6.QtWidgets import QTableWidget
+
+        for tabela in raiz.findChildren(QTableWidget):
+            if tabela.accessibleName() == "Linhas da página":
+                tabela.setTabKeyNavigation(True)
+
+
+PAGINA_DA_ROTULAGEM = 6
+"""A página do livro do portão que a Rotulagem reconhece: a do Kemeri é prosa em alemão, 48 linhas
+na camada de texto -- a tabela «Linhas da página» cheia, como o crítico a mediu (ciclo 5)."""
+
+
+def _rotulagem_com_uma_pagina(janela: Any, pdf: Path | None, pasta: Path) -> dict[str, Any]:
+    """A Rotulagem no estado de trabalho: uma página do livro reconhecida, a tabela cheia.
+
+    A página do livro do portão é reconhecida pelo serviço do produto (o que o F5 roda), e a tabela
+    «Linhas da página» sai cheia. **Num projeto temporário**, e não no `labeling/` de quem roda o
+    portão: o painel reconhecido grava o projeto, e um portão não escreve no trabalho de ninguém
+    (ver `capture.estado_de_medicao`). O reconhecimento roda aqui, sem a fila do painel, porque um
+    erro dela abre uma caixa modal que pararia o portão; o que o F5 faz com a página depois --
+    guardá-la, desenhá-la, encher a tabela, escolher a primeira linha pendente -- é o que se faz
+    aqui.
+
+    O crítico da fase 5 (ciclo 5) mediu a aba com a Gallagher p. 51 reconhecida (66 linhas) e a
+    achou presa num laço de onde o Tab não saía; o portão e o teste a mediam com a tabela vazia.
+    """
+    if pdf is None or not Path(pdf).exists():
+        return {"medida": False, "motivo": "sem livro: a Rotulagem é medida com a tabela vazia"}
+    try:
+        from caissa.ocr.labeling.recognise import label_page
+        from caissa.ui.views.rotulagem import PainelDeRotulagem, abrir_projeto
+    except Exception as exc:  # noqa: BLE001 - sem a suíte não há aba
+        return {"medida": False, "motivo": f"a aba Rotulagem não importa: {exc}"}
+    painel = janela.findChild(PainelDeRotulagem)
+    if painel is None:
+        return {"medida": False, "motivo": "a janela não tem a aba Rotulagem"}
+    inicio = datetime.now(UTC)
+    try:
+        painel.project = abrir_projeto(pasta / "rotulagem", revisor="portao")
+        painel.service = None
+        nome = painel.abrir(Path(pdf))
+        painel.go_page(PAGINA_DA_ROTULAGEM)
+        lingua = painel.lang_box.currentText()
+        page = label_page(painel._service(), Path(pdf), nome, painel.page_index,
+                          dpi=int(painel.dpi_spin.value()), lang=lingua)
+        painel.project.put_page(page)
+        painel.page = page
+        # o que o `done` do F5 faz com a página
+        painel._render_page()
+        painel._fill_table()
+        painel._select_first_pending()
+    except Exception as exc:  # noqa: BLE001 - o portão diz o que falhou, não cai
+        return {"medida": False, "motivo": f"o reconhecimento falhou: {type(exc).__name__}: {exc}",
+                "falhou": True}
+    return {
+        "medida": True,
+        "livro": nome,
+        "pagina": painel.page_index,
+        "lingua": lingua,
+        "linhas": painel.table.rowCount(),
+        "segundos": round((datetime.now(UTC) - inicio).total_seconds(), 1),
+        "projeto": "temporário (o labeling/ de quem roda o portão não é tocado)",
+    }
+
+
+def _rotulagem_e_sabotagem(janela: Any, aplicacao: Any, pdf: Path | None
+                           ) -> tuple[dict[str, Any], Path]:
+    """A Rotulagem com uma página, num projeto temporário, e a sabotagem da passada na janela.
+
+    Devolve o que a Rotulagem mediu e a pasta a apagar no fim (crítico da fase 5, ciclo 5).
+    """
+    pasta = Path(tempfile.mkdtemp(prefix="portao_teclado_rotulagem_"))
+    rotulagem = _rotulagem_com_uma_pagina(janela, pdf, pasta)
+    for _ in range(4):
+        aplicacao.processEvents()
+    print(f"  Rotulagem: {rotulagem}")
+    _sabotar(janela)
+    return rotulagem, pasta
+
+
+def _veredito_da_passada(das_telas: str, tabuleiro: dict[str, Any],
+                         rotulagem: dict[str, Any]) -> str:
+    """O veredito das telas, o do tabuleiro, e o da Rotulagem no estado de trabalho.
+
+    REPROVOU quando o livro foi dado e a página da Rotulagem não se reconheceu: o portão não diz
+    PASSOU sobre o estado de trabalho que não mediu.
+    """
+    if rotulagem.get("falhou") or not tabuleiro.get("anuncia_a_casa", True):
+        return "REPROVOU"
+    return das_telas
+
+
+def _linhas_da_rotulagem_a_vista(janela: Any) -> int | None:
+    """As linhas da tabela «Linhas da página» quando a Rotulagem é a área à vista, senão `None`."""
+    try:
+        from caissa.ui.views.rotulagem import PainelDeRotulagem
+    except Exception:  # noqa: BLE001 - sem a suíte não há aba
+        return None
+    painel = janela.findChild(PainelDeRotulagem)
+    if painel is None or not painel.isVisible():
+        return None
+    return int(painel.table.rowCount())
+
+
 def _medir_uma_tela(nome: str, raiz: Any) -> Aba:
     """A régua do portão -- a mesma dos seis painéis -- aplicada a uma janela qualquer."""
     aba = Aba(nome=nome)
@@ -1189,6 +1351,7 @@ def _medir_os_dialogos(janela: Any, aplicacao: Any) -> list[Aba]:
             dialogo.show()
             for _ in range(4):
                 aplicacao.processEvents()
+            _sabotar(dialogo)
             aba = _medir_uma_tela(rotulo, dialogo)
             medidos.append(aba)
             print(
@@ -1236,12 +1399,17 @@ def auditar(
     largura: int = 1280,
     altura: int = 800,
     pele_pedida: str = "",
+    sabotagem: str = "",
 ) -> dict[str, Any]:
     """Percorre todas as abas da janela do tronco com o teclado e devolve o relatório.
 
     `pele_pedida` crava a aparência desta passada. Vazio herda o ambiente, que é o que este
     módulo fazia antes do ciclo 10 -- e o que fazia a medição valer por uma pele das três.
+    `sabotagem` é uma de :data:`SABOTAGENS`, declarada no JSON: o portão tem de reprovar.
     """
+    if sabotagem and sabotagem not in SABOTAGENS:
+        raise ValueError(f"sabotagem desconhecida: {sabotagem!r} (conheço {SABOTAGENS})")
+    _PASSADA["sabotagem"] = sabotagem
     _preparar(caminho_do_tronco)
     if pele_pedida:
         from chess_diagram_ocr.ui import pele as _pele
@@ -1281,6 +1449,7 @@ def auditar(
             print(f"  (livro {pdf.name} não abriu: {exc})", file=sys.stderr)
         for _ in range(4):
             aplicacao.processEvents()
+    rotulagem, pasta_da_rotulagem = _rotulagem_e_sabotagem(janela, aplicacao, pdf)
 
     abas: list[Aba] = []
     # Cada área uma vez -- as abas do acervo e os modos da aba `Livro` (OCR_UI passo 17). Ver
@@ -1292,6 +1461,8 @@ def auditar(
         # **A mesma régua das outras telas, e desde o ciclo 12 é literalmente a mesma função.**
         # Ver `_medir_uma_tela`: duas cópias do laço eram duas oportunidades de a aba e o
         # diálogo passarem a ser medidos por réguas que divergem sem ninguém notar.
+        # a tabela que a tecla anda de fato, no momento da medida
+        rotulagem.setdefault("linhas_na_medida", _linhas_da_rotulagem_a_vista(janela))
         aba = _medir_uma_tela(area.nome, janela)
         abas.append(aba)
         print(
@@ -1309,6 +1480,7 @@ def auditar(
     # selecionada. Medido na janela de verdade, com o gesto que a fila e o recorte fazem.
     tabuleiro = _medir_o_tabuleiro(janela, aplicacao)
     _descartar(janela, aplicacao)
+    shutil.rmtree(pasta_da_rotulagem, ignore_errors=True)
 
     return {
         "portao": "SPEC 10.6/11.3 -- navegação inteira por teclado, nome e papel em todo controle; "
@@ -1329,9 +1501,14 @@ def auditar(
             "volta": "QWidget.focusNextPrevChild(True) em laço, que é o que a tecla Tab chama",
             "tecla": (
                 "QTest.keyClick(Tab), e de volta QTest.keyClick(Backtab, Shift), no controle que "
-                "tem o foco, do primeiro da cadeia até voltar a ele: onde o foco não sai, a tecla "
-                "empaca (e o que ela escreveu é desfeito); quem recebe o foco com visibleRegion() "
-                "vazia está fora da vista"
+                "tem o foco, do primeiro da cadeia até voltar a ele, cada sentido com toda "
+                "QScrollArea no topo (como quem chega à área a encontra): onde o foco não sai, a "
+                "tecla empaca (e o que ela escreveu é desfeito); quem recebe o foco com "
+                "visibleRegion() vazia está fora da vista"
+            ),
+            "rotulagem": (
+                f"com um livro, a p. {PAGINA_DA_ROTULAGEM} dele reconhecida pelo serviço do "
+                "produto num projeto temporário: a tabela «Linhas da página» cheia"
             ),
             "nome": "accessibleName, senão text(), senão a 1a linha da dica -- a ordem do Qt",
             "grupo": (
@@ -1352,7 +1529,9 @@ def auditar(
         "dialogos": [_como_json(aba) for aba in dialogos],
         "dialogos_do_produto": dialogos_registrados(caminho_do_tronco),
         "tabuleiro": tabuleiro,
-        "veredito": veredito([*abas, *dialogos]) if tabuleiro.get("anuncia_a_casa", True) else "REPROVOU",
+        "rotulagem": rotulagem,
+        "sabotagem": sabotagem,
+        "veredito": _veredito_da_passada(veredito([*abas, *dialogos]), tabuleiro, rotulagem),
     }
 
 
@@ -1395,6 +1574,7 @@ def auditar_as_peles(
     largura: int = 1280,
     altura: int = 800,
     saida: Path | None = None,
+    sabotagem: str = "",
 ) -> dict[str, Any]:
     """O portão inteiro: uma passada por **cada** pele registrada, e um veredito só no fim.
 
@@ -1452,6 +1632,8 @@ def auditar_as_peles(
                 ]
                 if pdf is not None:
                     argumentos += ["--pdf", str(pdf)]
+                if sabotagem:
+                    argumentos += ["--sabotar", sabotagem]
                 subprocess.run(argumentos, env=ambiente, check=False)  # noqa: S603 - argv nosso
                 if not alvo.exists():
                     raise RuntimeError(
@@ -1616,6 +1798,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="onde gravar o JSON desta passada; o laco de uma pele por processo o usa.",
     )
+    parser.add_argument(
+        "--sabotar",
+        default="",
+        choices=("", *SABOTAGENS),
+        help="um defeito posto de proposito, declarado no JSON: o portao tem de reprovar.",
+    )
     args = parser.parse_args(argv)
     if args.saida is None and args.json is None:
         # **Sem padrão, e sem escolher pasta por quem chama** (F9-C12). O `--json` é a saída de
@@ -1635,6 +1823,7 @@ def main(argv: list[str] | None = None) -> int:
             largura=args.largura,
             altura=args.altura,
             pele_pedida=args.pele,
+            sabotagem=args.sabotar,
         )
         alvo = args.json
         if alvo is None:
@@ -1654,6 +1843,7 @@ def main(argv: list[str] | None = None) -> int:
         largura=args.largura,
         altura=args.altura,
         saida=args.saida,
+        sabotagem=args.sabotar,
     )
     # **Carimbado, pelo mesmo motivo de `contraste.py`** (F9-C5, §7.10): um nome fixo apaga a
     # medição do ciclo anterior sem aviso, e este defeito de família já custou 17 capturas em
