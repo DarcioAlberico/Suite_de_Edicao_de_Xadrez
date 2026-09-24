@@ -1,11 +1,13 @@
 # Roadmap — Editor HTML/CSS
 
-> **Data:** 2026-09-24 · **Versão:** 1.17 — **APROVADA pelo Codex no ciclo 18**. A 1.10 tinha sido
-> aprovada no ciclo 11. A 1.11 registrou as respostas do usuário:
+> **Data:** 2026-09-24 · **Versão:** 1.18 — **APROVADA pelo Codex no ciclo 22** (os ciclos 19 a 21
+> reprovaram o portão do H0 e foram tratados). A 1.17 foi aprovada no ciclo 18, e a 1.10 no ciclo
+> 11. A 1.11 registrou as respostas do usuário:
 > - **Q1 = C**, a combinação guiada por medição: o H0 mede, o H0b combina, o H26 unifica a aba Texto;
 > - **Q7 = (i)**, altíssimo padrão.
 >
-> Os ciclos 12 a 17 reprovaram o H0b e o H26 novos (spec §9).
+> Os ciclos 12 a 17 reprovaram o H0b e o H26 novos (spec §9). A 1.18 registra as respostas ao
+> **Q0, Q3 e Q5** e os downloads consentidos, e três correções do H0 achadas ao implementá-lo (§10).
 > **Contrato:** `EDITOR_HTML_CSS_SPEC.md` — cada passo cita a cláusula que o governa.
 > **Críticas:** `quality/EDITOR_HTML_CSS_CRITICAS.md`. **Relatório do construtor:**
 > `quality/EDITOR_HTML_CSS_REPORT.md` — criado pelo H0; uma seção por passo, todo número com o
@@ -131,12 +133,12 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 |---|---|---|---|
 | **H0** executor de portões + medição dos leitores (Q1 = C) | — | — | todos; os números do leitor da aba contra a fusão e a margem do oráculo (entrada do H0b) |
 | **H0b** a combinação: o candidato de glifo com o que a aba faz de diferente, e o RapidOCR fora da página degradada; uma configuração global, escolhida em `dev` + `calib` e confirmada uma vez na cega; e o veredito da aba por estrato | H0 | a troca precisão × tempo, **só** se a configuração que ganha passar de 2 × o tempo por página; rotular mais verdade nativa, **só** se o estrato nativo ficar sem evidência | H8, H26 |
-| **H1** motores de pré-visualização (+ sonda PyInstaller, máquina limpa) | H0 | consentir o download das rodas; habilitar o Sandbox ou dar uma VM | H10 (matriz), H13, H14 |
-| **H2** editor de código com tudo ligado (projeto sintético de 300 capítulos) | H0 | consentir `pywinauto` (medição) | H12 (ou H2b) |
+| **H1** motores de pré-visualização (+ sonda PyInstaller, máquina limpa) | H0 | habilitar o Sandbox ou dar uma VM (o download das rodas foi consentido em 2026-09-24) | H10 (matriz), H13, H14 |
+| **H2** editor de código com tudo ligado (projeto sintético de 300 capítulos) | H0 | — (`pywinauto` consentido em 2026-09-24) | H12 (ou H2b) |
 | **H2b** QScintilla (só se o H2 reprovar, ou o H12 reprovar por limite do componente) | H2 reprovado, ou H12 reprovado por limite do componente | consentir a dependência | H12 |
 | **H3** contrato de marcação + política de CSS + fixtures douradas do sidecar (escritas pelo crítico) | H0 | — | H5, H10, H19, H24 |
 | **H4** dívidas da exportação (inclui o alt descritivo) | H0 | — | H5, H10 |
-| **H5** perfil legível + `html_attributes` + CSS como recurso + mapa de estilo | H3, H4 | **Q3**; consentir `tinycss2`/`cssselect2` no `.venv-pack` | H8, H9, H10, H19, H23, H24 |
+| **H5** perfil legível + `html_attributes` + CSS como recurso + mapa de estilo | H3, H4 | — (Q3 respondida: sim; `tinycss2`/`cssselect2` consentidos) | H8, H9, H10, H19, H23, H24 |
 | **H6** projeto em disco | H0 | Q4 (tem padrão) | H8, H11, H17, H25 |
 | **H7** serviço único de decisões | H0 | — | H8, H16, H22, H25 |
 | **H8** geração a partir do OCR (projetos reais; a fusão do produto) | H0b, H5, H6, H7 | — (Q1 respondida: C) | H9, H13, H15, H16, H18, H19, H21, H22, H23, H24, H25, H26 |
@@ -155,7 +157,7 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 | **H21** tipografia (`PEDIDO` p. 55 do H8) | H8, H18 | — | — |
 | **H22** diagramas | H7, H8, H13, H15 | — | H24, H25 |
 | **H23** lances e notação (figurina medida na página do MuPDF) | H5, H8, H10, H13, H18 | — | H24 |
-| **H24** exportar do projeto + acessibilidade do EPUB (PDF pelo motor da prévia; avisos pela matriz do H1; fixtures douradas do sidecar do H3) | H1, H3, H5, H8, H10, H13, H19, H22, H23 | **Q5**; consentir o Ace (npm) (Q7 respondida: i) | H27 |
+| **H24** exportar do projeto + acessibilidade do EPUB (PDF pelo motor da prévia; avisos pela matriz do H1; fixtures douradas do sidecar do H3) | H1, H3, H5, H8, H10, H13, H19, H22, H23 | — (Q5 respondida: só com declaração; o Ace consentido; Q7 respondida: i) | H27 |
 | **H25** regerar e fundir (3 vias) | H6, H8, H16, H22 | — | — |
 | **H26** a aba Texto lê pelo produto e leva a formatação e os diagramas ao editor | H0b, H8; a mudança da digitação **commitada** | — (Q1 respondida: C) | — |
 | **H27** (opcional) PDF pelo Chromium, abrir EPUB do Caissa/CB | H14, H24 | — | — |
@@ -219,10 +221,17 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
       - o leitor da aba dá a `PaginaLida` em pontos PDF. As linhas internas (`_Cru`) são pixels,
         e o `montar` converte cada uma por `_para_pontos` (T `text/leitor.py:660-668, 1060`);
       - o produto dá as regiões em pixels da página renderizada (`RegionRecognition.box_px`,
-        `ocr_service.py:340`), e o instrumento as passa a pontos com o `dpi` da renderização;
+        `ocr_service.py:340`), e é o próprio produto que as passa a pontos, uma vez, em
+        `PageRecognition.to_page_text` (`frame.pixels_to_page`): o texto de cada página é o
+        `PageText` que `PdfImporter._decide_source` entrega — o que vai ao IR, inclusive nas
+        páginas nativas, que não passam pelo OCR (1.18);
+      - a **ordem** do produto é a dos **blocos do IR** (`Provenance.rect`, pontos), a que o editor
+        recebe; as linhas cruas do `PageText` estão na ordem do produtor (1.18);
       - a conversão acontece **uma vez**, e uma fixture de coordenadas conhecidas prova isso: dois
         retângulos de texto, em linhas diferentes, num PDF sintético, lidos pelos dois, cada um
-        com IoU ≥ 0,9 contra a verdade.
+        com IoU ≥ 0,9 contra a verdade. Os parágrafos têm cinco a seis linhas: a caixa da camada
+        é a da fonte e a do glifo é a da tinta, e com duas linhas a folga do descendente deu IoU
+        0,8997 sem erro de unidade (1.18).
     - **Sem verdade**, para o contexto: `PEDIDO` p. 50–60 e `LIVRO` p. 31–38. Ali se mede a taxa de
       discordância por caractere, figurinas, diagramas (com FEN ou não) e o tempo por página.
     - **O que a medição publica** (a entrada do H0b). Por estrato *s* — digitalizado e nativo, o
@@ -237,6 +246,15 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
           figurina certa, contada pelo mesmo `move_tokens`;
         - **ordem de leitura**: `reading_order_accuracy` de S `ocr/metrics.py:239-250`, sobre a
           ordem das regiões casadas de cada página, a mesma régua do `sol_gate`.
+          - **A ordem verdadeira** não está no manifesto: cada item tem a sua região, com
+            `reading_order` 0, e o SFC4 é de duas colunas. Ela é derivada das caixas rotuladas,
+            por uma regra compatível com a do tronco (`text/pagina.py`), só com as caixas, sem
+            olhar a saída de leitor nenhum: as calhas (faixas verticais
+            cobertas por no máximo uma região em cinco, com região dos dois lados) separam as
+            colunas; a região que atravessa uma calha, ou que tem mais de 60 % da largura útil,
+            separa faixas; em cada faixa, as colunas da esquerda para a direita e, em cada coluna,
+            de cima para baixo (1.18).
+          - Contam as páginas com duas regiões casadas ou mais; o intervalo reamostra as páginas.
 
         São as métricas do veredito da aba no H0b, e o H0 as publica para todos os leitores e
         modos, por estrato, com intervalo.
@@ -245,6 +263,37 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
         inventados, figurinas certas e ordem de leitura) vem com valor e intervalo para cada
         leitor, modo e estrato.
         - Se qualquer uma faltar ou vier nula, o `editor_portoes.py` reprova «métrica ausente».
+        - **A métrica publicada tem de valer** (1.18, ciclo 21): o valor é um número finito dentro
+          da faixa dela — o CER e os lances inventados ≥ 0 (passam de 1 quando o leitor inventa
+          muito); lances certos, figurinas certas e a ordem em [0, 1] —, e o intervalo é um par de
+          números finitos na mesma faixa, com o limite de baixo ≤ o de cima. Texto, `NaN`,
+          infinito, booleano, intervalo ausente, curto, invertido ou fora da faixa reprovam
+          «métrica inválida». A métrica declarada «não se aplica» sai sem valor em todos os
+          leitores; publicada com valor, reprova «métrica inválida».
+        - **A única ausência aceita é a declarada** (1.18, §10): `nao_se_aplica`, estruturado —
+          a métrica, o denominador, o valor do denominador (o inteiro 0) e o motivo, todos
+          presentes e não vazios —, quando a verdade do estrato não tem o que a métrica conta, e
+          só para figurinas, lances certos e lances inventados; o CER e a ordem, nunca. A
+          declaração incompleta reprova «métrica ausente».
+        - **O `editor_portoes.py` não toma a publicação como dado** (1.18, ciclos 19 e 20). Antes
+          de aceitar qualquer ausência, ele audita:
+          - o manifesto, que é o dele (o instrumento `{principal}/…/manifest.private.json`), e não
+            o que a publicação nomeia: o hash tem de ser o que o `unidades.json` e o
+            `leitores.json` gravaram;
+          - a lista das unidades, gravada antes da leitura: confere com o `hash_da_lista` (o mesmo
+            nos dois arquivos), não repete id e é exatamente o conjunto das regiões de PDF do
+            manifesto, com o estrato de cada uma tirado da fonte do item;
+          - as regiões do `leitores.json`: as mesmas da lista, com o mesmo estrato, e o `casada`
+            de cada uma é o que os IoUs publicados dos quatro leitores sustentam (IoU ≥ 0,5). O
+            IoU é medida do instrumento: o executor não relê as páginas;
+          - o denominador mínimo (abaixo), contado só com as casadas que passam nessa conferência.
+
+          Qualquer desvio reprova «publicação inconsistente» ou «verdade insuficiente».
+        - **O denominador do «não se aplica» é o do estrato inteiro no manifesto**: todas as
+          regiões `pdf-scan` ou `pdf-native` de `dev` + `calib`, contadas pelo `move_tokens`, e
+          não só as casadas. Nenhuma marca da publicação apaga uma métrica que a verdade tem, e
+          denominador diferente de zero reprova «métrica ausente». No manifesto de hoje, o estrato
+          nativo tem 0 lances com figurina em 198 (38 regiões); o digitalizado, 464 em 653 (199).
         - O `sol_gate` faz o contrário com a ordem: pula o portão quando ela falta
           (`gates.py:282-288`). Por isso a regra fica escrita aqui.
         - A **precisão de regiões** (casadas ÷ lidas) sai ao lado da ordem, porque a régua da ordem
@@ -268,6 +317,20 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
     - instrumento ausente → REPROVA «instrumento ausente»;
     - sabotagem que passa → REPROVA «sabotagem inócua»;
     - passo bom → PASSOU.
+
+    E com as publicações adulteradas, cada uma contra um manifesto mínimo: as regiões ausentes;
+    todas as regiões desmarcadas de `casada`; o `casada` que o IoU não sustenta; o estrato
+    trocado; a lista sem a última unidade; a lista recortada com o hash refeito; o
+    `leitores.json` de outra lista; o manifesto trocado pela publicação (com o hash dele); e a
+    declaração de «não se aplica» sem um dos campos, com o valor não inteiro ou diferente de 0.
+    Cada uma reprova pelo motivo dela, e a publicação honesta passa sem problema.
+
+    E com as métricas adulteradas numa publicação íntegra: todas como texto; `NaN`; infinito;
+    booleano; o intervalo ausente, de um número só, de textos, com `NaN` ou invertido; o valor
+    fora da faixa (1,5 em lances certos, figurinas e ordem, que o CER e os lances inventados
+    aceitam; −0,1 no intervalo); a métrica declarada «não se aplica» publicada com valor; e o
+    JSON de forma errada, que reprova sem derrubar a conferência. Cada uma reprova «métrica
+    inválida» (ou «ausente», quando falta).
   - `editor_leitores.py` (3 execuções):
     - **denominador mínimo:** ≥ 150 regiões casadas com verdade, de ≥ 2 livros, com ao menos 1
       digitalizado e 1 nativo. Com menos (manifesto ausente, vazio ou casamento pobre), o
@@ -282,7 +345,14 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
   - `editor_leitores.py --sabotar so_uma_pagina` (limita a verdade a uma página): o instrumento
     reprova «verdade insuficiente»;
   - `editor_leitores.py --sabotar sem_ordem` (o JSON sai sem a ordem de leitura de um modo do
-    leitor da aba): o portão reprova «métrica ausente».
+    leitor da aba): o portão reprova «métrica ausente». Ela republica as leituras da execução 1
+    (`--reusar`), sem ler de novo: a sabotagem é da publicação, e a leitura custa dezenas de
+    minutos;
+  - `editor_leitores.py --sabotar na_falso_figurinas`, `na_falso_lances` e `na_falso_insercao`
+    (a métrica some do estrato digitalizado com um «não se aplica» de denominador 0 declarado,
+    e a verdade dele tem 464 lances com figurina em 653): o portão reprova «métrica ausente»,
+    porque conta o denominador no estrato inteiro do manifesto (1.18, ciclos 19 e 20). Também
+    com `--reusar`.
 - **Saída:** o executor que todos os passos usam; os números do leitor da aba contra a fusão, que
   o H0b usa.
 - **Nível:** padrão.
@@ -862,7 +932,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 ### H5 — O perfil legível, os atributos preservados, o CSS como recurso e o mapa de estilo
 
-- **Governa:** spec D1, D2, R2.2, R2.3, S3, S3b, S4. **Espera:** Q3.
+- **Governa:** spec D1, D2, R2.2, R2.3, S3, S3b, S4. **Q3 respondida em 2026-09-24:** sim, o contrato
+  `cb-*`.
 - **Arquivos:**
   - S `export/html.py` (`XhtmlBuilder(perfil=)`, `ler_legivel`), S `export/profiles.py`;
   - S `core/model/base.py` (`IRNode.html_attributes`), `core/model/migrations.py` (v1→v2),
@@ -1744,7 +1815,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 ### H24 — Exportar do projeto e a acessibilidade do EPUB
 
-- **Governa:** spec D1, R2.2, R2.3, R2.4, R1.14, R4.2, S3b, S11, §5.6. **Q5.**
+- **Governa:** spec D1, R2.2, R2.3, R2.4, R1.14, R4.2, S3b, S11, §5.6. **Q5 respondida em
+  2026-09-24:** só com declaração.
 - **Arquivos:**
   - S `editor/exportacao.py`;
   - S `export/epub.py`: perfil legível; CSS byte a byte; fontes do registro; `page-list`;
@@ -2066,12 +2138,14 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 | a troca precisão × tempo | **só** se a configuração que ganha no H0b passar de 2 × o tempo por página | o ganho e o custo publicados pelo H0b; a resposta fica gravada no JSON da configuração e no relatório; sem ela, a configuração fica desligada |
 | rotular mais verdade nativa (`caissa-rotular`) | **só** se a candidata do H0b mudar leituras nativas e a célula nativa ficar sem evidência (a cega tem hoje 8 regiões nativas) | sem ela, a combinação não liga (falha fechada); o relatório do H0b diz quantas regiões e páginas faltam |
 | Q2 com os números do H1 | antes do H14 | o componente Chromium |
-| Q3 | antes do H5 | o contrato `cb-*` |
-| Q5 | antes do H24 | fontes sem licença declarada |
+| ~~Q3~~ | **respondida em 2026-09-24: sim** | o contrato `cb-*`; o H5 livre |
+| ~~Q5~~ | **respondida em 2026-09-24: só com declaração** | fontes sem licença declarada; o H24 livre |
 | ~~Q7~~ | **respondida em 2026-09-24: (i)** (altíssimo padrão) | H19 e H24 desbloqueados; o tema «Leitura AAA» disponível, não padrão |
-| Q0, Q4, Q6 | quando citadas | ADRs; pasta do projeto; tema padrão (juiz às cegas) |
+| ~~Q0~~ | **respondida em 2026-09-24: sim** | as ADR-0010…0014 registradas em `docs/adr/README.md` |
+| Q4, Q6 | quando citadas | pasta do projeto; tema padrão (juiz às cegas) |
 | habilitar o **Windows Sandbox** (recurso opcional do Windows 11 Pro; admin + reinício) ou fornecer uma VM limpa | H1, H14 | a máquina limpa que o crítico exigiu |
-| consentir os downloads: rodas do QtWebEngine (H1, H14); `pywinauto` (H2); `tinycss2`/`cssselect2` no `.venv-pack` (H5); Ace do DAISY via npm (H24); `PyQt6-QScintilla` (H2b, só se preciso) | nos passos | download da internet: nome, origem e tamanho ditos ao pedir |
+| ~~consentir os downloads~~ | **consentidos em 2026-09-24:** as rodas do QtWebEngine 6.11 (~133 MB; H1, H14), o `pywinauto` com `comtypes` e `pywin32` (H2), o `tinycss2`/`cssselect2` no `.venv-pack` (H5), o Ace do DAISY via npm (com o Electron, ~150–300 MB; H24) | nome, origem e tamanho ditos ao pedir |
+| consentir o `PyQt6-QScintilla` | H2b, só se preciso | não estava no pedido de 2026-09-24 |
 | confirmar a leitura do Narrador (H2) | H2 | a sonda UIA prova a interface; a pessoa confirma o uso |
 | declarar a licença das fontes de xadrez que quer embutir | H19/H24 | R1.14 |
 | revisar o léxico de jargão por idioma (`editor/glossario/<idioma>.json`); decidir o inventário de termos; **percorrer cada capítulo** no modo «Revisão de termos» e atestar a leitura integral | H24, só para declarar o 3.1.3 | a palavra comum usada como jargão só uma pessoa acha (spec §5.6) |
@@ -2183,6 +2257,26 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
   - o caso (a) abaixo do piso ganha a fixture `tests/fixtures/editor/h0b/veredito_caso_a_abaixo_do_piso.json`, com a saída esperada, e a
     `piso_so_na_cega` roda contra ela.
 - **Ciclo 18:** APROVADO, sem bloqueante. A versão final trata os dois não bloqueantes (spec §9).
+- **Versão 1.18** (2026-09-24): as respostas do usuário ao Q0, ao Q3 e ao Q5 e os downloads
+  consentidos; as três correções do H0 achadas ao implementá-lo (a mutação do §10, a ordem
+  verdadeira derivada das caixas, as unidades do produto).
+- **Ciclo 19:** REPROVADO, 2 bloqueantes (spec §9): o portão aceitava o «não se aplica» sem
+  conferir o denominador, e o §10 registrava a aprovação do crítico antes do veredito. A segunda
+  redação da 1.18 trata os 2: a declaração estruturada, recontada pelo executor no manifesto, com
+  as sabotagens `na_falso_*`; a coluna «quem» sem aprovação antecipada.
+- **Ciclo 20:** REPROVADO, 1 bloqueante (spec §9): a recontagem ainda contava só as regiões que a
+  publicação marcava como casadas, e a publicação que desmarcasse as regiões zerava o
+  denominador. A terceira redação da 1.18 trata: o denominador passa a ser o do estrato inteiro
+  no manifesto do executor, e a publicação é auditada (a lista pelo hash, as regiões, os estratos,
+  o `casada` pelos IoUs, o mínimo), com os testes adversariais no `test_portoes.py`; a
+  declaração é validada campo a campo.
+- **Ciclo 21:** REPROVADO, 1 bloqueante (spec §9). O bloqueante do ciclo 20 ficou resolvido; o
+  novo: a conferência dava por publicada a métrica com `valor` e `ic95` quaisquer, até texto ou
+  `NaN`. A quarta redação da 1.18 trata: a métrica publicada é um número finito na faixa dela,
+  com o intervalo um par de números finitos coerente, senão «métrica inválida», com os testes.
+- **Ciclo 22:** **APROVADO**, sem bloqueante (2026-09-24). Pendente, e não bloqueante: rodar o H0
+  completo (as 3 medições e as 6 sabotagens) com a máquina livre e registrar o relatório e o
+  `portao.json`.
 - Os vereditos e o que cada ciclo mudou ficam em `quality/EDITOR_HTML_CSS_CRITICAS.md`
   («Documentos»).
 
@@ -2190,7 +2284,7 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 | data | passo | mutação | por quê | quem |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-09-24 | H0 | **«figurinas certas» aceita a ausência declarada** quando a verdade do estrato não tem lance com figurina; a mesma regra para lances certos e inventados sem lance na verdade; nunca para o CER ou a ordem (spec §9, 1.18; R1.2). A declaração é estruturada (métrica, denominador, valor 0, motivo) e o `editor_portoes.py` **conta o denominador no estrato inteiro do manifesto dele**, depois de auditar a publicação (a lista pelo hash, as regiões, os estratos, o `casada` pelos IoUs, o mínimo); as sabotagens `na_falso_*` e os testes adversariais provam que a declaração falsa e a publicação adulterada reprovam | a verdade nativa do manifesto (`dev` + `calib`, hash `f019591babf2941e`) tem **0 lances com figurina em 198**, em 38 regiões — contado pelo `move_tokens` de `ocr/metrics.py` sobre as regiões `pdf-native` (`benchmarks/editor_portoes.py`, `auditar_publicacao`; o relatório do H0 traz o comando). Com a regra da 1.17 o H0 reprovaria «métrica ausente» por construção | construtor: Claude (sessão «Implementações pendentes»); crítico: o ciclo 19 do Codex confirmou o 0/198 e a necessidade, e reprovou a primeira redação (ausência sem recontagem); o ciclo 20 reprovou a segunda (recontagem sobre as casadas que a publicação marcava); o ciclo 21 deu esse bloqueante por resolvido e reprovou a terceira (métrica de texto ou `NaN` passava por publicada); **aprovada pelo ciclo 22 do Codex em 2026-09-24** (`quality/EDITOR_HTML_CSS_CRITICAS.md`) |
 
 **Protocolo:**
 - Um passo que o portão prova impossível **não** baixa a régua em silêncio: ele muta, com linha

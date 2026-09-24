@@ -1096,3 +1096,196 @@ Nenhum bloqueante encontrado.
 ## O que especificamente precisa mudar para eu aprovar
 
 - Nada bloqueante. A versão 1.17 pode avançar para implementação dos passos H0/H0b.
+
+## Documentos — ciclo 19 (2026-09-24): REPROVADO, 2 bloqueantes
+
+A versão 1.18 registrou as respostas do usuário ao Q0, ao Q3 e ao Q5, os downloads consentidos e
+três correções do H0 achadas ao implementá-lo (spec §9). O crítico confirmou a fidelidade às
+respostas e recontou o 0 de 198 do estrato nativo; reprovou a primeira redação da mutação. O
+veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 19  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap + ADRs), versão 1.18
+
+## Fidelidade às respostas do usuário
+
+| # | onde | situação | evidência |
+|---:|---|---|---|
+| 1 | Spec §4, §7, §8, §9; ADR-0010…0014 | Fiel | Q0 está registrada como “sim”; as cinco ADRs existem e estão aceitas. |
+| 2 | Spec D2; H5; ADR-0011 | Fiel | Q3 está registrada como adoção do contrato `cb-*`; H5 deixou de esperar. |
+| 3 | Spec D3; H1/H14; ADR-0012 | Fiel | Q2 continua aberta; Sandbox/VM continua pendente. |
+| 4 | Spec D4; H2/H2b; ADR-0013 | Fiel | `pywinauto` foi consentido; `PyQt6-QScintilla` continua condicionado a novo consentimento. |
+| 5 | Spec D5; H24; ADR-0014 | Fiel | Q5 está como “só com declaração”; sem licença registrada, a fonte não embute. |
+| 6 | Spec §8/§9; roadmap §1/§9 | Fiel | Os quatro downloads consentidos estão listados; não há autorização indevida do QScintilla. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | H0 nativo tem 0 figurinas em 198 lances (§9/§10) | `load_manifest(..., include_blind=False)` + `move_tokens` | Confirmada: 38 regiões, 198 lances, 0 figurinas. |
+| 2 | A mutação é necessária (§10) | `editor_leitores.py:897–905` | Confirmada para figurinas nativas: 0/0. |
+| 3 | `nao_se_aplica` é validado pelo portão | `editor_portoes.py:162–183` | Falsa: qualquer motivo textual pode liberar métrica ausente; o denominador não é conferido. |
+| 4 | A ordem não está no manifesto | API do manifesto | Confirmada: todos os `reading_order` são 0; há páginas com até 25 regiões. |
+| 5 | A nova ordem é leitor-independente | `editor_leitores.py:588–632`; testes | Confirmada como heurística explícita baseada apenas nas caixas. Não favorece a saída de nenhum leitor. |
+| 6 | O produto mede o que o editor recebe | `importer.py:953–998`; `ocr_service.py:498–527`; `editor_leitores.py:361–463` | Confirmada: `PageText` após `_decide_source` e ordem pelos blocos do IR/proveniência. |
+| 7 | ADRs preservam as decisões centrais | Spec D1–D5 versus ADR-0010…0014 | Confirmada quanto a decisões, alternativas e “reverte se”. |
+| 8 | A 1.18 não reabre bloqueantes do ciclo 18 | diff 1.17→1.18 e veredito do ciclo 18 | Parcial: a exceção N/A altera a regra de falha fechada e introduz a brecha abaixo. |
+
+## Defeitos bloqueantes
+
+1. ONDE `EDITOR_HTML_CSS_ROADMAP.md:2222`, spec §9, `benchmarks/editor_portoes.py:162–183`. O QUE a mutação de ausência declarada é factual e necessária, mas o portão aceita `nao_se_aplica` sem verificar o denominador real. COMO CONFERIR fornecer um `leitores.json` com `figurinas` ausente no nativo e `nao_se_aplica: {"figurinas": "fraude sem denominador"}`; `conferir_metricas_do_h0` retorna `[]`. POR QUE REPROVA: uma implementação ou publicação defeituosa pode esconder métrica obrigatória e passar o H0, quebrando a falha fechada aprovada no ciclo 18.
+
+2. ONDE `EDITOR_HTML_CSS_ROADMAP.md:2222`, coluna “quem” da tabela de mutações. O QUE o documento já registra “crítico: Codex, ciclo 19” como se a mutação estivesse aprovada antes deste veredito. COMO CONFERIR comparar com `docs/quality/EDITOR_HTML_CSS_CRITICAS.md`, cujo último veredito é o ciclo 18. POR QUE REPROVA: o próprio §10 exige aprovação do construtor e do crítico; registrar previamente a aprovação falsifica a trilha de governança justamente para uma mutação que reduz a régua.
+
+## Defeitos não bloqueantes
+
+- Para `lances` e `insercao`, `nao_se_aplica()` retorna motivo sem explicitar o denominador zero, embora o contrato exija motivo e denominador.
+- A ordem nova é defensável, mas não é literalmente a mesma implementação de `text/pagina.py`; a redação deveria chamá-la de derivação compatível, não “a mesma regra”.
+- ADR-0012 omite alguns detalhes da spec, como rejeição de hash incompatível; ADR-0014 omite a preferência que desliga a abertura automática. A spec ainda é a fonte governante.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Tornar `nao_se_aplica` estruturado, contendo métrica, motivo e denominador, e validar o denominador contra `unidades.json`/manifesto antes de aceitar a ausência.
+- Acrescentar sabotagens para N/A falso em `figurinas`, `lances` e `insercao`, além de exigir denominador explícito.
+- Remover o texto “crítico: Codex, ciclo 19” até o veredito existir; depois registrar a aprovação real e datada.
+
+## Documentos — ciclo 20 (2026-09-24): REPROVADO, 1 bloqueante
+
+A segunda redação da 1.18 estruturou o «não se aplica» (métrica, denominador, valor, motivo),
+recontou o denominador no manifesto e tirou a aprovação antecipada do §10. O crítico deu o segundo
+bloqueante do ciclo 19 por resolvido e o primeiro por parcial: a recontagem ainda contava só as
+regiões que a própria publicação marcava como casadas. O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 20  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap + ADRs), versão 1.18 (segunda redação)
+
+## Bloqueantes do ciclo 19 — situação
+
+| # | bloqueante | situação | evidência |
+|---|---|---|---|
+| 1 | `nao_se_aplica` aceito sem conferir o denominador real | PARCIAL | A checagem agora rejeita `na_falso_*` quando o manifesto tem denominador positivo (`editor_portoes.py:220–230`; testes `test_portoes.py:208–217`). Porém, a “recontagem” confia em `leitores.json.regioes[].casada` e `estrato` (`editor_portoes.py:191–198`). `unidades.json["unidades"]` e `hash_da_lista` não são conferidos. Se `regioes` for omitido ou marcado como não casado, o denominador calculado vira zero e uma métrica obrigatória pode passar como N/A. |
+| 2 | §10 registrava aprovação do crítico antes do veredito | RESOLVIDO | A tabela do roadmap registra apenas que o ciclo 19 confirmou/reprovou e diz que a aprovação será registrada quando o veredito sair (`EDITOR_HTML_CSS_ROADMAP.md:2232–2234`). Não há mais aprovação antecipada. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---|---|---|---|
+| 1 | Só figurinas, lances e inserção podem ser N/A; CER e ordem nunca (§9) | `editor_portoes.py:157–162, 220–240`; `test_portoes.py:220–224` | Confirmada |
+| 2 | As sabotagens `na_falso_figurinas`, `na_falso_lances` e `na_falso_insercao` existem | `editor_portoes.py:284–291`; `editor_leitores.py:1179–1188` | Confirmada |
+| 3 | O denominador do manifesto é carregado com hash conferido | `editor_portoes.py:178–182` | Parcial: o hash do manifesto é conferido, mas a lista publicada de unidades não |
+| 4 | O caso nativo é 0 figurinas em 198 lances | `test_portoes.py:188–190, 208–217, 259–261` | Confirmada |
+| 5 | CER e ordem continuam obrigatórias | `editor_portoes.py:159, 220–240`; teste da ordem em `test_portoes.py:220–224` | Confirmada |
+| 6 | A segunda redação não antecipa aprovação do crítico | `EDITOR_HTML_CSS_ROADMAP.md:2234`; último veredito em `quality/EDITOR_HTML_CSS_CRITICAS.md` | Confirmada |
+| 7 | Q0/Q3/Q5 e ADR-0010…0014 permanecem coerentes | diff 1.17→1.18; `docs/adr/README.md:298–445` | Confirmada |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. ONDE `benchmarks/editor_portoes.py:178–198`, especialmente `191–193`. O QUE o portão chama de denominador real ainda depende da seleção autodeclarada em `leitores.json`; `unidades.json` só fornece o caminho e o hash do manifesto. COMO CONFERIR gerar um `leitores.json` com a métrica ausente, `nao_se_aplica.valor_do_denominador = 0` e `regioes` omitido ou com todas as regiões `casada: false`; a contagem retorna zero e `conferir_metricas_do_h0` pode aceitar a métrica. POR QUE REPROVA: uma publicação defeituosa pode esconder uma métrica obrigatória alterando o próprio artefato que o portão usa para definir o denominador, violando a falha fechada aprovada no ciclo 18 e a promessa da 1.18 de conferir o denominador real.
+
+## Defeitos não bloqueantes
+
+- A estrutura de N/A não é validada integralmente: `metrica`, `denominador` e `motivo` podem faltar; o código verifica essencialmente `valor_do_denominador == 0`.
+- Os testes direcionados foram lidos, mas não executados: o `pytest` parou antes da coleta por “No usable temporary directory”.
+- A redação da recontagem ainda poderia distinguir explicitamente manifesto, lista de unidades e regiões efetivamente casadas.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Validar `unidades.json["unidades"]` contra `hash_da_lista`, conferir IDs/estratos sem duplicação e rejeitar `leitores.json` inconsistente.
+- Fazer o portão exigir o denominador mínimo, os dois estratos e a lista íntegra de regiões antes de aceitar qualquer N/A.
+- Acrescentar teste adversarial para `regioes` ausente, `casada: false`, estrato adulterado e `hash_da_lista` divergente.
+- Validar integralmente o esquema de `nao_se_aplica`, incluindo métrica correspondente, denominador, valor numérico zero e motivo não vazio.
+
+## Documentos — ciclo 21 (2026-09-24): REPROVADO, 1 bloqueante
+
+A terceira redação da 1.18 passou a contar o denominador do «não se aplica» no estrato inteiro do
+manifesto do executor e a auditar a publicação (a lista pelo hash, as regiões, os estratos, o
+`casada` pelos IoUs, o mínimo). O crítico deu o bloqueante do ciclo 20 por resolvido, reproduziu a
+auditoria no manifesto real e achou um bloqueante novo: a métrica publicada não era validada como
+número. O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 21  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap + ADRs), versão 1.18 (terceira redação)
+
+## Bloqueante do ciclo 20 — situação
+
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | O denominador do N/A dependia da seleção autodeclarada em `leitores.json` | **RESOLVIDO** | `editor_portoes.py:192–214` reconta o manifesto do executor; `:217–278` confere lista, IDs, estratos, IoUs e mínimo; `:327–330` usa essa auditoria antes de aceitar N/A. A reprodução real deu 237 unidades, hash `f019591babf2941e`, contagens `653/464/199` e `198/0/38`, sem problemas. |
+|  |  |  | Os testes adversariais correspondentes passaram; o log externo registra **136 passed**. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | O denominador do N/A é o estrato inteiro do manifesto do executor (spec §9; roadmap H0) | `editor_portoes.py:192–214, 289–330` e reprodução real | Confirmada |
+| 2 | A publicação é auditada contra manifesto, lista, hash, IDs, estratos, regiões e mínimo | `editor_portoes.py:217–278`; testes `test_portoes.py:351–437` | Confirmada |
+| 3 | `nao_se_aplica` exige métrica, denominador, valor inteiro zero e motivo | `editor_portoes.py:333–340`; testes `test_portoes.py:231–251` | Confirmada |
+| 4 | CER e ordem continuam obrigatórias | `editor_portoes.py:356–384`; teste `test_portoes.py:254–258` | Confirmada |
+| 5 | A terceira redação não antecipa aprovação do crítico | roadmap §10; registro do ciclo 20 | Confirmada |
+| 6 | Os testes declarados foram executados | `testes_c21.log` | Confirmada: 136 passaram |
+| 7 | As ADRs permanecem coerentes com as decisões anteriores | `docs/adr/README.md`, ADR-0010…0014 | Confirmada |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. ONDE `benchmarks/editor_portoes.py:376–383`. O QUE a conferência considera uma métrica publicada apenas porque `valor` e `ic95` são diferentes de `None`; não valida tipo numérico, finitude, formato ou validade do intervalo. COMO CONFERIR: uma publicação estruturalmente íntegra, com manifesto, lista, regiões, IoUs, mínimo e ambos os estratos válidos, mas com cada métrica como `{"valor": "fraude", "ic95": "fraude"}`, produz `auditar_publicacao(...).problemas == []` e `conferir_metricas_do_h0(...) == []`. O mesmo ocorre com `NaN`. POR QUE REPROVA: uma publicação adulterada pode esconder todas as métricas obrigatórias e ainda aprovar o H0; o executor continua tomando o conteúdo da métrica como dado sem provar que há verdade numérica.
+
+## Defeitos não bloqueantes
+
+- O executor continua confiando nos IoUs publicados para determinar `casada`; isso deixa confiança residual na medição do instrumento, mas não reabre o bloqueante do ciclo 20 porque o denominador agora vem do manifesto.
+- O rótulo textual de `nao_se_aplica["denominador"]` é apenas não vazio; sua semântica não é conferida, embora isso não permita esconder uma métrica quando o denominador real é recalculado.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Validar cada métrica publicada como número finito.
+- Exigir `ic95` como par de números finitos, com limites válidos e coerentes.
+- Rejeitar strings, `NaN`, infinitos, intervalos ausentes ou malformados.
+- Acrescentar teste adversarial que publique métricas com strings e `NaN`, demonstrando reprovação por “métrica inválida”.
+- Reexecutar o conjunto de 136 testes e o H0 completo após essa correção.
+
+## Documentos — ciclo 22 (2026-09-24): APROVADO
+
+A quarta redação da 1.18 validou a métrica publicada: número finito na faixa dela, com o
+intervalo um par de números finitos coerente, senão «métrica inválida»; a métrica declarada «não
+se aplica» sai sem valor. O crítico deu o bloqueante do ciclo 21 por resolvido e aprovou. O
+veredito, transcrito sem edição:
+
+VEREDITO: APROVADO  
+CICLO: 22  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap + ADRs), versão 1.18 (quarta redação)
+
+## Bloqueante do ciclo 21 — situação
+
+| # | bloqueante | situação | evidência |
+|---|---|---|---|
+| 1 | Métricas com texto, `NaN`, infinitos ou intervalos inválidos passavam como publicadas | RESOLVIDO | `editor_portoes.py:346–371` exige número finito, faixa válida e intervalo coerente; `:401–440` aplica isso a todas as métricas. `_declaradas` valida N/A contra os denominadores do manifesto (`:375–398`). Os testes adversariais de strings, `NaN`, infinito, booleano, intervalos malformados e faixas inválidas passaram; log externo: **149 passed**. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---|---|---|---|
+| 1 | A métrica publicada deve ser numérica, finita e estar na faixa | `benchmarks/editor_portoes.py:344–371`; testes `test_portoes.py:269–315` | Confirmada |
+| 2 | CER e inserção aceitam valores acima de 1; lances certos, figurinas e ordem ficam em `[0,1]` | `editor_leitores.py:692–724`; `metrics.py:141–151,214–250`; `editor_portoes.py:346–348` | Confirmada |
+| 3 | Intervalos honestos têm baixo ≤ alto | `editor_leitores.py:756–787`; `editor_portoes.py:367–371` | Confirmada |
+| 4 | N/A sai sem valor e só é aceito quando o denominador real é zero | `editor_leitores.py:900–917,920–952`; `editor_portoes.py:375–398` | Confirmada. O manifesto conferido tem `0/198` figurinas no nativo e denominadores positivos nos demais casos. |
+| 5 | A auditoria continua independente da publicação para manifesto, lista, regiões, estratos e mínimo | `editor_portoes.py:290–331`; testes `test_portoes.py:415–515` | Confirmada |
+| 6 | A quarta redação preserva decisões anteriores e registra corretamente Q0/Q3/Q5 e ADR-0010…0014 | diff `delta_118d.diff`; `docs/adr/README.md:298–444` | Confirmada |
+| 7 | Os testes direcionados foram executados | `testes_c22.log` | Confirmada: 149 passaram |
+| 8 | O H0 completo foi executado | `testes_c22.log`; estado informado | Ainda não. Não é bloqueante para aprovar os documentos: é o portão operacional do passo, a executar quando a máquina estiver livre. |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+Nenhum.
+
+A auditoria ainda toma os IoUs publicados como medição do instrumento, e os valores numéricos dentro das faixas como resultado do instrumento. Isso permanece como confiança residual já aceita nos ciclos anteriores; não reabre o bloqueante do ciclo 20 nem permite ocultar métrica obrigatória por N/A.
+
+## Defeitos não bloqueantes
+
+- O H0 completo, suas três medições e seis sabotagens continuam pendentes por contaminação de desempenho na máquina; devem gerar o `EDITOR_HTML_CSS_REPORT.md` e o `portao.json`.
+- `nao_se_aplica()` calcula a declaração sobre as regiões casadas, enquanto o executor confere o denominador no manifesto inteiro; se houver divergência, o portão reprovará corretamente a publicação.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Nada bloqueante nos documentos, no código conferido ou nos testes. Executar o H0 completo quando a máquina estiver livre e registrar seus artefatos.

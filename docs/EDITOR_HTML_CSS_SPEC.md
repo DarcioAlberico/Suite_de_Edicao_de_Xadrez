@@ -1,10 +1,14 @@
 # Especificação — Editor HTML/CSS (janela dedicada: código, resultado e PDF original)
 
-> **Data:** 2026-09-24 · **Versão:** 1.17 — **APROVADA pelo Codex no ciclo 18**.
+> **Data:** 2026-09-24 · **Versão:** 1.18 — **APROVADA pelo Codex no ciclo 22**, depois de três
+>   ciclos reprovados (19, 20 e 21: 2, 1 e 1 bloqueantes, todos no portão do H0). A 1.17 tinha
+>   sido aprovada no ciclo 18.
 > - A 1.10 tinha sido aprovada no ciclo 11, depois de dez ciclos reprovados (12, 8, 9, 4, 7, 4, 4, 3,
 >   3 e 2 bloqueantes).
 > - A 1.11 registrou as **respostas do usuário ao Q1 e ao Q7** (2026-09-24).
 > - Os ciclos 12 a 17 reprovaram o H0b e o H26 novos (5, 5, 3, 1, 2 e 2 bloqueantes).
+> - A 1.18 registra as **respostas do usuário ao Q0, ao Q3 e ao Q5** e os downloads consentidos
+>   (2026-09-24), e três correções do H0 achadas ao implementá-lo (§9).
 >
 > §7 e §9 dizem o que cada ciclo mudou.
 >
@@ -752,8 +756,8 @@ Vale para os **dois** armazéns.
 
 ## 4. DECISÕES
 
-Status **proposta**: entram em `docs/adr/README.md` como ADR-0010…0014 só depois da aprovação
-do usuário (Q0). Cada uma diz o que a reverteria.
+Status **aceita**: o usuário aprovou o registro (Q0, 2026-09-24), e D1–D5 estão em
+`docs/adr/README.md` como ADR-0010…0014. Cada uma diz o que a reverteria.
 
 ### D1 (ADR-0010) — O editor é uma vista-fonte do IR para a estrutura; o CSS é recurso verbatim
 
@@ -1368,12 +1372,12 @@ Em detalhe:
 
 | # | questão | bloqueia | recomendação |
 |---|---|---|---|
-| Q0 | Aprovar D1–D5 como ADR-0010…0014 em `docs/adr/README.md`? | registro das ADRs | sim, depois da crítica |
+| ~~Q0~~ | Aprovar D1–D5 como ADR-0010…0014 em `docs/adr/README.md`? — **RESPONDIDA pelo usuário em 2026-09-24: sim.** As cinco estão registradas | — (respondida) | sim, depois da crítica |
 | **Q1** | **Qual OCR alimenta o editor? — RESPONDIDA pelo usuário em 2026-09-24:** «O OCR que alimenta o editor deve ser o mais preciso para textos e símbolos de xadrez, ou as combinações dos vários OCR, mirando na precisão e qualidade final. Também vamos precisar dos diagramas, e nosso OCR de diagramas já tem uma precisão altíssima.» **Decisão: C, a combinação guiada por medição.** O editor recebe o IR do produto, que já é a fusão dos leitores (camada, Tesseract, RapidOCR, o classificador de glifos do tronco, modelo e cifra do livro); os diagramas vêm do OCR de diagramas do produto. O H0 mede o leitor da aba Texto contra o produto, estrato por estrato, em CER, lances certos e inventados, figurinas e ordem de leitura. O H0b estende o candidato de glifo que a fusão já tem com o que a aba faz de diferente: ler toda região, e não só a de lance (`ocr_service.py:1408-1409`), e o léxico e o juntador de lance do tronco. Ele também pode ligar o RapidOCR fora da página degradada (o modo bloco). A configuração da fusão é **uma só, global**. A medição é por estrato, e uma configuração que melhora um estrato e piora outro não liga. Ela é escolhida em `dev` + `calib` e só liga se **confirma uma vez na partição cega**, com um teste unilateral registrado antes. A R1.4 proíbe treino, calibração e correção com a cega, e não a avaliação. Há falha fechada quando falta evidência. O mesmo classificador nunca vale como dois apoios. À parte, o H0b dá o **veredito da aba por estrato** (produto ou leitor antigo), que o H26 segue; ele não é roteamento da fusão. Nos estratos que a configuração final muda, o veredito usa a leitura cega da configuração final e dos três modos do leitor da aba | — (respondida) | o critério de aceite da SOL-6 (`Sol.md`), agora com o leitor da aba entre os leitores isolados: a fusão supera ou iguala cada leitor isolado em todos os estratos, e a taxa de inserção não sobe (H0b) |
 | Q2 | O motor Chromium: (a) componente sob demanda; (b) dentro do instalador (fura o teto de 150 MB); (c) só MuPDF | H14 | **(a)**, se o H1 aprovar a sonda PyInstaller e a máquina limpa; senão a pergunta volta com os números |
-| Q3 | Adotar o contrato `cb-*` como contrato público do Caissa (D2)? | H5 | **sim** |
+| ~~Q3~~ | Adotar o contrato `cb-*` como contrato público do Caissa (D2)? — **RESPONDIDA pelo usuário em 2026-09-24: sim, adotar.** O perfil legível escreve e lê as classes `cb-*` | — (respondida) | **sim** |
 | Q4 | Onde mora o projeto: `editor/` ao lado do executável ou pasta escolhida? | H6 | a padrão ao lado do executável, com «Mover o projeto…» |
-| Q5 | Fontes de xadrez sem licença declarada: embutir quando o usuário declara, ou nunca? | H24 | **só com declaração** (R1.14) |
+| ~~Q5~~ | Fontes de xadrez sem licença declarada: embutir quando o usuário declara, ou nunca? — **RESPONDIDA pelo usuário em 2026-09-24: só com declaração.** Sem licença no registro, a fonte não embute e o livro avisa | — (respondida) | **só com declaração** (R1.14) |
 | Q6 | Tema padrão do livro | H19 | comparação às cegas de `quality-chess`, `nic-classic` e `informator` contra páginas reais |
 | **Q7** | **O «AAA» do livro — RESPONDIDA pelo usuário em 2026-09-24:** «O triplo-AAA significa altíssimo padrão.» **Decisão: (i)** — AA inteiro + todo AAA aplicável que não muda a tipografia; declara AA; o tema «Leitura AAA» disponível, não padrão; as opções (ii)–(iv) ficam registradas e fora do plano | — (respondida) | a régua do altíssimo padrão é a da carta do crítico |
 
@@ -1385,15 +1389,16 @@ Em detalhe:
   - **H0**: a infraestrutura dos portões e a medição dos leitores (Q1 = C);
   - o **H0b** (a combinação), depois do H0;
   - depois do H0, H1–H4 e H6–H7, independentes entre si.
-- **Precisa de decisão do usuário:**
-  - Q2, antes do H14, com os números do H1;
-  - Q3, antes do H5;
-  - Q5, antes do H24.
-- **Respondidas pelo usuário em 2026-09-24:** Q1 (C, a combinação guiada por medição) e Q7 ((i),
-  altíssimo padrão).
-- **Precisa de ação do usuário:**
-  - habilitar o Windows Sandbox, ou dar uma VM, para a máquina limpa do H1 e do H14;
-  - consentir os downloads de medição (rodas do QtWebEngine; `pywinauto`; Ace via npm).
+- **Precisa de decisão do usuário:** Q2, antes do H14, com os números do H1.
+- **Respondidas pelo usuário em 2026-09-24:**
+  - Q1 (C, a combinação guiada por medição) e Q7 ((i), altíssimo padrão), na 1.11;
+  - Q0 (sim: as ADR-0010…0014), Q3 (sim: o contrato `cb-*`) e Q5 (só com declaração), na 1.18.
+- **Consentidos pelo usuário em 2026-09-24:** os downloads de medição — as rodas do QtWebEngine
+  6.11 (~133 MB, num venv de rascunho fora do repositório), o `pywinauto` (com `comtypes` e
+  `pywin32`), o `tinycss2` e o `cssselect2` no `.venv-pack`, e o Ace do DAISY via npm (com o
+  Electron, ~150–300 MB). O `PyQt6-QScintilla` (H2b) não estava no pedido e continua a pedir.
+- **Precisa de ação do usuário:** habilitar o Windows Sandbox, ou dar uma VM, para a máquina limpa
+  do H1 e do H14.
 - **Próxima trilha:** `EDITOR_HTML_CSS_ROADMAP.md`.
 - **Crítica:** Codex nos documentos e em cada fase; crítico visual às cegas (Sigil com o fork
   ChessBook, Calibre Editar Livro, ABBYY FineReader na verificação, VS Code na ergonomia de edição)
@@ -1653,6 +1658,88 @@ dois não bloqueantes que ele deixou, a versão final trata os dois:
 - o valor literal do hash da fixture do caso (a) fica gravado no teste quando a fixture é escrita.
 
 Veredito: «A versão 1.17 pode avançar para implementação dos passos H0/H0b».
+
+**Decisões do usuário em 2026-09-24 (versão 1.18).** Perguntadas numa sessão só (a da execução do
+programa), com as opções da spec e a recomendação de cada uma:
+- **Q0 = sim.** D1–D5 viram ADR-0010…0014 em `docs/adr/README.md`, e o §4 passa de «proposta» a
+  «aceita».
+- **Q3 = sim, adotar o contrato `cb-*`.** O H5 deixa de esperar.
+- **Q5 = só com declaração.** O H24 deixa de esperar; o R1.14 fica como estava.
+- **Downloads: todos os quatro pedidos**, com nome, origem e tamanho ditos ao pedir (§8). O
+  `PyQt6-QScintilla` não estava entre eles.
+
+**Correções do H0 achadas ao implementá-lo (versão 1.18).** Nenhuma muda o que o H0 mede; as três
+fecham o que a 1.17 deixava sem resposta executável:
+1. **«Figurinas certas» não se aplica ao estrato nativo do manifesto de hoje.** A verdade nativa
+   (`dev` + `calib`) tem **0 lances com figurina em 198**, em 38 regiões: a métrica é 0/0, e a
+   regra «métrica ausente reprova» reprovaria o H0 por construção. A 1.18 aceita a ausência só
+   **declarada** — `nao_se_aplica`, estruturado: a métrica, o denominador, o valor 0 e o motivo —
+   e só para as métricas que têm denominador na verdade (figurinas, lances certos, lances
+   inventados); o CER e a ordem de leitura nunca. O executor de portões **audita a publicação** e
+   **conta o denominador no estrato inteiro do manifesto dele** antes de aceitar, e as sabotagens
+   `na_falso_*` e os testes adversariais provam que a declaração falsa e a publicação adulterada
+   reprovam (ciclos 19 e 20). É a mutação do roadmap §10.
+2. **A ordem verdadeira** entre as regiões de uma página não está no manifesto: cada item tem a sua
+   região, com `reading_order` 0, e o SFC4 é de duas colunas. Ela é derivada das caixas rotuladas,
+   por uma regra compatível com a do tronco (`text/pagina.py`), só com as caixas e sem olhar a
+   saída de leitor nenhum: as **calhas** (faixas verticais cobertas
+   por no máximo uma região em cinco, com região dos dois lados) separam as colunas; a região que
+   atravessa uma calha, ou que tem mais de 60 % da largura útil, separa faixas; em cada faixa, as
+   colunas da esquerda para a direita e, em cada coluna, de cima para baixo.
+3. **As unidades do produto.** O texto que o produto dá a cada página é o `PageText` que
+   `PdfImporter._decide_source` entrega (as linhas já em pontos, pela conversão única de
+   `PageRecognition.to_page_text`), inclusive nas páginas nativas, que não passam pelo OCR; a
+   **ordem** do produto é a dos **blocos do IR** (`Provenance.rect`, pontos), a que o editor recebe
+   — as linhas cruas estão na ordem do produtor. A fixture de geometria usa parágrafos de cinco a
+   seis linhas: a caixa da camada é a da fonte e a do glifo é a da tinta, e com duas linhas a folga
+   do descendente deu IoU 0,8997 sem erro nenhum de unidade (medido em 2026-09-24).
+
+**O ciclo 19 (versão 1.18)** reprovou com 2 bloqueantes. As respostas do usuário ficaram
+confirmadas como fiéis, e o 0 de 198 foi recontado pelo crítico. A segunda redação da 1.18:
+
+| # | bloqueante c19 | o que mudou |
+|---|---|---|
+| 1 | o portão aceitava `nao_se_aplica` com qualquer motivo, sem conferir o denominador real | a declaração é estruturada (métrica, denominador, motivo), e o `editor_portoes.py` **reconta o denominador** — as regiões casadas do `leitores.json`, a verdade do manifesto que o `unidades.json` nomeia (hash conferido), o `move_tokens` — antes de aceitar; denominador diferente de zero reprova «métrica ausente». Sabotagens `na_falso_figurinas`, `na_falso_lances` e `na_falso_insercao`, contra o estrato digitalizado, que tem 464 figurinas em 653 lances |
+| 2 | o roadmap §10 registrava «crítico: Codex, ciclo 19» antes do veredito | a coluna «quem» diz o que o ciclo 19 confirmou e reprovou, e a aprovação só entra quando o veredito sair |
+
+Dos não bloqueantes, a segunda redação trata os três: o motivo de lances e inserção diz o
+denominador; a ordem é «compatível com a regra do tronco», e não «a mesma»; as ADR-0012 e 0014
+ganham a recusa do componente de versão ou hash diferente e a preferência que desliga a abertura
+automática.
+
+**O ciclo 20 (versão 1.18, segunda redação)** deu o bloqueante 2 do ciclo 19 por resolvido e o 1
+por parcial, com 1 bloqueante: a recontagem contava só as regiões que a própria publicação marcava
+como casadas, e uma publicação que omitisse as regiões, ou desmarcasse todas, zerava o
+denominador. A terceira redação da 1.18:
+
+| # | bloqueante c20 | o que mudou |
+|---|---|---|
+| 1 | o denominador «real» dependia da seleção autodeclarada no `leitores.json` | **o denominador do «não se aplica» é o do estrato inteiro no manifesto** (todas as regiões de PDF de `dev` + `calib`, pelo `move_tokens`), e o manifesto é o do executor, não o que a publicação nomeia. Antes de aceitar qualquer ausência, o `editor_portoes.py` **audita a publicação** (`auditar_publicacao`): o hash do manifesto nos dois arquivos; a lista das unidades pelo `hash_da_lista` (o mesmo nos dois), sem id repetido e igual ao conjunto das regiões do manifesto, com o estrato tirado da fonte do item; as regiões do `leitores.json` iguais às da lista, com o mesmo estrato e o `casada` que os IoUs publicados sustentam; e o mínimo (150 casadas, 2 livros, os dois estratos). Os testes adversariais do `test_portoes.py` cobrem as regiões ausentes, todas desmarcadas, o `casada` sem IoU, o estrato trocado, a lista sem uma unidade, a lista recortada com o hash refeito, o `leitores.json` de outra lista e o manifesto trocado pela publicação |
+
+Dos não bloqueantes, a terceira redação trata os três: a declaração é validada campo a campo (a
+métrica igual à chave, o denominador e o motivo não vazios, o valor o inteiro 0 — o booleano não
+passa); os testes rodaram fora da caixa de areia do crítico (136 passam; o log vai com o pedido
+do ciclo 21); e a redação separa o manifesto, a lista das unidades e as regiões casadas (roadmap
+H0).
+
+**O ciclo 21 (versão 1.18, terceira redação)** deu o bloqueante do ciclo 20 por resolvido — com a
+auditoria reproduzida no manifesto real (237 unidades; 653/464/199 e 198/0/38) — e achou 1
+bloqueante novo. A quarta redação da 1.18:
+
+| # | bloqueante c21 | o que mudou |
+|---|---|---|
+| 1 | a conferência dava a métrica por publicada só porque `valor` e `ic95` não eram `None`: uma publicação íntegra com `{"valor": "fraude", "ic95": "fraude"}`, ou `NaN`, passava | **a métrica publicada tem de valer**: o valor é um número finito na faixa da métrica (CER e lances inventados ≥ 0; lances certos, figurinas certas e ordem em [0, 1]), e o intervalo, um par de números finitos na mesma faixa, com o limite de baixo ≤ o de cima; senão, «métrica inválida». A métrica declarada «não se aplica» sai sem valor; publicada com valor, também reprova. Os testes publicam texto, `NaN`, infinito, booleano, intervalos malformados e valores fora da faixa, e o JSON de forma errada, que reprova sem derrubar a conferência |
+
+Dos não bloqueantes do ciclo 21: a confiança residual no IoU publicado fica como está (é medida
+do instrumento, e o denominador não depende dela); o rótulo textual do denominador fica só não
+vazio, porque o número que decide é recontado. O H0 completo (3 execuções do instrumento, as
+sabotagens) é o portão do passo: roda com a máquina livre e o resultado vai para o relatório do
+H0.
+
+**O ciclo 22 (versão 1.18, quarta redação) APROVOU**, sem bloqueante: a métrica publicada é
+validada (número finito, faixa, intervalo coerente), a auditoria segue independente da
+publicação, e as respostas do usuário (Q0, Q3, Q5) e as ADR-0010…0014 ficaram registradas. Resta,
+não bloqueante, rodar o H0 completo e registrar os artefatos dele.
 
 ---
 

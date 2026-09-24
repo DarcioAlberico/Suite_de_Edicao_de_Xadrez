@@ -292,3 +292,153 @@ Total: **~19.600 linhas em PyQt6** contra **~7.300 em PySide6**.
   arquitetura deve verificá-la (nenhum import de toolkit dentro de `ui/`).
 - Se o usuário decidir distribuir comercialmente, esta ADR é revisitada com um plano de
   migração — não é uma decisão irreversível.
+
+---
+
+## ADR-0010 — O Editor HTML/CSS é uma vista-fonte do IR para a estrutura; o CSS é recurso verbatim
+
+**Status:** Aceita (Q0, 2026-09-24) · **Data:** 2026-09-24 · **Origem:** `EDITOR_HTML_CSS_SPEC.md` D1
+
+### Contexto
+A ADR-0002 exige que toda saída saia do IR. O EPUB já nasce de um motor HTML ida-e-volta, mas em
+marcação de máquina (`data-ir` por corrida, classes geradas). O CSS de um livro — cascata,
+seletores, `@media`, `@page`, variáveis, `@font-face` — não tem representação no IR: o
+`StyleSheet` guarda estilos nomeados estruturados, não regras CSS.
+
+### Decisão
+- **Estrutura.** O projeto guarda os XHTML que o usuário edita, byte a byte. O motor HTML ganha o
+  **perfil legível** e o leitor dele: gerar é IR → XHTML legível; exportar é XHTML → IR →
+  exportadores. A marcação fora do contrato é preservada: elemento → `RawPassthrough`/`RawInline`;
+  atributo → `IRNode.html_attributes` (esquema v2, migração v1→v2).
+- **CSS.** As folhas do projeto são `Resource(kind=STYLESHEET)`, **não interpretadas** pelo IR. O
+  EPUB e o HTML as levam byte a byte; o PDF é a impressão do HTML exportado pelo motor da prévia
+  Página; o DOCX aplica um **mapa de estilo** fechado e avisa o resto regra a regra; o LaTeX recebe
+  a estrutura e um aviso único.
+
+### Alternativas rejeitadas
+HTML como verdade independente (o Sigil: fura a ADR-0002, o DOCX ignoraria as edições); traduzir
+todo o CSS para o IR (o IR viraria um motor de CSS); o perfil de máquina atual (ilegível).
+
+### Consequências
+A ida e volta da estrutura é portão (roadmap H5); o mapa de estilo tem portão positivo e negativo
+(H5, H24); o PDF tem portão de igualdade com a prévia, e o LaTeX, do aviso único (H24). Arquivo mal
+formado não vai ao IR: grava o texto e mostra o erro.
+
+**Reverte se:** o H5 provar que a estrutura não fecha a ida e volta sem perda fora das
+normalizações declaradas (N1–N4).
+
+---
+
+## ADR-0011 — Um vocabulário de marcação só: o contrato `cb-*`
+
+**Status:** Aceita (Q0 e Q3, 2026-09-24) · **Data:** 2026-09-24 · **Origem:** spec D2
+
+### Contexto
+Há três vocabulários para a mesma coisa: o do `export/html.py`, o `MARKUP` do fork ChessBook do
+Sigil e o do renderizador do CB. O CB tem nove temas de CSS, um validador com linha e um
+renderizador, todos em `cb-*`, e o contrato é do próprio usuário, congelado por política escrita.
+
+### Decisão
+O **Contrato de Marcação do Caissa v1** (`docs/MARKUP_CAISSA.md`, roadmap H3) é o `MARKUP` inteiro
+mais as extensões da spec S4, pela política dele. Todo o resto é HTML semântico padrão. O leitor lê
+o contrato **e** o legado `data-ir`. O usuário respondeu «sim» ao Q3 em 2026-09-24.
+
+### Alternativas rejeitadas
+Manter o vocabulário do `html.py` (não tem classe semântica); inventar um quarto.
+
+### Consequências
+Os temas e as regras do CB são absorvidos para a suíte, com cabeçalho «Origem:» e GPLv3. Portão de
+interoperabilidade: o validador do CB aceita o EPUB do projeto (H3, H5).
+
+**Reverte se:** o contrato `cb-*` for abandonado pelo usuário (uma resposta nova ao Q3).
+
+---
+
+## ADR-0012 — Dois motores de pré-visualização; o Chromium só com prova de pacote
+
+**Status:** Aceita (Q0, 2026-09-24) · **Data:** 2026-09-24 · **Origem:** spec D3
+
+### Contexto
+Não há QtWebEngine. Somá-lo ao instalador custa cerca de 207 MB descomprimidos (extrapolado) e
+ameaça o teto de 150 MB; em `runtime/` ele escaparia da medida do pacote. O MuPDF `Story` já está
+no pacote e mediu 89 ms para 17 páginas, mas desenha um subconjunto do CSS.
+
+### Decisão
+A interface `MotorDePrevia` (sem Qt) tem duas implementações:
+1. **MuPDF**, embutido e sempre presente: o modo Página e a reserva do modo Leitor.
+2. **Chromium**, componente opcional «Pré-visualização de alta fidelidade»: o modo Leitor, o
+   inspetor de estilos calculados, o escuro do leitor e a impressão.
+
+O Chromium só vira padrão se o roadmap H1 provar, com números: uma sonda PyInstaller real,
+nesta máquina e numa máquina limpa; frio ≤ 1,5 s; remendo p95 ≤ 150 ms em 260 KB; livro hostil
+com 0 requisições e 0 scripts; memória extra ≤ 350 MB; download ≤ 150 MB e instalado ≤ 300 MB,
+publicados; instalação atômica, por pasta, sem rede, e remoção que volta ao MuPDF. O manifesto do
+componente (nomes, versões, SHA-256) viaja dentro do instalador, que é a raiz de confiança: a roda
+com hash diferente é recusada, revogar uma versão é um instalador novo com outro manifesto, e o
+editor recusa carregar componente cuja versão não bata com a do PyQt6 do pacote.
+
+### Alternativas rejeitadas
+`QTextBrowser` (não desenha CSS de livro); WebView2 (as razões do S-69); QtWebEngine no instalador
+(fura o teto, a menos que o usuário o mude — Q2); só Chromium (o editor ficaria inútil até o
+download).
+
+### Consequências
+Sem o Chromium, a janela diz num rótulo desenhado que a pré-visualização é a simplificada. O
+validador marca a propriedade CSS que o motor ativo não desenha (a matriz do H1).
+
+**Reverte se:** o H1 reprovar a sonda — o Q2 volta ao usuário com os números: embutir e subir o
+teto, ou ficar só com o MuPDF.
+
+---
+
+## ADR-0013 — Editor de código nativo, provisório até o H2
+
+**Status:** Aceita, provisória (Q0, 2026-09-24) · **Data:** 2026-09-24 · **Origem:** spec D4
+
+### Contexto
+O QScintilla não está instalado. O CodeMirror dependeria do Chromium opcional e seria opaco aos
+portões. O `QPlainTextEdit` expõe a interface de texto acessível do Qt (UIA no Windows), os portões
+o leem, e o Qt Creator e o Spyder mostram que ele chega a editor profissional — mas isso não está
+provado aqui.
+
+### Decisão
+`EditorDeCodigo(QPlainTextEdit)` com as funções da spec S5. O roadmap H2 constrói um protótipo com
+**todas as funções ligadas ao mesmo tempo** (realce, margem, dobras, indicadores, completar, par de
+tags, desfazer, escala e prévia no processo de trabalho), mede o orçamento completo, prova a
+leitura por UIA e ≥ 5 casos dourados por função. O H2b mede o QScintilla no mesmo arnês, antes de a
+dependência entrar, se o H2 reprovar ou o H12 reprovar por limite do componente. Cursores
+múltiplos ficam fora da v1.
+
+### Consequências
+A regra do editor (léxico, estrutura, operações) mora em `caissa/editor/`, sem toolkit, e sobrevive
+a uma troca de componente.
+
+**Reverte se:** o H2 reprovar, ou o H12 reprovar por limite do componente.
+
+---
+
+## ADR-0014 — Janela de primeiro nível, casca injetada, rota de teclas por janela ativa
+
+**Status:** Aceita (Q0, 2026-09-24) · **Data:** 2026-09-24 · **Origem:** spec D5
+
+### Contexto
+Um editor com docas e menus pede `QMainWindow`. O tronco só trata `QDialog`, `janela.py` não tem
+linha livre, e a guarda de teclas é global.
+
+### Decisão
+- **A suíte.** `JanelaDoEditorHtml(QMainWindow)` recebe uma **casca** (protocolo sem Qt no tipo) com
+  tema e pele, acessibilidade e escala, dono das teclas, estado, fábrica do visor de PDF, editor de
+  posição, mostrar na principal e o serviço de decisões.
+- **O tronco.** Implementa a casca e a aba lançadora; estende o filtro de acessibilidade às
+  janelas secundárias; reescreve a rota da guarda de teclas pela **janela ativa** (pop-up, campo de
+  texto com AltGr e tecla morta, a janela do editor executa a ação dela, a principal como hoje).
+- Os portões ganham `--janela editor`. A aba, ao ser ativada, abre ou traz à frente a janela; uma
+  preferência desliga isso. **Um livro por janela:** abrir o mesmo livro de novo traz a janela
+  existente à frente.
+
+### Alternativas rejeitadas
+`QDialog` não modal (`Esc` fecha e não há docas); um modo dentro da aba Livro (1250×640 não cabe
+três painéis); a janela no tronco (a regra de documento iria para o Python 3.10).
+
+**Reverte se:** o H11 mostrar que estender os portões custa mais que um `QDialog` com
+`QMainWindow` embutido.
