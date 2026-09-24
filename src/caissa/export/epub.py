@@ -35,6 +35,14 @@ Some books cannot reflow: a page whose diagrams sit in the margin beside the
 line they annotate is a *design*, not a stream of paragraphs. For those,
 ``EpubOptions(layout="fixed")`` writes ``rendition:layout pre-paginated`` with a
 viewport per page, and the same content flows into pages of a declared size.
+
+What the package does not carry
+-------------------------------
+The author's disk. An EPUB is handed on, and the importer records absolute paths
+-- where the PDF was, where the images were extracted -- which on Windows carry
+the user name. The package names the file only, in ``dc:source`` and in the
+embedded IR (``OEBPS/caissa-ir.json``, see ``_portable_payload``); the content
+hashes that identify the file travel as they are.
 """
 
 from __future__ import annotations
@@ -44,8 +52,9 @@ import zipfile
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, ClassVar, Literal
+from pathlib import Path, PureWindowsPath
+from typing import Any, ClassVar, Final, Literal
+from urllib.parse import unquote, urlsplit
 from uuid import uuid4
 
 from caissa.core.model import (
@@ -57,6 +66,7 @@ from caissa.core.model import (
     ResourceKind,
     document_to_payload,
 )
+from caissa.core.model.serialize import TYPE_KEY
 from caissa.export.base import ExportContext, Exporter, ExportError, ExportOptions, ExportResult
 from caissa.export.html import (
     BASE_CSS,
@@ -228,6 +238,69 @@ def _relink_images(page: str, images: Sequence[_ImageFile]) -> str:
     return page
 
 
+# --------------------------------------------------------------------------- #
+# What the package says about the author's disk
+# --------------------------------------------------------------------------- #
+
+#: The IR fields that name a place on the author's disk, by node tag: where the
+#: PDF was (a diagram's source, every node's provenance, the book's ``source``)
+#: and where the importer extracted an image to (a resource's ``path``).
+_LOCAL_PATH_FIELDS: Final[Mapping[str, tuple[str, ...]]] = {
+    "diagram_source": ("path",),
+    "provenance": ("document_path",),
+    "document_metadata": ("source",),
+    "resource": ("path",),
+}
+
+
+def _portable_path(value: str) -> str | None:
+    r"""An absolute path of this machine reduced to its file name; anything else as it is.
+
+    ``C:\Users\ana\Livros\Livro.pdf``, ``/home/ana/Livro.pdf``,
+    ``\\srv\livros\Livro.pdf``, ``~/Livro.pdf`` and ``file:///C:/Users/ana/Livro.pdf``
+    all become ``Livro.pdf``.  A relative path, a URL or a URN names no folder of
+    this disk and is kept.  ``None`` when no file name is left (a bare drive or root).
+    """
+    if value[:5].casefold() == "file:":
+        value = unquote(urlsplit(value).path)
+    elif not (PureWindowsPath(value).anchor or value.startswith("~")):
+        return value
+    return PureWindowsPath(value).name or None
+
+
+def _portable_payload(document: Document) -> dict[str, Any]:
+    """The IR as the package carries it: :func:`document_to_payload` without the author's disk.
+
+    An EPUB is made to be handed on, and the importer records absolute paths --
+    the PDF's in the book's ``source`` and in every node's provenance, the
+    scratch folder's in every image resource -- which put the author's folders
+    (on Windows, the user name) inside every book.  Those fields
+    (:data:`_LOCAL_PATH_FIELDS`) keep only the file name; the content hashes that
+    identify the file (``DiagramSource.content_hash``, ``Provenance.document_hash``,
+    ``Resource.content_hash``) and every other field travel as they are, so a
+    re-import is exact but for the folders.  The document in memory is untouched.
+    """
+    payload = document_to_payload(document)
+    pending: list[Any] = [payload]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, list):
+            pending.extend(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        for name in _LOCAL_PATH_FIELDS.get(str(item.get(TYPE_KEY, "")), ()):
+            value = item.get(name)
+            if isinstance(value, str):
+                portable = _portable_path(value)
+                if portable is None:
+                    del item[name]
+                else:
+                    item[name] = portable
+        pending.extend(item.values())
+    return payload
+
+
 @dataclass(frozen=True, slots=True)
 class _FontFace:
     """One embedded font face.
@@ -353,8 +426,9 @@ class EpubExporter(Exporter):
         if options.embed_ir:
             import json
 
+            # Without the author's folders: the package is handed on (_portable_payload).
             payload = json.dumps(
-                document_to_payload(document), ensure_ascii=False, separators=(",", ":")
+                _portable_payload(document), ensure_ascii=False, separators=(",", ":")
             )
             files.append(
                 ("OEBPS/caissa-ir.json", payload.encode("utf-8"), zipfile.ZIP_DEFLATED)
@@ -810,8 +884,9 @@ def _opf(
         meta.append(f"<dc:date>{escape(metadata.publication_date)}</dc:date>")
     if metadata.rights:
         meta.append(f"<dc:rights>{escape(metadata.rights)}</dc:rights>")
-    if metadata.source:
-        meta.append(f"<dc:source>{escape(metadata.source)}</dc:source>")
+    # The importer's ``source`` is the PDF's absolute path; the package names the file only.
+    if metadata.source and (source := _portable_path(metadata.source)):
+        meta.append(f"<dc:source>{escape(source)}</dc:source>")
     for subject in metadata.subjects:
         meta.append(f"<dc:subject>{escape(subject)}</dc:subject>")
     if metadata.isbn:
@@ -1381,7 +1456,9 @@ def read_epub(path: Path | str, *, use_sidecar: bool = False) -> Document:
 
     Args:
         path: The ``.epub`` file.
-        use_sidecar: Prefer the packaged IR JSON when present.
+        use_sidecar: Prefer the packaged IR JSON when present. It is the exported
+            document but for the folders: a path of the author's disk comes back
+            as its file name (``_portable_payload``), hashes and all else intact.
 
     Returns:
         The reconstructed document.

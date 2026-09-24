@@ -12,13 +12,26 @@ from __future__ import annotations
 import io
 import re
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
-from corpus import epubcheck_jar, java_available, run_epubcheck
+from corpus import epubcheck_jar, java_available, local_paths_in_epub, run_epubcheck
 
-from caissa.core.model import Document, DocumentMetadata, Paragraph, Text
+from caissa.core.model import (
+    Diagram,
+    DiagramSource,
+    Document,
+    DocumentMetadata,
+    ImageBlock,
+    Paragraph,
+    Provenance,
+    Rect,
+    Resource,
+    SourceKind,
+    Text,
+)
 from caissa.export.epub import EpubExporter, EpubOptions, read_epub
 
 
@@ -148,6 +161,72 @@ def test_reading_it_back_gives_a_document(package: Path) -> None:
     document = read_epub(package)
     assert isinstance(document, Document)
     assert document.body
+
+
+def _png() -> bytes:
+    """A one-pixel PNG, for an image resource with real bytes on disk."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        crc = struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        return struct.pack(">I", len(body)) + kind + body + crc
+
+    return (
+        bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes([0, 40, 120, 200])))
+        + chunk(b"IEND", b"")
+    )
+
+
+def test_the_package_carries_no_path_of_the_authors_disk(tmp_path: Path) -> None:
+    """The importer records absolute paths -- the PDF's in the book's ``source`` and in
+    every node's provenance, the extracted image's in its resource -- and on Windows they
+    carry the user's name.  A package is handed on: the embedded IR and ``dc:source`` name
+    the file only, the hashes stay, and the packaged IR reads back as the document but for
+    the folders."""
+    pdf = str(tmp_path / "Livros" / "Livro.pdf")
+    image = tmp_path / "assets" / "fig.png"
+    image.parent.mkdir()
+    image.write_bytes(_png())
+    rect = Rect(x=72.0, y=120.0, width=200.0, height=200.0)
+    provenance = Provenance(kind=SourceKind.VISION, document_path=pdf, document_hash="cc" * 32,
+                            page_index=0, rect=rect)
+    paragraph = Paragraph(content=(Text(content="Um parágrafo lido do PDF."),),
+                          provenance=provenance)
+    figure = ImageBlock(resource="fig", alt_text="Uma figura")
+    diagram = Diagram(
+        fen="6k1/5ppp/3q4/4R3/8/8/5PPP/6K1 b - - 0 1", stipulation="Mate em 2",
+        provenance=provenance,
+        source=DiagramSource(kind=SourceKind.VISION, path=pdf, content_hash="cc" * 32,
+                             page_index=0, rect=rect),
+    )
+    resource = Resource(key="fig", path=str(image), media_type="image/png",
+                        content_hash="ee" * 32)
+    document = Document(metadata=DocumentMetadata(title="Livro", source=pdf),
+                        resources=(resource,), body=(paragraph, figure, diagram))
+    target = tmp_path / "livro.epub"
+    EpubExporter().export(document, target)
+
+    assert local_paths_in_epub(target, tmp_path) == []
+    with zipfile.ZipFile(target) as archive:
+        opf = archive.read("OEBPS/content.opf").decode("utf-8")
+        assert any(name.startswith("OEBPS/Images/") for name in archive.namelist())
+    assert "<dc:source>Livro.pdf</dc:source>" in opf
+    named = replace(provenance, document_path="Livro.pdf")
+    expected = replace(
+        document,
+        metadata=replace(document.metadata, source="Livro.pdf"),
+        resources=(replace(resource, path="fig.png"),),
+        body=(
+            replace(paragraph, provenance=named),
+            figure,
+            replace(diagram, provenance=named, source=replace(diagram.source, path="Livro.pdf")),
+        ),
+    )
+    assert read_epub(target, use_sidecar=True) == expected
+    assert read_epub(target).metadata.source == "Livro.pdf"
 
 
 def test_fixed_layout_declares_itself(tmp_path: Path, small: Document) -> None:
