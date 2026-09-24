@@ -1085,6 +1085,51 @@ def test_a_game_beside_the_standings_is_a_game_and_a_table() -> None:
     assert _crosses(table_groups(reading, config=blind), {1}, {2})
 
 
+def game_beside_the_standings_with_the_placings() -> OcrResult:
+    """The critic's ``c5\\partida_tabela\\P_Tn.png`` as PSM 3 cut it: the game (b1), the column of
+    placings, ``1.`` … ``12.``, read as **one line** eight rows high (b2, ``SANDMNS WNP``), the
+    players (b3) and their points, one block each (b4–b15)."""
+    lines = [_line(t, 151.0, 157.0 + 50.0 * n, 1, char_w=20.0)
+             for n, t in enumerate(GAME_ON_THE_LEFT)]
+    lines.append(_line("SANDMNS WNP", 807.0, 159.0, 2, h=378.0, char_w=2.0))
+    lines += [_line(t, 897.0, 157.0 + 50.0 * n, 3, char_w=20.0) for n, t in enumerate(PLAYERS)]
+    lines += [_line(t, 1250.0, 157.0 + 50.0 * n, 4 + n, char_w=20.0) for n, t in enumerate(POINTS)]
+    return _reading(lines)
+
+
+def test_a_line_two_rows_high_is_no_cell_of_a_row(monkeypatch) -> None:
+    """The game joined the placings read as one tall line -- a line beside every row, and no
+    column of names --, and the row that took the tall line took its height and the game's fifth
+    move: «2 Nf3 Nc6 5 O-O Be7 2. WNP», 0,3185 → 0,3376 (ciclo 6, construtor, on the critic's
+    page).  The cells of a row are one row high: the game stays as the engine read it.  The
+    sabotage: no line spans two rows, and the fifth move goes up to the second line."""
+    from caissa.ocr.layout import rows
+
+    reading = game_beside_the_standings_with_the_placings()
+    assert not any({1, 2} <= set(group) for group in table_groups(reading))
+    texts = [line.text for line in rows_of_tables(reading).lines]
+    assert texts[:12] == GAME_ON_THE_LEFT
+    assert "Aljechin 7½" in texts
+    monkeypatch.setattr(rows, "_spans_rows", lambda a, b, cfg: False)
+    texts = [line.text for line in rows.rows_of_tables(reading).lines]
+    assert texts[:12] != GAME_ON_THE_LEFT
+    assert any(text.startswith("2 Nf3 Nc6 5 O-O Be7") for text in texts), texts[:4]
+
+
+def test_two_lines_at_one_height_are_one_row() -> None:
+    """A name and its pages that Tesseract read as two lines at one height (the second column of
+    the Flores p. 460, «Berzinsh» and «436, 459») are one row: a line beside them spans no rows."""
+    from caissa.ocr.layout import rows
+
+    cfg = TableRowsConfig()
+    pair = rows._blocks([_line("Berzinsh", 700.0, 100.0, 1), _line("436, 459", 820.0, 100.0, 1),
+                         _line("Bologan", 700.0, 135.0, 1)], cfg)[0]
+    beside = rows._blocks([_line("Aaron 249", 100.0, 100.0, 2)], cfg)[0]
+    tall = rows._blocks([_line("Aaron 249", 100.0, 100.0, 2, h=55.0)], cfg)[0]
+    assert rows._one_row_high(beside, pair, cfg)
+    assert not rows._one_row_high(tall, pair, cfg)
+
+
 def tournament_table(countries: list[str]) -> OcrResult:
     """The critic's tournament table (``c5\\b13_tabela_em_ordem.py``): name | country | rating |
     points, twelve players, the names in alphabetical order -- one block a column."""

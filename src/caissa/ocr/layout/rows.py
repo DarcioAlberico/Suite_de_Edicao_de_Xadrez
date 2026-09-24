@@ -39,7 +39,10 @@ the same rule, applied to Tesseract **through its own blocks**:
     move column whose own numbers stand between it and the group's numbering
     belongs to those numbers.  And a group never holds a game and a column of
     **names**: a move list beside the standings of the tournament is a game and
-    a table, never one table (``1 e4 e5 Aljechin 7½``).
+    a table, never one table (``1 e4 e5 Aljechin 7½``).  And a **cell is one row
+    high**: a block with a line at the height of two lines of another, lines not
+    at one height between them, never joins the other's group (Tesseract reads a
+    column of placings, ``1.`` … ``12.``, as one line eight rows high).
 4.  A group never crosses a **column gutter**: the gap between two blocks
     holds the page's gutter when a corridor inside it is touched by almost no
     line of prose reaching into the two blocks (at most
@@ -95,7 +98,9 @@ answered it -- a column whose heads rise in alphabetical order is a list -- was 
 its fifth cycle found «jogador / adversários» by the standings (0,0000 → 0,6577, *accepted*),
 the last page of an index with five entries in its second column, a game beside the standings of
 a tournament joined to them, and a table whose names and countries rose in order by chance read
-as two lists.  What makes two columns two lists is their form, not their order.
+as two lists.  What makes two columns two lists is their form, not their order.  And in its own
+page of a game beside the standings with the placings, the column of placings read as one line
+eight rows high joined the game, and the game's fifth move came out on its second line.
 """
 
 from __future__ import annotations
@@ -800,6 +805,30 @@ def _shares_rows(a: _Block, b: _Block, cfg: TableRowsConfig) -> bool:
     return any(_same_height(x.box, y.box, cfg.overlap) for x in a.lines for y in b.lines)
 
 
+def _spans_rows(a: _Block, b: _Block, cfg: TableRowsConfig) -> bool:
+    """A line of ``a`` stands at the height of two lines of ``b`` not at one height between them.
+
+    A line two rows high or more.  Two lines of ``b`` at one height are one row: a name and its
+    pages that Tesseract read as two lines (the Flores p. 460).
+    """
+    for line in a.lines:
+        level = [other.box for other in b.lines if _same_height(line.box, other.box, cfg.overlap)]
+        if any(not _same_height(p, q, cfg.overlap) for p, q in itertools.combinations(level, 2)):
+            return True
+    return False
+
+
+def _one_row_high(a: _Block, b: _Block, cfg: TableRowsConfig) -> bool:
+    """No line of either block is two rows of the other high: the cells of a row are one row high.
+
+    The critic's game beside the standings with the placings (fase 5, ciclo 5, ``P|Tn``):
+    Tesseract read the column of placings as one line 378 px high, ``SANDMNS WNP``; the game
+    joined it, and the row that took the tall line took the game's fifth move too --
+    «2 Nf3 Nc6 5 O-O Be7 2. WNP», 0,3185 → 0,3376 (ciclo 6, construtor).
+    """
+    return not (_spans_rows(a, b, cfg) or _spans_rows(b, a, cfg))
+
+
 def _gap_between(a: BBox, b: BBox) -> tuple[float, float]:
     return (a.x1, b.x0) if a.x1 <= b.x0 else (b.x1, a.x0)
 
@@ -1005,6 +1034,7 @@ def table_groups(result: OcrResult, *,
                 if (block.index in taken or any(block is m for m in group)
                         or _is_prose(block, cfg) or crosses(block, group)
                         or numbered_twice(block, group) or mixes(block, group)
+                        or not all(_one_row_high(block, m, cfg) for m in group)
                         or not beside(block, group)):
                     continue
                 if (_partner_share(block, group, cfg) >= cfg.align_share
@@ -1024,7 +1054,9 @@ def table_groups(result: OcrResult, *,
 
 def _rows(lines: Sequence[OcrLine], cfg: TableRowsConfig) -> list[list[OcrLine]]:
     """Lines clustered by height, top down; a row's height is its members'
-    median extent, so a tall cell does not chain two rows into one.
+    median extent, so a tall cell among three does not chain two rows into one
+    (of two, the lower extent: a line two rows high never gets here,
+    :func:`_one_row_high`).
     """
     rows: list[list[OcrLine]] = []
     for line in sorted(lines, key=lambda ln: (ln.box.cy, ln.box.x0)):
