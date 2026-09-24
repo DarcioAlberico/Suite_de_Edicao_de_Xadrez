@@ -205,6 +205,29 @@ def test_o_arnes_de_auditoria_importa_sem_qt(modulo: str) -> None:
     assert codigo == 0, f"importar o arnês trouxe um binding de Qt junto: {bindings}"
 
 
+def _modulos_do_editor() -> list[str]:
+    """Todo módulo de `caissa/editor/`, lido da pasta (a mesma razão do `_arneses_de_auditoria`)."""
+    from caissa import editor
+
+    pasta = Path(editor.__file__).resolve().parent
+    return sorted(caminho.stem for caminho in pasta.glob("*.py") if caminho.stem != "__init__")
+
+
+@pytest.mark.parametrize("modulo", _modulos_do_editor())
+def test_o_pacote_do_editor_nao_conhece_toolkit(modulo: str) -> None:
+    """R1.11 do Editor HTML/CSS: a regra mora em `caissa/editor/`, sem toolkit.
+
+    As duas faces da fronteira de `ui/`: a árvore sintática não importa binding nenhum, e o
+    import num processo novo não traz o Qt por tabela.
+    """
+    from caissa import editor
+
+    caminho = Path(editor.__file__).resolve().parent / f"{modulo}.py"
+    assert TOOLKITS & _importados(caminho) == set(), f"{modulo} importa toolkit"
+    codigo, bindings = _bindings_ao_importar(f"caissa.editor.{modulo}")
+    assert codigo == 0, f"importar caissa.editor.{modulo} trouxe um binding de Qt: {bindings}"
+
+
 def test_a_sabotagem_um_qt_no_topo_do_arnes_reprova(tmp_path: Path) -> None:
     """A régua em subprocesso ainda vê o defeito que existe para ver (A15)."""
     pytest.importorskip("PyQt6")

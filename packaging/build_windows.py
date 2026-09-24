@@ -64,11 +64,15 @@ do `installer.iss` apaga `_internal` exatamente por isso, deixando estas quatro 
 manda olhar quando a janela nao abre, e uma pasta que so existe depois do problema e uma
 instrucao que nao se pode seguir."""
 
-PASTAS_GUARDADAS = (*PASTAS_DO_USUARIO, "rotulagem")
+PASTAS_GUARDADAS = (*PASTAS_DO_USUARIO, "rotulagem", "editor")
 """O que **nao e o bundle** dentro de `dist/Caissa/`: o build nao toca nestas pastas
 (`instalar_bundle` troca so `PARTES_DO_BUNDLE`) e a medicao de tamanho as exclui. Na maquina
 de quem desenvolve a `dist/` e a instalacao de trabalho -- 5 GB de dataset, o `runtime/` com
-a roda de torch, o projeto de rotulagem -- e reconstruir o bundle nao pode custar nada disso."""
+a roda de torch, o projeto de rotulagem -- e reconstruir o bundle nao pode custar nada disso.
+
+`editor/` e a pasta dos projetos do Editor HTML/CSS (`caissa.editor.livros.raiz_do_editor`):
+o livro que a pessoa editou, com o diario e as versoes. Como `rotulagem/`, nasce quando o
+programa a usa, e nao no build (EDITOR_HTML_CSS_ROADMAP passo H6)."""
 
 FOLGA_MINIMA_GB = 6.0
 """Quanto o build precisa de folga para comecar. Nao e o tamanho do bundle: o PyInstaller

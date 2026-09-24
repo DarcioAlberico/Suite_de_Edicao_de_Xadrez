@@ -543,6 +543,22 @@ class TestBundle:
         assert abs(dados["mb"] - real) < 5.0, f"gravado {dados['mb']} MB, disco {real:.1f} MB"
 
 
+class TestPastasGuardadas:
+    """O que o build nao varre ao trocar o bundle, afirmado pelo nome."""
+
+    def test_o_projeto_do_editor_e_pasta_guardada(self) -> None:
+        """EDITOR_HTML_CSS_ROADMAP H6: o livro editado sobrevive a reconstruir o bundle.
+
+        O build apaga o que nao esta em `PASTAS_GUARDADAS` e a medicao de tamanho soma o que nao
+        esta la. `editor/` fora da lista seria o livro do usuario apagado no proximo build, e
+        contado como tamanho do instalador ate la.
+        """
+        import build_windows
+
+        assert "editor" in build_windows.PASTAS_GUARDADAS
+        assert "rotulagem" in build_windows.PASTAS_GUARDADAS
+
+
 class TestTeto:
     """O teto da SPEC secao 12, afirmado e nao suposto."""
 
