@@ -554,6 +554,39 @@ PASSOS: dict[str, Passo] = {
                 "--saida", "{saida}")), motivo="REPROVADO: CB validate"),
         ),
     ),
+    "H4": Passo(
+        nome="H4",
+        descricao="as dívidas da exportação que o editor poria na tela",
+        instrumentos=(
+            "benchmarks/editor_dividas.py",
+            "tests/unit/export/test_dividas_da_exportacao.py",
+            "tests/unit/editor/test_dividas.py",
+            "{tronco}/PDF",
+            # Os EPUBs de antes do passo, exportados pelo commit anterior a ele (relatório §H4).
+            "benchmarks/reports/editor/h4_antes/livro.epub",
+        ),
+        portao=(
+            Comando("test_dividas", _pytest("tests/unit/export/test_dividas_da_exportacao.py",
+                                            "tests/unit/editor/test_dividas.py")),
+            Comando("depois", ("{py}", "benchmarks/editor_dividas.py", "--gerar", "--epubcheck",
+                               "--saida", "{saida}")),
+            Comando("fixtures", ("{py}", "benchmarks/editor_dividas.py", "--fixtures",
+                                 "--saida", "{saida}")),
+        ),
+        sabotagens=(
+            *(Sabotagem(f"antes_item_{n}", Comando(f"antes_item_{n}", (
+                "{py}", "benchmarks/editor_dividas.py", "--epub",
+                "benchmarks/reports/editor/h4_antes", "--so-sintoma", str(n),
+                "--saida", "{saida}")), motivo=f"REPROVADO: sintoma {n} ")
+              for n in range(3, 10)),
+            *(Sabotagem(sabotagem, Comando(f"fixtures_{sabotagem}", (
+                "{py}", "benchmarks/editor_dividas.py", "--fixtures", "--sabotar", sabotagem,
+                "--saida", "{saida}")), motivo=f"REPROVADO: fixture {fixture}")
+              for sabotagem, fixture in (("rect_como_lista", "1_rect"),
+                                         ("estipulacao_sobrescrita", "2_estipulacao"),
+                                         ("caminho_no_ir", "10_caminho"))),
+        ),
+    ),
     "H6": Passo(
         nome="H6",
         descricao="o projeto em disco: nada se perde sob queda, um livro por janela",

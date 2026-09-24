@@ -1994,7 +1994,7 @@ class _Body:
             The run containing the drawing.
         """
         self.context.count("diagrams")
-        alt = diagram_alt_text(node)
+        alt = diagram_alt_text(node, self.context.document.metadata.language)
         data: bytes
         suffix: str
         try:

@@ -28,6 +28,7 @@ made that obvious.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 
@@ -48,7 +49,10 @@ from caissa.typeset import board_svg as bsvg
 __all__ = [
     "DiagramRenderer",
     "RenderedDiagram",
+    "descrever_posicao",
     "diagram_alt_text",
+    "numeros_de_diagrama",
+    "pecas_da_posicao",
     "resolve_diagram_style",
 ]
 
@@ -93,20 +97,107 @@ _MARK_FALLBACK: Mapping[MarkKind, tuple[str, str]] = {
     ),
 }
 
-_PIECE_NAMES: Mapping[str, str] = {
-    "K": "Rei branco",
-    "Q": "Dama branca",
-    "R": "Torre branca",
-    "B": "Bispo branco",
-    "N": "Cavalo branco",
-    "P": "Peao branco",
-    "k": "Rei preto",
-    "q": "Dama preta",
-    "r": "Torre preta",
-    "b": "Bispo preto",
-    "n": "Cavalo preto",
-    "p": "Peao preto",
+_PIECE_NAMES: Mapping[str, Mapping[str, str]] = {
+    "pt": {
+        "K": "Rei branco", "Q": "Dama branca", "R": "Torre branca", "B": "Bispo branco",
+        "N": "Cavalo branco", "P": "Peão branco",
+        "k": "Rei preto", "q": "Dama preta", "r": "Torre preta", "b": "Bispo preto",
+        "n": "Cavalo preto", "p": "Peão preto",
+    },
+    "en": {
+        "K": "White king", "Q": "White queen", "R": "White rook", "B": "White bishop",
+        "N": "White knight", "P": "White pawn",
+        "k": "Black king", "q": "Black queen", "r": "Black rook", "b": "Black bishop",
+        "n": "Black knight", "p": "Black pawn",
+    },
 }
+"""O nome de cada peça da FEN, por idioma (o contador do H4 reconstrói a posição daqui)."""
+
+_FRASES: Mapping[str, Mapping[str, str]] = {
+    "pt": {
+        "diagrama": "Diagrama de xadrez", "miniatura": "Diagrama de xadrez em miniatura",
+        "w": "jogam as brancas", "b": "jogam as pretas", "lado?": "lado a jogar desconhecido",
+        "em": "em", "vazio": "tabuleiro vazio", "nao_lida": "posição não reconhecida",
+        "nao_conferida": "posição lida por máquina, não conferida por uma pessoa",
+        "confianca_da_leitura": "confiança da leitura: {:.0%}",
+        "leitura_provisoria": "leitura provisória: ",
+        "leitura_automatica": "leitura automática com confiança de {:.0%}",
+    },
+    "en": {
+        "diagrama": "Chess diagram", "miniatura": "Small chess diagram",
+        "w": "White to move", "b": "Black to move", "lado?": "side to move unknown",
+        "em": "on", "vazio": "empty board", "nao_lida": "position not recognised",
+        "nao_conferida": "position read by machine, not checked by a person",
+        "confianca_da_leitura": "reading confidence: {:.0%}",
+        "leitura_provisoria": "provisional reading: ",
+        "leitura_automatica": "machine reading with {:.0%} confidence",
+    },
+}
+
+
+def _lingua(idioma: str | None) -> str:
+    """``"en"`` para um idioma inglês (``en``, ``en-GB``…), ``"pt"`` para o resto."""
+    return "en" if (idioma or "").lower().split("-")[0] == "en" else "pt"
+
+
+def pecas_da_posicao(fen: str, idioma: str | None = "pt-BR") -> list[str]:
+    """Cada peça da FEN com a casa, na ordem da FEN (8.ª fileira para a 1.ª, de a para h).
+
+    Args:
+        fen: A FEN inteira ou só o campo das peças.
+        idioma: O idioma do livro (BCP 47).
+
+    Returns:
+        ``["Rei preto em e8", "Rei branco em e1"]``.
+    """
+    lingua = _lingua(idioma)
+    nomes, em = _PIECE_NAMES[lingua], _FRASES[lingua]["em"]
+    placement = (fen or "").strip().split(" ")[0]
+    pecas: list[str] = []
+    rank, file_index = 8, 0
+    for char in placement:
+        if char == "/":
+            rank -= 1
+            file_index = 0
+        elif char.isdigit():
+            file_index += int(char)
+        else:
+            name = nomes.get(char)
+            if name is not None and 0 <= file_index < 8 and 1 <= rank <= 8:
+                pecas.append(f"{name} {em} {'abcdefgh'[file_index]}{rank}")
+            file_index += 1
+    return pecas
+
+
+def descrever_posicao(fen: str | None, lado: str | None, idioma: str | None = "pt-BR",
+                      conferida: bool = True, *, miniatura: bool = False) -> str:
+    """A descrição acessível de uma posição, pura: a partilhada por editor e EPUB (spec §5.6).
+
+    Diz quem joga, cada peça e a casa dela, e, quando uma pessoa não conferiu a posição, que ela
+    foi lida por máquina. **Nunca** cita confiança, motor ou nota (spec R2.4): isso vai ao sidecar.
+
+    Args:
+        fen: A posição; ``None`` ou vazia quando ninguém a leu.
+        lado: ``"w"`` ou ``"b"``; ``None`` quando ninguém leu de quem é a vez.
+        idioma: O idioma do livro (BCP 47); inglês ou, no resto, português.
+        conferida: Se uma pessoa conferiu a posição (ou ela foi escrita à mão).
+        miniatura: O diagrama dentro do parágrafo.
+
+    Returns:
+        ``"Diagrama de xadrez, jogam as pretas. Rei preto em e8; Rei branco em e1."``
+    """
+    frases = _FRASES[_lingua(idioma)]
+    cabeca = frases["miniatura" if miniatura else "diagrama"]
+    partes = [f"{cabeca}, {frases[lado] if lado in ('w', 'b') else frases['lado?']}"]
+    placement = (fen or "").strip().split(" ")[0]
+    if not placement:
+        partes.append(frases["nao_lida"])
+    else:
+        pecas = pecas_da_posicao(placement, idioma)
+        partes.append("; ".join(pecas) if pecas else frases["vazio"])
+        if not conferida:
+            partes.append(frases["nao_conferida"])
+    return ". ".join(partes) + "."
 
 
 def _to_mm(measure: Measure | None) -> float | None:
@@ -272,7 +363,11 @@ def _reading_status(node: Diagram | InlineDiagram) -> tuple[bool, bool, float | 
     fields = fen.split()
     placement = fields[0] if fields else ""
     recognition = getattr(node, "recognition", None)
-    verified = bool(getattr(node, "verified_by_human", False))
+    # O revisor que decidiu a posição marca a proveniência (importador e
+    # `apply_diagram_decisions`), e não o nó: as duas marcas valem (H4, item 3).
+    provenance = getattr(node, "provenance", None)
+    verified = bool(getattr(node, "verified_by_human", False)) or bool(
+        getattr(provenance, "verified_by_human", False))
     path = str(getattr(recognition, "path", "manual") or "manual")
     machine_read = recognition is not None and path != "manual"
     confidence = getattr(recognition, "overall_confidence", None) if machine_read else None
@@ -295,73 +390,129 @@ def _reading_status(node: Diagram | InlineDiagram) -> tuple[bool, bool, float | 
     return position_unknown, side_unknown, confidence
 
 
-def diagram_alt_text(node: Diagram | InlineDiagram) -> str:
+def diagram_alt_text(node: Diagram | InlineDiagram, idioma: str | None = "pt-BR") -> str:
     """Build an accessible description of a position.
 
     EPUB requires one and tagged PDF requires one, and "diagrama de xadrez" is
     not a description. This names the stipulation when the node has one, then
-    every piece and its square, so a screen-reader user gets the position rather
-    than the fact that a position exists.
+    every piece and its square (:func:`descrever_posicao`, the description the
+    editor shares), so a screen-reader user gets the position rather than the
+    fact that a position exists.
 
     It never asserts what was not read (OCR_UI_ROADMAP_C2 A9): a diagram the
     importer located but could not read says "posição não reconhecida", a side
     nobody recorded says "lado a jogar desconhecido", and the machine's
-    confidence is quoted when there is one.
+    confidence is quoted when there is one. (The editor's own export, H24, uses
+    :func:`descrever_posicao` alone, which quotes no confidence: spec R2.4.)
 
     Args:
         node: The diagram node.
+        idioma: The book's language; English or, otherwise, Portuguese.
 
     Returns:
-        The description, in Brazilian Portuguese.
+        The description.
     """
     explicit = getattr(node, "alt_text", None)
     if explicit:
         return explicit
 
+    frases = _FRASES[_lingua(idioma)]
     fen = (node.fen or "").strip()
-    placement = fen.split(" ")[0] if fen else ""
     position_unknown, side_unknown, confidence = _reading_status(node)
+    lado = None if side_unknown else _side_to_move(fen)
+    miniatura = not isinstance(node, Diagram)
     parts: list[str] = []
     stipulation = getattr(node, "stipulation", None)
     if stipulation:
         parts.append(str(stipulation))
 
-    pieces: list[str] = []
-    rank = 8
-    file_index = 0
-    for char in placement:
-        if char == "/":
-            rank -= 1
-            file_index = 0
-        elif char.isdigit():
-            file_index += int(char)
-        else:
-            name = _PIECE_NAMES.get(char)
-            if name is not None and 0 <= file_index < 8 and 1 <= rank <= 8:
-                pieces.append(f"{name} em {'abcdefgh'[file_index]}{rank}")
-            file_index += 1
-
-    head = "Diagrama de xadrez" if isinstance(node, Diagram) else "Diagrama de xadrez em miniatura"
-    if side_unknown:
-        parts.append(f"{head}, lado a jogar desconhecido")
-    else:
-        side = "brancas" if _side_to_move(fen) == "w" else "pretas"
-        parts.append(f"{head}, jogam as {side}")
     if position_unknown:
-        notice = "posição não reconhecida"
+        head = descrever_posicao(None, lado, idioma, miniatura=miniatura)
         if confidence is not None:
-            notice += f" (confiança da leitura: {confidence:.0%})"
-        parts.append(notice)
+            head = head[:-1] + " (" + frases["confianca_da_leitura"].format(confidence) + ")."
+        parts.append(head[:-1])
+        pieces = pecas_da_posicao(fen, idioma)
         if pieces:
-            parts.append("leitura provisória: " + "; ".join(pieces))
+            parts.append(frases["leitura_provisoria"] + "; ".join(pieces))
     else:
+        head, _, body = descrever_posicao(fen, lado, idioma, miniatura=miniatura).partition(". ")
+        parts.append(head)
         if confidence is not None:
-            parts.append(f"leitura automática com confiança de {confidence:.0%}")
-        if pieces:
-            parts.append("; ".join(pieces))
-        else:
-            parts.append("tabuleiro vazio")
+            parts.append(frases["leitura_automatica"].format(confidence))
+        parts.append(body[:-1])
     return ". ".join(parts) + "."
+
+
+_FONTE_NO_SVG = re.compile(r"""font-family\s*[=:]\s*["']?([^"';>]+)""", re.I)
+
+
+def numeros_de_diagrama(documento: object) -> dict[str, int]:
+    """O número de cada diagrama pela numeração automática do documento, por ``str(node.id)``.
+
+    Pura; liga só com ``settings.auto_number_diagrams`` (Editor HTML/CSS, H4, item 9 da spec
+    §2.7: o campo existia e nada o lia).
+
+    - Em ordem de leitura, a partir de ``diagram_numbering_start``.
+    - O diagrama com ``number`` (o número impresso, que o importador leu da legenda) fica com o
+      dele, e a conta segue dali: o próximo sem número recebe o impresso + 1, como no livro.
+    - O diagrama com ``label`` (um rótulo escrito, «Diagrama 12a») não recebe número nem mexe na
+      conta.
+    - Com ``number_diagrams_per_chapter``, a conta recomeça em cada título de nível 1.
+    - Só o ``Diagram`` de bloco; o diagrama dentro do parágrafo não se numera.
+    """
+    from caissa.core.model import Heading
+    from caissa.core.model.visitor import walk
+
+    configuracao = getattr(documento, "settings", None)
+    if configuracao is None or not getattr(configuracao, "auto_number_diagrams", False):
+        return {}
+    inicio = int(getattr(configuracao, "diagram_numbering_start", 1))
+    por_capitulo = bool(getattr(configuracao, "number_diagrams_per_chapter", False))
+    numeros: dict[str, int] = {}
+    proximo = inicio
+    for _, no in walk(documento):  # type: ignore[arg-type]
+        if isinstance(no, Heading) and no.level == 1 and por_capitulo:
+            proximo = inicio
+        elif isinstance(no, Diagram):
+            if no.label:
+                continue
+            if no.number is not None:
+                proximo = no.number + 1
+                continue
+            numeros[str(no.id)] = proximo
+            proximo += 1
+    return numeros
+
+
+def _idioma_do_livro(context: ExportContext) -> str | None:
+    """O idioma dos metadados do documento que se exporta (``None`` sem documento)."""
+    documento = getattr(context, "document", None)
+    return getattr(getattr(documento, "metadata", None), "language", None)
+
+
+def _usa_fonte_como_texto(svg_text: str, fonte: str | None) -> bool:
+    """A face de xadrez ``fonte`` aparece como texto no SVG (numa ``font-family`` dele).
+
+    As peças do `board_svg` são contornos (`<path>`), e as coordenadas vão numa família de texto
+    comum: a face do diagrama só precisa ir para o pacote quando o SVG escreve com ela.
+
+    Args:
+        svg_text: O SVG renderizado.
+        fonte: A família de xadrez do estilo do diagrama.
+
+    Returns:
+        Se alguma ``font-family`` do SVG nomeia a face.
+    """
+    if not fonte:
+        return False
+    from caissa.export.html import chess_font_spec
+
+    spec = chess_font_spec(fonte)
+    nomes = {fonte.lower()}
+    if spec is not None:
+        nomes |= {spec.family.lower(), spec.key.lower()}
+    return any(nome in familia.lower() for familia in _FONTE_NO_SVG.findall(svg_text)
+               for nome in nomes)
 
 
 def _side_to_move(fen: str) -> str:
@@ -387,9 +538,10 @@ class DiagramRenderer:
     else.
     """
 
-    __slots__ = ("_cache", "_context", "_default_width_mm", "_fonts")
+    __slots__ = ("_cache", "_context", "_default_width_mm", "_fonts", "_tinta_do_leitor")
 
-    def __init__(self, context: ExportContext, *, default_width_mm: float = 46.0) -> None:
+    def __init__(self, context: ExportContext, *, default_width_mm: float = 46.0,
+                 tinta_do_leitor: bool = False) -> None:
         """Create a renderer bound to one export.
 
         Args:
@@ -397,9 +549,14 @@ class DiagramRenderer:
             default_width_mm: Width used when neither the node nor the
                 stylesheet names one. 46 mm is a two-column chess-book diagram;
                 it is a starting point, not a house style.
+            tinta_do_leitor: Inline SVG in a reflowable book (HTML, EPUB): the
+                frame and the coordinates follow the reader's text colour.
         """
         self._context = context
         self._default_width_mm = default_width_mm
+        # O SVG embutido no HTML e no EPUB segue a cor do texto do leitor (moldura e
+        # coordenadas em `currentColor`, sem fundo): Editor HTML/CSS, H4, item 6.
+        self._tinta_do_leitor = tinta_do_leitor
         self._cache: dict[tuple[object, ...], RenderedDiagram] = {}
         self._fonts: dict[str, object] = {}
 
@@ -418,8 +575,10 @@ class DiagramRenderer:
             The rendered diagram; identical inputs return the identical object.
         """
         style, width_mm = self._style_for(node)
+        if self._tinta_do_leitor:
+            style = replace(style, ink_follows_text=True)
         marks = tuple(self._marks_for(node))
-        alt_text = diagram_alt_text(node)
+        alt_text = diagram_alt_text(node, _idioma_do_livro(self._context))
         key = (
             node.fen,
             # The description depends on the reading's provenance, not only on
@@ -435,6 +594,7 @@ class DiagramRenderer:
             style.grid,
             round(style.piece_scale, 4),
             style.background,
+            style.ink_follows_text,
             _mark_key(marks),
         )
         cached = self._cache.get(key)
@@ -464,7 +624,11 @@ class DiagramRenderer:
             orientation=style.orientation,
         )
         self._cache[key] = rendered
-        self._fonts[style.font] = True
+        # A face só entra no pacote quando o SVG a usa como **texto**: as peças saem como
+        # contornos (`board_svg`), e embutir a Merida em todo EPUB com diagrama era peso morto
+        # (Editor HTML/CSS, H4, item 5 da spec §2.7).
+        if _usa_fonte_como_texto(svg_text, style.font):
+            self._fonts[style.font] = True
         self._context.count("diagrams")
         return rendered
 

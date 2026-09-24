@@ -579,6 +579,12 @@ class DiagramStyle:
     background: bool = True
     """Emit the page-coloured backdrop rect. Off when compositing onto a page."""
 
+    ink_follows_text: bool = False
+    """Frame, coordinates and the side-to-move marker's outline in ``currentColor``, and no
+    backdrop: an SVG inlined in a reflowable book follows the reader's text colour, so night
+    mode does not get a white block. The board and the pieces keep the theme's fixed colours.
+    Off by default: PDF and DOCX paint on paper, and the determinism tests pin that output."""
+
     margin_mm: float = 0.0
     """Extra clear space outside everything."""
 
@@ -1250,6 +1256,10 @@ def render_svg(
     """
     style = style or DiagramStyle()
     theme = style.resolved_theme()
+    if style.ink_follows_text:
+        # Only colours that are painted, never parsed: the contrast helpers read the page and
+        # the square tints, which stay hex.
+        theme = replace(theme, frame="currentColor", coordinate="currentColor")
     board = board_from_fen(fen)
     stm = side_to_move or side_to_move_from_fen(fen)
     loaded = font if font is not None else load_font(style.font)
@@ -1272,7 +1282,7 @@ def render_svg(
 
     canvas = _Canvas()
 
-    if style.background:
+    if style.background and not style.ink_follows_text:
         canvas.rect(0, 0, lay.width, lay.height, fill=theme.page)
 
     # --- shadow, behind everything the frame draws ------------------------

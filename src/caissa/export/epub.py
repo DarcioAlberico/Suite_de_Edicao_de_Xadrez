@@ -25,9 +25,11 @@ An ``<img src="d1.svg">`` in an EPUB is a black box: it cannot inherit the
 reader's colours, so a diagram drawn for white paper stays white in night mode
 and blinds the reader, and it cannot be styled or measured by the page. Inline
 ``<svg>`` is part of the document -- it scales with the type, it takes the
-reader's ``currentColor`` where we ask it to, and it stays sharp at any zoom
-because it is geometry rather than pixels. It costs bytes; a chess book is worth
-the bytes.
+reader's ``currentColor`` where we ask it to (the frame, the coordinates and the
+side-to-move marker's outline, with no page-coloured backdrop:
+``DiagramRenderer(tinta_do_leitor=True)``; the squares and the pieces keep the
+theme's colours), and it stays sharp at any zoom because it is geometry rather
+than pixels. It costs bytes; a chess book is worth the bytes.
 
 Fixed layout
 ------------

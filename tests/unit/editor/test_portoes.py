@@ -173,6 +173,15 @@ def test_a_tabela_do_h3_confere_o_contrato_no_cb() -> None:
     assert {s.nome for s in passo.sabotagens} == {"sem_fen"}
 
 
+def test_a_tabela_do_h4_conta_os_sintomas_antes_e_depois() -> None:
+    passo = portoes.PASSOS["H4"]
+    assert [c.nome for c in passo.portao] == ["test_dividas", "depois", "fixtures"]
+    assert "--epubcheck" in next(c for c in passo.portao if c.nome == "depois").argv
+    assert {s.nome for s in passo.sabotagens} == {
+        *(f"antes_item_{n}" for n in range(3, 10)),
+        "rect_como_lista", "estipulacao_sobrescrita", "caminho_no_ir"}
+
+
 def test_a_tabela_do_h2_mede_o_prototipo_e_a_sonda_uia() -> None:
     passo = portoes.PASSOS["H2"]
     assert {"benchmarks/editor_codigo.py", "benchmarks/editor_uia.py", "{med}"} <= set(
