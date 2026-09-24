@@ -7,6 +7,9 @@ name.
 
 from __future__ import annotations
 
+import json
+import re
+import zipfile
 from pathlib import Path
 
 CORPUS_SEED = 0x0F8
@@ -50,3 +53,33 @@ def run_epubcheck(jar: Path, package: Path) -> tuple[int, str]:
 
     result = _run(jar, package)
     return (result.errors if result.errors >= 0 else 1), result.output
+
+
+ABSOLUTE_PATH = re.compile(r"^(?:[A-Za-z]:|[\\/])")
+"""A string that names a place on a disk: a drive letter or a leading slash (root, UNC)."""
+
+
+def local_paths_in_epub(package: Path, folder: Path) -> list[str]:
+    """What an EPUB says about the disk it was made on -- empty when it says nothing.
+
+    Every string of the embedded IR (``OEBPS/caissa-ir.json``) that starts like an
+    absolute path, and every text part that names ``folder`` in either slash form.
+    """
+    found: list[str] = []
+    mentions = (str(folder), folder.as_posix())
+    with zipfile.ZipFile(package) as archive:
+        for name in archive.namelist():
+            if name == "OEBPS/caissa-ir.json":
+                pending: list[object] = [json.loads(archive.read(name))]
+                while pending:
+                    item = pending.pop()
+                    if isinstance(item, dict):
+                        pending.extend(item.values())
+                    elif isinstance(item, list):
+                        pending.extend(item)
+                    elif isinstance(item, str) and ABSOLUTE_PATH.match(item):
+                        found.append(f"{name}: {item}")
+            elif name.endswith((".opf", ".xhtml", ".ncx", ".xml", ".css")):
+                text = archive.read(name).decode("utf-8")
+                found.extend(f"{name}: {mention}" for mention in mentions if mention in text)
+    return found
