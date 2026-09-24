@@ -1,0 +1,5 @@
+# As fixtures douradas do sidecar de proveniência são comparadas byte a byte e congeladas por
+# SHA-256 no relatório do H3 do Editor HTML/CSS (spec Apêndice C): sem conversão de fim de linha,
+# nem no commit nem no checkout. A v1_de_hoje.jsonl tem CRLF porque é o que o exportador de hoje
+# grava no Windows; as outras, LF.
+tests/fixtures/editor/sidecar/** -text
