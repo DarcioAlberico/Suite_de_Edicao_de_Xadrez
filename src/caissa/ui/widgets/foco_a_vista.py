@@ -22,13 +22,29 @@ controle; quando ele é maior que a vista, até o começo dele.
 *pressionar* do clique, antes de entregar o evento; rolar ali tirava o controle de baixo do
 ponteiro, e o *soltar* caía noutro lugar — o clique se perdia (crítico da fase 5, ciclo 6: 15 de 15
 cliques em controles meio à vista, o «Gravar» da Galeria, o rádio do lado a jogar do Resultado). O
-foco que o clique dá ao controle sob o ponteiro fica onde está (:func:`veio_do_mouse`): o controle
-já está à vista, onde o ponteiro está. Mas no mesmo pressionar um painel pode mandar o foco a
-**outro** controle — a linha da tabela da Rotulagem e da Revisão de texto manda o foco à «Verdade
-da linha» —, e esse não está sob o ponteiro: calar o seguidor ali deixava a verdade fora da vista, e
-o que se digitava ia para lá (crítico da fase 5, ciclo 7: 0×0 px a 1280×641 nas três peles). Esse
-foco é mostrado **depois do soltar** (:func:`no_meio_do_clique`): o clique termina onde foi dado,
-e a rolagem vem em seguida. O gêmeo deste arquivo no tronco é `chess_diagram_ocr.qt.foco_a_vista`.
+foco que o clique dá ao controle clicado fica onde está (:func:`veio_do_mouse`): o controle já está
+à vista, onde o ponteiro está. Mas no mesmo pressionar um painel pode mandar o foco a **outro**
+controle — a linha da tabela da Rotulagem e da Revisão de texto manda o foco à «Verdade da linha» —:
+calar o seguidor ali deixava a verdade fora da vista, e o que se digitava ia para lá (crítico da
+fase 5, ciclo 7: 0×0 px a 1280×641 nas três peles). Esse foco é mostrado **depois do soltar**
+(:func:`no_meio_do_clique`): o clique termina onde foi dado, e a rolagem vem em seguida.
+
+**A razão do foco, e não o ponteiro.** Quem diz qual foco é o do mouse é a razão do `QFocusEvent`
+(:class:`_RazaoDoFoco`): o clique e a roda dão `MouseFocusReason`, o Tab dá a dele, o `setFocus()`
+do programa dá `OtherFocusReason`. Perguntar ao `underMouse` do controle, como a primeira versão do
+ciclo 8, falhava quando a marca ficava velha — o ponteiro que sai da janela sem o evento de saída,
+a rolagem que se mexe sob o ponteiro parado —: a verdade, clicada antes, parecia «sob o ponteiro»
+no clique da linha, e ficava fora da vista (o portão do teclado, com o clique que deixa a ação
+rodar).
+
+**O foco que a janela devolve ao voltar espera o clique que a reativou.** Quando a janela volta a
+ser a ativa, o Qt devolve o foco ao controle que o tinha (`ActiveWindowFocusReason`), e o Windows
+ativa a janela **antes** de entregar o pressionar do clique que a reativou: se a roda tinha levado a
+vista para longe daquele controle, rolar até ele ali tirava de baixo do ponteiro o controle clicado
+(achado pelo construtor no ciclo 8: o «Aceitar» não recebia o clique). Esse foco é mostrado depois
+dos eventos que chegam com a volta (:func:`voltou_com_a_janela`): com um clique no meio, depois do
+soltar, e só se o clique não levou o foco a outro controle; sem clique (o Alt+Tab, o diálogo que
+fechou), em seguida. O gêmeo deste arquivo no tronco é `chess_diagram_ocr.qt.foco_a_vista`.
 """
 
 from __future__ import annotations
@@ -76,21 +92,42 @@ def _encaixar(barra: QScrollBar, inicio: int, fim: int, vista: int) -> None:
     barra.setValue(max(barra.minimum(), min(barra.maximum(), alvo)))
 
 
-def sob_o_ponteiro(controle: QWidget) -> bool:
-    """O ponteiro está sobre ``controle``, ou sobre quem o tem por procurador do foco.
+class _RazaoDoFoco(QObject):
+    """A razão do último foco que um controle recebeu na aplicação.
 
-    A caixa de escolha editável e a de número passam o foco ao campo delas (`focusProxy`): o clique
-    na seta dá o foco ao campo, e é a caixa que está sob o ponteiro.
+    `QApplication.focusChanged` não diz a razão, e o `QFocusEvent` que a diz chega ao controle antes
+    do sinal: o clique dá o foco ao controle clicado (ou a quem aceita o foco acima dele) com
+    `MouseFocusReason`, e a roda também; o Tab e o Shift+Tab, com as deles; o `setFocus()` do
+    programa, com `OtherFocusReason`. Um filtro só, na aplicação, para todos os seguidores, e ele só
+    anota: o controle e a razão (o `FocusIn` vai também ao estilo, que não é um controle).
     """
-    atual: QWidget | None = controle
-    while atual is not None:
-        if atual.underMouse():
-            return True
-        pai = atual.parentWidget()
-        if pai is None or pai.focusProxy() is not atual:
-            return False
-        atual = pai
-    return False
+
+    def __init__(self, aplicacao: QApplication) -> None:
+        super().__init__(aplicacao)
+        self.aplicacao = aplicacao
+        self.controle: QWidget | None = None
+        self.razao = Qt.FocusReason.OtherFocusReason
+        aplicacao.installEventFilter(self)
+
+    def eventFilter(self, objeto: QObject | None, evento: QEvent | None) -> bool:  # noqa: N802 - Qt
+        if (evento is not None and evento.type() == QEvent.Type.FocusIn
+                and isinstance(objeto, QWidget)):
+            self.controle = objeto
+            self.razao = evento.reason()  # type: ignore[attr-defined]  # um QFocusEvent
+        return False
+
+
+_RAZAO: list[_RazaoDoFoco] = []
+
+
+def _razao_do_foco() -> _RazaoDoFoco | None:
+    """O anotador da razão do foco da aplicação de agora, posto nela na primeira vez."""
+    aplicacao = QApplication.instance()
+    if not isinstance(aplicacao, QApplication):
+        return None
+    if not _RAZAO or sip.isdeleted(_RAZAO[0]) or _RAZAO[0].aplicacao is not aplicacao:
+        _RAZAO[:] = [_RazaoDoFoco(aplicacao)]
+    return _RAZAO[0]
 
 
 def no_meio_do_clique() -> bool:
@@ -101,17 +138,25 @@ def no_meio_do_clique() -> bool:
 def veio_do_mouse(controle: QWidget) -> bool:
     """O foco que ``controle`` acaba de receber é o do mouse sobre ele, e a rolagem não se mexe.
 
-    O clique nele: um botão está apertado (o clique dá o foco no pressionar) e ele está sob o
-    ponteiro (:func:`sob_o_ponteiro`) — o foco que o programa manda a outro controle no mesmo
-    pressionar não é do mouse, e é mostrado depois do soltar. Ou a roda: o controle toma o foco dela
-    (`Qt.FocusPolicy.WheelFocus`: as caixas de escolha e de número) e está sob o ponteiro. Estar sob
-    o ponteiro parado não basta: o Tab que cai num botão sob o ponteiro rola até ele como até
-    qualquer outro. Numa caixa de escolha sob o ponteiro parado, o Tab não rola (o sinal não diz se
-    o foco veio da roda ou da tecla); ela já está à vista, ao menos onde o ponteiro está.
+    O clique nele, ou a roda: a razão do `QFocusEvent` dele é `MouseFocusReason`
+    (:class:`_RazaoDoFoco`). O foco que o programa manda a outro controle no mesmo pressionar tem
+    outra razão (o `setFocus()`, `OtherFocusReason`), e é mostrado depois do soltar; o Tab e o
+    Shift+Tab rolam até o controle, também quando ele está sob o ponteiro parado.
     """
-    if no_meio_do_clique():
-        return sob_o_ponteiro(controle)
-    return controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse()
+    razao = _razao_do_foco()
+    return (razao is not None and razao.controle is controle
+            and razao.razao == Qt.FocusReason.MouseFocusReason)
+
+
+def voltou_com_a_janela(controle: QWidget) -> bool:
+    """O foco que ``controle`` acaba de receber é o que a janela devolve ao voltar a ser a ativa.
+
+    A razão é `ActiveWindowFocusReason`: o controle que tinha o foco quando ela deixou de ser. O
+    pressionar do clique que a reativou chega depois dele.
+    """
+    razao = _razao_do_foco()
+    return (razao is not None and razao.controle is controle
+            and razao.razao == Qt.FocusReason.ActiveWindowFocusReason)
 
 
 def mostrar(rolagem: QScrollArea, controle: QWidget) -> None:
@@ -136,6 +181,7 @@ class RolagemSegueOFoco(QObject):
         self._esperando = False
         aplicacao = QApplication.instance()
         if isinstance(aplicacao, QApplication):
+            _razao_do_foco()
             aplicacao.focusChanged.connect(self._foco_mudou)
 
     @pyqtSlot(QWidget, QWidget)
@@ -151,7 +197,26 @@ class RolagemSegueOFoco(QObject):
         if no_meio_do_clique():
             self._esperar_o_soltar(novo)
             return
+        if voltou_com_a_janela(novo):
+            # o pressionar do clique que reativou a janela, se houve um, vem logo atrás deste foco
+            self._pendente = novo
+            QTimer.singleShot(0, self._depois_da_volta)
+            return
         mostrar(self._rolagem, novo)
+
+    def _depois_da_volta(self) -> None:
+        """O foco que a janela devolveu, depois dos eventos que chegaram com a volta dela.
+
+        Com o botão apertado (o clique que a reativou), depois do soltar; sem clique, agora.
+        """
+        controle = self._pendente
+        if (controle is None or not self._ligado or sip.isdeleted(controle)
+                or sip.isdeleted(self._rolagem)):
+            return
+        if no_meio_do_clique():
+            self._esperar_o_soltar(controle)
+            return
+        self._mostrar_o_pendente()
 
     def _esperar_o_soltar(self, controle: QWidget) -> None:
         """O foco que o programa moveu no meio do clique é mostrado quando o botão sobe.

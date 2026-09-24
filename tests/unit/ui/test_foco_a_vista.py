@@ -333,6 +333,214 @@ def test_a_control_that_only_just_fits_is_shown_whole(app, monkeypatch):
     janela.close()
 
 
+def test_the_focus_the_program_moves_is_not_the_mouse_s_under_a_stale_mark(app, monkeypatch):
+    """Found by the builder with the gate's click that lets the action run (fase 5, ciclo 8):
+    after a click on the text box -- the gate's swallowed click on «Verdade da linha» -- the pointer
+    left the window, and offscreen Qt sends no leave event for that: the box kept its mark «under
+    the mouse».  The next click on a line of the list sends the focus to the box on the press, and
+    the guard that asked the box's ``underMouse`` took that focus for the click's own: the box
+    stayed half in sight.  The guard asks the reason of the focus (the program's ``setFocus()`` is
+    not the mouse's): the box is shown whole after the release.  The sabotage: the guard of the
+    pointer, the first version of cycle 8 (the gate's ``ponteiro``) -- the box stays hidden."""
+    from PyQt6.QtCore import QPoint, Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QListWidget
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, conteudo, _campos, caixa, botao, _segue = _janela(app)
+    linhas = QListWidget(conteudo)
+    linhas.addItems(["linha 1", "linha 2", "linha 3"])
+    linhas.setFixedHeight(90)
+    conteudo.layout().insertWidget(0, linhas)
+    linhas.currentRowChanged.connect(lambda _r: caixa.setFocus(Qt.FocusReason.OtherFocusReason))
+    for _vez in range(2):
+        app.processEvents()
+    alca = janela.windowHandle()
+
+    def clicar_a_linha_com_a_marca_velha() -> None:
+        # the pointer over the box, then out of the window: no leave event offscreen
+        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().maximum())
+        app.processEvents()
+        QTest.mouseMove(alca, caixa.mapTo(janela, QPoint(8, 8)))
+        QTest.mouseMove(alca, QPoint(-20, -20))
+        app.processEvents()
+        assert caixa.underMouse(), "the stale mark the gate leaves"
+        linhas.setCurrentRow(0)
+        rolagem.verticalScrollBar().setValue(0)
+        botao.setFocus(Qt.FocusReason.OtherFocusReason)
+        app.processEvents()
+        ponto = linhas.viewport().mapTo(janela, linhas.visualItemRect(linhas.item(1)).center())
+        QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        app.processEvents()
+        QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        for _vez in range(3):
+            app.processEvents()
+        assert app.focusWidget() is caixa
+
+    clicar_a_linha_com_a_marca_velha()
+    assert _inteiro(rolagem, caixa), "the program's focus is shown after the release"
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ponteiro)
+    clicar_a_linha_com_a_marca_velha()
+    assert not _inteiro(rolagem, caixa), "sabotaged: the stale mark hides the program's focus"
+    janela.close()
+
+
+def test_the_tab_onto_a_combo_box_under_the_pointer_held_still_scrolls_to_it(app, monkeypatch):
+    """The Tab from the button outside the scroll area onto a combo box under the pointer held
+    still, with 9 px of it in sight: the reason of the focus is the Tab's, and the box is shown
+    whole -- the guard that asked the pointer could not tell the Tab from the wheel there, and left
+    the box at 9 px (cycle 7, the first version of cycle 8).  The Tab inside the area goes through
+    the area's own ``focusNextPrevChild``, which calls ``ensureWidgetVisible``: the Tab here comes
+    from outside.  The sabotage: the guard of the pointer (the gate's ``ponteiro``)."""
+    from PyQt6.QtCore import QPoint, QRect, Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QComboBox
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, conteudo, _campos, _caixa, botao, _segue = _janela(app)
+    pele = QComboBox(conteudo)
+    pele.addItems(["Foco", "Fita", "Clássica"])
+    conteudo.layout().insertWidget(12, pele)
+    type(janela).setTabOrder(botao, pele)
+    for _vez in range(2):
+        app.processEvents()
+    alca = janela.windowHandle()
+
+    def tab_de_fora_ate_a_caixa_sob_o_ponteiro() -> int:
+        botao.setFocus(Qt.FocusReason.OtherFocusReason)
+        app.processEvents()
+        topo = pele.mapTo(conteudo, QPoint(0, 0)).y()
+        rolagem.verticalScrollBar().setValue(topo + 9 - rolagem.viewport().height())
+        app.processEvents()
+        QTest.mouseMove(alca, QPoint(2, 2))
+        QTest.mouseMove(alca, pele.mapTo(janela, QPoint(8, 4)))
+        app.processEvents()
+        assert pele.underMouse()
+        QTest.keyClick(botao, Qt.Key.Key_Tab)
+        app.processEvents()
+        assert app.focusWidget() is pele
+        visivel = QRect(pele.mapTo(rolagem.viewport(), QPoint(0, 0)), pele.size())
+        return visivel.intersected(rolagem.viewport().rect()).height()
+
+    assert tab_de_fora_ate_a_caixa_sob_o_ponteiro() == pele.height(), "the Tab shows it whole"
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ponteiro)
+    assert tab_de_fora_ate_a_caixa_sob_o_ponteiro() == 9, "sabotaged: the Tab leaves it at 9 px"
+    janela.close()
+
+
+def _janela_com_a_vista_longe_do_foco(app):
+    """The window of `_janela` with an «Aceitar» at the end of the scroll area, and a helper that
+    gives the focus to the first field and takes the view to the end, as the wheel does: the focus
+    stays on the field, out of sight."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QPushButton
+
+    janela, rolagem, conteudo, campos, _caixa, _botao, _segue = _janela(app)
+    aceitar = QPushButton("Aceitar embaixo", conteudo)
+    conteudo.layout().addWidget(aceitar)
+    for _vez in range(2):
+        app.processEvents()
+    barra = rolagem.verticalScrollBar()
+
+    def a_roda_leva_a_vista_ao_fim() -> None:
+        campos[0].setFocus(Qt.FocusReason.TabFocusReason)
+        app.processEvents()
+        barra.setValue(barra.maximum())
+        app.processEvents()
+        assert campos[0].visibleRegion().isEmpty()
+
+    return janela, rolagem, campos[0], aceitar, a_roda_leva_a_vista_ao_fim
+
+
+def test_the_focus_given_back_on_return_waits_for_the_click_that_brought_the_window_back(
+        app, monkeypatch):
+    """Found by the builder in cycle 8 (fase 5): when the window becomes the active one again, Qt
+    gives the focus back to the control that had it (``ActiveWindowFocusReason``), and Windows
+    activates the window before it delivers the press of the click that brought it back.  With the
+    view taken far from that control by the wheel, the follower scrolled to it, and the press fell
+    somewhere else (the probe ``c8/sonda_ativacao.py``: the scroll from 242 to 3, «Aceitar» without
+    the click).  Here the focus of the return and the press come one right after the other, with no
+    event loop between them, as on Windows (offscreen ``activateWindow`` is queued, and ``QTest``
+    would deliver the press before it): the button gets the click, and nothing scrolls.  The
+    sabotage: the focus of the return shown at once, and the click is lost."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, primeiro, aceitar, a_roda_leva_a_vista_ao_fim = (
+        _janela_com_a_vista_longe_do_foco(app))
+    clicados: list[bool] = []
+    aceitar.clicked.connect(lambda: clicados.append(True))
+    barra = rolagem.verticalScrollBar()
+    alca = janela.windowHandle()
+
+    def a_volta_com_um_clique() -> tuple[int, int]:
+        clicados.clear()
+        a_roda_leva_a_vista_ao_fim()
+        antes = barra.value()
+        ponto = aceitar.mapTo(janela, aceitar.rect().center())
+        primeiro.clearFocus()  # the window stopped being the active one
+        app.processEvents()
+        primeiro.setFocus(Qt.FocusReason.ActiveWindowFocusReason)  # the window came back
+        QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        app.processEvents()
+        QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        for _vez in range(3):
+            app.processEvents()
+        return antes, barra.value()
+
+    antes, depois = a_volta_com_um_clique()
+    assert clicados == [True], "the click that brought the window back counts where it was given"
+    assert depois == antes, "nothing scrolls under the pointer"
+    assert app.focusWidget() is aceitar
+
+    monkeypatch.setattr(foco_a_vista, "voltou_com_a_janela", lambda _controle: False)
+    antes, depois = a_volta_com_um_clique()
+    assert clicados == [], "sabotaged: the click that brought the window back is lost"
+    assert depois != antes, "sabotaged: the view scrolls under the pointer"
+    janela.close()
+
+
+def test_the_focus_given_back_on_return_with_no_click_is_shown(app, monkeypatch):
+    """The window really activated again (``activateWindow``, after another window was the active
+    one), with no click -- the Alt+Tab, the dialog that closed: the focus the window gives back is
+    shown whole right after, as any focus the keyboard sees.  The sabotage: the wait for the events
+    of the return that never shows anything, and the field stays out of sight."""
+    from PyQt6.QtWidgets import QApplication, QWidget
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, primeiro, _aceitar, a_roda_leva_a_vista_ao_fim = (
+        _janela_com_a_vista_longe_do_foco(app))
+    outra = QWidget()
+    outra.resize(120, 80)
+    outra.show()
+
+    def a_volta_sem_clique() -> None:
+        a_roda_leva_a_vista_ao_fim()
+        outra.activateWindow()
+        for _vez in range(3):
+            app.processEvents()
+        assert QApplication.activeWindow() is not janela
+        janela.activateWindow()
+        for _vez in range(3):
+            app.processEvents()
+        assert app.focusWidget() is primeiro, "the window gives the focus back to the first field"
+
+    a_volta_sem_clique()
+    assert _inteiro(rolagem, primeiro), "with no click, the focus of the return is shown"
+    monkeypatch.setattr(foco_a_vista.RolagemSegueOFoco, "_depois_da_volta", lambda _self: None)
+    a_volta_sem_clique()
+    assert primeiro.visibleRegion().isEmpty(), "sabotaged: the focus of the return stays hidden"
+    outra.close()
+    janela.close()
+
+
 def _montar_e_destruir(app) -> None:
     """A scroll area with a follower and a field that has the focus, deleted with the focus in it --
     as the dialog «Base de partidas» is, after its question (`perguntar_bases`)."""

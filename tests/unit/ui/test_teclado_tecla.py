@@ -197,18 +197,10 @@ def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_c
     janela.close()
 
 
-def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_sight(
-        app, monkeypatch):
-    """Crítico da fase 5, ciclo 7: a line of the tables of the Rotulagem and of the Revisão de texto
-    sends the focus to «Verdade da linha» on the press, and the guard of cycle 7 left the truth out
-    of sight -- the gate did not see it: its click swallows the press and the release, and no panel
-    moves the focus.  The click with the action: in each item view of the area with two lines or
-    more, a click through the ``QWindow`` on a line whole in sight, no filter, and the focus left
-    after it has to be whole in the scroll area that follows it.  Here a list at the top of the
-    area sends the focus to the text box below the fold: shown after the release, it passes; the
-    sabotage ``guarda`` (the guard of cycle 7) leaves it out of sight, and the screen fails."""
-    import importlib
-
+def _janela_da_lista_e_da_verdade(app):
+    """A list at the top of a scroll area that follows the focus, and a text box below the fold: the
+    line chosen on the press sends the focus to the box, as the tables of the Rotulagem and of the
+    Revisão de texto send it to «Verdade da linha»."""
     from PyQt6.QtCore import Qt
     from PyQt6.QtWidgets import (
         QLineEdit,
@@ -220,7 +212,6 @@ def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_
         QWidget,
     )
 
-    from caissa.ui.audit import teclado
     from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
 
     janela = QWidget()
@@ -248,7 +239,36 @@ def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_
     janela.show()
     for _vez in range(2):
         app.processEvents()
+    return janela, rolagem, verdade
 
+
+def _guardas_desfeitas_no_fim(monkeypatch) -> None:
+    """The two followers' guards, as they are, put back at teardown: a sabotage replaces them."""
+    import importlib
+
+    for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
+        try:
+            modulo = importlib.import_module(nome)
+        except ImportError:
+            continue
+        for funcao in ("veio_do_mouse", "no_meio_do_clique"):
+            if hasattr(modulo, funcao):
+                monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
+
+
+def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_sight(
+        app, monkeypatch):
+    """Crítico da fase 5, ciclo 7: a line of the tables of the Rotulagem and of the Revisão de texto
+    sends the focus to «Verdade da linha» on the press, and the guard of cycle 7 left the truth out
+    of sight -- the gate did not see it: its click swallows the press and the release, and no panel
+    moves the focus.  The click with the action: in each item view of the area with two lines or
+    more, a click through the ``QWindow`` on a line whole in sight, no filter, and the focus left
+    after it has to be whole in the scroll area that follows it.  Here a list at the top of the
+    area sends the focus to the text box below the fold: shown after the release, it passes; the
+    sabotage ``guarda`` (the guard of cycle 7) leaves it out of sight, and the screen fails."""
+    from caissa.ui.audit import teclado
+
+    janela, _rolagem, verdade = _janela_da_lista_e_da_verdade(app)
     cliques = teclado._cliques_com_acao(janela, janela)
     medidos = [c for c in cliques if c["linha"] is not None]
     assert medidos, cliques
@@ -256,20 +276,57 @@ def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_
     assert all(c["a_vista"] for c in medidos), medidos
     assert not teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
 
-    for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
-        try:
-            modulo = importlib.import_module(nome)
-        except ImportError:
-            continue
-        for funcao in ("veio_do_mouse", "no_meio_do_clique"):  # undone at teardown
-            if hasattr(modulo, funcao):
-                monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
+    _guardas_desfeitas_no_fim(monkeypatch)
     monkeypatch.setitem(teclado._PASSADA, "sabotagem", "guarda")
     teclado._sabotar(janela)
     cliques = teclado._cliques_com_acao(janela, janela)
     escondidos = teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
     assert escondidos, cliques
     assert escondidos[0]["a_vista_px"] == [0, 0], escondidos
+    janela.close()
+
+
+def test_the_stale_mark_the_swallowed_clicks_leave_does_not_hide_the_focus(app, monkeypatch):
+    """Found by the builder at the gate of cycle 8 (fase 5): the swallowed clicks end with the
+    pointer out of the window, and offscreen Qt sends no leave event for that -- «Verdade da linha»,
+    hovered before, kept its mark «under the mouse».  The first guard of cycle 8 asked that mark
+    (``underMouse``), took the focus the panel sends to the truth on the press of a line for the
+    click's own, and left the truth half in sight (17 to 33 of 60 px in the Revisão de texto, in
+    Clássica at 1248x640 and 1280x641 and in Fita at 1280x800).  The guard asks the reason of the
+    focus: the truth is shown whole.  The sabotage ``ponteiro`` (that first guard) leaves it out of
+    sight, and the screen fails."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.audit import teclado
+
+    janela, rolagem, verdade = _janela_da_lista_e_da_verdade(app)
+    alca = janela.windowHandle()
+
+    def marca_velha() -> None:
+        barra = rolagem.verticalScrollBar()
+        barra.setValue(barra.maximum())
+        app.processEvents()
+        QTest.mouseMove(alca, verdade.mapTo(janela, QPoint(8, 8)))
+        QTest.mouseMove(alca, QPoint(-20, -20))
+        app.processEvents()
+        assert verdade.underMouse(), "the stale mark"
+
+    marca_velha()
+    cliques = teclado._cliques_com_acao(janela, janela)
+    medidos = [c for c in cliques if c["linha"] is not None]
+    assert medidos, cliques
+    assert all(c["a_vista"] for c in medidos), medidos
+    assert not teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
+
+    _guardas_desfeitas_no_fim(monkeypatch)
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "ponteiro")
+    teclado._sabotar(janela)
+    marca_velha()
+    cliques = teclado._cliques_com_acao(janela, janela)
+    escondidos = teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
+    assert escondidos, cliques
+    assert escondidos[0]["foco"] == teclado._nome_curto(verdade), escondidos
     janela.close()
 
 

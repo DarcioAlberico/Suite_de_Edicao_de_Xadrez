@@ -1513,16 +1513,19 @@ def _sala_de_dialogos(janela: Any) -> _Sala:
     )
 
 
-SABOTAGENS = ("foco", "tabela", "clique", "guarda")
-"""As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 a 7) e que
-o portão tem de reprovar: ``foco`` desliga todo seguidor de foco das rolagens (`foco_a_vista`, da
-suíte e do tronco) -- o foco que entra numa rolagem de fora volta a cair fora da vista; ``tabela``
-devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a página reconhecida, a tecla volta a
-não sair do laço; ``clique`` devolve os dois seguidores ao ciclo 6, que rolava no pressionar
-(`veio_do_mouse` e `no_meio_do_clique` falsos) -- a rolagem volta a se mexer entre o pressionar e o
-soltar, e o clique se perde; ``guarda`` os devolve ao ciclo 7, em que todo foco com um botão
-apertado era do mouse -- o foco que o painel manda à «Verdade da linha» no clique da tabela volta a
-ficar fora da vista."""
+SABOTAGENS = ("foco", "tabela", "clique", "guarda", "ponteiro")
+"""As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 a 7), ou o
+construtor no ciclo 8, e que o portão tem de reprovar: ``foco`` desliga todo seguidor de foco das
+rolagens (`foco_a_vista`, da suíte e do tronco) -- o foco que entra numa rolagem de fora volta a
+cair fora da vista; ``tabela`` devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a
+página reconhecida, a tecla volta a não sair do laço; ``clique`` devolve os dois seguidores ao ciclo
+6, que rolava no pressionar (`veio_do_mouse` e `no_meio_do_clique` falsos) -- a rolagem volta a se
+mexer entre o pressionar e o soltar, e o clique se perde; ``guarda`` os devolve ao ciclo 7, em que
+todo foco com um botão apertado era do mouse -- o foco que o painel manda à «Verdade da linha» no
+clique da tabela volta a ficar fora da vista; ``ponteiro`` os devolve à primeira versão do ciclo 8,
+que perguntava ao ponteiro (o `underMouse`) e não à razão do foco -- a marca «sob o mouse» que os
+cliques engolidos deixam na verdade (o ponteiro sai da janela sem o evento de saída) faz o foco
+que o painel manda a ela parecer do clique, e ela fica meio à vista."""
 
 _PASSADA: dict[str, str] = {"sabotagem": ""}
 """A sabotagem desta passada (`auditar`), posta também em cada diálogo que o portão abre."""
@@ -1543,7 +1546,7 @@ def _sabotar(raiz: Any) -> None:
         for tabela in raiz.findChildren(QTableWidget):
             if tabela.accessibleName() == "Linhas da página":
                 tabela.setTabKeyNavigation(True)
-    elif sabotagem in ("clique", "guarda"):
+    elif sabotagem in ("clique", "guarda", "ponteiro"):
         import importlib
 
         for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
@@ -1554,8 +1557,10 @@ def _sabotar(raiz: Any) -> None:
             if sabotagem == "clique":
                 modulo.veio_do_mouse = lambda _controle: False  # type: ignore[attr-defined]
                 modulo.no_meio_do_clique = lambda: False  # type: ignore[attr-defined]
-            else:
+            elif sabotagem == "guarda":
                 modulo.veio_do_mouse = _guarda_do_ciclo_7  # type: ignore[attr-defined]
+            else:
+                modulo.veio_do_mouse = _guarda_do_ponteiro  # type: ignore[attr-defined]
 
 
 def _guarda_do_ciclo_7(controle: Any) -> bool:
@@ -1569,6 +1574,30 @@ def _guarda_do_ciclo_7(controle: Any) -> bool:
 
     if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
         return True
+    return bool(controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse())
+
+
+def _guarda_do_ponteiro(controle: Any) -> bool:
+    """A guarda do mouse da primeira versão do ciclo 8, para a sabotagem ``ponteiro``.
+
+    O ponteiro, e não a razão do foco: com um botão apertado, o controle (ou quem o tem por
+    procurador do foco) sob o ponteiro; sem botão, a caixa de escolha sob o ponteiro.
+    """
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QApplication
+
+    def sob(atual: Any) -> bool:
+        while atual is not None:
+            if atual.underMouse():
+                return True
+            pai = atual.parentWidget()
+            if pai is None or pai.focusProxy() is not atual:
+                return False
+            atual = pai
+        return False
+
+    if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
+        return sob(controle)
     return bool(controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse())
 
 
