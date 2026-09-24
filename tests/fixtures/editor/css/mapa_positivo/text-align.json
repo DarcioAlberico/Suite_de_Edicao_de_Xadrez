@@ -1,0 +1,11 @@
+{
+ "avisos": [],
+ "estilos": {
+  "figcaption": {
+   "text-align": "justify"
+  },
+  "p.centro": {
+   "text-align": "center"
+  }
+ }
+}

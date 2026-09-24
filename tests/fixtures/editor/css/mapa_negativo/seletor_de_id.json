@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "seletor_de_id.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "#p55-3"
+  }
+ ],
+ "estilos": {}
+}

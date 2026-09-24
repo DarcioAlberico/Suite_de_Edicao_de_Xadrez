@@ -1,0 +1,26 @@
+{
+ "avisos": [
+  {
+   "arquivo": "position.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 2,
+   "propriedade": "position",
+   "seletor": ".abs"
+  },
+  {
+   "arquivo": "position.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 3,
+   "propriedade": "top",
+   "seletor": ".abs"
+  }
+ ],
+ "estilos": {
+  "p.abs": {
+   "color": "#000080"
+  },
+  "span.abs": {
+   "color": "#000080"
+  }
+ }
+}

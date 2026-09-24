@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "peso_relativo.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "font-weight",
+   "seletor": ".y"
+  }
+ ],
+ "estilos": {}
+}

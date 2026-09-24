@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h2.titulo": {
+   "font-family": "Georgia"
+  },
+  "p.corpo": {
+   "font-family": "\"Minion Pro\", serif"
+  },
+  "span.corpo": {
+   "font-family": "\"Minion Pro\", serif"
+  }
+ }
+}

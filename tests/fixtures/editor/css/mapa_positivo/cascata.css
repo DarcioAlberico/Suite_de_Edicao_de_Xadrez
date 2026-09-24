@@ -1,0 +1,6 @@
+.lance { color: black; font-weight: bold; }
+span.lance { color: navy; }
+.lance { font-weight: normal; }
+h2 { color: gray; }
+.t { color: green; }
+h2.t { font-style: italic; }

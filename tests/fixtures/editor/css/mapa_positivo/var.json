@@ -1,0 +1,17 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h1": {
+   "color": "#1a2b3c"
+  },
+  "p.corpo": {
+   "font-size": "11pt"
+  },
+  "span.corpo": {
+   "font-size": "11pt"
+  },
+  "span.reserva": {
+   "color": "#0000ff"
+  }
+ }
+}

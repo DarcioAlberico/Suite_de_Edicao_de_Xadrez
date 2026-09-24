@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.fundo": {
+   "background-color": "#ffeedd"
+  },
+  "span.fundo": {
+   "background-color": "#ffeedd"
+  },
+  "span.realce": {
+   "background-color": "#ffff00"
+  }
+ }
+}

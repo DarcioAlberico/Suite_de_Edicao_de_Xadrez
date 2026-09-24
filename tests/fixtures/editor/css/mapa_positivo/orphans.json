@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.corpo": {
+   "orphans": "2"
+  },
+  "p.texto": {
+   "orphans": "4"
+  },
+  "span.texto": {
+   "orphans": "4"
+  }
+ }
+}

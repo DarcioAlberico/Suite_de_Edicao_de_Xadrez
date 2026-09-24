@@ -1,0 +1,19 @@
+{
+ "avisos": [
+  {
+   "arquivo": "important.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "color",
+   "seletor": ".x"
+  }
+ ],
+ "estilos": {
+  "p.x": {
+   "font-size": "10pt"
+  },
+  "span.x": {
+   "font-size": "10pt"
+  }
+ }
+}

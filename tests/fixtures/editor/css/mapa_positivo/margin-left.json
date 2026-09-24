@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "figcaption": {
+   "margin-left": "1em"
+  },
+  "p.recuado": {
+   "margin-left": "2em"
+  },
+  "span.recuado": {
+   "margin-left": "2em"
+  }
+ }
+}

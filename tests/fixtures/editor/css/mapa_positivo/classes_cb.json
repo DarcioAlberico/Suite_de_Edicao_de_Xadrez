@@ -1,0 +1,17 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.cb-caption": {
+   "font-size": "9pt"
+  },
+  "p.cb-movetext": {
+   "font-weight": "700"
+  },
+  "span.cb-caption": {
+   "font-size": "9pt"
+  },
+  "span.cb-nag": {
+   "color": "#cc0000"
+  }
+ }
+}

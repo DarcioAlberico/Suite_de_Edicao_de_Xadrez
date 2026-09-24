@@ -530,6 +530,30 @@ PASSOS: dict[str, Passo] = {
                 "--saida", "{saida}")), motivo="REPROVADO: a UIA leu certo em 0/50"),
         ),
     ),
+    "H3": Passo(
+        nome="H3",
+        descricao="o contrato de marcação e a política de CSS, no papel e em fixtures",
+        instrumentos=(
+            "docs/MARKUP_CAISSA.md",
+            "benchmarks/editor_contrato.py",
+            "tests/unit/editor/test_contrato.py",
+            "tests/fixtures/editor/contrato",
+            "tests/fixtures/editor/contrato_negativas/negativa_sem_fen.xhtml",
+            "tests/fixtures/editor/css/mapa_positivo",
+            "tests/fixtures/editor/css/mapa_negativo",
+            "tests/fixtures/editor/sidecar",
+            "{principal}/../Sigil-master/src/Resource_Files/python3lib/sigil_chess/validate.py",
+        ),
+        portao=(
+            Comando("test_contrato", _pytest("tests/unit/editor/test_contrato.py")),
+            Comando("contrato", ("{py}", "benchmarks/editor_contrato.py", "--saida", "{saida}")),
+        ),
+        sabotagens=(
+            Sabotagem("sem_fen", Comando("contrato_sem_fen", (
+                "{py}", "benchmarks/editor_contrato.py", "--sabotar", "sem_fen",
+                "--saida", "{saida}")), motivo="REPROVADO: CB validate"),
+        ),
+    ),
     "H6": Passo(
         nome="H6",
         descricao="o projeto em disco: nada se perde sob queda, um livro por janela",

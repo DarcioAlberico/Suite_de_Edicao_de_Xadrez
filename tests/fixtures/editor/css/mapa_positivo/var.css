@@ -1,0 +1,7 @@
+:root {
+  --cor-titulo: #1A2B3C;
+  --corpo: 11pt;
+}
+h1 { color: var(--cor-titulo); }
+.corpo { font-size: var(--corpo); }
+span.reserva { color: var(--nao-existe, blue); }

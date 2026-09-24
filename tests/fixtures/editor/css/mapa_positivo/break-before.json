@@ -1,0 +1,11 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h1.capitulo": {
+   "break-before": "page"
+  },
+  "p.junto": {
+   "break-before": "avoid"
+  }
+ }
+}

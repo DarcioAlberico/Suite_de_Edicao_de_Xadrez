@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h4": {
+   "letter-spacing": "normal"
+  },
+  "p.espacado": {
+   "letter-spacing": "0.1em"
+  },
+  "span.espacado": {
+   "letter-spacing": "0.1em"
+  }
+ }
+}

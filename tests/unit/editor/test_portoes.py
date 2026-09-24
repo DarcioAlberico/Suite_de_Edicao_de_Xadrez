@@ -165,6 +165,14 @@ def test_a_tabela_do_h0_tem_instrumento_repeticoes_e_sabotagens() -> None:
         assert sabotagem.motivo, sabotagem.nome
 
 
+def test_a_tabela_do_h3_confere_o_contrato_no_cb() -> None:
+    passo = portoes.PASSOS["H3"]
+    assert "docs/MARKUP_CAISSA.md" in passo.instrumentos
+    assert any("sigil_chess/validate.py" in i for i in passo.instrumentos)
+    assert [c.nome for c in passo.portao] == ["test_contrato", "contrato"]
+    assert {s.nome for s in passo.sabotagens} == {"sem_fen"}
+
+
 def test_a_tabela_do_h2_mede_o_prototipo_e_a_sonda_uia() -> None:
     passo = portoes.PASSOS["H2"]
     assert {"benchmarks/editor_codigo.py", "benchmarks/editor_uia.py", "{med}"} <= set(

@@ -1,0 +1,11 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h2.secao": {
+   "break-before": "page"
+  },
+  "p.solto": {
+   "break-before": "auto"
+  }
+ }
+}

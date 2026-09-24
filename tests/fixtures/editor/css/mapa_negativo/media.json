@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "media.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "@media"
+  }
+ ],
+ "estilos": {}
+}
