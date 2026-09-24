@@ -67,7 +67,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1058,8 +1058,8 @@ LETRAS_DA_FILA = 3
 texto."""
 
 
-def _linha_inteira_a_vista(vista: Any, excluir: int) -> tuple[int, Any] | None:
-    """Uma linha de ``vista`` inteira à vista na janela, que não é ``excluir``, e um ponto dela."""
+def _linhas_inteiras_a_vista(vista: Any, excluir: int) -> Iterator[tuple[int, Any]]:
+    """As linhas de ``vista`` inteiras à vista, fora ``excluir``, cada uma com um ponto dela."""
     from PyQt6.QtCore import QPoint, QRect
 
     modelo = vista.model()
@@ -1073,9 +1073,13 @@ def _linha_inteira_a_vista(vista: Any, excluir: int) -> tuple[int, Any] | None:
         visivel = ret.intersected(area)
         if (ret.height() > 0 and visivel.height() == ret.height()
                 and visivel.width() > MARGEM_DO_CLIQUE):
-            return linha, QPoint(visivel.left() + min(MARGEM_DO_CLIQUE, visivel.width() // 2),
-                                 ret.center().y())
-    return None
+            yield linha, QPoint(visivel.left() + min(MARGEM_DO_CLIQUE, visivel.width() // 2),
+                                ret.center().y())
+
+
+def _linha_inteira_a_vista(vista: Any, excluir: int) -> tuple[int, Any] | None:
+    """Uma linha de ``vista`` inteira à vista na janela, que não é ``excluir``, e um ponto dela."""
+    return next(_linhas_inteiras_a_vista(vista, excluir), None)
 
 
 FOLGA_DO_SOSSEGO = 100
@@ -1085,6 +1089,10 @@ sossegar aparecer (`foco_a_vista.mouse_sossegado`)."""
 ESPERA_ENTRE_OS_CLIQUES = 80
 """Quantos ms o portão espera entre os dois cliques de um duplo clique -- o de uma pessoa, bem
 dentro do intervalo do duplo clique."""
+
+LINHAS_DO_DUPLO_CLIQUE = 6
+"""Quantas linhas de cada vista de itens o duplo clique do portão percorre em cada extremo das
+rolagens (`_duplos_cliques`)."""
 
 
 def _esperar(ms: int) -> None:
@@ -1126,8 +1134,8 @@ def _clique_com_acao(janela: Any, ponto: Any) -> None:
     _sossego()
 
 
-def _duplo_clique(janela: Any, ponto: Any) -> Any:
-    """Um duplo clique pelo `QWindow` no ``ponto`` da janela; devolve o que estava sob o segundo.
+def _duplo_clique(janela: Any, ponto: Any) -> tuple[Any, int | None]:
+    """Um duplo clique pelo `QWindow` no ``ponto``; devolve o controle e a linha sob o segundo.
 
     O primeiro clique, a :data:`ESPERA_ENTRE_OS_CLIQUES`, e o segundo como o Qt o entrega: o
     pressionar, o duplo clique ao controle sob o ponteiro, o soltar. O `QTest` põe o intervalo do
@@ -1147,6 +1155,7 @@ def _duplo_clique(janela: Any, ponto: Any) -> Any:
     QApplication.processEvents()
     _esperar(ESPERA_ENTRE_OS_CLIQUES)
     sob_no_segundo = janela.childAt(ponto)
+    linha_no_segundo = _linha_sob(sob_no_segundo, janela, ponto)
     QTest.mousePress(alca, esquerdo, nenhum, ponto)
     QApplication.processEvents()
     alvo = janela.childAt(ponto)
@@ -1157,7 +1166,20 @@ def _duplo_clique(janela: Any, ponto: Any) -> Any:
         QApplication.processEvents()
     QTest.mouseRelease(alca, esquerdo, nenhum, ponto)
     _sossego()
-    return sob_no_segundo
+    return sob_no_segundo, linha_no_segundo
+
+
+def _linha_sob(widget: Any, janela: Any, ponto: Any) -> int | None:
+    """A linha da vista de itens sob o ``ponto`` da janela, se ``widget`` é a porta de uma."""
+    from PyQt6.QtWidgets import QAbstractItemView
+
+    vista = widget.parentWidget() if widget is not None else None
+    if not isinstance(vista, QAbstractItemView):
+        return None
+    porta = vista.viewport()
+    if porta is None or widget is not porta:
+        return None
+    return int(vista.indexAt(porta.mapFrom(janela, ponto)).row())
 
 
 def _vistas_de_itens(painel: Any) -> list[Any]:
@@ -1269,46 +1291,62 @@ def _duplos_cliques(janela: Any, painel: Any) -> list[dict[str, Any]]:
     mexia o conteúdo debaixo do ponteiro parado -- na Rotulagem, com a rolagem no fim, o segundo
     clique na linha 4 caía em «Aceitar leitura» e aceitava uma leitura que ninguém aceitou. Aqui, em
     cada vista de itens da área com duas linhas ou mais, com as rolagens no topo e depois no fim,
-    um duplo clique (:func:`_duplo_clique`) numa linha inteira à vista e diferente da atual: o
-    controle sob o ponteiro no segundo clique tem de ser o do primeiro, e o foco que sobra, depois
-    de o mouse sossegar, tem de estar à vista (:func:`_o_foco_que_sobra`). Uma vista com linhas e
-    nenhuma linha inteira à vista nos dois extremos também não passa: o duplo clique não foi medido.
+    um duplo clique (:func:`_duplo_clique`) em cada linha inteira à vista e diferente da atual, até
+    :data:`LINHAS_DO_DUPLO_CLIQUE` por extremo, uma depois da outra: o controle e a linha sob o
+    ponteiro no segundo clique têm de ser os do primeiro, e o foco que sobra, depois de o mouse
+    sossegar, tem de estar à vista (:func:`_o_foco_que_sobra`). Uma linha só não bastava: na
+    Rotulagem o cartão acima da tabela muda de altura com a linha, e a tabela deslizava uma linha
+    sob o ponteiro parado só entre duas linhas de cartões de alturas diferentes (construtor, ciclo
+    9). Uma vista com linhas e nenhuma linha inteira à vista nos dois extremos também não passa: o
+    duplo clique não foi medido.
     """
-    from PyQt6.QtWidgets import QApplication
-
     if painel is None or janela.windowHandle() is None:
         return []
     duplos: list[dict[str, Any]] = []
     for vista in _vistas_de_itens(painel):
         medidos = 0
         for extremo in ("topo", "fim"):
-            _rolagens_no(janela, extremo)
-            achada = _linha_inteira_a_vista(vista, vista.currentIndex().row())
-            if achada is None:
-                continue
-            linha, ponto = achada
-            anterior = QApplication.focusWidget()
-            if anterior is not None:
-                anterior.clearFocus()
-                QApplication.processEvents()
-            na_janela = vista.viewport().mapTo(janela, ponto)
-            sob = janela.childAt(na_janela)
-            sob_no_segundo = _duplo_clique(janela, na_janela)
-            medidos += 1
-            registro: dict[str, Any] = {
-                "controle": _nome_curto(vista), "rolagem": extremo, "linha": linha,
-                "linha_depois": vista.currentIndex().row(), "sob_o_ponteiro": _quem(sob),
-                "sob_o_ponteiro_no_segundo": _quem(sob_no_segundo),
-                "no_lugar": sob_no_segundo is sob,
-            }
-            registro.update(_o_foco_que_sobra(vista, QApplication.focusWidget()))
-            duplos.append(registro)
+            clicadas: set[int] = set()
+            while len(clicadas) < LINHAS_DO_DUPLO_CLIQUE:
+                _rolagens_no(janela, extremo)
+                atual = vista.currentIndex().row()
+                achada = next((a for a in _linhas_inteiras_a_vista(vista, atual)
+                               if a[0] not in clicadas), None)
+                if achada is None:
+                    break
+                linha, ponto = achada
+                clicadas.add(linha)
+                duplos.append(_um_duplo_clique(janela, vista, extremo, linha, ponto))
+                medidos += 1
         if not medidos:
             duplos.append({"controle": _nome_curto(vista), "rolagem": "topo e fim", "linha": None,
                            "no_lugar": False, "foco": None, "a_vista": False,
                            "regra": "nenhuma linha inteira à vista: o duplo clique não foi medido"})
     _rolagens_no_topo(janela)
     return duplos
+
+
+def _um_duplo_clique(janela: Any, vista: Any, extremo: str, linha: int, ponto: Any
+                     ) -> dict[str, Any]:
+    """O duplo clique na ``linha`` de ``vista`` (no ``ponto`` da porta dela), o foco antes fora."""
+    from PyQt6.QtWidgets import QApplication
+
+    anterior = QApplication.focusWidget()
+    if anterior is not None:
+        anterior.clearFocus()
+        QApplication.processEvents()
+    na_janela = vista.viewport().mapTo(janela, ponto)
+    sob = janela.childAt(na_janela)
+    sob_no_segundo, linha_no_segundo = _duplo_clique(janela, na_janela)
+    registro: dict[str, Any] = {
+        "controle": _nome_curto(vista), "rolagem": extremo, "linha": linha,
+        "linha_depois": vista.currentIndex().row(), "sob_o_ponteiro": _quem(sob),
+        "sob_o_ponteiro_no_segundo": _quem(sob_no_segundo),
+        "linha_no_segundo": linha_no_segundo,
+        "no_lugar": sob_no_segundo is sob and linha_no_segundo == linha,
+    }
+    registro.update(_o_foco_que_sobra(vista, QApplication.focusWidget()))
+    return registro
 
 
 LINHAS_DA_FILA = 12
@@ -1677,11 +1715,11 @@ def _sala_de_dialogos(janela: Any) -> _Sala:
     )
 
 
-SABOTAGENS = ("foco", "tabela", "clique", "guarda", "ponteiro", "soltar")
+SABOTAGENS = ("foco", "tabela", "clique", "guarda", "ponteiro", "soltar", "ancora")
 """As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 a 7), ou o
-construtor no ciclo 8, e que o portão tem de reprovar: ``foco`` desliga todo seguidor de foco das
-rolagens (`foco_a_vista`, da suíte e do tronco) -- o foco que entra numa rolagem de fora volta a
-cair fora da vista; ``tabela`` devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a
+construtor nos ciclos 8 e 9, e que o portão tem de reprovar: ``foco`` desliga todo seguidor de foco
+das rolagens (`foco_a_vista`, da suíte e do tronco) -- o foco que entra numa rolagem de fora volta
+a cair fora da vista; ``tabela`` devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a
 página reconhecida, a tecla volta a não sair do laço; ``clique`` devolve os dois seguidores ao ciclo
 6, que rolava no pressionar (`veio_do_mouse` e `no_meio_do_clique` falsos) -- a rolagem volta a se
 mexer entre o pressionar e o soltar, e o clique se perde; ``guarda`` os devolve ao ciclo 7, em que
@@ -1691,7 +1729,12 @@ que perguntava ao ponteiro (o `underMouse`) e não à razão do foco -- a marca 
 cliques engolidos deixam na verdade (o ponteiro sai da janela sem o evento de saída) faz o foco
 que o painel manda a ela parecer do clique, e ela fica meio à vista; ``soltar`` os devolve ao ciclo
 8, que mostrava o foco do painel logo depois do soltar (o intervalo do duplo clique a 0) -- o
-conteúdo se mexe debaixo do ponteiro antes do segundo clique de um duplo clique."""
+conteúdo se mexe debaixo do ponteiro antes do segundo clique de um duplo clique; ``ancora`` tira
+a âncora da tabela da Rotulagem (o `foco_a_vista.ancorar` que ela chama no clique numa linha) -- o
+cartão acima dela muda de altura com a linha, e a tabela desliza uma linha sob o ponteiro entre os
+dois cliques. Esta só reprova numa página em que o cartão muda de altura entre as linhas à vista: a
+Gallagher p. 51 (``--pagina 51``) sim; na p. 6 do Kemeri os cartões dessas linhas têm a mesma
+altura, e nada desliza (medido no ciclo 9)."""
 
 _PASSADA: dict[str, str] = {"sabotagem": ""}
 """A sabotagem desta passada (`auditar`), posta também em cada diálogo que o portão abre."""
@@ -1712,6 +1755,11 @@ def _sabotar(raiz: Any) -> None:
         for tabela in raiz.findChildren(QTableWidget):
             if tabela.accessibleName() == "Linhas da página":
                 tabela.setTabKeyNavigation(True)
+    elif sabotagem == "ancora":
+        import importlib
+
+        rotulagem = importlib.import_module("caissa.ui.views.rotulagem")
+        rotulagem.ancorar = lambda _rolagem, _controle: None  # type: ignore[attr-defined]
     elif trocas := _trocas_da_sabotagem(sabotagem):
         import importlib
 
@@ -1775,11 +1823,14 @@ def _guarda_do_ponteiro(controle: Any) -> bool:
 
 
 PAGINA_DA_ROTULAGEM = 6
-"""A página do livro do portão que a Rotulagem reconhece: a do Kemeri é prosa em alemão, 48 linhas
-na camada de texto -- a tabela «Linhas da página» cheia, como o crítico a mediu (ciclo 5)."""
+"""A página do livro do portão que a Rotulagem reconhece, se ``--pagina`` não diz outra: a do Kemeri
+é prosa em alemão, 48 linhas na camada de texto -- a tabela «Linhas da página» cheia, como o crítico
+a mediu (ciclo 5). A Gallagher p. 51 (``--pagina 51``) é a da sonda do duplo clique do crítico
+(ciclo 8), onde o cartão da linha muda de altura entre as linhas (`_duplos_cliques`)."""
 
 
-def _rotulagem_com_uma_pagina(janela: Any, pdf: Path | None, pasta: Path) -> dict[str, Any]:
+def _rotulagem_com_uma_pagina(janela: Any, pdf: Path | None, pasta: Path,
+                              pagina: int = PAGINA_DA_ROTULAGEM) -> dict[str, Any]:
     """A Rotulagem no estado de trabalho: uma página do livro reconhecida, a tabela cheia.
 
     A página do livro do portão é reconhecida pelo serviço do produto (o que o F5 roda), e a tabela
@@ -1808,7 +1859,7 @@ def _rotulagem_com_uma_pagina(janela: Any, pdf: Path | None, pasta: Path) -> dic
         painel.project = abrir_projeto(pasta / "rotulagem", revisor="portao")
         painel.service = None
         nome = painel.abrir(Path(pdf))
-        painel.go_page(PAGINA_DA_ROTULAGEM)
+        painel.go_page(pagina)
         lingua = painel.lang_box.currentText()
         page = label_page(painel._service(), Path(pdf), nome, painel.page_index,
                           dpi=int(painel.dpi_spin.value()), lang=lingua)
@@ -1832,14 +1883,14 @@ def _rotulagem_com_uma_pagina(janela: Any, pdf: Path | None, pasta: Path) -> dic
     }
 
 
-def _rotulagem_e_sabotagem(janela: Any, aplicacao: Any, pdf: Path | None
-                           ) -> tuple[dict[str, Any], Path]:
+def _rotulagem_e_sabotagem(janela: Any, aplicacao: Any, pdf: Path | None,
+                           pagina: int = PAGINA_DA_ROTULAGEM) -> tuple[dict[str, Any], Path]:
     """A Rotulagem com uma página, num projeto temporário, e a sabotagem da passada na janela.
 
     Devolve o que a Rotulagem mediu e a pasta a apagar no fim (crítico da fase 5, ciclo 5).
     """
     pasta = Path(tempfile.mkdtemp(prefix="portao_teclado_rotulagem_"))
-    rotulagem = _rotulagem_com_uma_pagina(janela, pdf, pasta)
+    rotulagem = _rotulagem_com_uma_pagina(janela, pdf, pasta, pagina)
     for _ in range(4):
         aplicacao.processEvents()
     print(f"  Rotulagem: {rotulagem}")
@@ -2012,6 +2063,7 @@ def auditar(
     altura: int = 800,
     pele_pedida: str = "",
     sabotagem: str = "",
+    pagina: int = PAGINA_DA_ROTULAGEM,
 ) -> dict[str, Any]:
     """Percorre todas as abas da janela do tronco com o teclado e devolve o relatório.
 
@@ -2061,8 +2113,8 @@ def auditar(
             print(f"  (livro {pdf.name} não abriu: {exc})", file=sys.stderr)
         for _ in range(4):
             aplicacao.processEvents()
-    rotulagem, pasta_da_rotulagem = _rotulagem_e_sabotagem(janela, aplicacao, pdf)
-    revisao = _revisao_com_uma_fila(janela, pdf, int(rotulagem.get("pagina", PAGINA_DA_ROTULAGEM)))
+    rotulagem, pasta_da_rotulagem = _rotulagem_e_sabotagem(janela, aplicacao, pdf, pagina)
+    revisao = _revisao_com_uma_fila(janela, pdf, int(rotulagem.get("pagina", pagina)))
     for _ in range(4):
         aplicacao.processEvents()
 
@@ -2152,9 +2204,9 @@ def auditar(
                 "depois dele, nas mesmas vistas e extremos: um duplo clique pelo QWindow numa "
                 f"linha inteira à vista e diferente da atual ({ESPERA_ENTRE_OS_CLIQUES} ms entre "
                 "os dois cliques; o segundo entregue como o Qt o entrega, com o "
-                "MouseButtonDblClick ao controle sob o ponteiro); o controle sob o ponteiro no "
-                "segundo clique tem de ser o do primeiro, e o foco que sobra, à vista como no "
-                "clique com a ação"
+                "MouseButtonDblClick ao controle sob o ponteiro); o controle e a linha sob o "
+                "ponteiro no segundo clique têm de ser os do primeiro, e o foco que sobra, à vista "
+                "como no clique com a ação"
             ),
             "nome": "accessibleName, senão text(), senão a 1a linha da dica -- a ordem do Qt",
             "grupo": (
@@ -2222,6 +2274,7 @@ def auditar_as_peles(
     altura: int = 800,
     saida: Path | None = None,
     sabotagem: str = "",
+    pagina: int = PAGINA_DA_ROTULAGEM,
 ) -> dict[str, Any]:
     """O portão inteiro: uma passada por **cada** pele registrada, e um veredito só no fim.
 
@@ -2281,6 +2334,8 @@ def auditar_as_peles(
                     argumentos += ["--pdf", str(pdf)]
                 if sabotagem:
                     argumentos += ["--sabotar", sabotagem]
+                if pagina != PAGINA_DA_ROTULAGEM:
+                    argumentos += ["--pagina", str(pagina)]
                 subprocess.run(argumentos, env=ambiente, check=False)  # noqa: S603 - argv nosso
                 if not alvo.exists():
                     raise RuntimeError(
@@ -2445,6 +2500,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tronco", type=Path, default=TRONCO)
     parser.add_argument("--pdf", type=Path, default=None)
     parser.add_argument(
+        "--pagina",
+        type=int,
+        default=PAGINA_DA_ROTULAGEM,
+        help=f"a pagina do livro que a Rotulagem reconhece (padrao: {PAGINA_DA_ROTULAGEM}).",
+    )
+    parser.add_argument(
         "--saida",
         type=Path,
         default=None,
@@ -2502,6 +2563,7 @@ def main(argv: list[str] | None = None) -> int:
             altura=args.altura,
             pele_pedida=args.pele,
             sabotagem=args.sabotar,
+            pagina=args.pagina,
         )
         alvo = args.json
         if alvo is None:
@@ -2522,6 +2584,7 @@ def main(argv: list[str] | None = None) -> int:
         altura=args.altura,
         saida=args.saida,
         sabotagem=args.sabotar,
+        pagina=args.pagina,
     )
     # **Carimbado, pelo mesmo motivo de `contraste.py`** (F9-C5, §7.10): um nome fixo apaga a
     # medição do ciclo anterior sem aviso, e este defeito de família já custou 17 capturas em

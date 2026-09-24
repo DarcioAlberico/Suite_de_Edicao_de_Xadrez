@@ -118,8 +118,11 @@ class _PaginaDeLinhas:
 
     lang = "eng"
 
-    def __init__(self, n: int = 12) -> None:
+    def __init__(self, n: int = 12, *, desiguais: bool = False) -> None:
         self.n = n
+        # the odd lines with six long weak words: their reason wraps in several lines, and the card
+        # above the table grows when one of them is chosen (construtor, ciclo 9 da fase 5)
+        self.desiguais = desiguais
 
     def recognize_image(self, image, *, dpi, lang="", page_index=0):
         from types import SimpleNamespace
@@ -135,9 +138,15 @@ class _PaginaDeLinhas:
                                 box=BBox(50 * s, y, 40 * s, 10 * s)),
                 SimpleNamespace(text="fraca", confidence=0.4, box=BBox(95 * s, y, 30 * s, 10 * s)),
             )
-            linhas.append(SimpleNamespace(words=words, text=f"linha{k} fraca", confidence=0.4,
-                                          box=BBox(50 * s, y, 75 * s, 10 * s), block_index=0,
-                                          paragraph_index=0))
+            if self.desiguais and k % 2:
+                words = tuple(
+                    SimpleNamespace(text=f"linha{k}palavra{j}fracaecompridademaisparacaber",
+                                    confidence=0.4, box=BBox((50 + 12 * j) * s, y, 11 * s, 10 * s))
+                    for j in range(6)
+                )
+            linhas.append(SimpleNamespace(words=words, text=" ".join(w.text for w in words),
+                                          confidence=0.4, box=BBox(50 * s, y, 75 * s, 10 * s),
+                                          block_index=0, paragraph_index=0))
         result = SimpleNamespace(lines=tuple(linhas))
         decision = SimpleNamespace(decision="review", reasons_pt=())
         region = SimpleNamespace(reading_order=0, kind="paragraph",
@@ -149,8 +158,9 @@ class _PaginaDeLinhas:
         return SimpleNamespace(dpi=dpi, regions=[region], engines={"tesseract": "5.5"}, notes=[])
 
 
-def _rotulagem_com_linhas(app, tmp_path: Path, n: int = 12):
-    """The tab with a book open and its page recognised by the panel itself (F5), ``n`` lines."""
+def _rotulagem_com_linhas(app, tmp_path: Path, n: int = 12, *, desiguais: bool = False):
+    """The tab with a book open and its page recognised by the panel itself (F5), ``n`` lines (the
+    odd ones with long reasons, if ``desiguais``)."""
     import time
 
     pymupdf = pytest.importorskip("pymupdf")
@@ -166,7 +176,7 @@ def _rotulagem_com_linhas(app, tmp_path: Path, n: int = 12):
     painel = PainelDeRotulagem(projeto=project, pdf_inicial=pdf)
     painel.show()
     app.processEvents()
-    painel.service = _PaginaDeLinhas(n)
+    painel.service = _PaginaDeLinhas(n, desiguais=desiguais)
     painel.recognise_page()
     deadline = time.monotonic() + 30
     while painel.fila.busy and time.monotonic() < deadline:
@@ -325,26 +335,30 @@ def _linha_da_pagina(painel, linha: int):
     return next(c for c in regiao.lines if c.index == linha_i)
 
 
-def _duplo_clique_na_linha(app, painel, linha: int) -> tuple[object, object]:
+def _duplo_clique_na_linha(app, painel, linha: int) -> tuple[object, object, object]:
     """The scroll area at its end, the focus outside, and a double click through the ``QWindow`` on
     ``linha`` (the second click delivered as Qt delivers it, `teclado._duplo_clique`): the control
-    under the pointer at the first and at the second click."""
+    under the pointer at the first and at the second click, and the table's line under it at the
+    second."""
     from PyQt6.QtCore import QPoint
     from PyQt6.QtWidgets import QScrollArea
 
     from caissa.ui.audit import teclado
 
-    for rolagem in painel.findChildren(QScrollArea):
-        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().maximum())
     painel.table.setCurrentCell(0 if linha else 1, 0)
     if app.focusWidget() is not None:
         app.focusWidget().clearFocus()
+    for _vez in range(3):  # the card takes the line's height, and the scroll area the card's
+        app.processEvents()
+    for rolagem in painel.findChildren(QScrollArea):
+        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().maximum())
     app.processEvents()
     vista = painel.table.viewport()
     centro = painel.table.visualRect(painel.table.model().index(linha, 0)).center()
     ponto = vista.mapTo(painel, QPoint(min(40, vista.width() // 3), centro.y()))
     sob = painel.childAt(ponto)
-    return sob, teclado._duplo_clique(painel, ponto)
+    sob_no_segundo, linha_no_segundo = teclado._duplo_clique(painel, ponto)
+    return sob, sob_no_segundo, linha_no_segundo
 
 
 def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypatch):
@@ -375,7 +389,7 @@ def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypat
         achada = teclado._linha_inteira_a_vista(painel.table, -1)
         if achada is None:
             break
-        sob, sob_no_segundo = _duplo_clique_na_linha(app, painel, linha)
+        sob, sob_no_segundo, _linha = _duplo_clique_na_linha(app, painel, linha)
         if sob is painel.table.viewport() and sob_no_segundo is aceitar:
             alvo = linha
             break
@@ -390,8 +404,9 @@ def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypat
         app.processEvents()
     monkeypatch.setattr(foco_a_vista, "intervalo_do_duplo_clique", real)
     antes = [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())]
-    sob, sob_no_segundo = _duplo_clique_na_linha(app, painel, alvo)
+    sob, sob_no_segundo, linha_no_segundo = _duplo_clique_na_linha(app, painel, alvo)
     assert sob_no_segundo is sob, "the second click lands where the first did"
+    assert linha_no_segundo == alvo, "on the same line"
     assert [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())] == antes, (
         "no line accepted")
     assert painel.table.currentRow() == alvo
@@ -399,6 +414,50 @@ def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypat
     rolagem = teclado._rolagem_que_segue(painel.truth)
     assert rolagem is not None
     assert teclado._inteiro_na_rolagem(rolagem, painel.truth), "once the mouse is calm, whole"
+    painel.close()
+
+
+def test_a_double_click_on_a_line_stays_on_it_while_the_card_above_grows(
+        app, tmp_path: Path, monkeypatch):
+    """Construtor, ciclo 9 da fase 5: the card of the line is above the table in the same scroll
+    area, and its reason wraps in one line or in several, depending on the line: with the scroll
+    area at its end, the click on a line with a longer reason grew the card, the table slid down
+    under the pointer held still, and the second click of the double click fell on the line above
+    (the Gallagher p. 51 at 1280x641 in the Clássica, line 3 -> 2).  The tab with the odd lines'
+    reasons long, the table on line 0: a double click on an odd line whole in sight -- the card
+    grows, the line under the pointer at the second click is still the one clicked, the table stays
+    on it, and no line is accepted.  The sabotage: the Rotulagem without the anchor
+    (``rotulagem.ancorar`` a no-op) -- the second click falls on another line."""
+    from PyQt6.QtWidgets import QScrollArea
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.views import rotulagem as vista_da_rotulagem
+
+    painel = _rotulagem_com_linhas(app, tmp_path, desiguais=True)
+    painel.resize(1000, 710)
+    for _vez in range(2):
+        app.processEvents()
+    painel.table.setCurrentCell(0, 0)
+    app.processEvents()
+    for rolagem in painel.findChildren(QScrollArea):
+        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().maximum())
+    app.processEvents()
+    alvo = next(linha for linha, _ponto in teclado._linhas_inteiras_a_vista(painel.table, 0)
+                if linha % 2)
+    altura = painel.cartao.height()
+    antes = [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())]
+    sob, sob_no_segundo, linha_no_segundo = _duplo_clique_na_linha(app, painel, alvo)
+    assert painel.cartao.height() > altura, "the odd line's reason grew the card"
+    assert linha_no_segundo == alvo, "the table stayed under the pointer"
+    assert sob_no_segundo is sob
+    assert painel.table.currentRow() == alvo
+    assert [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())] == antes, (
+        "no line accepted")
+
+    monkeypatch.setattr(vista_da_rotulagem, "ancorar", lambda _rolagem, _controle: None)
+    _sob, _sob_no_segundo, linha_no_segundo = _duplo_clique_na_linha(app, painel, alvo)
+    assert linha_no_segundo != alvo, "sabotaged: the table slid under the pointer"
+    assert painel.table.currentRow() != alvo, "sabotaged: the second click chose another line"
     painel.close()
 
 

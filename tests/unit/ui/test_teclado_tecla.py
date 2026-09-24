@@ -378,3 +378,78 @@ def test_the_gate_double_clicks_a_line_and_finds_the_content_moved_under_the_poi
     assert fora, duplos
     assert fora[0]["sob_o_ponteiro"] != fora[0]["sob_o_ponteiro_no_segundo"], fora
     janela.close()
+
+
+def _janela_do_cartao_e_da_lista(app):
+    """A card at the top of a scroll area whose height follows the line chosen in the list below it
+    -- 40 px on the even lines, 80 on the odd ones, as the Rotulagem's card grows when the reason of
+    the line wraps --, and the list of sixteen lines anchored by the click as the Rotulagem's table
+    is (``rotulagem.ancorar``, looked up in the module at each click: the gate's sabotage ``ancora``
+    takes it away)."""
+    import importlib
+
+    from PyQt6.QtWidgets import QLabel, QListWidget, QScrollArea, QVBoxLayout, QWidget
+
+    from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, no_meio_do_clique
+
+    rotulagem = importlib.import_module("caissa.ui.views.rotulagem")
+    janela = QWidget()
+    coluna = QVBoxLayout(janela)
+    rolagem = QScrollArea(janela)
+    rolagem.setWidgetResizable(True)
+    conteudo = QWidget(rolagem)
+    pilha = QVBoxLayout(conteudo)
+    cartao = QLabel("o cartão da linha", conteudo)
+    cartao.setFixedHeight(40)
+    pilha.addWidget(cartao)
+    lista = QListWidget(conteudo)
+    lista.addItems([f"linha {k}" for k in range(16)])
+    lista.setFixedHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
+    pilha.addWidget(lista)
+    rolagem.setWidget(conteudo)
+    coluna.addWidget(rolagem)
+    RolagemSegueOFoco(rolagem)
+
+    def escolheu(linha: int) -> None:
+        if no_meio_do_clique():
+            rotulagem.ancorar(rolagem, lista)
+        cartao.setFixedHeight(80 if linha % 2 else 40)
+
+    lista.currentRowChanged.connect(escolheu)
+    janela.resize(360, 220)
+    janela.show()
+    for _vez in range(2):
+        app.processEvents()
+    return janela, lista
+
+
+def test_the_gate_double_clicks_line_after_line_and_finds_the_line_that_slid(app, monkeypatch):
+    """Construtor, ciclo 9 da fase 5: the gate double-clicked one line per end of the scroll areas
+    and compared the control under the pointer -- the Rotulagem's table, which slides a line under
+    the pointer when the card above it grows, was the same control at both clicks, and passed.  Now
+    it double-clicks line after line (up to ``LINHAS_DO_DUPLO_CLIQUE`` per end) and compares the
+    line under the pointer too: with the anchor every line stays; the sabotage ``ancora`` (the
+    Rotulagem's ``ancorar`` a no-op) lets the list slide, the second click falls on the same list
+    but on another line, and the screen fails."""
+    import importlib
+
+    from caissa.ui.audit import teclado
+
+    rotulagem = importlib.import_module("caissa.ui.views.rotulagem")
+    monkeypatch.setattr(rotulagem, "ancorar", rotulagem.ancorar)  # put back at teardown
+    janela, _lista = _janela_do_cartao_e_da_lista(app)
+    duplos = teclado._duplos_cliques(janela, janela)
+    medidos = [d for d in duplos if d["linha"] is not None]
+    assert len(medidos) > 1, duplos
+    assert all(d["no_lugar"] and d["linha_no_segundo"] == d["linha"] for d in medidos), medidos
+    assert not teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "ancora")
+    teclado._sabotar(janela)
+    duplos = teclado._duplos_cliques(janela, janela)
+    fora = teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+    assert fora, duplos
+    deslizou = [d for d in fora if d["sob_o_ponteiro"] == d["sob_o_ponteiro_no_segundo"]]
+    assert deslizou, ("sabotaged: the same list under the pointer, another line", fora)
+    assert all(d["linha_no_segundo"] != d["linha"] for d in deslizou), deslizou
+    janela.close()

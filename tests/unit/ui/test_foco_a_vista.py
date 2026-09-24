@@ -782,6 +782,201 @@ def test_the_focus_the_program_moves_on_the_release_waits_for_the_calm_too(app, 
     janela.close()
 
 
+def _janela_do_cartao(app):
+    """A window 220 px tall: a scroll area with a card at the top whose height follows the line
+    chosen in the list below it -- 40 px on the even lines, 80 on the odd ones, as the Rotulagem's
+    card grows when the reason of the line wraps -- and a list of sixteen lines.  The line chosen by
+    a click anchors the list first (``foco_a_vista.ancorar``, looked up in the module, so that the
+    sabotage can take it away), as the Rotulagem's table does."""
+    from PyQt6.QtWidgets import QLabel, QListWidget, QScrollArea, QVBoxLayout, QWidget
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela = QWidget()
+    fora = QVBoxLayout(janela)
+    rolagem = QScrollArea(janela)
+    rolagem.setWidgetResizable(True)
+    conteudo = QWidget(rolagem)
+    coluna = QVBoxLayout(conteudo)
+    cartao = QLabel("o cartão da linha", conteudo)
+    cartao.setFixedHeight(40)
+    coluna.addWidget(cartao)
+    lista = QListWidget(conteudo)
+    lista.addItems([f"linha {k}" for k in range(16)])
+    lista.setFixedHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
+    coluna.addWidget(lista)
+    rolagem.setWidget(conteudo)
+    fora.addWidget(rolagem, 1)
+    segue = foco_a_vista.RolagemSegueOFoco(rolagem)
+
+    def escolheu(linha: int) -> None:
+        if foco_a_vista.no_meio_do_clique():
+            foco_a_vista.ancorar(rolagem, lista)
+        cartao.setFixedHeight(80 if linha % 2 else 40)
+
+    lista.currentRowChanged.connect(escolheu)
+    janela.resize(360, 220)
+    janela.show()
+    app.processEvents()
+    return janela, rolagem, cartao, lista, segue
+
+
+def _no_fim_e_na_linha(app, janela, rolagem, lista, linha: int):
+    """The list on the line before ``linha``, the scroll area at its end: a point on ``linha``."""
+    lista.setCurrentRow(linha - 1)
+    app.processEvents()
+    barra = rolagem.verticalScrollBar()
+    barra.setValue(barra.maximum())
+    app.processEvents()
+    return lista.viewport().mapTo(janela, lista.visualItemRect(lista.item(linha)).center())
+
+
+def _linha_sob(janela, lista, ponto) -> int:
+    return lista.indexAt(lista.viewport().mapFrom(janela, ponto)).row()
+
+
+def test_the_line_under_the_pointer_stays_while_the_card_above_it_grows(app, monkeypatch):
+    """Construtor, ciclo 9 da fase 5: in the Rotulagem the table «Linhas da página» is in the same
+    scroll area as the card of the line, below it, and the card's reason wraps in one or two lines
+    depending on the line chosen: with the scroll area at its end and held still, the click on line
+    3 of the Gallagher p. 51 at 1280x641 grew the card 16 px, the table slid down, and the second
+    click of the double click fell on line 2.  Here: a double click through the ``QWindow`` on an
+    odd line, the list on the even line above it -- the card grows 40 px between the two clicks --,
+    and the line under the pointer at the second click is still the one clicked, which gets the
+    double click.  Once the mouse is calm the anchor lets go: the card that grows afterwards moves
+    the list.  The sabotage: no anchor -- the list slides under the pointer, and the second click
+    falls on another line."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, cartao, lista, _segue = _janela_do_cartao(app)
+    alca = janela.windowHandle()
+    duplos: list[int] = []
+    lista.doubleClicked.connect(lambda indice: duplos.append(indice.row()))
+
+    def duplo_clique(linha: int) -> tuple[int, int]:
+        duplos.clear()
+        ponto = _no_fim_e_na_linha(app, janela, rolagem, lista, linha)
+        assert cartao.height() == 40
+        antes = _linha_sob(janela, lista, ponto)
+        _clique(app, alca, ponto)
+        QTest.qWait(80)  # the time between the two clicks of a double click
+        no_segundo = _linha_sob(janela, lista, ponto)
+        _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+        return antes, no_segundo
+
+    antes, no_segundo = duplo_clique(9)
+    assert antes == 9
+    assert cartao.height() == 80, "the click on an odd line grew the card"
+    assert no_segundo == 9, "the list stayed under the pointer"
+    assert duplos == [9], "the line clicked gets the double click"
+    assert lista.currentRow() == 9
+    _sossegar(app)
+    onde = lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y()
+    cartao.setFixedHeight(120)
+    for _vez in range(3):  # the scroll area takes the new height one pass after the layout
+        app.processEvents()
+    assert lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y() == onde + 40, (
+        "once the mouse is calm the anchor lets go")
+
+    monkeypatch.setattr(foco_a_vista, "ancorar", lambda _rolagem, _controle: None)
+    antes, no_segundo = duplo_clique(9)
+    assert antes == 9
+    assert no_segundo != 9, "sabotaged: the list slid under the pointer"
+    assert duplos != [9], "sabotaged: the second click falls on another line"
+    _sossegar(app)
+    janela.close()
+
+
+def test_the_anchor_lets_go_when_the_person_scrolls(app):
+    """The anchor holds the list only against what the panel moves: with the button down the card
+    that grows does not move the list; the wheel, the bar or the keys of the scroll area
+    (``actionTriggered``) let it go -- what the person scrolls is not undone, and the card that
+    grows afterwards moves the list."""
+    from PyQt6.QtCore import QPoint, Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QAbstractSlider
+
+    janela, rolagem, cartao, lista, _segue = _janela_do_cartao(app)
+    alca = janela.windowHandle()
+    barra = rolagem.verticalScrollBar()
+    ponto = _no_fim_e_na_linha(app, janela, rolagem, lista, 9)
+
+    def onde() -> int:
+        return lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y()
+
+    QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+    assert cartao.height() == 80
+    antes = onde()
+    cartao.setFixedHeight(120)
+    for _vez in range(3):  # the scroll area takes the new height one pass after the layout
+        app.processEvents()
+    assert onde() == antes, "with the button down the anchor holds the list"
+    barra.triggerAction(QAbstractSlider.SliderAction.SliderSingleStepSub)
+    app.processEvents()
+    rolou = onde()
+    assert rolou == antes + barra.singleStep(), "the person's scroll is not undone"
+    cartao.setFixedHeight(160)
+    for _vez in range(3):
+        app.processEvents()
+    assert onde() == rolou + 40, "and the anchor let go"
+    QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    _sossegar(app)
+    janela.close()
+
+
+def test_at_the_top_the_card_that_shrinks_leaves_a_margin_until_the_mouse_is_calm(app, monkeypatch):
+    """With the scroll area at its start the bar cannot go up, and the card that shrinks above the
+    list slid the list up under the pointer (the gate's double click line after line, at the top).
+    The anchor puts the difference as a margin at the top of the content and takes it away once the
+    mouse is calm -- then the list goes up with the content.  The sabotage: no anchor -- the second
+    click falls on another line."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, cartao, lista, _segue = _janela_do_cartao(app)
+    alca = janela.windowHandle()
+    arranjo = rolagem.widget().layout()
+    margem = arranjo.contentsMargins().top()
+
+    def duplo_clique(linha: int) -> tuple[int, int]:
+        lista.setCurrentRow(linha - 1)  # an odd line: the card at 80 px
+        for _vez in range(3):
+            app.processEvents()
+        rolagem.verticalScrollBar().setValue(0)
+        app.processEvents()
+        assert cartao.height() == 80
+        ponto = lista.viewport().mapTo(janela, lista.visualItemRect(lista.item(linha)).center())
+        antes = _linha_sob(janela, lista, ponto)
+        _clique(app, alca, ponto)
+        QTest.qWait(80)  # the time between the two clicks of a double click
+        no_segundo = _linha_sob(janela, lista, ponto)
+        _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+        return antes, no_segundo
+
+    antes, no_segundo = duplo_clique(2)
+    assert antes == 2
+    assert cartao.height() == 40, "the click on an even line shrank the card"
+    assert no_segundo == 2, "the list stayed under the pointer"
+    assert arranjo.contentsMargins().top() == margem + 40, "held by a margin at the top"
+    onde = lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y()
+    _sossegar(app)
+    assert arranjo.contentsMargins().top() == margem, "the margin taken away once the mouse is calm"
+    assert lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y() == onde - 40, "the list went up"
+
+    monkeypatch.setattr(foco_a_vista, "ancorar", lambda _rolagem, _controle: None)
+    antes, no_segundo = duplo_clique(2)
+    assert antes == 2
+    assert no_segundo != 2, "sabotaged: the list slid up under the pointer"
+    _sossegar(app)
+    janela.close()
+
+
 def _montar_e_destruir(app) -> None:
     """A scroll area with a follower and a field that has the focus, deleted with the focus in it --
     as the dialog «Base de partidas» is, after its question (`perguntar_bases`)."""

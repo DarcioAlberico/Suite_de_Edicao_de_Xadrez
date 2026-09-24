@@ -50,8 +50,18 @@ para longe daquele controle, rolar até ele ali tirava de baixo do ponteiro o co
 intervalo do duplo clique inteiro (:func:`voltou_com_a_janela`): o clique que reativou a janela
 chega dentro dele, e o foco da volta só aparece se o clique não o levou a outro controle; sem
 clique (o Alt+Tab, o diálogo que fechou), aparece passado o intervalo, ou na primeira tecla. O Tab
-e o Shift+Tab rolam na hora (:func:`veio_do_teclado`). O gêmeo deste arquivo no tronco é
-`chess_diagram_ocr.qt.foco_a_vista`.
+e o Shift+Tab rolam na hora (:func:`veio_do_teclado`).
+
+**O que está sob o ponteiro também não desliza.** Na Rotulagem a tabela «Linhas da página» fica na
+mesma rolagem, abaixo do cartão da linha, e o motivo do cartão quebra em uma ou duas linhas
+conforme a linha escolhida: com a rolagem no fim e parada, a 1280×641 na Clássica, o clique na
+linha 3 da Gallagher p. 51 fazia o cartão crescer 16 px, a tabela descia, e o segundo clique do
+duplo clique caía na linha 2 (achado pelo construtor no ciclo 9, `c9/sonda_tabela_desliza.py`).
+:func:`ancorar` mantém o controle clicado no mesmo lugar da vista até o mouse sossegar, compensando
+na rolagem cada mudança de altura acima dele -- e, com a rolagem no começo, o que encolhe acima
+dele com uma folga no alto do conteúdo, até soltar; a roda ou a barra que a pessoa mexe no meio
+soltam a âncora, e o seguidor a solta antes de mostrar um controle. O gêmeo deste arquivo no tronco
+é `chess_diagram_ocr.qt.foco_a_vista`, sem a âncora.
 """
 
 from __future__ import annotations
@@ -67,6 +77,9 @@ FOLGA = 6
 
 #: O intervalo do duplo clique do Qt, em ms, quando a aplicação não diz o dela.
 INTERVALO_PADRAO_DO_DUPLO_CLIQUE = 400
+
+#: De quantos em quantos ms a âncora pergunta se o mouse sossegou (:func:`ancorar`).
+INTERVALO_DA_VIGIA = 50
 
 #: As teclas que só modificam o clique ou a tecla seguinte: não mostram o foco que espera.
 _MODIFICADORES = frozenset(tecla.value for tecla in (
@@ -213,14 +226,147 @@ def veio_do_teclado(controle: QWidget) -> bool:
 
 
 def mostrar(rolagem: QScrollArea, controle: QWidget) -> None:
-    """Rola ``rolagem`` até ``controle`` ficar inteiro à vista, ou o começo dele quando não cabe."""
+    """Rola ``rolagem`` até ``controle`` ficar inteiro à vista, ou o começo dele quando não cabe.
+
+    Antes, solta a âncora da rolagem (:func:`ancorar`): ela não desfaz o que o seguidor mostra, e a
+    folga que ela pôs no alto do conteúdo sai antes da conta.
+    """
     conteudo = rolagem.widget()
     if conteudo is None or not conteudo.isAncestorOf(controle):
         return
+    soltar_as_ancoras(rolagem)
     alvo = QRect(controle.mapTo(conteudo, QPoint(0, 0)), controle.size())
     vista = rolagem.viewport().size()
     _encaixar(rolagem.verticalScrollBar(), alvo.top(), alvo.top() + alvo.height(), vista.height())
     _encaixar(rolagem.horizontalScrollBar(), alvo.left(), alvo.left() + alvo.width(), vista.width())
+
+
+class _Ancora(QObject):
+    """Mantém um controle no mesmo lugar da vista de uma rolagem até o mouse sossegar.
+
+    Cada vez que o controle, ou um dos que o contêm dentro do conteúdo, se move (o que está acima
+    dele mudou de altura), e cada vez que o alcance da barra muda (o conteúdo cresceu ou encolheu),
+    a barra anda o que o controle andou na vista, e ele volta aonde estava. O conteúdo mesmo não é
+    vigiado: ele se move com a rolagem. Quando o que está acima encolhe mais do que a barra pode
+    subir (ela está no começo), a diferença vira uma folga no alto do conteúdo, que a âncora tira ao
+    se soltar, subindo a barra outro tanto quando pode. A âncora se solta quando o mouse sossega
+    (uma vigia pergunta a :func:`mouse_sossegado`), quando a pessoa rola -- a roda, a barra, as
+    teclas da rolagem (`actionTriggered`): o que ela rola não é desfeito -- e quando o seguidor
+    mostra um controle (:func:`mostrar`).
+    """
+
+    def __init__(self, rolagem: QScrollArea, barra: QScrollBar, controle: QWidget,
+                 vigiados: list[QWidget]) -> None:
+        super().__init__(rolagem)
+        self._rolagem = rolagem
+        self._barra = barra
+        self._controle = controle
+        self._vigiados = vigiados
+        self._solta = False
+        self._devolvendo = False
+        self._folga = 0
+        self._y = self._onde()
+        for vigiado in vigiados:
+            vigiado.installEventFilter(self)
+        barra.rangeChanged.connect(self._devolver)
+        barra.actionTriggered.connect(self._a_pessoa_rolou)
+        self._vigia = QTimer(self)
+        self._vigia.setInterval(INTERVALO_DA_VIGIA)
+        self._vigia.timeout.connect(self._talvez_soltar)
+        self._vigia.start()
+
+    def _onde(self) -> int:
+        return self._controle.mapTo(self._rolagem.viewport(), QPoint(0, 0)).y()
+
+    def eventFilter(self, _objeto: QObject | None, evento: QEvent | None) -> bool:  # noqa: N802 - Qt
+        if evento is not None and evento.type() == QEvent.Type.Move:
+            self._devolver()
+        return False
+
+    def _devolver(self, *_alcance: int) -> None:
+        if self._solta or self._devolvendo:
+            return
+        if (sip.isdeleted(self._rolagem) or sip.isdeleted(self._barra)
+                or sip.isdeleted(self._controle) or mouse_sossegado()):
+            self.soltar()
+            return
+        self._devolvendo = True
+        try:
+            diferenca = self._onde() - self._y
+            if diferenca:
+                self._barra.setValue(self._barra.value() + diferenca)
+            # o que a barra não devolveu: acima, só uma folga no alto do conteúdo (a barra está no
+            # começo); abaixo, a folga posta antes encolhe -- ou o alcance novo da barra devolve
+            resto = self._onde() - self._y
+            if resto < 0:
+                self._folgar(-resto)
+            elif resto > 0 and self._folga:
+                self._folgar(-min(self._folga, resto))
+        finally:
+            self._devolvendo = False
+
+    def _folgar(self, quanto: int) -> None:
+        """Acrescenta ``quanto`` px à folga no alto do conteúdo (tira, se negativo), e já arruma."""
+        conteudo = self._rolagem.widget()
+        arranjo = conteudo.layout() if conteudo is not None else None
+        if arranjo is None:
+            return
+        margens = arranjo.contentsMargins()
+        arranjo.setContentsMargins(margens.left(), margens.top() + quanto, margens.right(),
+                                   margens.bottom())
+        self._folga += quanto
+        arranjo.activate()
+
+    def _a_pessoa_rolou(self, _acao: int) -> None:
+        self.soltar()
+
+    def _talvez_soltar(self) -> None:
+        if mouse_sossegado():
+            self.soltar()
+
+    def soltar(self) -> None:
+        """Solta a âncora: o controle volta a ir com o conteúdo."""
+        if self._solta:
+            return
+        self._solta = True
+        self._vigia.stop()
+        for vigiado in self._vigiados:
+            if not sip.isdeleted(vigiado):
+                vigiado.removeEventFilter(self)
+        if not sip.isdeleted(self._barra):
+            self._barra.rangeChanged.disconnect(self._devolver)
+            self._barra.actionTriggered.disconnect(self._a_pessoa_rolou)
+            if self._folga and not sip.isdeleted(self._rolagem):
+                folga = self._folga
+                self._folgar(-folga)
+                self._barra.setValue(self._barra.value() - folga)
+        self.deleteLater()
+
+
+def soltar_as_ancoras(rolagem: QScrollArea) -> None:
+    """Solta a âncora da ``rolagem``, se ela tem uma (:func:`ancorar`)."""
+    for ancora in rolagem.findChildren(_Ancora, options=Qt.FindChildOption.FindDirectChildrenOnly):
+        ancora.soltar()
+
+
+def ancorar(rolagem: QScrollArea, controle: QWidget) -> None:
+    """Mantém ``controle`` no mesmo lugar da vista da ``rolagem`` até o mouse sossegar.
+
+    Para o clique num controle que o painel responde mudando a altura do que está acima dele na
+    mesma rolagem: o segundo clique de um duplo clique cai onde o primeiro caiu. Uma âncora por
+    rolagem: a nova solta a velha. Um controle fora do conteúdo da rolagem não é ancorado.
+    """
+    conteudo = rolagem.widget()
+    barra = rolagem.verticalScrollBar()
+    if conteudo is None or barra is None or not conteudo.isAncestorOf(controle):
+        return
+    soltar_as_ancoras(rolagem)
+    vigiados: list[QWidget] = []
+    parte: QWidget | None = controle
+    while parte is not None and parte is not conteudo:
+        vigiados.append(parte)
+        parte = parte.parentWidget()
+    _Ancora(rolagem, barra, controle, vigiados)
 
 
 class RolagemSegueOFoco(QObject):
