@@ -1,0 +1,519 @@
+{
+  "gerado_em": "2026-09-24T03:23:54+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "reserva",
+  "suite": {
+    "caminho": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez",
+    "commit": "99ad8d7e1605ec6bfd7afcc16efda37db92b97fe",
+    "fora_do_commit": []
+  },
+  "tronco": {
+    "caminho": "C:\\Python-Chess2\\_f5c4_tronco",
+    "commit": "6e6831580ef16c09bfd233a47d5b7762b0aa28e8",
+    "fora_do_commit": []
+  },
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "reserva",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            830,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 48,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 18,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 418,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 416,
+              "dispositivos_px": 0,
+              "ocupacao_px": 2,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 536,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 468,
+              "dispositivos_px": 16,
+              "ocupacao_px": 52,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "reserva",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            830,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 48,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 25,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 418,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 416,
+              "dispositivos_px": 0,
+              "ocupacao_px": 2,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 536,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 468,
+              "dispositivos_px": 16,
+              "ocupacao_px": 52,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "reserva",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            812,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 88,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 34,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 434,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 424,
+              "dispositivos_px": 0,
+              "ocupacao_px": 10,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 554,
+              "dispositivos_px": 0,
+              "ocupacao_px": 0,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 480,
+              "documento_px": 474,
+              "dispositivos_px": 22,
+              "ocupacao_px": 58,
+              "barra_px": 120,
+              "cortadas": [
+                "dispositivos",
+                "ocupacao"
+              ],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": false
+    }
+  ],
+  "passou": false
+}
