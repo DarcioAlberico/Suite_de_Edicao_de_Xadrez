@@ -22,6 +22,26 @@ def app():
     return QApplication.instance() or QApplication([])
 
 
+@pytest.fixture(autouse=True)
+def _mouse_sossegado(app):
+    """Each test starts with the mouse calm: the last release of the test before, which the
+    application-wide recorder keeps, does not make the focus of the next one wait."""
+    from caissa.ui.widgets import foco_a_vista
+
+    razao = foco_a_vista._razao_do_foco()
+    if razao is not None:
+        razao.soltou_em = float("-inf")
+
+
+def _sossegar(app) -> None:
+    """The mouse left calm: the double-click interval and a little more, the event loop running."""
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication
+
+    QTest.qWait(QApplication.styleHints().mouseDoubleClickInterval() + 100)
+    app.processEvents()
+
+
 def _janela(app):
     """A window 300 px tall: a scroll area of twenty fields and a text box of 48 px (the height of
     «Leitura do motor»), and a button below it -- outside the scroll area."""
@@ -151,25 +171,28 @@ def test_a_click_on_a_control_half_in_sight_counts_where_it_was_given(app, monke
     # the sabotage of cycle 6: the follower scrolls on the press itself
     monkeypatch.setattr(foco_a_vista, "veio_do_mouse", lambda _controle: False)
     monkeypatch.setattr(foco_a_vista, "no_meio_do_clique", lambda: False)
+    monkeypatch.setattr(foco_a_vista, "mouse_sossegado", lambda: True)
     antes, depois = clicar_junto_do_corte()
     assert depois != antes, "sabotaged: the click is lost"
     assert not marca.isChecked(), "sabotaged: the click is lost"
     janela.close()
 
 
-def test_the_focus_the_program_moves_during_a_click_is_shown_after_the_release(app, monkeypatch):
+def test_the_program_s_focus_in_a_click_is_shown_when_the_mouse_is_calm(app, monkeypatch):
     """Crítico da fase 5, ciclo 7: a row of the tables of the Rotulagem and of the Revisão de texto
     sends the focus to «Verdade da linha» on the *press* of the click, and the guard of cycle 7 (a
     button is down) took that focus for the mouse's -- the truth stayed out of sight (0x0 px at
     1280x641), and what was typed went there.  Here a list at the top of the scroll area sends the
     focus to the text box at the bottom when its row changes, on the press: the click ends where it
-    was given (the row is clicked once), and then the box is shown whole, and the typing goes into
-    it.  The sabotages: the guard of cycle 7 (the box stays hidden); the follower of cycle 6, which
-    scrolled on the press (the list moves away and the click is lost)."""
+    was given (the row is clicked once), and once the mouse is calm (the double-click interval
+    after the release) the box is shown whole, and the typing goes into it.  The sabotages: the
+    guard of cycle 7 (the box stays hidden); the follower of cycle 6, which scrolled on the press
+    (the list moves away and the click is lost)."""
     from PyQt6.QtCore import Qt
     from PyQt6.QtTest import QTest
-    from PyQt6.QtWidgets import QApplication, QListWidget
+    from PyQt6.QtWidgets import QListWidget
 
+    from caissa.ui.audit import teclado
     from caissa.ui.widgets import foco_a_vista
 
     janela, rolagem, conteudo, _campos, caixa, botao, _segue = _janela(app)
@@ -198,30 +221,27 @@ def test_the_focus_the_program_moves_during_a_click_is_shown_after_the_release(a
         QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
         app.processEvents()
         QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
-        for _vez in range(3):  # the release, then the scroll after it
-            app.processEvents()
+        _sossegar(app)  # the release, then the double-click interval, then the scroll
+        vista.append(_inteiro(rolagem, caixa))
         QTest.keyClicks(app.focusWidget(), "XYZ")
         app.processEvents()
 
+    vista: list[bool] = []
     clicar_a_linha()
     assert clicado == [1], "the click ends where it was given"
     assert linhas.currentRow() == 1
     assert app.focusWidget() is caixa
-    assert _inteiro(rolagem, caixa), "the focus the program moved is shown after the release"
+    assert vista == [True], "the focus the program moved is shown once the mouse is calm"
     assert "XYZ" in caixa.toPlainText(), "and the typing goes where the eyes are"
 
-    def guarda_do_ciclo_7(controle) -> bool:
-        if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
-            return True
-        return controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse()
-
-    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", guarda_do_ciclo_7)
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ciclo_7)
     clicar_a_linha()
     assert app.focusWidget() is caixa
     assert caixa.visibleRegion().isEmpty(), "sabotaged (cycle 7): the focus stays out of sight"
 
     monkeypatch.setattr(foco_a_vista, "veio_do_mouse", lambda _controle: False)
     monkeypatch.setattr(foco_a_vista, "no_meio_do_clique", lambda: False)
+    monkeypatch.setattr(foco_a_vista, "mouse_sossegado", lambda: True)
     clicar_a_linha()
     assert clicado == [], "sabotaged (cycle 6): the scroll on the press loses the click"
     janela.close()
@@ -375,12 +395,11 @@ def test_the_focus_the_program_moves_is_not_the_mouse_s_under_a_stale_mark(app, 
         QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
         app.processEvents()
         QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
-        for _vez in range(3):
-            app.processEvents()
+        _sossegar(app)
         assert app.focusWidget() is caixa
 
     clicar_a_linha_com_a_marca_velha()
-    assert _inteiro(rolagem, caixa), "the program's focus is shown after the release"
+    assert _inteiro(rolagem, caixa), "the program's focus is shown once the mouse is calm"
     monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ponteiro)
     clicar_a_linha_com_a_marca_velha()
     assert not _inteiro(rolagem, caixa), "sabotaged: the stale mark hides the program's focus"
@@ -465,7 +484,8 @@ def test_the_focus_given_back_on_return_waits_for_the_click_that_brought_the_win
     somewhere else (the probe ``c8/sonda_ativacao.py``: the scroll from 242 to 3, «Aceitar» without
     the click).  Here the focus of the return and the press come one right after the other, with no
     event loop between them, as on Windows (offscreen ``activateWindow`` is queued, and ``QTest``
-    would deliver the press before it): the button gets the click, and nothing scrolls.  The
+    would deliver the press before it): the button gets the click, and nothing scrolls -- the focus
+    of the return waits the double-click interval, and the click took the focus away from it.  The
     sabotage: the focus of the return shown at once, and the click is lost."""
     from PyQt6.QtCore import Qt
     from PyQt6.QtTest import QTest
@@ -490,8 +510,7 @@ def test_the_focus_given_back_on_return_waits_for_the_click_that_brought_the_win
         QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
         app.processEvents()
         QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
-        for _vez in range(3):
-            app.processEvents()
+        _sossegar(app)
         return antes, barra.value()
 
     antes, depois = a_volta_com_um_clique()
@@ -500,6 +519,7 @@ def test_the_focus_given_back_on_return_waits_for_the_click_that_brought_the_win
     assert app.focusWidget() is aceitar
 
     monkeypatch.setattr(foco_a_vista, "voltou_com_a_janela", lambda _controle: False)
+    monkeypatch.setattr(foco_a_vista, "mouse_sossegado", lambda: True)
     antes, depois = a_volta_com_um_clique()
     assert clicados == [], "sabotaged: the click that brought the window back is lost"
     assert depois != antes, "sabotaged: the view scrolls under the pointer"
@@ -509,8 +529,8 @@ def test_the_focus_given_back_on_return_waits_for_the_click_that_brought_the_win
 def test_the_focus_given_back_on_return_with_no_click_is_shown(app, monkeypatch):
     """The window really activated again (``activateWindow``, after another window was the active
     one), with no click -- the Alt+Tab, the dialog that closed: the focus the window gives back is
-    shown whole right after, as any focus the keyboard sees.  The sabotage: the wait for the events
-    of the return that never shows anything, and the field stays out of sight."""
+    shown whole once the double-click interval passed, as any focus the keyboard sees.  The
+    sabotage: the wait that never shows anything, and the field stays out of sight."""
     from PyQt6.QtWidgets import QApplication, QWidget
 
     from caissa.ui.widgets import foco_a_vista
@@ -528,16 +548,237 @@ def test_the_focus_given_back_on_return_with_no_click_is_shown(app, monkeypatch)
             app.processEvents()
         assert QApplication.activeWindow() is not janela
         janela.activateWindow()
-        for _vez in range(3):
-            app.processEvents()
+        _sossegar(app)
         assert app.focusWidget() is primeiro, "the window gives the focus back to the first field"
 
     a_volta_sem_clique()
     assert _inteiro(rolagem, primeiro), "with no click, the focus of the return is shown"
-    monkeypatch.setattr(foco_a_vista.RolagemSegueOFoco, "_depois_da_volta", lambda _self: None)
+    monkeypatch.setattr(foco_a_vista.RolagemSegueOFoco, "_mostrar_o_pendente", lambda _self: None)
     a_volta_sem_clique()
     assert primeiro.visibleRegion().isEmpty(), "sabotaged: the focus of the return stays hidden"
     outra.close()
+    janela.close()
+
+
+def _janela_da_lista(app):
+    """The window of `_janela` with a list of three lines at the top of the scroll area, whose line
+    chosen on the press sends the focus to the text box at the bottom -- the tables of the
+    Rotulagem and of the Revisão de texto and «Verdade da linha».  The fields are named, to say
+    where a click fell."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QListWidget
+
+    janela, rolagem, conteudo, campos, caixa, botao, _segue = _janela(app)
+    for k, campo in enumerate(campos):
+        campo.setObjectName(f"campo {k}")
+    linhas = QListWidget(conteudo)
+    linhas.addItems(["linha 1", "linha 2", "linha 3"])
+    linhas.setFixedHeight(90)
+    conteudo.layout().insertWidget(0, linhas)
+    linhas.currentRowChanged.connect(lambda _r: caixa.setFocus(Qt.FocusReason.OtherFocusReason))
+    for _vez in range(2):
+        app.processEvents()
+    return janela, rolagem, linhas, caixa, botao
+
+
+def _na_linha(app, janela, rolagem, linhas, botao):
+    """The list on its first line, the scroll area at the top, the focus outside: a point on the
+    second line, in the window."""
+    from PyQt6.QtCore import Qt
+
+    linhas.setCurrentRow(0)
+    rolagem.verticalScrollBar().setValue(0)
+    botao.setFocus(Qt.FocusReason.OtherFocusReason)
+    app.processEvents()
+    return linhas.viewport().mapTo(janela, linhas.visualItemRect(linhas.item(1)).center())
+
+
+def _clique(app, alca, ponto) -> None:
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+    QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+
+
+def _segundo_clique_de_um_duplo(app, janela, alca, ponto) -> None:
+    """The second click of a double click as Qt delivers it: the press, the double click to the
+    widget under the pointer, the release.  QTest puts the double-click interval between two clicks
+    of its own, so as never to make a double click by chance: the double click goes by hand, as the
+    critic's probe sent it (fase 5, ciclo 8)."""
+    from PyQt6.QtCore import QEvent, QPointF, Qt
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication
+
+    QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+    alvo = janela.childAt(ponto)
+    duplo = QMouseEvent(QEvent.Type.MouseButtonDblClick, QPointF(alvo.mapFrom(janela, ponto)),
+                        QPointF(janela.mapToGlobal(ponto)), Qt.MouseButton.LeftButton,
+                        Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+    QApplication.sendEvent(alvo, duplo)
+    app.processEvents()
+    QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+
+
+def test_the_second_click_of_a_double_click_lands_where_the_first_did(app, monkeypatch):
+    """Crítico da fase 5, ciclo 8: the scroll that showed the focus the program moved in the click
+    came right after the release, and moved the content under the pointer held still before the
+    second click of a double click -- in the Rotulagem, with the scroll area at its end, the second
+    click on line 4 fell on «Aceitar leitura» and accepted a reading nobody accepted.  Here the
+    double click through the ``QWindow`` on the second line of the list (press, release, 80 ms, the
+    second press and release at the same point): nothing moves under the pointer between the two
+    clicks, both land on the list, which gets the double click on that line -- and sends the focus
+    to the box, as the Rotulagem's double click on a line does (``table.activated``); once the
+    mouse is calm the box is whole.  The sabotage: the scroll right after the release (the
+    double-click interval at 0) -- the content moves, and the second click falls off the list."""
+    from PyQt6.QtCore import QEvent, QObject, Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QWidget
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, linhas, caixa, botao = _janela_da_lista(app)
+    duplos: list[int] = []
+    linhas.doubleClicked.connect(lambda indice: duplos.append(indice.row()))
+    linhas.doubleClicked.connect(lambda _i: caixa.setFocus(Qt.FocusReason.OtherFocusReason))
+    alca = janela.windowHandle()
+
+    class Receptores(QObject):
+        """The first widget each press of the double click is delivered to."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.controles: list[QWidget] = []
+            self._visto = False
+
+        def eventFilter(self, objeto, evento):  # noqa: N802 - Qt
+            tipo = evento.type()
+            if tipo == QEvent.Type.MouseButtonPress and isinstance(objeto, QWidget):
+                if not self._visto:
+                    self.controles.append(objeto)
+                    self._visto = True
+            elif tipo == QEvent.Type.MouseButtonRelease:
+                self._visto = False
+            return False
+
+    receptores = Receptores()
+    app.installEventFilter(receptores)
+
+    def duplo_clique() -> tuple[object, object]:
+        duplos.clear()
+        receptores.controles.clear()
+        ponto = _na_linha(app, janela, rolagem, linhas, botao)
+        assert caixa.visibleRegion().isEmpty(), "the box starts below the fold"
+        sob = janela.childAt(ponto)
+        _clique(app, alca, ponto)
+        QTest.qWait(80)  # the time between the two clicks of a double click
+        sob_no_segundo = janela.childAt(ponto)
+        _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+        _sossegar(app)
+        return sob, sob_no_segundo
+
+    sob, sob_no_segundo = duplo_clique()
+    assert sob_no_segundo is sob, "nothing moves under the pointer between the two clicks"
+    assert receptores.controles == [linhas.viewport()] * 2, "both presses land on the list"
+    assert duplos == [1], "the list gets the double click on its second line"
+    assert _inteiro(rolagem, caixa), "and once the mouse is calm the box is whole"
+
+    monkeypatch.setattr(foco_a_vista, "intervalo_do_duplo_clique", lambda: 0)
+    sob, sob_no_segundo = duplo_clique()
+    assert sob_no_segundo is not sob, "sabotaged: the content moved under the pointer"
+    assert duplos == [], "sabotaged: the list does not get the double click"
+    assert receptores.controles[0] is linhas.viewport()
+    assert receptores.controles[1] is not linhas.viewport(), "sabotaged: the second click is off it"
+    app.removeEventFilter(receptores)
+    janela.close()
+
+
+def test_a_key_shows_the_waiting_focus_at_once_and_goes_into_it(app, monkeypatch):
+    """The focus the program moved in the click waits for the mouse to be calm -- or for the first
+    key: someone who clicks the line and types at once sees the box before the letter reaches it,
+    and the letter goes into the box in sight.  A modifier alone (Shift before a Shift+click) does
+    not show it.  The sabotage: every key taken for a modifier -- the box stays below the fold
+    while the letter goes into it."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, linhas, caixa, botao = _janela_da_lista(app)
+    alca = janela.windowHandle()
+
+    def clique_e_tecla() -> tuple[bool, bool, bool]:
+        caixa.setPlainText("")
+        ponto = _na_linha(app, janela, rolagem, linhas, botao)
+        _clique(app, alca, ponto)
+        assert app.focusWidget() is caixa
+        QTest.keyClick(caixa, Qt.Key.Key_Shift)
+        app.processEvents()
+        so_o_modificador = caixa.visibleRegion().isEmpty()
+        QTest.keyClicks(caixa, "X")
+        app.processEvents()
+        return so_o_modificador, _inteiro(rolagem, caixa), caixa.toPlainText() == "X"
+
+    so_o_modificador, inteira, digitado = clique_e_tecla()
+    assert so_o_modificador, "Shift alone does not show the box"
+    assert inteira, "the first key shows the box before the letter reaches it"
+    assert digitado
+    _sossegar(app)
+
+    class TodasModificam:
+        def __contains__(self, _tecla) -> bool:
+            return True
+
+    monkeypatch.setattr(foco_a_vista, "_MODIFICADORES", TodasModificam())
+    _so, inteira, digitado = clique_e_tecla()
+    assert not inteira, "sabotaged: the letter goes into the box below the fold"
+    assert digitado
+    _sossegar(app)
+    janela.close()
+
+
+def test_the_focus_the_program_moves_on_the_release_waits_for_the_calm_too(app, monkeypatch):
+    """A button inside the scroll area whose ``clicked`` -- on the release -- sends the focus to the
+    box at the bottom: the button is not down any more, but the second click of a double click on
+    it is still to come.  Right after the release nothing moves under the pointer; once the mouse
+    is calm the box is whole.  The sabotage: the double-click interval at 0 -- the scroll comes at
+    once, and the button leaves the pointer."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import QPushButton
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, conteudo, _campos, caixa, botao, _segue = _janela(app)
+    proxima = QPushButton("Próxima", conteudo)
+    conteudo.layout().insertWidget(0, proxima)
+    proxima.clicked.connect(lambda: caixa.setFocus(Qt.FocusReason.OtherFocusReason))
+    for _vez in range(2):
+        app.processEvents()
+    alca = janela.windowHandle()
+
+    def clique_no_botao() -> tuple[object, object]:
+        rolagem.verticalScrollBar().setValue(0)
+        botao.setFocus(Qt.FocusReason.OtherFocusReason)
+        app.processEvents()
+        ponto = proxima.mapTo(janela, proxima.rect().center())
+        _clique(app, alca, ponto)
+        for _vez in range(3):
+            app.processEvents()
+        assert app.focusWidget() is caixa
+        return proxima, janela.childAt(ponto)
+
+    antes, sob = clique_no_botao()
+    assert sob is antes, "right after the release the button is still under the pointer"
+    _sossegar(app)
+    assert _inteiro(rolagem, caixa), "once the mouse is calm the box is whole"
+    monkeypatch.setattr(foco_a_vista, "intervalo_do_duplo_clique", lambda: 0)
+    antes, sob = clique_no_botao()
+    assert sob is not antes, "sabotaged: the scroll at once takes the button from under the pointer"
     janela.close()
 
 

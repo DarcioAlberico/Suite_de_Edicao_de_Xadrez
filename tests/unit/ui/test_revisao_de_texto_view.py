@@ -371,7 +371,7 @@ def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, mon
     assert [i.key for i in painel.queue.pending()] == [painel.current.key]
     painel.close()
 
-    monkeypatch.setattr(review, "sem_efeito", lambda kind, action, reading: False)
+    monkeypatch.setattr(review, "sem_efeito", lambda _item, _action: False)
     monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
     sabotado = _panel(app, pdf, tmp_path / "s", report=report)
     sabotado._on_enter()
@@ -379,6 +379,42 @@ def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, mon
     assert [e.action for e in sabotado.queue.log] == [Action.ACCEPT]
     saved = ReviewDecisions.load(tmp_path / "s" / "proj" / "revisao" / "Livro X.json")
     assert [d.action for d in saved.entries] == [Action.ACCEPT], "the importer's file has it"
+    sabotado.close()
+
+
+def test_the_enter_on_a_page_the_ocr_read_in_one_region_accepts_it(app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 8: a page the OCR read with no division of the layout is one region
+    of kind PAGE, and the rule of cycle 8 refused every decision on it with «o OCR não leu esta
+    página» -- the Gallagher p. 54, read, 1.379 characters, pending for ever.  The item has the
+    reading and the engine: the Enter on the truth accepts it, and the decision reaches the
+    importer's file.  The sabotage: the rule of cycle 8 (every item of kind «page» unread) --
+    refused, nothing recorded."""
+    from caissa.ocr import review
+    from caissa.ocr.review import ReviewDecisions
+
+    pagina = SimpleNamespace(
+        page_index=0, rect=(0.0, 0.0, 612.0, 792.0), kind="page", decision="review",
+        reasons=("sequência de lances repetida: suspeita de invenção",), text="1 e4 e5 2 e4 e5",
+        engine="tesseract", score=0.6, alternatives=())
+    report = SimpleNamespace(review_items=[pagina], ocr_traces={}, pages=[1, 2, 3])
+    painel = _panel(app, pdf, tmp_path, report=report)
+    assert painel.current.kind == "page"
+    assert painel.cartao.texto_da_verdade() == "1 e4 e5 2 e4 e5"
+    painel._on_enter()
+    app.processEvents()
+    assert "Recusado" not in painel.status.text()
+    assert [e.action for e in painel.queue.log] == [Action.ACCEPT]
+    assert painel.queue.pending() == []
+    saved = ReviewDecisions.load(tmp_path / "proj" / "revisao" / "Livro X.json")
+    assert [d.action for d in saved.entries] == [Action.ACCEPT], "the importer's file has it"
+    painel.close()
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotado = _panel(app, pdf, tmp_path / "s", report=report)
+    sabotado._on_enter()
+    app.processEvents()
+    assert "Recusado: o OCR não leu esta página" in sabotado.status.text()
+    assert sabotado.queue.log == [], "sabotaged: nothing recorded"
     sabotado.close()
 
 

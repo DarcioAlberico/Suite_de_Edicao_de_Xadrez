@@ -183,7 +183,7 @@ def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_c
             modulo = importlib.import_module(nome)
         except ImportError:
             continue
-        for funcao in ("veio_do_mouse", "no_meio_do_clique"):  # undone at teardown
+        for funcao in _FUNCOES_DOS_SEGUIDORES:  # undone at teardown
             if hasattr(modulo, funcao):
                 monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
     monkeypatch.setitem(teclado._PASSADA, "sabotagem", "clique")
@@ -195,6 +195,11 @@ def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_c
     assert not cliques[0]["soltar_dentro"]
     assert teclado.Aba(nome="Janela", cliques=cliques).cliques_perdidos()
     janela.close()
+
+
+_FUNCOES_DOS_SEGUIDORES = ("veio_do_mouse", "no_meio_do_clique", "mouse_sossegado",
+                           "intervalo_do_duplo_clique")
+"""The followers' functions a sabotage replaces -- put back at teardown."""
 
 
 def _janela_da_lista_e_da_verdade(app):
@@ -251,7 +256,7 @@ def _guardas_desfeitas_no_fim(monkeypatch) -> None:
             modulo = importlib.import_module(nome)
         except ImportError:
             continue
-        for funcao in ("veio_do_mouse", "no_meio_do_clique"):
+        for funcao in _FUNCOES_DOS_SEGUIDORES:
             if hasattr(modulo, funcao):
                 monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
 
@@ -344,3 +349,32 @@ def test_the_key_walk_passes_once_the_tab_leaves_the_editor_and_the_scroll_follo
     assert aba.tecla.passou()
     assert aba.tecla_de_volta.passou()
     tela.janela.close()
+
+
+def test_the_gate_double_clicks_a_line_and_finds_the_content_moved_under_the_pointer(
+        app, monkeypatch):
+    """Crítico da fase 5, ciclo 8: the scroll that showed the focus the panel moved in the click
+    came right after the release, and the second click of a double click on a line of the
+    Rotulagem fell on «Aceitar leitura» -- the gate did not see it, its click with the action is a
+    single one.  The double click: in each item view of the area, at both ends of the scroll areas,
+    a double click through the ``QWindow`` on a line whole in sight (80 ms between the two clicks,
+    the second delivered as Qt delivers it), and the control under the pointer at the second click
+    has to be the one of the first.  The sabotage ``soltar`` (the scroll right after the release,
+    the double-click interval at 0) moves the content under the pointer, and the screen fails."""
+    from caissa.ui.audit import teclado
+
+    janela, _rolagem, _verdade = _janela_da_lista_e_da_verdade(app)
+    duplos = teclado._duplos_cliques(janela, janela)
+    medidos = [d for d in duplos if d["linha"] is not None]
+    assert medidos, duplos
+    assert all(d["no_lugar"] for d in medidos), medidos
+    assert not teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+
+    _guardas_desfeitas_no_fim(monkeypatch)
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "soltar")
+    teclado._sabotar(janela)
+    duplos = teclado._duplos_cliques(janela, janela)
+    fora = teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+    assert fora, duplos
+    assert fora[0]["sob_o_ponteiro"] != fora[0]["sob_o_ponteiro_no_segundo"], fora
+    janela.close()

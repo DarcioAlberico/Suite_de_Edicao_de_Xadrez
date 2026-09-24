@@ -47,6 +47,7 @@ __all__ = [
     "blind_guard",
     "decisions_path",
     "sem_efeito",
+    "unread_page",
 ]
 
 RectT = tuple[float, float, float, float]
@@ -72,21 +73,36 @@ def accepts_nothing(action: Action, reading: str) -> bool:
     return action is Action.ACCEPT and not reading.strip()
 
 
-def sem_efeito(kind: str, action: Action, reading: str) -> bool:
+def unread_page(item: ReviewItem) -> bool:
+    """The item of a page the OCR did not read: no OCR region is behind it.
+
+    The page whose OCR raised (the importer's ``_failed_for_review``) and the contested text layer
+    the OCR could not answer (``_contested_without_answer``): a page item with no reading and no
+    engine.  A page the OCR read in one region -- ``RegionKind.PAGE``, the whole page with no
+    division of the layout -- is a region like any other: its item has the reading and the
+    engine, and a decision on it reaches the book.  Crítico da fase 5, ciclo 8: 13 of the 39 items
+    of the Karpov 2 pp. 101-115 are such pages, 6 of 129 of the Gallagher pp. 41-60.
+    """
+    return item.kind == "page" and not item.text.strip() and not item.engine
+
+
+def sem_efeito(item: ReviewItem, action: Action) -> bool:
     """A decision that decides nothing: the window refuses it and the queue does not count it.
 
-    An accept of no reading (:func:`accepts_nothing`); and any decision on a **page item** -- the
-    page whose OCR raised, the contested text layer the OCR could not answer --: the importer
-    applies decisions only to the regions of an OCR reading, and a page item has none.  Crítico da
-    fase 5, ciclo 7: the refusal said «escreva o texto e grave a edição, ou mantenha-a como
-    imagem», and on a page of six regions (the largest with IoU 0,25 with the page) the edit and
-    the «keep as image» applied to none -- the text typed stayed in the file and not in the book;
-    and a log written before the refusal, with the empty accept of the page item, still hid the
-    page from the pending list («0 pendente(s) de 1»).
+    An accept of no reading (:func:`accepts_nothing`); and any decision on the item of a page the
+    OCR did not read (:func:`unread_page`): the importer applies decisions only to the regions of
+    an OCR reading, and that item has none.  Crítico da fase 5, ciclo 7: the refusal said «escreva
+    o texto e grave a edição, ou mantenha-a como imagem», and on a page of six regions (the largest
+    with IoU 0,25 with the page) the edit and the «keep as image» applied to none -- the text typed
+    stayed in the file and not in the book; and a log written before the refusal, with the empty
+    accept of the page item, still hid the page from the pending list («0 pendente(s) de 1»).
+    Ciclo 8: the rule of that cycle took every item of kind «page» for a page nobody read, and a
+    page the OCR read in one region could not be accepted, edited or kept as an image -- and the
+    edit a window before had saved left the decisions file at the next save.
     """
-    if accepts_nothing(action, reading):
+    if accepts_nothing(action, item.text):
         return True
-    return kind == "page" and action in (Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE)
+    return unread_page(item) and action in (Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -305,15 +321,16 @@ class ReviewQueue:
         region as an image or skipping it changes no text and is allowed.
         And a decision that decides nothing is refused (:func:`sem_efeito`):
         an accept of an item without a reading -- there is nothing to
-        accept --, and any decision on a page item, which the next import
-        applies to no region; the phrase says what the reviewer can do.
+        accept --, and any decision on the item of a page the OCR did not
+        read (:func:`unread_page`), which the next import applies to no
+        region; the phrase says what the reviewer can do.
         """
         item = self._item(key)
         if action in (Action.ACCEPT, Action.EDIT) and self.blind(item.document, item.page_index):
             return (f"página {item.page_index + 1} está na partição cega: "
                     "a leitura não pode ser aceita nem corrigida aqui (ela mede o OCR).")
-        if sem_efeito(item.kind, action, item.text):
-            if item.kind == "page":
+        if sem_efeito(item, action):
+            if unread_page(item):
                 return ("o OCR não leu esta página, e uma decisão sobre ela não chega ao livro: a "
                         "importação só aplica decisões às regiões que o OCR lê. Ela fica na fila; "
                         "importe o livro de novo quando o OCR puder lê-la.")
@@ -379,7 +396,7 @@ class ReviewQueue:
             if entry.action is Action.SKIP:
                 continue
             item = por_chave.get(entry.key)
-            if item is not None and sem_efeito(item.kind, entry.action, item.text):
+            if item is not None and sem_efeito(item, entry.action):
                 continue
             out[entry.key] = entry
         return out

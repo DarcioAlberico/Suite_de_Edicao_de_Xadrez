@@ -837,7 +837,15 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > o clique numa linha das tabelas da Rotulagem e da Revisão de texto mandava o foco à «Verdade da
 > linha» fora da vista (0×0 px a 1280×641), e o que se digitava ia para lá; o que mudou está em
 > `OCR_UI_REPORT_C2_FASE5.md` §0.10.
-> **Ciclo 8:** ⟨pendente⟩.
+> **Ciclo 8: REPROVADO, 2 bloqueantes** — o do ciclo 7 resolvido (depois do clique numa linha das
+> duas tabelas, a verdade inteira e o texto digitado nela, nas três peles; o portão que clica
+> deixando a ação rodar, com as sabotagens), mas: a fila recusava toda decisão sobre um item «page»,
+> também o da página que o OCR **leu** numa região só (`RegionKind.PAGE`: 13 de 39 itens na Karpov 2),
+> e a edição de antes saía do arquivo na gravação seguinte; e a rolagem que mostrava o foco do painel
+> logo depois do soltar mexia o conteúdo debaixo do ponteiro antes do segundo clique de um duplo
+> clique — na Rotulagem, a linha 4 aceita por ninguém. O que mudou está em
+> `OCR_UI_REPORT_C2_FASE5.md` §0.11.
+> **Ciclo 9:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -2226,3 +2234,149 @@ importador saíram iguais byte a byte às repetidas e às do ciclo 6, o serviço
    leituras não escolhidas pioram; `pending()` não contar o `accept` sem leitura de um log antigo; e a frase da recusa não
    prometer ao item de página o que a importação seguinte não aplica (ou a edição e o «manter como imagem» de um item de
    página valerem para as regiões da página).
+
+## Crítico Claude — ciclo 8 (REPROVADO, 2 bloqueantes)
+
+VEREDITO: REPROVADO
+CICLO: 8
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Árvores minhas: suíte `C:\Python-Chess2\_critico_f5\suite_c8` no `a6e02e1` (o `src` é o do `dc04dce`) e tronco
+`C:\Python-Chess2\_critico_f5\tronco` no `967be8d`; para comparar com o ciclo 7, `suite_c7` no `24dd9ce` e `tronco_c7` no
+`01e4147`. `models/` copiada do checkout sem a pasta `work`; o `labeling/` do usuário copiado para a minha árvore antes da
+primeira janela; os artefatos de `benchmarks/reports` copiados para a suíte inteira. `git status` vazio nas quatro do
+começo ao fim; no fim (19:06) as quatro foram removidas com `git worktree remove`, e os checkouts do usuário estão como no
+começo — a suíte no `a6e02e1` com os mesmos arquivos de outras sessões, o tronco no `967be8d`
+(`religa-as-decisoes-orfas`), o `labeling/project.json` do usuário com o mesmo hash e a mesma data de 2026-09-15, 1.512
+arquivos (`c8\estado_inicio.txt`, `c8\estado_fim.txt`). Encerrei três filhos `multiprocessing.spawn` órfãos que as minhas
+sondas de clique deixaram (18:33:51–18:34:18, os pais mortos). Scripts e saídas em
+`C:\Python-Chess2\_critico_f5\c8\`. Importador, janela e testes sem `CAISSA_FIGURINE_TESSDATA`; os caminhos dos scripts de
+fila com barras normais (a armadilha do ciclo 7). No máximo três processos de OCR meus ao mesmo tempo; a memória virtual
+livre registrada a cada 3 s (`c8\memoria.log`) caiu a **641 MB** às 18:33:34 e ficou abaixo de 2 GB em dois intervalos
+(18:33:17–18:34:04 e 18:35:28–18:35:52), com processos de outras sessões na máquina. O que rodou com OCR nesses intervalos
+refiz com a memória folgada (`c8\refaz_baixa_memoria.sh` → `c8\refaz\`: as contagens da Karpov 2 e da Nunn e o log antigo
+nos dois códigos): iguais às primeiras corridas; nenhuma saída tem «falhou» ou `MemoryError` fora do item de página que o
+provoca de propósito.
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| Os commits e as árvores | `git show` → `c8\diffs\{suite_71d223b,suite_97da447,suite_dc04dce,suite_a6e02e1,tronco_c2fd00c,tronco_d706653,tronco_967be8d}.diff` | sim | lidos inteiros (do `a6e02e1`, o relatório, o roadmap, o HANDOFF e o `sol.md`; os JSON dos portões lidos pelos meus scripts) |
+| A transcrição do meu ciclo 7 | `c8\conf_sol_c8.py` → `c8\conf_sol_c8.out` | sim | 159 de 159 linhas não vazias, a partir da linha 2057 de `OCR_UI_ANALISE_C2_CRITICAS.md` |
+| O `sol.json` publicado | mesmo script | sim | `commit=dc04dce`, `dirty_code` []; os 738 itens iguais aos do `sol.json` do `24dd9ce` em todo campo que não é tempo |
+| O bloqueante do ciclo 7: o clique na linha | `c8\clique_linha_c7.py` (pelo `QWindow`) → `c8\tecla\clique_linha_{classica,foco,fita}_1280x641.out`, `…_{classica,foco}_1366x728.out` (`c8\teclado_c8.sh`) | sim | Rotulagem (rolagem no fim): a verdade **549×60** na Clássica e na Foco, **552×60** na Fita, **632×60** a 1366×728, antes 0×0; a rolagem −175/−189/−220 px a 1280×641 e −124/−139 px a 1366×728, **depois** do soltar; Revisão de texto: **295×60**, **300×60** na Fita, **344×60** a 1366×728; o «XYZ» digitado entra na verdade em todos |
+| O portão do teclado com o clique que deixa a ação rodar, e as sabotagens | `c8\portao_c8.sh` → `c8\portao\*.json`; `c8\resumo_portao.py` → `c8\portao\resumo.out` | sim | Clássica, Fita e Foco a 1280×641 **PASSOU** (cliques no lugar 5/5, 5/5, 6/6; a verdade depois do clique com a ação 549/552/549×60 e 295/300/295×60); `clique` REPROVOU (0/5, 0/6 no lugar); `guarda` REPROVOU (a verdade 0×0 na Rotulagem); `ponteiro` REPROVOU na Clássica (a verdade 295×33 na Revisão de texto) e **PASSOU na Foco** (como o construtor diz: só reprova com a marca velha); `foco` e `tabela` REPROVOU; `minimo` sem livro PASSOU, `--sabotar linha` REPROVOU; o `labeling/` copiado do usuário: 1.512 arquivos antes e depois, `project.json` com o mesmo hash e a mesma data |
+| O que o ciclo 7 ganhou | `c8\tabuleiro_salta.py`, `radio_salta.py`, `clique_parcial.py` → `c8\tecla\{tabuleiro,radio,clique}_*.out` | sim | e7 só seleciona (rolou +0, a casa 12, nenhum lance) nas três peles; «Pretas» e «Brancas» marcam (+0); os controles meio à vista das três peles no lugar (+0, o soltar dentro) |
+| O teclado com o controle inteiro | `c8\tecla_vista_c7.py`, `foco_fora_c7.py` → `c8\tecla\volta_*.out`, `foco_fora_*.out` | sim | igual ao ciclo 7, menos os 546 px da verdade e da leitura da Rotulagem, agora 549 (o `_encaixar`); nenhum foco com 0 px; o Shift+Tab de fora igual ao ciclo 7 nas três peles |
+| A razão do foco e a volta da janela | `c8\razao_ataques.py` (suíte e tronco, códigos do ciclo 8 e do 7) → `c8\razao\*.out`; a sonda do construtor → `c8\ativacao\sonda_ativacao_c8_c7.out` | sim | a volta sem clique (o `activateWindow`, o Alt+Tab do offscreen): o campo fora da vista aparece depois da fila (264×22); o diálogo com rolagem e o foco inicial fora da vista: inteiro no diálogo aberto; o clique na caixa de escolha editável meio à vista: `MouseFocusReason`, +0 px; o menu de contexto e a lista suspensa: sem rolagem nenhuma; o código do ciclo 8 igual ao do 7 em tudo, menos a volta da janela (lá na hora, aqui depois da fila). O diálogo modal que fecha não mede no offscreen (a janela de baixo não volta a ser a ativa, o foco fica em `None`, nos dois códigos). A sonda do construtor reproduz: `--ativa-antes`, o «Aceitar» clicado e a rolagem em 242 no ciclo 8, e em 3 com o clique perdido no 7. O foco que o `setFocus(MouseFocusReason)` do programa dá a outro controle seria tomado pelo do clique; no código só o `painel_de_recorte` do tronco o chama, nele mesmo |
+| **A rolagem depois do soltar e o duplo clique** | `c8\segundo_clique.py` → `c8\segundo\{c8,c7}_{classica,foco,fita}.out`; a variante com o `MouseButtonDblClick` → `c8\segundo\c8_classica_dbl.out` | **não** | bloqueante novo 2 |
+| A rolagem morta e as bases | `c8\rolagem_morta.py` → `c8\tecla\rolagem_morta.out` | sim | 0 exceções nos passos 1 a 3; `perguntar_bases` ×20: 7 → 7 seguidores, 0 diálogos vivos, 7 → 7 ligações ao `focusChanged` |
+| As teclas de lista | `c8\teclas_de_lista.py` → `c8\tecla\teclas_de_lista_classica.out` | sim | como no ciclo 7: PgDn/PgUp/End/Home andam nas linhas das duas tabelas, o livro parado |
+| O item de página do `MemoryError` | `c8\pagina_abstida_enter_c7.py`, `fila_antiga_c7.py` → `c8\abstida\{enter,fila_antiga}.out` | sim | o Enter, «Aceitar leitura», o espaço + Enter e o texto escrito + Enter: recusados com a frase nova, 1 pendente de 1, nada gravado; o log de antes: «1 pendente(s) de 1» (o não bloqueante 3 do ciclo 7 fechado), e com o OCR de volta as 8 regiões pendentes, 0 aplicadas |
+| **O item «page» que o OCR leu** | `c8\revisao_pagina_inteira.py` → `c8\pagina_inteira\{c8,c7}_gal53.out`; `c8\tipos_da_fila.py` → `c8\tipos\{gallagher,kemeri,karpov2,nunn}.out`; `c8\log_antigo_pagina_inteira.py` → `c8\log_antigo\{c8,c7}.out` | **não** | bloqueante novo 1 |
+| As frases e o HANDOFF | `grep` no relatório (§0.3 linhas 356–375, §0.9), no roadmap e no HANDOFF | sim, com uma ressalva | as classes que o B13 do ciclo 7 devolve ao desligado ditas no §0.3 com os meus números; «três das cinco pioram» no §0.9; «até seis controles» no HANDOFF. A ressalva: o §0.3, o §0.10, o roadmap e o HANDOFF dizem que `sem_efeito` recusa decisões sobre «a página que o OCR não leu» — ele recusa sobre todo item de tipo «page» (bloqueante novo 1) |
+| Os testes tocados | `c8\testes_c8.sh` → `c8\suite_testes_tocados.out`, `c8\tronco_testes_tocados.out` | sim | suíte (`test_foco_a_vista`, `test_rotulagem_view`, `test_revisao_de_texto_view`, `test_teclado_tecla`, `test_review`, `test_importer`, `test_tabela_de_linhas`, `test_table_rows`): **133 passed**; tronco (`test_qt_foco_a_vista`, `test_qt_painel_de_estudo`, `test_qt_dialogos`, `test_qt_texto`): **107 passed**, 27 subtests |
+| As suítes inteiras | `c8\testes_c8.sh` → `c8\trunk_full_c8.out`, `c8\suite_full_c8.out` | sim, salvo o ambiente | tronco: **4.867 passed**, 16 skipped, 8 xfailed, **1 failed** — `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore` (o pacote instalado aponta para o checkout do usuário, não para a minha árvore; a mesma dos ciclos 6 e 7); suíte: **4.097 passed**, 16 skipped, 0 falhas |
+
+### O bloqueante do ciclo 7
+
+**Resolvido.** O clique pelo `QWindow` numa linha à vista de «Linhas da página» (Rotulagem, rolagem no fim) e de
+«Dúvidas do livro» (Revisão de texto) deixa a verdade inteira à vista depois do soltar e o texto digitado nela, a
+1280×641 nas três peles e a 1366×728 na Clássica e na Foco (`c8\tecla\clique_linha_*.out`: 549×60, 552×60, 632×60 na
+Rotulagem; 295×60, 300×60, 344×60 na Revisão de texto; antes 0×0). O portão do teclado clica deixando a ação rodar e
+passa nas três peles; a sabotagem `guarda` reprova com a verdade a 0×0; a `clique` reprova (0 cliques no lugar); a
+`ponteiro` reprova na Clássica e passa na Foco — como o construtor diz. E o que o ciclo 7 ganhou continua: e7 só seleciona,
+«Pretas» marca, os controles meio à vista no lugar, o teclado com o controle inteiro (a verdade e a leitura da Rotulagem
+agora 549 de 549 px).
+
+Mas a rolagem que agora vem **depois do soltar** mexe o conteúdo debaixo do ponteiro parado entre os dois cliques de um
+duplo clique (bloqueante novo 2).
+
+### Defeitos bloqueantes (novos)
+
+1. **A janela de revisão recusa toda decisão sobre uma página que o OCR leu inteira** (`review.sem_efeito`, `71d223b`).
+   `sem_efeito` recusa aceitar, gravar a edição e manter como imagem em todo item de `kind == "page"`, pensando no item da
+   página que o OCR não leu (`_failed_for_review`) e no da camada contestada. Mas o item de revisão de uma região que o OCR
+   **leu** tem o tipo da região (`importer.py:1268–1270`, `kind=str(region.kind)`), e a página lida inteira, sem divisão
+   de leiaute, é uma região `RegionKind.PAGE` (`ocr/page.py:620`, `_whole_page`) — o tipo `"page"`. Pelo caminho do
+   produto, a Gallagher índice 53 (p. 54), lida pelo OCR numa região só, 1.379 caracteres, escore 0,73, em revisão
+   (`c8\pagina_inteira\c8_gal53.out`):
+   - o Enter na verdade, o clique em «Aceitar leitura», «Manter como imagem» e a leitura corrigida + Enter: os quatro
+     **recusados** com «o OCR não leu esta página, e uma decisão sobre ela não chega ao livro…» — o OCR leu; nada se
+     grava, 1 pendente de 1, e a página nunca sai da fila;
+   - no código do ciclo 7 (`c8\pagina_inteira\c7_gal53.out`) os quatro gravam, e a importação seguinte aplica a decisão
+     (1 aplicada, a página fora da revisão).
+
+   **E o trabalho já feito se perde** (`c8\log_antigo\{c8,c7}.out`): a edição de um item «page» gravada por uma janela
+   de antes (o log e o arquivo de decisões) é aplicada na importação seguinte (1 aplicada), mas a aba de agora a desconta
+   («6 pendente(s) de 6»), e na primeira decisão sobre outro item a gravação automática reescreve o arquivo **sem ela**
+   (`[('accept', 51, False)]`): na importação seguinte a página volta à revisão e a correção do revisor sai do livro. No
+   código do ciclo 7 o arquivo guarda a edição (`[('edit', 53, True), ('accept', 51, False)]`) e a página sai aceita.
+
+   Quanto: em importações de verdade (`c8\tipos\*.out`), os itens com leitura que o `sem_efeito` recusa são **13 de 39**
+   na Karpov 2 pp. 101–115 (13 das 15 páginas), 6 de 129 na Gallagher pp. 41–60, 5 de 94 na Nunn *Minor Piece* pp.
+   61–75; 0 de 143 no Kemeri (camada de texto). Os testes do ciclo 8 não o veem: o item de página deles tem texto vazio,
+   e a região da página inteira do `_whole_page_recognition` é `PARAGRAPH` (`test_review.py:209–233`). O relatório
+   (§0.3, §0.10), o roadmap e o HANDOFF dizem «a página que o OCR não leu».
+
+2. **O duplo clique numa linha da Rotulagem aceita a leitura de uma linha que ninguém aceitou**. A rolagem que mostra a
+   verdade vem logo depois do soltar (`_esperar_o_soltar` → `QTimer.singleShot(0, _mostrar_o_pendente)`), e mexe o
+   conteúdo debaixo do ponteiro parado — antes do segundo clique de um duplo clique, que chega ~100 ms depois no mesmo
+   ponto da tela. O duplo clique na linha é gesto da Rotulagem (`table.activated` → `truth.setFocus()`,
+   `rotulagem.py:656`). Com um clique pelo `QWindow` numa linha inteira à vista (rolagem no fim, a Gallagher p. 51
+   reconhecida pelo serviço), a volta do laço de eventos, e o segundo clique no mesmo ponto
+   (`c8\segundo\{c8,c7}_*.out`):
+   - na **Clássica** e na **Foco** a 1280×641, a linha 4: a rolagem −191/−205 px põe **«Aceitar leitura»** sob o
+     ponteiro, e o segundo clique marca a linha 4 da página `done=True` com a leitura do motor («3 ♘f3 g5») e pula para a
+     linha 5 — um rótulo da Rotulagem (a verdade que treina o OCR) que ninguém aceitou. O mesmo com o segundo clique
+     entregue como `MouseButtonDblClick` ao controle sob o ponteiro (`c8\segundo\c8_classica_dbl.out`);
+   - nas linhas 1–3 e na Fita, o segundo clique cai na verdade, no cartão ou nas figurinas;
+   - no código do ciclo 7 (sem rolagem) nenhuma linha é aceita (o segundo clique cai numa linha da tabela).
+
+   É a classe do bloqueante 2 do ciclo 6 — a rolagem entre o gesto e o lugar onde ele cai, uma ação que ninguém pediu
+   (lá um lance jogado, aqui uma linha aceita) —, agora entre os dois cliques do duplo clique. O portão não vê: o clique
+   com a ação dele é um só.
+
+### Defeitos não bloqueantes
+
+1. **A sabotagem `ponteiro` só reprova quando a marca velha cai na verdade** (dito pelo construtor): na Foco a 1280×641 ela
+   passa (`c8\portao\resumo.out`). A razão do foco em si não tem sabotagem que a devolva ao ponteiro em toda passada.
+2. **A volta da janela pelo clique não foi medida na plataforma real** (dito no §0.3). No Windows as mensagens postadas
+   saem da fila antes das de entrada; se o `singleShot(0)` do `_depois_da_volta` virar mensagem postada antes do
+   `WM_LBUTTONDOWN`, o seguidor rola antes do pressionar, como no ciclo 7. Não medi (offscreen só).
+3. **O arquivo de decisões antigo e a fila discordam**: `ReviewDecisions.match` ainda aplica a edição e o «manter como
+   imagem» de um item «page» gravados antes (só o aceite vazio é pulado), a fila não os conta, e a gravação seguinte os
+   apaga (o que o bloqueante 1 mostra).
+4. **Ficam, do ciclo 7:** as classes que o B13 devolve ao desligado (agora ditas no §0.3); a Rotulagem na Fita recebendo
+   a tabela com 42–45 % à vista; os índices a 150 DPI intercalados pelo motor; e os ditos pelo construtor (a coluna de um
+   verbete só, o ponto inteiro sozinho, o RapidOCR na Nunn p. 288, o `bench_sol` que grava a procedência no fim, o
+   portão do teclado sem o commit das árvores, o portão só `offscreen`, o custo de ~1 µs por evento do filtro da razão
+   do foco).
+
+### O que falta
+
+- A janela na plataforma real (`windows`): tudo `offscreen`, o clique e o duplo clique imitados pelo `QWindow` do Qt e
+  por um `MouseButtonDblClick` entregue ao controle sob o ponteiro; a ordem da ativação e do pressionar no Windows não
+  medida (nem por mim, nem pelo construtor).
+- O item da camada contestada (a camada acusada e o OCR sem resposta): não compus a página; as frases e o `sem_efeito`
+  valem para ele pelo código.
+- O `bench_sol` inteiro (o briefing proíbe): o `sol.json` publicado conferido item a item contra o anterior.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+1. **Uma decisão sobre uma região que o OCR leu vale, também quando a região é a página inteira.** O `sem_efeito` (e a
+   frase) só para o item da página que o OCR não leu — o do `_failed_for_review` e o da camada contestada, sem leitura —, e
+   não para o item de tipo «page» de uma região lida (`RegionKind.PAGE`, com texto): aceitar, gravar a edição e manter
+   como imagem gravam, contam e chegam à importação, como no ciclo 7; e o trabalho de antes (o log e o arquivo) não se
+   perde na gravação seguinte. Travar por teste com um item «page» de uma leitura de verdade (a região da página inteira
+   com texto, pelo importador e pela janela): as três decisões gravadas e aplicadas na importação seguinte; com a
+   sabotagem (a regra do `71d223b`), recusadas. E corrigir o §0.3, o §0.10, o roadmap e o HANDOFF.
+2. **O segundo clique de um duplo clique cai onde o primeiro caiu.** A rolagem que mostra o foco que o programa moveu
+   no meio do clique não pode mudar o que está sob o ponteiro antes do intervalo do duplo clique
+   (`QStyleHints.mouseDoubleClickInterval`) — ou não rola a rolagem do controle clicado enquanto o ponteiro não se mexe —,
+   e o duplo clique numa linha de «Linhas da página» não aciona outro controle. Travar por teste com o duplo clique pelo
+   `QWindow` na linha 4 da Rotulagem com a rolagem no fim, a 1280×641 na Clássica e na Foco: nenhuma linha aceita, e a
+   verdade da linha clicada à vista depois; com a sabotagem (a rolagem logo depois do soltar), a linha aceita. Sem perder o
+   que este ciclo ganhou (a verdade inteira depois do clique, o texto nela, e7, «Pretas», os cliques meio à vista, o
+   teclado inteiro).

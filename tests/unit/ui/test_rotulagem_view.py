@@ -316,6 +316,92 @@ def test_a_click_on_a_line_shows_the_truth_after_the_release_and_the_typing_goes
     painel.close()
 
 
+def _linha_da_pagina(painel, linha: int):
+    """The page's line behind a line of the table «Linhas da página»."""
+    from PyQt6.QtCore import Qt
+
+    regiao_i, linha_i = painel.table.item(linha, 0).data(Qt.ItemDataRole.UserRole)
+    regiao = next(g for g in painel.page.regions if g.index == regiao_i)
+    return next(c for c in regiao.lines if c.index == linha_i)
+
+
+def _duplo_clique_na_linha(app, painel, linha: int) -> tuple[object, object]:
+    """The scroll area at its end, the focus outside, and a double click through the ``QWindow`` on
+    ``linha`` (the second click delivered as Qt delivers it, `teclado._duplo_clique`): the control
+    under the pointer at the first and at the second click."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtWidgets import QScrollArea
+
+    from caissa.ui.audit import teclado
+
+    for rolagem in painel.findChildren(QScrollArea):
+        rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().maximum())
+    painel.table.setCurrentCell(0 if linha else 1, 0)
+    if app.focusWidget() is not None:
+        app.focusWidget().clearFocus()
+    app.processEvents()
+    vista = painel.table.viewport()
+    centro = painel.table.visualRect(painel.table.model().index(linha, 0)).center()
+    ponto = vista.mapTo(painel, QPoint(min(40, vista.width() // 3), centro.y()))
+    sob = painel.childAt(ponto)
+    return sob, teclado._duplo_clique(painel, ponto)
+
+
+def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypatch):
+    """Crítico da fase 5, ciclo 8: with the scroll area at its end, a click on a line sends the
+    focus to «Verdade da linha», and the follower scrolled to it right after the release -- the
+    content moved under the pointer held still, and the second click of the double click (the
+    Rotulagem's gesture: the line's double click takes the focus to the truth) fell on «Aceitar
+    leitura», which marked the line done with the engine's reading: a label nobody accepted (line
+    4 at 1280x641 in the Clássica and the Foco).  The tab alone, 1000x710, twelve lines; the line
+    whose point the old scroll brings «Aceitar leitura» under is found with the sabotage on, and
+    double-clicked: the second click lands on the table again, no line is accepted, the table
+    stays on the clicked line, and once the mouse is calm the truth is whole.  The sabotage: the
+    scroll right after the release (the double-click interval at 0) -- the line accepted."""
+    from PyQt6.QtWidgets import QPushButton
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets import foco_a_vista
+
+    painel = _rotulagem_com_linhas(app, tmp_path)
+    painel.resize(1000, 710)
+    for _vez in range(2):
+        app.processEvents()
+    aceitar = next(b for b in painel.findChildren(QPushButton) if b.text() == "Aceitar leitura")
+    real = foco_a_vista.intervalo_do_duplo_clique
+    monkeypatch.setattr(foco_a_vista, "intervalo_do_duplo_clique", lambda: 0)
+    alvo = None
+    for linha in range(painel.table.rowCount()):
+        achada = teclado._linha_inteira_a_vista(painel.table, -1)
+        if achada is None:
+            break
+        sob, sob_no_segundo = _duplo_clique_na_linha(app, painel, linha)
+        if sob is painel.table.viewport() and sob_no_segundo is aceitar:
+            alvo = linha
+            break
+    assert alvo is not None, "a line whose second click the old scroll puts on «Aceitar leitura»"
+    assert _linha_da_pagina(painel, alvo).done, "sabotaged: the line accepted by nobody"
+    painel.close()
+
+    (tmp_path / "de novo").mkdir()
+    painel = _rotulagem_com_linhas(app, tmp_path / "de novo")
+    painel.resize(1000, 710)
+    for _vez in range(2):
+        app.processEvents()
+    monkeypatch.setattr(foco_a_vista, "intervalo_do_duplo_clique", real)
+    antes = [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())]
+    sob, sob_no_segundo = _duplo_clique_na_linha(app, painel, alvo)
+    assert sob_no_segundo is sob, "the second click lands where the first did"
+    assert [_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount())] == antes, (
+        "no line accepted")
+    assert painel.table.currentRow() == alvo
+    assert app.focusWidget() is painel.truth
+    rolagem = teclado._rolagem_que_segue(painel.truth)
+    assert rolagem is not None
+    assert teclado._inteiro_na_rolagem(rolagem, painel.truth), "once the mouse is calm, whole"
+    painel.close()
+
+
 def test_the_gate_records_the_lines_of_the_table_the_key_walked(app, tmp_path: Path):
     """Construtor, fase 5, ciclo 6: the keyboard gate recorded «linhas_na_medida» with `setdefault`
     in every area, and the first one -- not the Rotulagem -- wrote `None` for good: the JSON never
