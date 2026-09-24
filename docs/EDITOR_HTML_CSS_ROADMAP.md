@@ -1,7 +1,11 @@
 # Roadmap — Editor HTML/CSS
 
-> **Data:** 2026-09-23 · **Versão:** 1.10 — **APROVADA pelo Codex no ciclo 11** (ciclos 1 a 10
-> reprovados; spec §9)
+> **Data:** 2026-09-24 · **Versão:** 1.17 — **APROVADA pelo Codex no ciclo 18**. A 1.10 tinha sido
+> aprovada no ciclo 11. A 1.11 registrou as respostas do usuário:
+> - **Q1 = C**, a combinação guiada por medição: o H0 mede, o H0b combina, o H26 unifica a aba Texto;
+> - **Q7 = (i)**, altíssimo padrão.
+>
+> Os ciclos 12 a 17 reprovaram o H0b e o H26 novos (spec §9).
 > **Contrato:** `EDITOR_HTML_CSS_SPEC.md` — cada passo cita a cláusula que o governa.
 > **Críticas:** `quality/EDITOR_HTML_CSS_CRITICAS.md`. **Relatório do construtor:**
 > `quality/EDITOR_HTML_CSS_REPORT.md` — criado pelo H0; uma seção por passo, todo número com o
@@ -125,7 +129,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 | passo | depende de | decisão ou ação do usuário | libera |
 |---|---|---|---|
-| **H0** executor de portões + medição dos dois leitores | — | — | todos; números do Q1 |
+| **H0** executor de portões + medição dos leitores (Q1 = C) | — | — | todos; os números do leitor da aba contra a fusão e a margem do oráculo (entrada do H0b) |
+| **H0b** a combinação: o candidato de glifo com o que a aba faz de diferente, e o RapidOCR fora da página degradada; uma configuração global, escolhida em `dev` + `calib` e confirmada uma vez na cega; e o veredito da aba por estrato | H0 | a troca precisão × tempo, **só** se a configuração que ganha passar de 2 × o tempo por página; rotular mais verdade nativa, **só** se o estrato nativo ficar sem evidência | H8, H26 |
 | **H1** motores de pré-visualização (+ sonda PyInstaller, máquina limpa) | H0 | consentir o download das rodas; habilitar o Sandbox ou dar uma VM | H10 (matriz), H13, H14 |
 | **H2** editor de código com tudo ligado (projeto sintético de 300 capítulos) | H0 | consentir `pywinauto` (medição) | H12 (ou H2b) |
 | **H2b** QScintilla (só se o H2 reprovar, ou o H12 reprovar por limite do componente) | H2 reprovado, ou H12 reprovado por limite do componente | consentir a dependência | H12 |
@@ -134,7 +139,7 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 | **H5** perfil legível + `html_attributes` + CSS como recurso + mapa de estilo | H3, H4 | **Q3**; consentir `tinycss2`/`cssselect2` no `.venv-pack` | H8, H9, H10, H19, H23, H24 |
 | **H6** projeto em disco | H0 | Q4 (tem padrão) | H8, H11, H17, H25 |
 | **H7** serviço único de decisões | H0 | — | H8, H16, H22, H25 |
-| **H8** geração a partir do OCR (projetos reais) | H5, H6, H7 | **Q1** | H9, H13, H15, H16, H18, H19, H21, H22, H23, H24, H25, H26 |
+| **H8** geração a partir do OCR (projetos reais; a fusão do produto) | H0b, H5, H6, H7 | — (Q1 respondida: C) | H9, H13, H15, H16, H18, H19, H21, H22, H23, H24, H25, H26 |
 | **H9** mapa de fontes e sincronia (usa o `proveniencia.json` do H8) | H5, H8 | — | H13, H15, H16 |
 | **H10** validação em camadas (corpus limpo = saídas do H5) | H1, H3, H4, H5 | — | H12, H23, H24 |
 | **H11** aba, janela, casca, rota de teclas, portões estendidos (projeto de fixture) | H6 | — | H12, H13, H15, H17 |
@@ -145,18 +150,19 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 | **H16** revisão do OCR no editor | H7, H8, H15 | — | H25 |
 | **H17** nada se perde, na janela | H6, H11, H12 | — | — |
 | **H18** estrutura HTML + arquivos do livro (amostra nos projetos do H8) | H8, H12 | — | H21, H23 |
-| **H19** CSS, temas, fontes (mapa do H5; `LIVRO` do H8; o Chromium de medição do H1 para o foco) | H1, H3, H5, H8, H12 | Q6; **Q7 (bloqueia)** | H24 |
+| **H19** CSS, temas, fontes (mapa do H5; `LIVRO` do H8; o Chromium de medição do H1 para o foco) | H1, H3, H5, H8, H12 | Q6 (Q7 respondida: i) | H24 |
 | **H20** localizar e substituir, recortes, paleta (livro de fixture + projeto sintético do H2) | H12 | — | — |
 | **H21** tipografia (`PEDIDO` p. 55 do H8) | H8, H18 | — | — |
 | **H22** diagramas | H7, H8, H13, H15 | — | H24, H25 |
 | **H23** lances e notação (figurina medida na página do MuPDF) | H5, H8, H10, H13, H18 | — | H24 |
-| **H24** exportar do projeto + acessibilidade do EPUB (PDF pelo motor da prévia; avisos pela matriz do H1; fixtures douradas do sidecar do H3) | H1, H3, H5, H8, H10, H13, H19, H22, H23 | **Q5**; **Q7 (bloqueia)**; consentir o Ace (npm) | H27 |
+| **H24** exportar do projeto + acessibilidade do EPUB (PDF pelo motor da prévia; avisos pela matriz do H1; fixtures douradas do sidecar do H3) | H1, H3, H5, H8, H10, H13, H19, H22, H23 | **Q5**; consentir o Ace (npm) (Q7 respondida: i) | H27 |
 | **H25** regerar e fundir (3 vias) | H6, H8, H16, H22 | — | — |
-| **H26** a aba Texto e o editor | H8 + a mudança da digitação **commitada** | Q1 ∈ {A, C} | — |
+| **H26** a aba Texto lê pelo produto e leva a formatação e os diagramas ao editor | H0b, H8; a mudança da digitação **commitada** | — (Q1 respondida: C) | — |
 | **H27** (opcional) PDF pelo Chromium, abrir EPUB do Caissa/CB | H14, H24 | — | — |
 
 - **Paralelos sem conflito de arquivo:**
-  - H1 ∥ H2 ∥ H3 ∥ H4 ∥ H6 ∥ H7, depois do H0;
+  - H0b ∥ H1 ∥ H2 ∥ H3 ∥ H4 ∥ H6 ∥ H7, depois do H0 (o H0b só toca `ocr/engines/glyph.py`,
+    `ingest/pdf/ocr_service.py` e os testes dele; nenhum outro passo toca esses arquivos);
   - H10 ∥ H8, depois do H5;
   - H9 depois do H8;
   - H13 ∥ H15, depois do H11 e do H9;
@@ -183,9 +189,9 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 ## 2. Fase 0 — medir e fixar antes de construir
 
-### H0 — O executor de portões, o relatório, e os dois leitores medidos (Q1)
+### H0 — O executor de portões, o relatório, e os leitores medidos
 
-- **Governa:** spec R1.1, R1.2, Q1.
+- **Governa:** spec R1.1, R1.2, Q1 (respondida em 2026-09-24: C, a combinação guiada por medição).
 - **Arquivos:**
   - `benchmarks/editor_ambiente.ps1`, `benchmarks/editor_portoes.py`, `tests/unit/editor/test_portoes.py`;
   - `benchmarks/editor_leitores.py` (novo);
@@ -194,8 +200,13 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
   - O crítico reprovou os aliases de pseudocomando e os portões sem instrumento. Este passo cria o
     **único** caminho de execução de portões (§0.2) e faz ele reprovar quando o instrumento falta
     ou a sabotagem não morde.
-  - A segunda metade é o Q1. A aba Texto lê com `text.leitor.ler_pagina` (tronco, Python 3.10); a
-    exportação, com o `import_pdf` da suíte (3.11). Nunca foram comparados nas mesmas páginas.
+  - A segunda metade **mede** o leitor da aba Texto contra a fusão que alimenta o editor. O
+    usuário decidiu pelo mais preciso, ou pela combinação dos leitores (spec Q1 = C), e o H0b
+    combina a partir destes números.
+    - A aba Texto lê com `text.leitor.ler_pagina` (tronco, Python 3.10), com os motores `glifo` (o
+      padrão) e `camada`, e o modo bloco.
+    - O produto lê com a fusão do `import_pdf` (suíte, 3.11).
+    - Os dois nunca foram comparados nas mesmas páginas.
     - `editor_leitores.py` roda cada um no seu ambiente (dois subprocessos, JSON), sobre as
       mesmas páginas.
     - **O conjunto com verdade** é o manifesto dourado (`benchmarks\corpus\golden\manifest.private.json`,
@@ -204,20 +215,49 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
       - SFC4 digitalizado: 13 páginas, 123 + 72 = 195 regiões;
       - Seirawan «Xadrez Vitorioso — Finais», nativo: 18 + 11 = 29 regiões;
       - as demais com 1–3 regiões.
-    - O casamento leitor × região é por IoU ≥ 0,5 dos retângulos. Os dois leitores dão caixa em
-      pontos PDF.
+    - O casamento leitor × região é por IoU ≥ 0,5 dos retângulos, **na mesma unidade**:
+      - o leitor da aba dá a `PaginaLida` em pontos PDF. As linhas internas (`_Cru`) são pixels,
+        e o `montar` converte cada uma por `_para_pontos` (T `text/leitor.py:660-668, 1060`);
+      - o produto dá as regiões em pixels da página renderizada (`RegionRecognition.box_px`,
+        `ocr_service.py:340`), e o instrumento as passa a pontos com o `dpi` da renderização;
+      - a conversão acontece **uma vez**, e uma fixture de coordenadas conhecidas prova isso: dois
+        retângulos de texto, em linhas diferentes, num PDF sintético, lidos pelos dois, cada um
+        com IoU ≥ 0,9 contra a verdade.
     - **Sem verdade**, para o contexto: `PEDIDO` p. 50–60 e `LIVRO` p. 31–38. Ali se mede a taxa de
       discordância por caractere, figurinas, diagramas (com FEN ou não) e o tempo por página.
-    - **A regra de decisão** (spec Q1). Por estrato *s* (digitalizado, nativo), sobre as mesmas
-      regiões: Δ*s* = CER(aba Texto) − CER(produto), com intervalo de 95 % por reamostragem das
-      regiões (1.000 reamostras, semente 42).
-      - O leitor da aba Texto **vence** em *s* ⇔ o limite **superior** do intervalo de Δ*s* < 0.
-      - A regra é mutuamente exclusiva, nesta precedência:
-        - **B** ⇔ vence em todos os estratos;
-        - senão **C** ⇔ vence em ao menos um;
-        - senão **A**.
-      - O relatório escreve a recomendação que a regra dá, com o **hash do manifesto** (o que o
-        `bench_sol` imprime) e a lista de regiões usadas. A decisão é do usuário.
+    - **O que a medição publica** (a entrada do H0b). Por estrato *s* — digitalizado e nativo, o
+      `Source.PDF_SCAN` e o `Source.PDF_NATIVE` do manifesto (`ocr/golden.py:68-74`) — e por
+      métrica, sobre as mesmas regiões, com intervalo de 95 % por reamostragem das regiões (1.000
+      reamostras, semente 42).
+      - **As métricas:**
+        - **CER**;
+        - **lances certos** e **lances inventados**, pelo `move_accounting` de S `ocr/metrics.py`
+          (a régua do `bench_sol`);
+        - **figurinas certas**: dos lances da verdade que levam figurina, a fração lida com a
+          figurina certa, contada pelo mesmo `move_tokens`;
+        - **ordem de leitura**: `reading_order_accuracy` de S `ocr/metrics.py:239-250`, sobre a
+          ordem das regiões casadas de cada página, a mesma régua do `sol_gate`.
+
+        São as métricas do veredito da aba no H0b, e o H0 as publica para todos os leitores e
+        modos, por estrato, com intervalo.
+
+        **São campos obrigatórios.** Cada uma das cinco métricas (CER, lances certos, lances
+        inventados, figurinas certas e ordem de leitura) vem com valor e intervalo para cada
+        leitor, modo e estrato.
+        - Se qualquer uma faltar ou vier nula, o `editor_portoes.py` reprova «métrica ausente».
+        - O `sol_gate` faz o contrário com a ordem: pula o portão quando ela falta
+          (`gates.py:282-288`). Por isso a regra fica escrita aqui.
+        - A **precisão de regiões** (casadas ÷ lidas) sai ao lado da ordem, porque a régua da ordem
+          (LCS sobre a verdade) não vê região a mais. Ela é publicada e não entra no veredito.
+      - **Os leitores:**
+        - a fusão do produto;
+        - o leitor da aba em três modos: `glifo`, `glifo` com o modo bloco, e `camada`.
+      - **As diferenças** de cada modo contra a fusão, com intervalo.
+      - **A margem do oráculo:** a métrica se cada região ficasse com a melhor leitura entre a fusão
+        e o leitor da aba. É o teto do que a combinação pode ganhar.
+      - O **hash do manifesto** (o que o `bench_sol` imprime) e a lista de regiões usadas.
+
+      Nada aqui decide: o H0b mede a combinação e liga só o que provar ganho.
 - **Tarefas.**
   - O executor com a tabela (vazia além do H0) e o teste dele.
   - O script de ambiente.
@@ -231,17 +271,308 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
   - `editor_leitores.py` (3 execuções):
     - **denominador mínimo:** ≥ 150 regiões casadas com verdade, de ≥ 2 livros, com ao menos 1
       digitalizado e 1 nativo. Com menos (manifesto ausente, vazio ou casamento pobre), o
-      instrumento **REPROVA** «verdade insuficiente», e não publica recomendação;
-    - publica, por estrato: regiões, CER de cada leitor, a diferença com intervalo, figurinas
-      certas/erradas, tempo por página, e a recomendação A/B/C pela regra.
-- **Sabotagem.** As duas têm de reprovar:
+      instrumento **REPROVA** «verdade insuficiente», e não publica números;
+    - publica, por estrato e métrica: as regiões; os números de cada leitor e modo; as diferenças
+      com intervalo; a margem do oráculo; e o tempo por página;
+    - publica o resultado **por região e por página** (JSON), que o H0b usa na reamostragem por
+      página e no veredito da aba.
+- **Sabotagem.** As três têm de reprovar:
   - `editor_portoes.py --sabotar aceita_sem_instrumento` (desliga a conferência): o teste do passo
     falso «instrumento ausente» passa a PASSOU, e o `test_portoes` reprova;
   - `editor_leitores.py --sabotar so_uma_pagina` (limita a verdade a uma página): o instrumento
-    reprova «verdade insuficiente».
-- **Saída:** o executor que todos os passos usam; os números que o usuário precisa para o Q1.
+    reprova «verdade insuficiente»;
+  - `editor_leitores.py --sabotar sem_ordem` (o JSON sai sem a ordem de leitura de um modo do
+    leitor da aba): o portão reprova «métrica ausente».
+- **Saída:** o executor que todos os passos usam; os números do leitor da aba contra a fusão, que
+  o H0b usa.
 - **Nível:** padrão.
 - **Desfazer:** apagar os três arquivos; nada no produto muda.
+
+### H0b — A combinação: o que o leitor da aba Texto faz de diferente entra na fusão, se ganhar
+
+- **Governa:** spec Q1 (C), R1.1, R1.2, R1.4, R1.5; a fusão geométrica por token do `Sol.md`
+  §SOL-6, com o critério de aceite dela. **Depende de:** H0.
+- **O que já está na fusão** (lido no código em 2026-09-24):
+  - o classificador de glifos do tronco **já é candidato** (S `ocr/engines/glyph.py`, pela ponte
+    `vision/classify/cvoff.py`), com a cadeia de página do tronco (`segmentar` →
+    `linhas_do_glifo`), uma caixa por glifo e `secondary=True`. Mas há duas limitações:
+    - ele só é consultado em região que é, parece ou carrega lance (`ocr_service.py:1408-1409`),
+      e sempre com o tipo `MOVETEXT` (`ocr_service.py:1427-1443`);
+    - ele roda sem o léxico e o juntador de lance do tronco (a docstring de `glyph.py` diz por quê);
+  - o RapidOCR — o motor do modo bloco da aba — **já é motor secundário**
+    (`secondary_engines=("rapidocr",)`), mas só em página degradada
+    (`secondary_only_when_degraded=True`);
+  - a camada de texto já é candidata (S `ocr/engines/pdf_text_layer.py`).
+- **Por que o `ler_pagina` não entra na fusão** (a lição do ciclo 12):
+  - a fusão é por token e precisa de caixa por palavra. A `PaginaLida` só tem caixa por linha, em
+    pontos (`LinhaLida.bbox`, T `text/leitor.py:1058-1062`);
+  - ele precisa do PDF e do índice, e o serviço recebe a página como imagem.
+
+  Então as alavancas **estendem o adaptador que já existe**, que lê a imagem e dá a caixa por
+  glifo.
+- **As alavancas** são interruptores de `OcrServiceConfig`.
+  - **`glyph_scope`** (novo): `"lance"`, o de hoje, ou `"toda_regiao"`, como a aba, que lê tudo com
+    o classificador. Com `"toda_regiao"`, o pedido leva o tipo da própria região, e não `MOVETEXT`.
+  - **`glyph_texto_do_tronco`** (novo, `bool`): aplica às palavras do candidato o pós-processamento
+    de texto que a aba faz e o adaptador deixa de fora, o léxico e o juntador de lance. A palavra
+    juntada fica com a união das caixas.
+    - **A primeira tarefa** lista, lendo o `_ler_pagina_do_livro` (T `text/leitor.py:1216+`), o que
+      mais a aba aplica e o adaptador não.
+    - Cada item entra nesta alavanca ou fica registrado como fora, com o motivo.
+  - **`secondary_only_when_degraded`** (existe): `False` roda o RapidOCR em toda página, como o
+    modo bloco.
+  - **Uma configuração só, global.** A fusão não tem roteamento por estrato, e o serviço não sabe o
+    estrato. A medição é por estrato, e uma configuração que melhora um estrato e piora outro **não
+    liga**.
+  - **A família.** As alavancas mudam o alcance e o texto do candidato de glifo que já existe, e
+    nunca criam um segundo candidato do mesmo classificador.
+    - O `_independent_agreement` de `fusion.py` separa as fontes pelo nome do motor. Dois
+      candidatos do mesmo classificador com nomes diferentes contariam o mesmo erro como dois
+      apoios independentes (a regra do passo B4).
+    - Por isso a identidade do classificador vai no `meta` do resultado: o `modelo_sha256`
+      completo dos pesos. O teste da família conta por ela, e não pelo nome do motor.
+- **O instrumento é o do H0** (`benchmarks/editor_leitores.py`): o `import_pdf` com
+  `PdfImportOptions(ocr_config=…)` da configuração testada (`importer.py:351`), nas páginas do
+  manifesto.
+  - É o caminho do produto. A página nativa com camada confiável não passa pelo OCR, e nela as
+    alavancas não mudam nada.
+  - O `bench_sol` (`recognize_image`) lê a imagem até da página nativa, então ele fica só para as
+    invariantes do `sol_gate`, no portão (c).
+- **O comparador direcional.** Para cada estrato *s* e métrica *m*, Δ é orientada para que positivo
+  seja melhor para a configuração testada.
+  - **CER:** Δ = CER(referência) − CER(testada).
+  - **Lances certos, figurinas certas e ordem de leitura:** Δ = valor(testada) − valor(referência).
+  - **Inserção** (lances inventados): Δ = taxa(referência) − taxa(testada).
+
+  O intervalo é o **bootstrap percentil**, com 1.000 reamostras e semente 42. A unidade reamostrada é
+  a **página**: as regiões de uma página partilham a digitalização, e reamostrá-las soltas
+  estreitaria o intervalo sem razão.
+  - **«Ganha»** ⇔ o limite inferior do intervalo **unilateral de 97,5 %** de Δ > 0.
+  - **«Não perde»** ⇔ esse limite ≥ −δ*m*. As margens:
+    - 0,002 para CER e inserção, as tolerâncias do `sol_gate` (`gates.py:54-55`);
+    - 0,01 para lances, figurinas e ordem de leitura.
+  - **«Idênticas»**, a igualdade canônica: o mesmo SHA-256 do JSON canônico da página do IR.
+    - **A forma canônica:**
+      - UTF-8, com o texto em NFC;
+      - `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`;
+      - os números já arredondados antes (caixas a 0,01 pt, confiança a 4 casas);
+      - as listas na ordem do IR: blocos, linhas e tokens na ordem de leitura, e os diagramas na
+        ordem em que o IR os tem.
+    - O JSON cobre tudo o que a aba mostra ou envia (H26):
+      - o texto de cada bloco e linha, com as caixas e a confiança;
+      - a procedência por token e as figurinas;
+      - os diagramas, com FEN, lado, número, legenda, estipulação e caixa.
+  - **«Inalterada»** ⇔ a configuração dá leituras idênticas às de hoje em todas as páginas da
+    célula. Célula inalterada não perde e não precisa de evidência: é o caso da página nativa com
+    camada confiável, que não passa pelo OCR.
+  - **«Sem evidência»** ⇔ a célula mudou e tem menos de 20 regiões casadas ou menos de 5 páginas.
+    É o piso: abaixo dele, poucas páginas decidem a reamostragem.
+
+  O `sol_gate` compara CER, inserção e ordem de leitura, e não lances nem figurinas
+  (`gates.py:269-288`); por isso este comparador.
+- **As duas saídas do H0b**, com regras separadas:
+  1. **A configuração da fusão**: uma só e global, a de hoje ou uma das 7 alternativas. Não há
+     roteamento por estrato na fusão.
+  2. **O veredito da aba, por estrato**: «produto» ou «leitor antigo». Ele é calculado com a
+     configuração final, e o H26 o segue. Ele decide o que a aba Texto mostra por padrão, não o que
+     a fusão faz.
+- **A regra da configuração: escolha em `dev` + `calib`, um só teste final na cega.**
+  - **Pré-registro.** As 7 alternativas (2³ − 1), as métricas, as margens, o piso e esta regra estão
+    fixados neste documento, antes de qualquer medição.
+  - **Escolha em `dev` + `calib`**, sobre todas as páginas dessas partições:
+    - entram as alternativas que ganham da configuração de hoje em ≥ 1 par (*s*, *m*) e não perdem
+      em nenhum;
+    - a ordem é pelo limite inferior de Δ/δ*m* no par em que ganhou; no empate, fica a de menos
+      alavancas ligadas;
+    - sem nenhuma, fica a de hoje, e a cega não é aberta.
+  - **O registro antes da cega.** A candidata e o par (*s*\*, *m*\*) são gravados num arquivo de
+    pré-registro, com o SHA-256 dele no relatório, **antes** de a cega ser lida. A leitura da cega
+    recusa rodar sem esse arquivo, e grava o hash que leu.
+  - **A leitura cega**, uma vez: `editor_combinacao.py --cega` roda o instrumento do H0 nas páginas
+    `blind`, com o pré-registro. Ela lê com três leitores:
+    - o produto na configuração de hoje;
+    - o produto na candidata;
+    - os **três modos do leitor da aba** (`glifo`, `glifo` com o modo bloco, e `camada`).
+
+    As mesmas leituras servem às duas saídas: o teste da configuração e o veredito da aba. O
+    `sol_gate --blind` é outro comando, o portão de liberação do Sol, que continua valendo à
+    parte.
+  - **O teste final na cega.** A candidata liga só se as duas condições valem na partição
+    `blind`:
+    - ganha no par (*s*\*, *m*\*) — um só teste unilateral, pré-registrado;
+    - não perde em nenhuma célula, inserção incluída. As células inalteradas passam; as que mudaram
+      e ficaram sem evidência reprovam (falha fechada).
+
+    Se reprovar, fica a de hoje neste ciclo, e **nenhuma outra alternativa vai à cega**.
+  - **A R1.4** proíbe treino, calibração e correção com a cega (`OCR_UI_SPEC.md:44`), e não a
+    avaliação: o `sol_gate --blind` já a avalia. Aqui a cega só avalia, uma vez, uma candidata já
+    escolhida. O resultado entra no relatório do portão de liberação.
+  - **A cota.** Se a candidata não melhora de verdade o par (*s*\*, *m*\*), a regra a liga com
+    probabilidade de aproximadamente 2,5 % ou menos:
+    - a decisão é um único teste unilateral, pré-registrado, sobre dados que nenhuma escolha viu;
+    - o bootstrap percentil dá o nível aproximado, não exato, e o relatório diz isso.
+  - **O tamanho.** A cega tem hoje 57 regiões digitalizadas em 14 páginas, e 8 nativas em 8 páginas
+    (contagem de 2026-09-24).
+    - Se a candidata muda leituras nativas, a célula nativa da cega fica sem evidência, e a regra
+      não liga nada.
+    - O §8 leva ao usuário a opção de rotular mais verdade nativa.
+  - A configuração que liga vira o padrão de `OcrServiceConfig`, com o número no comentário, como as
+    decisões por medição da fase 2 do ciclo 2. O H8 e o H26 só a consomem depois deste portão.
+  - **As leituras são determinísticas.** As 3 execuções medem o tempo e conferem que as leituras se
+    repetem: o mesmo hash das respostas nas 3. Não são 3 testes: o teste estatístico é um só,
+    sobre as leituras.
+- **O veredito da aba, por estrato** (a segunda saída). Com a configuração final, para cada estrato
+  *s*, o veredito é «produto» se o produto não perde, em nenhuma métrica, para o leitor da aba
+  sozinho em cada um dos três modos. Senão, ou sem evidência, o veredito é «leitor antigo». É o
+  critério de aceite da SOL-6 com o leitor da aba entre os isolados.
+  - **De onde vêm os números**, por estrato:
+    - **(a)** se a configuração final dá leituras **idênticas** (a igualdade canônica) às de hoje em
+      todas as páginas medidas do estrato (`dev`, `calib` e `blind`), valem os números do H0.
+      Quando a configuração final é a de hoje, as leituras são idênticas por definição (e, sem
+      candidata, a cega nem é aberta). **Com o piso:** a célula do estrato no H0 precisa ter ≥ 20
+      regiões casadas e ≥ 5 páginas; abaixo, o veredito é «leitor antigo»;
+    - **(b)** senão, valem os da leitura cega: o produto na configuração final contra os três modos
+      do leitor da aba, nas páginas `blind` do estrato, em todas as métricas (CER, lances,
+      figurinas, inserção e ordem de leitura), com o comparador e o piso de cima.
+  - **Por que o caso (a) pode usar o H0**, que foi medido em `dev` + `calib`, as partições da
+    escolha:
+    - nessas páginas, o produto final **é** o produto de hoje, leitura por leitura;
+    - a comparação do veredito é, então, a do H0, entre dois leitores fixados antes de qualquer
+      medição: a configuração de hoje é a referência do pré-registro, e o leitor da aba não muda;
+    - a escolha do H0b compara alternativas com a configuração de hoje, nunca com o leitor da aba.
+
+    Então nenhuma escolha usou a comparação que o veredito usa, e os números do H0 não têm viés de
+    seleção. O viés de seleção só aparece no leitor escolhido, e no caso (a) ele lê igual ao de
+    hoje.
+  - **O JSON do veredito** registra, por estrato: a fonte dos números (H0 ou cega), as páginas, os
+    números de cada leitor, as diferenças com intervalo e o veredito.
+- **Arquivos:**
+  - S `ocr/engines/glyph.py`: o pós-processamento do tronco, pela ponte `cvoff`, atrás de
+    `glyph_texto_do_tronco`; a identidade do classificador no `meta`, pelo `modelo_sha256`
+    completo (hoje o `meta` leva só 12 caracteres, dentro do texto `model`, `glyph.py:279-282,
+    468`);
+  - S `ingest/pdf/ocr_service.py`: `glyph_scope` e `glyph_texto_do_tronco` em `OcrServiceConfig`; a
+    condição de alcance (1408-1409) e o tipo da região (1427-1443) passam a ler o campo;
+  - `benchmarks/editor_combinacao.py` (novo): as 8 configurações pelo `editor_leitores.py` × 3
+    execuções em `dev` + `calib`, a escolha, o pré-registro, a leitura cega (`--cega`: o produto
+    de hoje, a candidata e os três modos do leitor da aba), o teste final, o veredito da aba e o
+    JSON com os números;
+  - testes: a família, contada pela identidade do classificador; a união das caixas no juntador;
+    `secondary=True`; a regra sobre números sintéticos; as fixtures das alavancas; a fixture
+    dourada da fusão.
+- **Briefing.**
+  - O usuário quer o OCR mais preciso para texto e símbolos de xadrez, ou a combinação dos
+    leitores (spec Q1).
+  - A fusão do produto já combina camada, Tesseract, RapidOCR, o classificador de glifos, modelo e
+    cifra do livro. Este passo traz o que a aba faz de diferente, e só se a medição prova e
+    confirma.
+  - As regras de sempre continuam valendo:
+    - a âncora que é palavra ou lance nunca é trocada (SOL-6);
+    - letra de peça impressa não vira figurina (OCR_UI R2.3);
+    - a partição cega não entra em treino, calibração nem correção (R1.4); aqui ela só avalia,
+      uma vez;
+    - nada de LLM (R1.5).
+  - **Armadilha medida no ciclo 2** (`OCR_UI_ROADMAP_C2.md`, passo B2): um candidato **sem**
+    `secondary=True` ancora a região e estraga a fusão (`twocol:d:12`, CER 0,0016 → 0,68). O
+    candidato de glifo continua secundário e nunca âncora.
+- **Portão** (`& $PY benchmarks\editor_portoes.py --passo H0b`):
+  - (a) **A regra.**
+    - A configuração publicada é a que a regra dá sobre os números publicados, recalculada pelo
+      `editor_portoes.py`.
+    - Sobre números sintéticos, a regra acerta os casos de borda:
+      - não liga com uma célula que mudou e ficou sem evidência;
+      - liga com uma célula inalterada abaixo do piso, se o resto passa;
+      - não liga com uma configuração que ganha num estrato e perde em outro;
+      - não liga com uma configuração que ganha em `dev` + `calib` e não se confirma na cega;
+      - o veredito da aba sai por estrato, e um estrato «leitor antigo» não muda a configuração da
+        fusão;
+      - o veredito de um estrato que a configuração final muda vem da leitura cega; o de um estrato
+        com leituras idênticas às de hoje em todas as páginas medidas vem do H0;
+      - **o caso (a) abaixo do piso**, pela fixture `tests/fixtures/editor/h0b/veredito_caso_a_abaixo_do_piso.json`:
+        - ela é escrita **antes** da implementação e congelada por SHA-256: o valor literal do hash
+          fica gravado no teste quando a fixture é escrita;
+        - tem 150 regiões de 2 livros, um por estrato: o digitalizado com 140 regiões em 12 páginas,
+          e o nativo com 10 regiões em 4 páginas. Passa no denominador do H0 e fica abaixo do piso no
+          nativo;
+        - a configuração final é igual à de hoje, e pelos números o produto fica à frente do leitor
+          da aba no nativo. Sem o piso, o veredito nativo seria «produto»;
+        - a saída esperada, em `veredito_caso_a_abaixo_do_piso.esperado.json`: digitalizado
+          «produto»; nativo «leitor antigo», com o motivo «abaixo do piso: 10 regiões, 4 páginas».
+    - **As métricas obrigatórias:** o JSON do H0b tem as cinco métricas, com valor e intervalo,
+      para cada leitor, modo e estrato, na escolha e, quando houver, na leitura cega. Métrica
+      ausente ou nula reprova.
+    - **A igualdade canônica:** um caso por campo — texto, caixa, confiança, procedência, figurina e
+      cada campo do diagrama (FEN, lado, número, legenda, estipulação e caixa). Cada um, mudado
+      sozinho, torna as leituras diferentes; duas leituras iguais em tudo são idênticas.
+    - **A disciplina da cega:** a escolha não lê nenhum item da `blind` (a `partition_for` de
+      `ocr/golden.py` confere cada item lido), e o hash do pré-registro que a leitura da cega
+      gravou é o do arquivo da escolha.
+  - (b) **As alavancas estão vivas**, em fixtures determinísticas:
+    - **alcance:** numa página sintética com uma região de prosa sem lance (a condição de 1408-1409
+      falsa), `toda_regiao` pede o candidato de glifo, e `lance` não pede;
+    - **tipo:** nesse pedido, o `psm_hint` e o `region_kind` do `RegionTask` são o tipo da região, e
+      não `MOVETEXT`; um motor espião registra os dois;
+    - **texto:** numa leitura sintética com `lf`, e com `1.` e `e4` separados,
+      `glyph_texto_do_tronco=True` dá `If` e `1.e4`, e a palavra juntada tem a união das caixas;
+    - o `secondary_only_when_degraded` é interruptor que já existe, com o teste dele.
+
+    As contagens nas páginas `dev` (regiões com candidato, palavras mudadas) vão ao relatório, sem
+    portão.
+  - (c) **A configuração que liga**, se houver, passou no teste final da cega. E o `bench_sol` com ela
+    passa no `sol_gate --report-only`, sem portão verde da linha de base virando vermelho.
+  - (d) **A fixture dourada da fusão**, escrita **antes** da implementação e congelada por hash. Ela
+    roda o `_settle` do serviço com candidatos sintéticos:
+    - **primeiro caso:** numa região de prosa, a âncora (Tesseract) é a palavra certa. O candidato
+      de glifo traz outra palavra do dicionário, errada, com decisão `ACCEPTED` e pontuação maior.
+      - Com `secondary=True`, o motor dele entra em `never_anchor` (`ocr_service.py:1474`), e a
+        âncora continua a do Tesseract.
+      - A âncora suportada nunca é trocada (`fusion.py:696-704`), então a saída acerta;
+    - **segundo caso:** a âncora está fraca (confiança < 0,35) e certa, e é um lance de peão, sem
+      letra de peça no início — as condições da regra B4 (`fusion.py:639-643`), que roda antes da
+      regra da âncora suportada. O classificador lê outro lance, confiante e com margem. Com um só
+      candidato do classificador não há concordância independente, e a saída acerta.
+  - (e) **O tempo.** A mediana, nas 3 execuções, do tempo por página em regime — sem a partida do
+    processo e sem a primeira página — fica ≤ 2 × a de hoje, em cada estrato.
+    - Acima disso, a configuração não liga por padrão. O relatório publica o ganho e o custo, e a
+      troca precisão × tempo vai ao usuário (§8).
+    - A resposta do usuário fica gravada no JSON da configuração (`decisao_humana`: quem, quando, a
+      escolha e o texto) e no relatório.
+- **Um estrato com veredito «leitor antigo»** fica vermelho no relatório, e o §10 registra. A
+  configuração da fusão não muda por isso: ela tem a regra dela.
+- **Sabotagem.** As onze têm de reprovar, cada uma contra a fixture que a torna determinística:
+  - `--sabotar configuracao_trocada`: o JSON publica a configuração seguinte à da regra, na ordem
+    circular fixa das 8 (depois da última vem a primeira). (a) reprova «configuração ≠ regra»;
+  - `--sabotar cega_na_escolha`: a escolha lê as páginas da `blind` junto com as outras. (a)
+    reprova pela disciplina da cega;
+  - `--sabotar veredito_do_h0_alterado`: o veredito de um estrato que a configuração final muda usa
+    os números do H0. (a) reprova no caso de borda do veredito;
+  - `--sabotar piso_so_na_cega`: o piso vale só no caso (b). Na fixture
+    `veredito_caso_a_abaixo_do_piso.json`, o nativo sai «produto», e não «leitor antigo»: (a)
+    reprova;
+  - `--sabotar sem_ordem`: a leitura cega sai sem a ordem de leitura de um modo do leitor da aba.
+    (a) reprova «métrica ausente»;
+  - `--sabotar igualdade_so_texto`: a igualdade compara só o texto. (a) reprova no teste da
+    igualdade canônica, que acusa como idênticas duas leituras com uma caixa diferente;
+  - `--sabotar escopo_inerte`: o serviço lê `glyph_scope`, mas continua pedindo só região de lance.
+    (b), alcance, reprova;
+  - `--sabotar tipo_fixo`: com `toda_regiao`, o pedido continua com `MOVETEXT`. (b), tipo, reprova;
+  - `--sabotar texto_inerte`: o interruptor é lido e não aplicado. (b), texto, reprova;
+  - `--sabotar ancora_o_candidato`: o candidato de glifo sai sem `secondary=True`. A fixture (d),
+    primeiro caso, reprova:
+    - o motor dele sai de `never_anchor`;
+    - com decisão e pontuação maiores, ele ganha a âncora pela ordem de `fuse_candidates`
+      (`fusion.py:351-356`);
+    - a palavra errada, suportada, nunca é trocada;
+  - `--sabotar dois_apoios`: com `toda_regiao`, entra um segundo candidato do mesmo classificador,
+    com outro nome de motor e `secondary=True`. Duas coisas reprovam:
+    - a fixture (d), segundo caso, porque o `_independent_agreement` vê dois motores concordando;
+    - o teste da família, que conta pela identidade do classificador.
+- **Saída:** a fusão mais precisa que alimenta o editor (H8) e, depois, a aba Texto (H26), com a
+  configuração, o pré-registro, o teste da cega, o veredito da aba por estrato e os números
+  publicados.
+- **Nível:** forte.
+- **Desfazer:** `glyph_scope="lance"`, `glyph_texto_do_tronco=False` e
+  `secondary_only_when_degraded=True`, os valores de hoje.
 
 ### H1 — Motores de pré-visualização, medidos — e o Chromium provado num pacote real
 
@@ -730,7 +1061,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 ### H8 — Gerar o projeto a partir do OCR (com as dúvidas por trecho)
 
-- **Governa:** spec S3, S8, R2.1, R2.5, R2.7. **Espera:** Q1 (com os números do H0).
+- **Governa:** spec S3, S8, R2.1, R2.5, R2.7, Q1 (respondida: C). **Depende de:** H0b, H5, H6,
+  H7.
 - **Arquivos:**
   - S `editor/geracao.py`, `editor/proveniencia.py`, `editor/diagramas.py` (cache de SVG);
   - S `ingest/pdf/importer.py` (`_span_inlines`: o `Span` de dúvida);
@@ -738,9 +1070,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
     dois);
   - `benchmarks/editor_geracao.py`, testes.
 - **Briefing.**
-  - Com Q1 = A ou C, a fonte é o `import_pdf` com as decisões (`PdfImportOptions`,
-    `importer.py:309-415`), por intervalo, cancelável e parcial. Com Q1 = B, este passo **muta**
-    (§10): o importador `PaginaLida → IR` entra antes.
+  - A fonte é a **fusão do produto** (Q1 = C): o `import_pdf` com as decisões (`PdfImportOptions`,
+    `importer.py:309-415`), com as alavancas que o H0b ligar, por intervalo, cancelável e parcial.
   - Divide pela regra do EPUB, escreve no perfil legível, grava `proveniencia.json` e os SVG pelo
     `DiagramRenderer` (`export/diagrams.py:411-469`).
   - Hoje a dúvida só existe no bloco (spec §2.2). O importador embrulha os trechos em revisão num
@@ -1230,7 +1561,7 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
     (≥ 18 pt, ou ≥ 14 pt em negrito), ≥ 4,5:1. No claro e no escuro do leitor.
   - Fonte sem registro não embute.
 - **Tarefas.** O painel, as operações, os temas, as fontes, a comparação às cegas do Q6, e o tema
-  **«Leitura AAA»** (spec §5.6, 1.4.8), padrão ou não conforme o **Q7**.
+  **«Leitura AAA»** (spec §5.6, 1.4.8), disponível e não padrão (Q7 = i).
   - O tema cumpre as **cinco** exigências do 1.4.8:
     - (1) **cores selecionáveis** — não fixa `color` nem `background-color` do conteúdo principal,
       só de elementos secundários (C23/C25), e nunca com `!important`;
@@ -1256,7 +1587,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
     a área não chega), `sobreposicao_na_borda` (uma faixa de 1 px sobre a borda de um link),
     `multilinha_encoberto` (a segunda linha de um link sob um bloco) e `pseudo_do_body` (um
     `body::after` absoluto sobre o contorno) reprovam.
-  - **O passo não começa sem a resposta do Q7**, que decide o tema padrão.
+  - **O Q7 foi respondido em 2026-09-24: (i).** O tema «Leitura AAA» é construído e fica
+    disponível, sem ser o padrão. O padrão sai do Q6.
 - **Portão.**
   - Renomear no livro de fixture: **38/38** de classe trocadas, **0/9** de prosa, um passo de
     desfazer.
@@ -1520,11 +1852,11 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
       100 % dos capítulos e **com o hash igual ao do texto atual** (`editor/glossario/revisao.json`). Sem ela, o 3.1.3 não conta como cumprido, e o relatório
       diz que a completude do jargão é atestada por pessoa, não medida;
     - 3.1.4: 100 % das abreviaturas da lista com `<abbr>`;
-    - **Q7 (iv), AAA formal:** o tema «Leitura AAA» ativo e 100 % dos capítulos com o
-      `section.cb-resumo-simples` (3.1.5).
+    - **Q7 = (i)** (respondida em 2026-09-24): a opção AAA formal não foi escolhida, e os portões
+      dela (o tema «Leitura AAA» ativo, o resumo simples por capítulo) ficam fora do H24.
 
-    `conformsTo`: **AAA** só na opção (iv) com tudo acima verde; **AA** quando o AA inteiro passa;
-    nenhum quando sobra imagem de texto. O relatório lista cada AAA cumprido.
+    `conformsTo`: **AA** quando o AA inteiro passa (Q7 = i); nenhum quando sobra imagem de texto.
+    O relatório lista cada AAA cumprido.
   - **AAA 1.4.6:** 0 trechos de texto abaixo do limiar em todas as páginas renderizadas dos 4
     projetos, com o tema **e** com uma folha arbitrária de fixture
     (`tests/fixtures/editor/css/arbitraria.css`).
@@ -1592,24 +1924,112 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 - **Nível:** forte.
 - **Desfazer:** voltar à regra «confirmação + versão».
 
-### H26 — A aba Texto e o editor (obrigatório se Q1 ∈ {A, C})
+### H26 — A aba Texto lê pelo produto, e a formatação e os diagramas vão ao editor
 
-- **Governa:** spec Q1, §2.1.
-- **Espera:** a mudança da digitação da aba Texto **commitada** por quem a fez; Q1.
+- **Governa:** spec Q1 (respondida: C), §0.2 (os diagramas como posições), §2.1, §5.2. **Depende
+  de:** H0b, H8; a mudança da digitação da aba Texto **commitada** por quem a fez (a tarefa separada
+  em andamento).
 - **Arquivos:**
-  - **Q1 = A:** T `qt/painel_de_texto.py` (comando «Enviar a folha ao Editor HTML/CSS» e a faixa
-    «esta página está no Editor HTML/CSS»), S `editor/ponte_texto.py` (as corridas do
-    `DocumentoRico` → contrato).
-  - **Q1 = C:** a aba Texto passa a ler a página do IR do produto, com o leitor dela como
-    candidato. Este passo muta (§10) com o plano dessa troca, medido contra o H0.
-- **Briefing.** Com A, o que o usuário fez na aba Texto chega ao projeto como página `EDITADA`,
-  com versão. Com C, as duas abas mostram o mesmo OCR.
-- **Portão (A):**
-  - negrito, itálico, estilos e cores de autor de 20 folhas chegam ao XHTML em 100 %;
-  - a faixa aparece em 100 % das páginas do projeto.
-- **Sabotagem:** `sem_estilo`.
-- **Nível:** padrão.
-- **Desfazer:** remover o comando.
+  - T `qt/painel_de_texto.py`:
+    - o «Ler folha» pede ao produto a página do IR daquela folha: o `import_pdf` da página, com a
+      decisão de fonte do importador e a fusão onde ela manda ao OCR, **fora da thread da janela**;
+    - o combo de motor ganha «Produto» como **padrão**, e `glifo` e `camada` ficam como opções de
+      diagnóstico;
+    - o bloco de diagrama mostra o recorte, como hoje. O painel corta a folha pela `bbox` do bloco,
+      em pontos × dpi/72 (`_recorte`, T `qt/painel_de_texto.py:620-642` na árvore de trabalho,
+      `478-494` no HEAD). Embaixo vêm o número, o lado a jogar, a estipulação e a legenda;
+    - o comando «Enviar a folha ao Editor HTML/CSS» e a faixa «esta página está no Editor HTML/CSS».
+  - O tronco importa a suíte do jeito que já importa: tarde, com a pergunta «existe?» (T
+    `qt/painel_de_rotulagem.py:31-40`). Sem a suíte, a aba fica no leitor antigo e diz isso na
+    faixa.
+  - T `text/pagina.py`: `BlocoDeDiagrama` ganha `fen`, `lado`, `numero`, `legenda` e `estipulacao`,
+    todos com padrão vazio. O `.cvtxt` antigo abre como antes.
+  - T `text/do_produto.py` (novo): a página do IR vira a `PaginaLida` que o painel já desenha, com
+    as cores de confiança e as ferramentas de hoje.
+    - O texto: blocos, linhas, retângulos em pontos, confiança e figurinas.
+    - A procedência de cada bloco: `camada` quando todos os tokens vêm da camada; senão, a da
+      fusão.
+    - **Os diagramas:** cada diagrama do IR vira um `BlocoDeDiagrama` com a `bbox` do IR em pontos,
+      o `indice` da lista do produto e os campos novos preenchidos do IR.
+  - S `editor/ponte_texto.py`: as corridas do `DocumentoRico` viram o contrato (negrito, itálico,
+    estilo e cor de autor como classe), e a página entra como `EDITADA`, com versão.
+    - Cada marca `[Diagrama N]` volta ao diagrama do IR pelo `indice`.
+    - Ela vira o `figure.cb-diagram[data-fen][data-stm]` do perfil legível (spec §5.2), com a
+      legenda e a estipulação no `figcaption`.
+    - O texto `[Diagrama N]` nunca chega ao XHTML.
+  - Testes.
+- **Briefing.**
+  - Com o Q1 = C, nos estratos com veredito «produto», as duas abas mostram **a mesma leitura**, a
+    mais precisa: a do produto, com a configuração do H0b.
+  - Os diagramas vêm do OCR de diagramas do produto, como o usuário pediu. A marca `[Diagrama N]`
+    continua sendo o que a pessoa move no texto (`text/pagina.py:593-601`), mas o diagrama que ela
+    representa é o do IR, com a FEN.
+  - **Fora da thread da janela.** O `bloqueio` decide entre a `Tarefa` e o processo filho do passo
+    15 do OCR_UI (T `processo_de_trabalho.py`). Uma `QThread` não tira da janela o trabalho que
+    segura o GIL, e o `get_pixmap` do PyMuPDF segura (medido no passo 15).
+  - **As cores.** A confiança da fusão já está na escala calibrada do árbitro (passo B6), e os
+    cortes da aba são 0,30 e 0,75 (T `text/documento.py:42`).
+    - A aba pinta de «tranquilo» os blocos de procedência `camada` e `humano`, qualquer que seja a
+      confiança (`text/documento.py:56-69`).
+    - Por isso o portão (e) só conta os blocos lidos por OCR.
+  - **A decisão de fonte de cada página** (`_decide_source`, `importer.py:953-1043`) diz o que a aba
+    faz. São sete saídas:
+    - `ocr` → estrato digitalizado. A aba mostra a página do IR;
+    - `text-layer`, `text-layer+ocr` e `text-layer/review` → estrato nativo. A aba mostra a página do
+      IR;
+    - `blank` → a aba abre vazia e **editável**, e diz «página sem texto». O que a pessoa digitar
+      é dela: «Enviar ao Editor» envia a folha como `EDITADA`, com a procedência «humano». A ponte
+      só diz «nada a enviar» se a aba está vazia;
+    - `image-only` (a página é imagem e o OCR do produto não deu texto, `importer.py:975-981`) e
+      `rejected` (a camada foi recusada e o OCR não deu texto, `importer.py:982-987`) → o produto
+      não tem texto para a página. A aba lê com o leitor antigo e diz na faixa o motivo que a
+      decisão de fonte deu. A ponte envia a folha como `EDITADA`, com a procedência «leitor da
+      aba».
+
+    **O veredito da aba** (a segunda saída do H0b) vale por cima disso: nas páginas de um estrato
+    com veredito «leitor antigo», a aba usa o leitor antigo e diz por quê. Não é roteamento da
+    fusão, que tem uma configuração só.
+  - O que a pessoa corrige ou formata na aba Texto chega ao projeto pela ponte, e não se perde nem
+    se duplica.
+- **Portão.**
+  - (a) Nas páginas `LIVRO` p. 31–38 e `PEDIDO` p. 50–60, nos estratos em que a aba troca de
+    leitor, o texto normalizado da aba Texto é o do IR do produto (100 % das páginas).
+  - (b) Negrito, itálico, estilos e cores de autor de 20 folhas chegam ao XHTML (100 %).
+  - (c) `bloqueio` ≤ 16 ms ao ler a folha.
+  - (d) A faixa aparece em 100 % das páginas do projeto.
+  - (e) Nas regiões com verdade do H0, só nos blocos lidos por OCR, a fração de palavras erradas cai
+    de faixa em faixa de cor: vermelho > amarelo > verde.
+  - (f) **Os diagramas, com denominador positivo.**
+    - **A fixture de IR:** uma página do IR montada no teste, com 2 diagramas de campos conhecidos
+      e **todos não vazios** (FEN, lado a jogar, número, legenda e a estipulação «Mate em 2»).
+      - Os 2 aparecem na aba com os campos iguais aos do IR.
+      - Depois de «Enviar ao Editor», os 2 viram `figure.cb-diagram` com a mesma `data-fen` e o
+        mesmo `data-stm`, e a legenda e a estipulação no `figcaption`.
+      - O XHTML tem 0 ocorrências de `[Diagrama`.
+    - **As páginas reais** (`LIVRO` p. 31–38): o relatório conta os diagramas que o IR reconhece
+      com FEN. Com zero, o portão reprova «sem diagramas para medir».
+      - 100 % aparecem na aba com os campos do IR e com o recorte certo: IoU ≥ 0,9 entre a `bbox`
+        do bloco e a caixa do diagrama do IR, em pontos.
+      - 100 % viram `figure.cb-diagram` com a mesma `data-fen`.
+      - O XHTML tem 0 ocorrências de `[Diagrama`.
+  - (g) **As sete saídas da decisão de fonte:** um teste por saída, com uma página de IR sintética
+    daquela saída.
+    - Ele confere qual leitor a aba usa e o texto da faixa.
+    - Ele faz **editar → enviar → reabrir**: digita uma frase na aba (na `blank`, na página vazia),
+      envia ao Editor, reabre o projeto, e a frase está na página, com a procedência certa.
+- **Sabotagem.** As sete têm de reprovar:
+  - `leitor_antigo` (a aba lê pelo leitor do tronco): (a) cai;
+  - `sem_estilo`: (b) cai;
+  - `cores_trocadas` (os cortes invertidos): (e) cai;
+  - `sem_diagramas` (o adaptador descarta os diagramas): (f) cai na fixture de IR, com 0 de 2;
+  - `diagrama_como_texto` (a ponte escreve a marca como texto): (f) cai na fixture de IR, com 2
+    ocorrências de `[Diagrama` no XHTML;
+  - `sem_rota` (a saída `image-only` fica sem política e cai no padrão): (g) cai;
+  - `branco_descarta` (a ponte não envia a página `blank`): (g) cai na `blank`, com a frase
+    perdida.
+- **Nível:** forte.
+- **Desfazer:** o combo volta ao leitor do tronco como padrão; os campos novos do diagrama e a ponte
+  são aditivos.
 
 ### H27 — (opcional) PDF e prévia Página pelo Chromium; abrir EPUB do Caissa ou do CB
 
@@ -1642,11 +2062,13 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 | item | quando | por quê |
 |---|---|---|
-| **Q1** com os números do H0 | antes do H8 | qual OCR alimenta o editor |
+| ~~Q1~~ | **respondida em 2026-09-24: C** (a combinação guiada por medição) | o H0 mede, o H0b combina, o H26 unifica a aba Texto |
+| a troca precisão × tempo | **só** se a configuração que ganha no H0b passar de 2 × o tempo por página | o ganho e o custo publicados pelo H0b; a resposta fica gravada no JSON da configuração e no relatório; sem ela, a configuração fica desligada |
+| rotular mais verdade nativa (`caissa-rotular`) | **só** se a candidata do H0b mudar leituras nativas e a célula nativa ficar sem evidência (a cega tem hoje 8 regiões nativas) | sem ela, a combinação não liga (falha fechada); o relatório do H0b diz quantas regiões e páginas faltam |
 | Q2 com os números do H1 | antes do H14 | o componente Chromium |
 | Q3 | antes do H5 | o contrato `cb-*` |
 | Q5 | antes do H24 | fontes sem licença declarada |
-| **Q7** | antes do H19 e do H24 — **bloqueia os dois** | o «AAA» do livro: (i) AA + AAA que não mudam o livro, (ii) o mesmo com o tema «Leitura AAA», (iii) só AA, (iv) **AAA formal** (tema não justificado, zero imagens de texto, resumo simples por capítulo) — spec §5.6, §7 |
+| ~~Q7~~ | **respondida em 2026-09-24: (i)** (altíssimo padrão) | H19 e H24 desbloqueados; o tema «Leitura AAA» disponível, não padrão |
 | Q0, Q4, Q6 | quando citadas | ADRs; pasta do projeto; tema padrão (juiz às cegas) |
 | habilitar o **Windows Sandbox** (recurso opcional do Windows 11 Pro; admin + reinício) ou fornecer uma VM limpa | H1, H14 | a máquina limpa que o crítico exigiu |
 | consentir os downloads: rodas do QtWebEngine (H1, H14); `pywinauto` (H2); `tinycss2`/`cssselect2` no `.venv-pack` (H5); Ace do DAISY via npm (H24); `PyQt6-QScintilla` (H2b, só se preciso) | nos passos | download da internet: nome, origem e tamanho ditos ao pedir |
@@ -1723,6 +2145,44 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 - **Ciclo 11: APROVADO**, sem bloqueante. Veredito: «A 1.10 pode avançar para execução dos
   passos». Os dois não bloqueantes foram tratados na versão final (a neutralização prova que
   venceu; este histórico em ordem cronológica).
+- **Decisões do usuário em 2026-09-24 (versão 1.11):** Q1 = C e Q7 = (i). O H0 passou a só medir,
+  nasceu o H0b (a combinação) e o H26 foi reescrito (spec §9).
+- **Ciclo 12:** REPROVADO, 5 bloqueantes, todos no H0b e no H26 novos (spec §9). A versão 1.12
+  trata os 5:
+  - o `ler_pagina` sai da fusão (caixa por linha, e ele precisa do PDF);
+  - as alavancas passam a estender o adaptador de glifos que já existe;
+  - as alavancas são globais;
+  - a seleção fica numa metade das páginas e a confirmação na outra;
+  - o H26 carrega os diagramas.
+- **Ciclo 13:** REPROVADO, 5 bloqueantes (spec §9). Dos 5 do ciclo 12, 3 ficaram resolvidos e 2
+  parciais. A versão 1.13 trata os 5:
+  - a configuração única e global, dita em toda parte;
+  - o piso por célula e a falha fechada;
+  - a medição pelo caminho do produto;
+  - sabotagens determinísticas, contra fixtures;
+  - os diagramas com denominador positivo;
+  - as sete saídas da decisão de fonte.
+- **Ciclo 14:** REPROVADO, 3 bloqueantes (spec §9). Dos 5 do ciclo 13, 3 ficaram resolvidos e 2
+  parciais. A versão 1.14 trata os 3:
+  - as duas saídas do H0b: a configuração global e o veredito da aba por estrato;
+  - a escolha em `dev` + `calib` e um só teste final, unilateral, na cega;
+  - a página em branco editável, e editar → enviar → reabrir nas sete saídas.
+- **Ciclo 15:** REPROVADO, 1 bloqueante (spec §9). Os 3 do ciclo 14 ficaram resolvidos. A versão
+  1.15 trata o bloqueante:
+  - a leitura cega do H0b passa a ler também os três modos do leitor da aba;
+  - o veredito de cada estrato vem do H0 só quando o produto final lê igual ao de hoje em todas as
+    páginas medidas, com a prova escrita;
+  - nos outros estratos, o veredito vem da cega.
+- **Ciclo 16:** REPROVADO, 2 bloqueantes (spec §9). A versão 1.16 trata os 2:
+  - o H0 publica a ordem de leitura;
+  - o piso vale também no caso (a);
+  - a igualdade canônica fica definida e testada.
+- **Ciclo 17:** REPROVADO, 2 bloqueantes (spec §9). A versão 1.17 trata os 2:
+  - as cinco métricas passam a ser campos obrigatórios, e métrica ausente reprova (sabotagem
+    `sem_ordem`);
+  - o caso (a) abaixo do piso ganha a fixture `tests/fixtures/editor/h0b/veredito_caso_a_abaixo_do_piso.json`, com a saída esperada, e a
+    `piso_so_na_cega` roda contra ela.
+- **Ciclo 18:** APROVADO, sem bloqueante. A versão final trata os dois não bloqueantes (spec §9).
 - Os vereditos e o que cada ciclo mudou ficam em `quality/EDITOR_HTML_CSS_CRITICAS.md`
   («Documentos»).
 

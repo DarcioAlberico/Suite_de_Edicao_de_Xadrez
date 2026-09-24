@@ -740,3 +740,359 @@ FRENTE: Editor HTML/CSS — documentos (spec + roadmap)
 ## O que especificamente precisa mudar para eu aprovar
 
 - Nada bloqueante. A 1.10 pode avançar para execução dos passos H1/H3/H24.
+
+
+## Documentos — ciclo 12 (2026-09-24): REPROVADO, 5 bloqueantes
+
+A versão 1.11 registrou as respostas do usuário ao Q1 (C, a combinação guiada por medição) e ao Q7
+((i), altíssimo padrão). O crítico confirmou a fidelidade às duas respostas e reprovou o H0b e o
+H26 novos. O que a versão 1.12 mudou para cada bloqueante está na spec §9. Sobre o bloqueante 1: a
+`PaginaLida` sai em pontos (`_para_pontos`, `text/leitor.py:660-668`), mas a conferência achou um
+defeito maior (caixa só por linha), e o `ler_pagina` saiu da fusão. O veredito, transcrito sem
+edição:
+
+VEREDITO: REPROVADO  
+CICLO: 12  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.11 (respostas Q1 e Q7)
+
+## Fidelidade às respostas do usuário
+
+| # | onde | situação | evidência |
+|---|---|---|---|
+| 1 | SPEC §0.1, §7; ROADMAP §1, H0b, H8, H26 | CONFIRMADA | Q1 = C é coerente com buscar a combinação mais precisa, guiada por medição. |
+| 2 | SPEC §5.6, §7; ROADMAP H19, H24, §8 | CONFIRMADA | Q7 = (i) é coerente com “altíssimo padrão”: AA inteiro e AAA aplicável sem alterar a tipografia. |
+| 3 | SPEC §7–§9; ROADMAP §1 e §8 | SEM CONTRADIÇÃO ATUAL | As menções antigas a Q1/Q7 pendentes estão claramente no histórico dos ciclos; H8, H19 e H24 foram desbloqueados corretamente. |
+| 4 | SPEC §0.1–§0.2, §7; ROADMAP H8/H22/H26 | PARCIAL | Diagramas são exigidos, mas o contrato novo do H26 não os testa explicitamente. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---|---|---|---|
+| 1 | O glifo já é candidato apenas em regiões de lance (H0b) | `ocr_service.py:1393–1445`; docstring de `glyph.py` | CONFIRMADA |
+| 2 | O adaptador de glifos não usa o léxico nem o juntador de lances do tronco | `glyph.py:1–45` | CONFIRMADA |
+| 3 | `secondary_engines=("rapidocr",)` e `secondary_only_when_degraded=True` | `ocr_service.py:233–238` | CONFIRMADA |
+| 4 | A concordância independente separa motores pelo nome | `fusion.py:595–611`; `Reading.engine:166–168` | CONFIRMADA |
+| 5 | `ENGINE_NAME = "glyph"` | `glyph.py:69` | CONFIRMADA |
+| 6 | `Tarefa` é `QThread`; o processo filho existe para trabalho que segura o GIL | tronco `qt/trabalho.py:24–69`; `processo_de_trabalho.py:1–25` | CONFIRMADA |
+| 7 | O tronco importa a suíte tardiamente | `qt/painel_de_rotulagem.py:28–43` | CONFIRMADA |
+| 8 | `MOTORES=("auto","camada","glifo")`, RapidOCR no modo bloco e leitura glifo pode levar dezenas de segundos | `text/leitor.py:188–205,355–365`; `qt/painel_de_texto.py:259–263` | CONFIRMADA |
+| 9 | O critério SOL-6 exige fusão não pior que o melhor motor e sem aumento de inserções | `Sol.md:306–333` | CONFIRMADA |
+| 10 | As caixas de `ler_pagina` vêm em pontos PDF | ROADMAP H0b:280–283; `text/leitor.py:243–248,1320–1329` | REFUTADA: as caixas das linhas são pixels; somente largura/altura da página são PT. |
+
+## Defeitos bloqueantes
+
+1. ONDE ROADMAP H0b:280–283. O QUE afirma que as caixas de `ler_pagina` vêm em pontos PDF e devem ser convertidas para pixels. COMO CONFERIR comparar com `text/leitor.py:243–248`, que declara a geometria das linhas em pixels, e com `ler_pagina`:1320–1329, onde apenas a página é marcada como `unidade="pt"`. POR QUE REPROVA: a implementação multiplicará caixas já em pixels por `dpi/72`, desalinhando o candidato de glifo das regiões da fusão e podendo associar texto à região errada.
+
+2. ONDE ROADMAP H0b:279–303. O QUE a fonte `pagina_do_tronco` não tem contrato de entrada executável: `GlyphEngine` recebe imagem, enquanto `ler_pagina` requer PDF/documento e índice. COMO CONFERIR seguir `bench_sol.py:143–171` → `OcrService.recognize_image` → `PageTask` apenas com `image` (`ocr_service.py:750–755`); não há `pdf_source` disponível para chamar `ler_pagina`. POR QUE REPROVA: o H0b não consegue medir a nova alavanca pelo próprio harness; o portão pode medir outra coisa, ou simplesmente não inserir candidato algum.
+
+3. ONDE ROADMAP H0b:290–303, 327–353; dependências: H8/H26. O QUE o estrato é decidido “por página” pelo importador, mas o executor usa imagens do `bench_sol` e não transporta a decisão nativa/digitalizada para o `OcrService`. COMO CONFERIR executar as quatro configurações com páginas nativas, digitalizadas e mistas e verificar que o mesmo `SOL_CONFIG` não possui contexto de fonte por item. POR QUE REPROVA: a alavanca pode ser ligada no estrato errado; o ganho publicado não representa o roteamento que será usado no produto.
+
+4. ONDE ROADMAP H0b:307–330, 331–353. O QUE a seleção e a avaliação usam `dev` + `calib`; Bonferroni para nove comparações controla erro familiar, mas não corrige viés de seleção pós-escolha. COMO CONFERIR criar três alternativas em que uma vence por ruído em `dev`/`calib` e perde numa partição independente; o H0b ainda a publica, pois o portão cego só aparece depois e não é dependência de H8/H26. POR QUE REPROVA: H8/H26 podem consumir uma configuração que o próprio H0b declarou vencedora por um portão otimista.
+
+5. ONDE SPEC §0.2:54, §0.1:42–43; ROADMAP H26:1730–1755. O QUE o contrato novo da ponte lista blocos, linhas, retângulos, confiança e figurinas, mas não diagramas, FEN, lado a jogar, legenda ou estipulação; o portão H26 mede somente texto e formatação. COMO CONFERIR usar uma página com diagrama reconhecido pelo produto e executar H26 com uma sabotagem que descarte os blocos de diagrama; os portões (a)–(e) continuam podendo passar. POR QUE REPROVA: a aba pode deixar de mostrar ou transportar os diagramas exigidos pelo pedido, inclusive voltar a `[Diagrama N]`.
+
+## Defeitos não bloqueantes
+
+- A semântica de “igualar” deve ser escrita como comparador direcional para CER, lances e figurinas; `sol_gate` atualmente implementa regressão apenas para CER e inserções (`gates.py:269–281`).
+- A decisão humana quando o custo supera 2× precisa de registro explícito no artefato de configuração e no relatório; o fallback desligado é seguro.
+- O portão de cores do H26 deve incluir casos de proveniência `camada`/`humano`, pois o tronco trata essas origens como `tranquilo` independentemente do corte (`text/documento.py:56–69`).
+- A tabela diz que H1 depende de H0, embora depois permita paralelismo; é apenas uma dependência operacional desnecessária.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Corrigir o contrato geométrico: declarar pixels ou converter exatamente uma vez, com fixture de coordenadas conhecidas.
+- Estender `PageTask`/serviço/harness para transportar PDF, índice, imagem e estrato da página; provar que `ler_pagina` realmente alimenta o candidato.
+- Selecionar em `dev`/`calib`, mas validar o ganho e o critério SOL-6 completo numa partição independente antes de liberar H8/H26.
+- Incluir diagramas/FEN no `text.da_fusao`, na ponte e no portão H26, com sabotagem determinística `sem_diagramas`.
+
+
+## Documentos — ciclo 13 (2026-09-24): REPROVADO, 5 bloqueantes
+
+Dos 5 bloqueantes do ciclo 12, 3 ficaram resolvidos e 2 parciais. O crítico conferiu que a
+`PaginaLida` sai em pontos, corrigindo a leitura dele no ciclo 12. O que a versão 1.13 mudou para
+cada bloqueante está na spec §9. O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 13  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.12
+
+## Bloqueantes do ciclo 12 — situação
+
+| # | bloqueante | situação | evidência |
+|---|---|---|---|
+| 1 | Geometria do `ler_pagina` | RESOLVIDO | `_para_pontos` converte pixels para pontos (`text/leitor.py:660–668`); `_blocos_de_texto` grava `LinhaLida.bbox` já convertido (`:1058–1062`); `PaginaLida.unidade="pt"` (`:1320–1329`). O `ler_pagina` saiu da fusão por token. |
+| 2 | Contrato de entrada sem PDF/índice | RESOLVIDO | H0b usa o adaptador de glifos existente, alimentado por imagem; a condição e o tipo ainda fixos aparecem em `ocr_service.py:1408–1429` e são explicitamente alvo da mudança. |
+| 3 | Estrato não transportado ao serviço | RESOLVIDO | As alavancas agora são globais; a medição é por estrato. H26 obtém a origem em `_decide_source` (`importer.py:953–1043`). Há, porém, uma lacuna nova de mapeamento descrita abaixo. |
+| 4 | Viés de seleção pós-escolha | PARCIAL | H0b introduz metades e confirmação nas duas direções (`ROADMAP:326–347`), mas não define tamanho mínimo por célula, tratamento de célula vazia nem confirmação realmente independente. O estrato nativo tem apenas 29 regiões (`ROADMAP:213–214`). |
+| 5 | Diagramas ausentes do H26 | PARCIAL | O bloco, a ponte e o portão (f) foram acrescentados (`ROADMAP:1778–1845`), mas as sabotagens podem ser vacuamente aprovadas se a fixture não exigir pelo menos um diagrama reconhecido. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---|---|---|---|
+| 1 | `PaginaLida` sai em pontos (spec §9) | `text/leitor.py:660–668,1058–1062,1320–1329` | CONFIRMADA. A leitura anterior do ciclo 12 sobre a saída estava errada; `_Cru` é pixel, mas a saída pública é ponto. |
+| 2 | Condição de alcance e tipo `MOVETEXT` fixo | `ocr_service.py:1408–1409,1427–1443` | CONFIRMADA no código atual; H0b precisa alterar ambos, não somente o alcance. |
+| 3 | `DiagramRef.box` em pontos | `ocr_service.py:284–299` | CONFIRMADA. |
+| 4 | `_recorte` usa `bbox × dpi/72` | tronco HEAD `painel_de_texto.py:478–494`; árvore `:620–644` | CONFIRMADA. A árvore do tronco está suja, mas essa função tem a mesma semântica no HEAD e na árvore. |
+| 5 | Saídas de `_decide_source` | `importer.py:953–1043` | PARCIAL: retorna `ocr`, `text-layer`, `text-layer+ocr`, `text-layer/review`, `rejected`, `image-only` e `blank`; H26 só mapeia explicitamente quatro delas. |
+| 6 | `faixa_de_confianca` trata `camada`/`humano` | `text/documento.py:56–69` | CONFIRMADA. |
+| 7 | `sol_gate` compara somente CER e inserção | `ocr/gates.py:269–288` | FALSA: também compara `reading_order_mean` em `:282–288`. |
+| 8 | Adaptador de glifos já é secundário | `ocr_service.py:1393–1445`; `glyph.py:69` | CONFIRMADA; o candidato atual termina com `secondary=True` e `engine="glyph"`. |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. ONDE `SPEC §7:1368`, `SPEC §9:1551` e `ROADMAP H0b:292–349`. O QUE a spec ainda diz que as alavancas ligam “por estrato”, enquanto a 1.12 define alavancas globais, apenas medidas por estrato. COMO CONFERIR implementar uma configuração que melhora o estrato nativo e piora o digitalizado; verificar se o plano espera roteamento por estrato ou uma configuração única. POR QUE REPROVA: implementações diferentes podem produzir padrões diferentes no produto.
+
+2. ONDE `ROADMAP H0b:326–347`, `213–214`. O QUE a divisão em metades não define potência mínima nem falha fechada para estrato pequeno; além disso, cada metade é seleção em uma direção e confirmação na outra, não uma confirmação independente final. COMO CONFERIR forçar um estrato com uma ou poucas páginas em uma metade; observar se a comparação fica vazia, passa artificialmente ou impede a seleção. POR QUE REPROVA: pode aprovar ruído ou descartar ganho legítimo; o portão cego só vem depois e não é dependência de H8/H26.
+
+3. ONDE `ROADMAP H0b:378–414`; `fusion.py:698–704`. O QUE as sabotagens não são todas determinísticas: `liga_tudo` passa se a regra real escolher todas as alavancas, e `ancora_o_candidato` pode não morder porque uma âncora suportada nunca é substituída, mesmo sem `secondary=True`. O portão também não prova que o `psm_hint` deixou de ser `MOVETEXT`. COMO CONFERIR executar as sabotagens com os dados dourados e inspecionar a decisão da fusão. POR QUE REPROVA: o portão pode declarar vivas alavancas ou proteção de âncora sem testar a propriedade real.
+
+4. ONDE `ROADMAP H26:1833–1845`. O QUE o portão dos diagramas não exige um denominador positivo nem uma fixture com diagrama reconhecido, FEN e campos auxiliares não vazios. COMO CONFERIR executar `sem_diagramas` e `diagrama_como_texto` numa página sem diagrama esperado. POR QUE REPROVA: ambas podem passar por vacuidade, mantendo exatamente o defeito que o bloqueante deveria impedir.
+
+5. ONDE `ROADMAP H26:1817–1822`; `importer.py:953–1043`. O QUE `blank`, `image-only` e `rejected` não têm estrato nem política explícita de fallback. COMO CONFERIR executar H26 com cada saída de `_decide_source` e verificar se a aba troca, mantém o leitor antigo ou registra a razão. POR QUE REPROVA: páginas reais podem ser roteadas para a configuração errada ou ficar sem decisão.
+
+## Defeitos não bloqueantes
+
+- A afirmação de que `sol_gate` só compara CER e inserção deve incluir também a ordem de leitura.
+- O orçamento de `≤ 2×` não define se usa média, mediana, p95, aquecimento ou custo de inicialização do processo.
+- A fixture geométrica de H0 prova a conversão unitária, mas não prova casamento de múltiplas linhas; isso não afeta a fusão porque o leitor de linha foi removido dela.
+- As referências de linha do painel devem continuar registrando se são HEAD ou árvore de trabalho.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Harmonizar §7, §9 e H0b: alavancas globais com medição por estrato, ou roteamento explicitamente por estrato.
+- Definir tamanho mínimo por `(livro, estrato, metade)`, comportamento para célula vazia e falha fechada; usar confirmação independente antes de H8/H26.
+- Tornar cada sabotagem não-vacuamente determinística, incluindo `MOVETEXT` versus tipo real da região e a identidade do classificador.
+- Exigir fixture H26 com pelo menos um diagrama reconhecido, FEN, lado, número, legenda e estipulação; testar ambos os sabotadores contra essa fixture.
+- Mapear todas as saídas de `_decide_source` e corrigir a afirmação sobre o `sol_gate`.
+
+
+## Documentos — ciclo 14 (2026-09-24): REPROVADO, 3 bloqueantes
+
+Dos 5 bloqueantes do ciclo 13, 3 ficaram resolvidos (as sabotagens, os diagramas, as sete saídas da
+decisão de fonte) e 2 parciais. O que a versão 1.14 mudou para cada bloqueante está na spec §9. O
+veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 14  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.13
+
+## Bloqueantes do ciclo 13 — situação
+
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | Configuração única e global | **PARCIAL** | §7 e H0b dizem que a configuração é global, mas H26 permite ativá-la apenas nos estratos não vermelhos, enquanto H0b diz que qualquer célula sem evidência reprova globalmente e mantém a configuração atual (`ROADMAP:305–307,358–361,440–441`). |
+| 2 | Piso, falha fechada e confirmação independente | **PARCIAL** | O piso de 20 regiões/3 páginas e a falha fechada estão definidos (`ROADMAP:333–370`). Porém, A confirma B e B confirma A: cada metade também participa da seleção da configuração finalmente aceita. Não há conjunto final intocado. |
+| 3 | Sabotagens determinísticas | **RESOLVIDO** | As seis sabotagens têm fixtures e efeitos definidos (`ROADMAP:401–458`). A ordem da fusão, `secondary=True`, a âncora suportada e B4 tornam os casos determinísticos. |
+| 4 | Diagramas sem vacuidade | **RESOLVIDO** | Fixture com 2 diagramas e campos não vazios; denominador real zero reprova (`ROADMAP:1887–1899`). |
+| 5 | Sete saídas de `_decide_source` | **RESOLVIDO** | As sete saídas estão enumeradas, com comportamento e teste por saída (`ROADMAP:1863–1876,1900–1909`). |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | Q1=C e Q7=(i), fiel às respostas do usuário (§0.1, §7) | `SPEC:38–47,1368,1374` | **CONFIRMADA** |
+| 2 | `PdfImportOptions.ocr_config` é aceito pelo caminho do produto (H0b) | `importer.py:309–351,1051–1055,1119–1137` | **CONFIRMADA** |
+| 3 | Tolerâncias 0,002 de CER/inserção | `gates.py:52–55` e `ROADMAP:330–332` | **CONFIRMADA** |
+| 4 | `fuse_candidates` ordena candidatos e respeita `never_anchor` | `fusion.py:351–356`; `ocr_service.py:1474–1478,1507–1513` | **CONFIRMADA** |
+| 5 | B4 ocorre antes da regra da âncora suportada | `fusion.py:639–643,696–704` | **CONFIRMADA** |
+| 6 | A guarda de letra de peça existe e não trata peão como letra | `fusion.py:491–497,639–640` | **CONFIRMADA** |
+| 7 | `_decide_source` produz as sete categorias alegadas | `importer.py:953–998` | **CONFIRMADA** |
+| 8 | As linhas HEAD/árvore do painel foram distinguidas | `wc -l`: painel HEAD 1555, árvore 2026; `janela.py` HEAD/árvore 2077 | **CONFIRMADA** |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. ONDE `ROADMAP:305–307,358–361,440–441` e `H26:1875–1876`. O QUE a ativação global da configuração contradiz a política por estrato do H26. COMO CONFERIR usar uma configuração que passa no digitalizado, mas deixa o nativo abaixo do piso: H0b diz que a configuração global não liga; H26 sugere usar o produto nos estratos aprovados e o leitor antigo nos demais. POR QUE REPROVA: duas implementações legítimas podem produzir comportamentos diferentes no produto.
+
+2. ONDE `ROADMAP:338–367`. O QUE a confirmação dita como independente não é um holdout final: A seleciona e confirma B, mas B também seleciona a configuração que depois será confirmada em A. A frase “≤ 2,5 %” não decorre automaticamente de um IC bootstrap de 95 %. COMO CONFERIR executar o algoritmo em dados nulos com as 7 alternativas e verificar se a configuração final foi escolhida usando ambas as metades antes de ser “confirmada”. POR QUE REPROVA: H8/H26 podem consumir uma configuração selecionada pelo mesmo conjunto que supostamente a validaria; o `blind` só aparece depois (`ROADMAP:371–372`).
+
+3. ONDE `ROADMAP:1868,1877` e o comportamento atual do painel em `ChessVisionOFF_Puro/src/chess_diagram_ocr/qt/painel_de_texto.py:327–346,1538+`. O QUE a rota `blank` diz que a ponte não envia nada, embora o editor continue editável e aceite digitação manual. COMO CONFERIR abrir uma página vazia, digitar texto e acionar o envio ao editor; conferir que nada chega ao projeto. POR QUE REPROVA: perde trabalho do usuário e contradiz a garantia de que o que é editado na aba Texto chega ao projeto.
+
+## Defeitos não bloqueantes
+
+- A cota estatística de 2,5 % deveria declarar explicitamente IC unilateral, método bootstrap e unidade de reamostragem.
+- `configuracao_trocada` deveria definir o caso em que a configuração esperada é a última da lista de oito.
+- A identidade do classificador ainda precisa ser armazenada como hash completo, não apenas no texto truncado atualmente em `glyph.py:279–282,468`.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Fixar a semântica: configuração global desligada para todos os estratos quando qualquer confirmação falhar, ou declarar formalmente roteamento por estrato.
+- Usar um holdout final realmente intocado antes de liberar H8/H26, com a cota estatística definida corretamente.
+- Preservar ou bloquear explicitamente a edição em páginas `blank`; acrescentar teste de editar–enviar–reabrir para as sete rotas.
+
+
+## Documentos — ciclo 15 (2026-09-24): REPROVADO, 1 bloqueante
+
+Os 3 bloqueantes do ciclo 14 ficaram resolvidos. O que a versão 1.15 mudou para o bloqueante novo
+está na spec §9. O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 15  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.14
+
+## Bloqueantes do ciclo 14 — situação
+
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | Configuração global versus política por estrato | **RESOLVIDO** | Spec §7/§9 e roadmap H0b:344–349 separam claramente a configuração global da fusão do veredito da aba por estrato. H26:1906–1908 segue apenas esse veredito. |
+| 2 | Seleção/confirmacão sem holdout final | **RESOLVIDO** | H0b:350–375 usa `dev` + `calib`, registra candidato e par antes da cega, executa uma confirmação unilateral de 97,5% na `blind`, por páginas, sem nova escolha. |
+| 3 | `blank` descartava edição | **RESOLVIDO** | H26:1897–1899 e 1932–1946 tornam a página editável, enviam como `EDITADA`/`humano` e testam editar → enviar → reabrir. O painel atual também aceita digitação: `readOnly=False`; teste Qt produziu texto no `DocumentoRico`. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | Q1 = C e diagramas vêm do OCR de diagramas do produto (§0.1, §7) | Spec:38–46, 1368; roadmap H8/H26 | **CONFIRMADA** e fiel à resposta do usuário. |
+| 2 | A cega só é usada para avaliação, não treino/calibração/correção | `OCR_UI_SPEC.md:44–45`; `sol_gate.py --blind`; `review.py:refusal/corrections` | **CONFIRMADA**. A R1.4 permite avaliação cega. |
+| 3 | Cega com 57 regiões digitalizadas/14 páginas e 8 nativas/8 páginas | `load_manifest(..., include_blind=True)` + `partition_for` | **CONFIRMADA**: 57/14 e 8/8. |
+| 4 | `modelo_sha256` completo identifica o classificador | `ocr/engines/glyph.py:280–282,468` | **PARCIAL**: o código atual ainda trunca para 12 caracteres; a 1.14 apenas agenda a correção. Não reabro isso como bloqueante. |
+| 5 | Página `blank` é editável | painel atual `painel_de_texto.py:338–362,1691–1699`; `vazio.py:48–57` | **CONFIRMADA**: editor habilitado, não somente leitura; clique e digitação chegam ao `DocumentoRico`. |
+| 6 | Editar → enviar → reabrir cobre a perda da edição | roadmap H26:1932–1946 | **CONFIRMADA para o risco específico da ponte**, complementada pelo H17 para queda, recuperação e gravação. |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. ONDE `EDITOR_HTML_CSS_ROADMAP.md:385–403`, em contraste com H0:201–262. O QUE o segundo resultado do H0b — o veredito da aba por estrato — não tem uma avaliação cega completamente especificada. H0 mede os três leitores da aba (`glifo`, `glifo`/bloco e `camada`) apenas em `dev` + `calib`. O teste cego do H0b especifica explicitamente a candidata contra a configuração atual e o par (*s*, *m*), mas não exige executar esses três leitores isolados na `blind`. Além disso, H0b:389–391 diz que os dados do veredito são “sempre” não vistos pela escolha, mas permite reutilizar H0 em `dev` + `calib`, que foi usado na seleção. COMO CONFERIR: force uma candidata que altere somente o estrato digitalizado; execute a seleção e a confirmação cega; verifique se o relatório contém, para esse estrato, produto final contra os três leitores isolados, por todas as métricas do veredito. POR QUE REPROVA: H26 pode escolher “produto” ou “leitor antigo” sem evidência cega correspondente, ou usando dados que participaram da escolha, construindo a rota errada da aba.
+
+## Defeitos não bloqueantes
+
+- A distinção entre “um teste estatístico” e as três execuções de determinismo/tempo deve ser explicitada.
+- O `modelo_sha256` completo ainda não está no código atual, embora a mudança esteja descrita.
+- `sol_gate --blind` autoriza a avaliação da cega, mas não substitui o relatório específico do H0b; os comandos deveriam ser separados explicitamente.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Especificar no H0b uma execução cega final que rode a configuração final e os três leitores isolados do H0 no estrato afetado.
+- Registrar esses resultados no JSON do veredito da aba e usar a cega sempre que a configuração alterar leituras.
+- Corrigir a frase “sempre dados que nenhuma escolha viu” ou demonstrar formalmente por que uma célula comprovadamente inalterada pode reutilizar H0.
+- Depois disso, repetir apenas a crítica do H0b/H26; os três bloqueantes do ciclo 14 estão tratados.
+
+
+## Documentos — ciclo 16 (2026-09-24): REPROVADO, 2 bloqueantes
+
+O bloqueante do ciclo 15 ficou parcial: o caso (b) do veredito da aba ficou especificado, e o caso
+(a) não tinha a ordem de leitura nem o piso. O que a versão 1.16 mudou está na spec §9. O veredito,
+transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 16  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.15
+
+## Bloqueante do ciclo 15 — situação
+
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | Veredito da aba sem avaliação cega completa e com reuso indevido do H0 | **PARCIAL** | O caso (b) agora especifica `--cega`, produto final/candidato e os três modos da aba (`ROADMAP:362–405`). A prova do caso (a) é coerente quanto à seleção não comparar diretamente contra a aba. Porém, o caminho H0 ainda não declara todas as métricas exigidas pelo veredito nem aplica explicitamente o piso por estrato. |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | A leitura cega roda uma vez com produto atual, candidato e três modos da aba | `ROADMAP H0b:362–369`; `SPEC §9` | **Confirmada** |
+| 2 | O caso (b) usa a cega em todas as métricas, com piso e falha fechada | `ROADMAP H0b:395–405` | **Parcial**: a regra enumera ordem de leitura, mas o contrato do H0 não a publica |
+| 3 | O caso (a) pode reutilizar H0 sem contaminar a seleção | `ROADMAP H0b:406–416`; `SPEC §9` | **Parcial**: a separação da escolha está demonstrada, mas faltam definição de igualdade completa e aplicação do piso |
+| 4 | A configuração continua global e o veredito continua por estrato | `SPEC §7/Q1`; `ROADMAP H0b:344–349,395–405` | **Confirmada** |
+| 5 | H26 segue o veredito da aba e não roteia a fusão | `ROADMAP H26:1908–1937` | **Confirmada; não quebrou o contrato anterior** |
+| 6 | A regra sintética e `veredito_do_h0_alterado` mordem | `ROADMAP H0b:468–505` | **Parcial**: cobrem o uso indevido de H0 quando a configuração muda, mas não o caso (a) com evidência abaixo do piso |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+1. **ONDE** `ROADMAP H0:229–251`, `H0b:328–345,395–405` e `SPEC §7/Q1`. **O QUE** o H0 não declara nem publica `ordem de leitura`, embora o veredito exija comparação em CER, lances, figurinas, inserção e ordem. **COMO CONFERIR** executar o caso (a) com a configuração final idêntica à atual e verificar se o JSON do H0 contém, para cada estrato e modo, a ordem, seu intervalo e sua decisão. **POR QUE REPROVA** o caminho que reutiliza H0 pode aprovar “produto” sem conferir uma métrica que o próprio H0b declara obrigatória, contradizendo o critério de aceite da SOL-6.
+
+2. **ONDE** `ROADMAP H0:247–251` e `H0b:338–340,400–405`. **O QUE** o piso de 20 regiões/5 páginas é explicitamente aplicado à leitura cega do caso (b), mas não ao caso (a); H0 só garante denominador global de 150 regiões e pelo menos um estrato nativo e um digitalizado. **COMO CONFERIR** usar números sintéticos com 150 regiões totais, mas menos de 20 no estrato do veredito, e leituras finais idênticas às de hoje; verificar se o caso (a) ainda pode produzir “produto”. **POR QUE REPROVA** o H26 pode ser roteado para o produto com evidência insuficiente. Falha fechada precisa valer nos dois caminhos.
+
+## Defeitos não bloqueantes
+
+- H26 diz primeiro que as duas abas mostram “a mesma leitura”, mas depois admite corretamente o leitor antigo em estratos vermelhos; qualificar essa frase evitaria ambiguidade.
+- A identidade de “leituras idênticas” deveria ter uma definição canônica/hash que inclua todos os campos relevantes ao H26, não apenas texto ou métricas.
+- O `modelo_sha256` completo ainda depende da mudança de código já prevista.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Fazer o H0 publicar ordem de leitura e seus intervalos para todos os leitores/modos, alinhando H0, H0b e §7/Q1.
+- Aplicar o piso por estrato também ao caso (a); abaixo dele, o veredito deve ser obrigatoriamente «leitor antigo».
+- Definir e testar a igualdade canônica usada para decidir que a configuração final é idêntica à de hoje.
+- Acrescentar fixture para o caso (a) abaixo do piso e atualizar a sabotagem/regra sintética para reprovar esse falso “produto”.
+
+
+## Documentos — ciclo 17 (2026-09-24): REPROVADO, 2 bloqueantes
+
+Os 2 bloqueantes do ciclo 16 ficaram parciais: faltavam a métrica obrigatória com falha fechada e a
+fixture do caso (a) abaixo do piso. O que a versão 1.17 mudou está na spec §9. O veredito,
+transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 17  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.16
+
+## Bloqueantes do ciclo 16 — situação
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | H0 não publicava ordem de leitura | **PARCIAL** | O roadmap agora a declara em H0:226–239, mas `gates.py:254–288` omite o gate quando `reading_order_mean` está ausente. Falta uma exigência explícita de falha fechada para métrica ausente. |
+| 2 | Piso de 20 regiões/5 páginas só valia no caso (b) | **PARCIAL** | A regra agora aplica o piso ao caso (a): H0b:411–418 e a sabotagem aparece em H0b:517–520. Porém, a fixture solicitada não tem caminho, dados congelados, hash ou resultado esperado explícitos. |
+
+## Afirmações conferidas
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | H0 publica CER, lances, figurinas e ordem de leitura (§7 Q1) | Spec:1368; roadmap H0:226–239 | **Parcial**: o contrato textual existe, mas o gate existente aceita ausência de ordem. |
+| 2 | O piso vale nos dois casos do veredito | Roadmap H0b:411–418 | **Confirmada na regra** |
+| 3 | Igualdade canônica inclui conteúdo, caixas, confiança, proveniência, figurinas e diagramas | Roadmap H0b:341–346,475–476 | **Confirmada**, com teste de caixa diferente |
+| 4 | Configuração global e veredito por estrato continuam separados | Spec §7/Q1; roadmap H0b:355–360,406–418 | **Confirmada** |
+| 5 | H26 qualifica “mesma leitura” aos estratos com veredito «produto» | Roadmap H26:1929–1958 | **Confirmada; não quebrou o contrato** |
+| 6 | `reading_order_accuracy` é a régua usada | `metrics.py:239–250`; `gates.py:254–288` | **Parcial**: LCS ignora regiões extras e o gate desaparece sem dados |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+1. ONDE `EDITOR_HTML_CSS_ROADMAP.md:226–239,255–274` e `src/caissa/ocr/gates.py:254–288`. O QUE o plano exige ordem de leitura, mas o gate existente só a avalia quando `reading_order_mean` está presente; sem ela, não reprova. COMO CONFERIR executar o H0 com JSON sem `reading_order` ou com todos os valores ausentes. POR QUE REPROVA: o portão pode aprovar sem publicar nem conferir a métrica que o veredito da aba exige.
+
+2. ONDE `EDITOR_HTML_CSS_ROADMAP.md:466–475,517–520`. O QUE o caso (a) abaixo do piso é descrito como números sintéticos, mas não há fixture identificada, congelada e com saída esperada. COMO CONFERIR procurar uma fixture versionada contendo 150 regiões totais, menos de 20 e/ou menos de 5 páginas no estrato, além da execução da sabotagem `piso_so_na_cega`. POR QUE REPROVA: a correção solicitada no ciclo 16 pode virar apenas uma condição escrita no teste, sem prova independente de que o caso (a) realmente produz «leitor antigo».
+
+## Defeitos não bloqueantes
+- A serialização canônica ainda não fixa UTF-8, separadores, normalização Unicode, representação numérica e ordem das listas.
+- `reading_order_accuracy` não penaliza regiões extras; se a métrica pretende avaliar a leitura completa, deve incluir precisão ou custo de inserções.
+- O teste de igualdade canônica cobre caixa diferente, mas não testa separadamente confiança, proveniência, figurina e cada campo de diagrama.
+- Os diffs temporários indicados não estão disponíveis neste ambiente; a conferência foi feita diretamente na 1.16 e no código presente.
+
+## O que especificamente precisa mudar para eu aprovar
+- Tornar H0/H0b falha fechada para ordem ausente: campo obrigatório, intervalo obrigatório e reprovação explícita se qualquer leitor, modo ou estrato não publicar a métrica.
+- Adicionar uma fixture versionada e nomeada para o caso (a) abaixo do piso, com dados esperados e a sabotagem `piso_so_na_cega` vinculada a ela.
+- Depois disso, repetir apenas a verificação do H0/H0b; H26 e a definição funcional da igualdade canônica já estão suficientemente alinhados.
+
+
+## Documentos — ciclo 18 (2026-09-24): APROVADO
+
+Os 2 bloqueantes do ciclo 17 ficaram resolvidos. Os dois não bloqueantes foram tratados na versão
+final (spec §9). O veredito, transcrito sem edição:
+
+VEREDITO: APROVADO  
+CICLO: 18  
+FRENTE: Editor HTML/CSS — documentos (spec + roadmap), versão 1.17
+
+## Bloqueantes do ciclo 17 — situação
+
+| # | bloqueante | situação | evidência |
+|---:|---|---|---|
+| 1 | Ordem de leitura podia faltar sem reprovar | **RESOLVIDO** | H0 declara as cinco métricas obrigatórias, incluindo ordem de leitura, com valor e intervalo para cada leitor, modo e estrato (`ROADMAP:226–251`). Ausência ou nulidade reprova «métrica ausente»; `sem_ordem` está explicitamente ligada ao H0 e ao H0b (`ROADMAP:275–283, 546–550`). O `sol_gate` ainda pode omitir a métrica, mas o portão próprio de H0/H0b cobre essa lacuna em falha fechada. |
+| 2 | Caso (a) abaixo do piso sem fixture identificada, congelada e com saída esperada | **RESOLVIDO** | H0b nomeia a fixture `tests/fixtures/editor/h0b/veredito_caso_a_abaixo_do_piso.json`, fixa SHA-256, descreve os 150 registros e fornece o resultado esperado em `.esperado.json` (`ROADMAP:489–497`). A sabotagem `piso_so_na_cega` roda contra essa fixture (`ROADMAP:546–548`). |
+
+## Afirmações conferidas
+
+| # | afirmação (doc §) | conferida em | resultado |
+|---:|---|---|---|
+| 1 | H0 exige CER, lances, inserção, figurinas e ordem de leitura | Spec §7/Q1; Roadmap H0:226–251 | Confirmada |
+| 2 | Métrica ausente ou nula reprova H0/H0b | Roadmap H0:242–246; H0b:498–500 | Confirmada |
+| 3 | O piso vale também no caso (a) | Roadmap H0b:489–497 | Confirmada |
+| 4 | O caso (a) tem fixture congelada e saída esperada | Roadmap H0b:489–497 | Confirmada |
+| 5 | Q1 continua sendo C: fusão global, medição por estrato e veredito separado da aba | Spec §7/Q1; Roadmap H0b:371–435; H26:1982–1988 | Confirmada |
+| 6 | A §9 registra corretamente as mudanças da 1.17 | Spec §9:1632–1643 | Confirmada |
+
+## Defeitos bloqueantes (novos ou remanescentes)
+
+Nenhum bloqueante encontrado.
+
+## Defeitos não bloqueantes
+
+- H0b diz que as métricas são obrigatórias «na escolha e na leitura cega», mas também diz que a cega não abre quando nenhuma candidata é selecionada. Convém explicitar «quando houver leitura cega» para eliminar essa ambiguidade.
+- A fixture esperada é identificada pelo caminho e conteúdo, mas o hash literal da fixture fica para o teste; isso é aceitável para o plano, desde que o teste realmente congele o valor.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Nada bloqueante. A versão 1.17 pode avançar para implementação dos passos H0/H0b.

@@ -1,9 +1,15 @@
 # Especificação — Editor HTML/CSS (janela dedicada: código, resultado e PDF original)
 
-> **Data:** 2026-09-23 · **Versão:** 1.10 — **APROVADA pelo Codex no ciclo 11**, depois de dez ciclos
-> reprovados (12, 8, 9, 4, 7, 4, 4, 3, 3 e 2 bloqueantes; §9 diz o que cada um mudou) · **Deriva de:** o pedido do usuário de
-> 2026-09-23 (§0.1) e do mapeamento do
-> código feito na mesma data (§2 — cada fato com arquivo:linha, os números com o comando no
+> **Data:** 2026-09-24 · **Versão:** 1.17 — **APROVADA pelo Codex no ciclo 18**.
+> - A 1.10 tinha sido aprovada no ciclo 11, depois de dez ciclos reprovados (12, 8, 9, 4, 7, 4, 4, 3,
+>   3 e 2 bloqueantes).
+> - A 1.11 registrou as **respostas do usuário ao Q1 e ao Q7** (2026-09-24).
+> - Os ciclos 12 a 17 reprovaram o H0b e o H26 novos (5, 5, 3, 1, 2 e 2 bloqueantes).
+>
+> §7 e §9 dizem o que cada ciclo mudou.
+>
+> **Deriva de:** o pedido do usuário de 2026-09-23 (§0.1) e do mapeamento do código feito na
+> mesma data (§2 — cada fato com arquivo:linha, os números com o comando no
 > Apêndice A).
 > **Formato:** contrato de capacidade (capacidade → o que existe → restrições → decisões → contrato
 > de implementação → não-objetivos → questões abertas → passagem). É o que precisa ser verdade
@@ -31,8 +37,18 @@
 
 **Uma coisa que o pedido supõe e o código desmente:** a aba Texto **não** usa o OCR da exportação
 (§2.1). «O OCR que alimenta a aba Texto» e «o OCR que vira o livro» são hoje dois leitores
-diferentes. Escolher qual alimenta o editor — ou unificá-los — é decisão do usuário (Q1), com uma
-medição antes (H0).
+diferentes.
+
+**O usuário decidiu em 2026-09-24 (Q1 = C, a combinação guiada por medição):** «O OCR que alimenta o editor deve ser o mais preciso para textos e símbolos de xadrez, ou as combinações dos vários OCR, mirando na precisão e qualidade final. Também vamos precisar dos diagramas, e nosso OCR de diagramas já tem uma precisão altíssima.»
+- O editor recebe a leitura **mais precisa**, que é a **fusão do produto**: camada de texto,
+  Tesseract, RapidOCR, o classificador de glifos do tronco, o modelo e a cifra do livro.
+- O que o leitor da aba Texto faz **de diferente** entra na fusão **onde a medição prova ganho**
+  em texto ou em símbolos de xadrez (H0 mede, H0b combina).
+- Os **diagramas** vêm do OCR de diagramas do produto: o reconhecedor do tronco, com FEN e as
+  decisões de diagrama.
+
+**«Nível AAA» = altíssimo padrão** (usuário, 2026-09-24; Q7 = i): a régua é a da carta do crítico,
+indistinguível ou melhor que a referência da indústria, às cegas.
 
 ### 0.2 O que o usuário passa a ter
 
@@ -984,7 +1000,7 @@ editor/<slug>/                        (slug do nome do PDF; a chave real é o SH
 | `XhtmlBuilder` | perfil de máquina (§2.3) | `perfil: Literal["maquina","legivel"]`. O **legível** escreve o contrato (S4): sem `data-ir` por corrida e sem classes `.pN/.rN/.dN`; estilo nomeado vira classe; `RunProps` só como marcação semântica ou classe; `lang` de `RunProps.language`; `id` `p<pág>-<n>` nos blocos com proveniência; marcadores de página; `html_attributes` do nó escritos de volta |
 | leitor | `read_html_text` (XML estrito; `data-ir`) | + `ler_legivel(texto, contexto)`: contrato → IR; elemento desconhecido → `RawPassthrough`/`RawInline` `xhtml`; atributo desconhecido (`style`, `title`, `aria-*`, `data-*` fora do contrato, classes além da de estilo) → `html_attributes`; `id` → ULID pelo `proveniencia.json` (sem ele, ULID novo); o legado `data-ir` continua lido |
 | IR | sem lugar para atributo HTML | `IRNode.html_attributes: tuple[tuple[str, str], ...] = ()`; esquema v2 com migração v1→v2 trivial (padrão vazio é omitido na serialização) |
-| geração | `export_book` reimporta ou reaproveita (`book.py:477-540`) | `editor.geracao.gerar(projeto, paginas, *, should_cancel, progress)`: a fonte do Q1 → IR por página → divisão em arquivos pela regra do EPUB → perfil legível → `proveniencia.json` → SVG em cache. Página `EDITADA`/`REVISADA` nunca é tocada |
+| geração | `export_book` reimporta ou reaproveita (`book.py:477-540`) | `editor.geracao.gerar(projeto, paginas, *, should_cancel, progress)`: a fusão do produto (Q1 = C: `import_pdf` com as alavancas que o H0b ligar) → IR por página → divisão em arquivos pela regra do EPUB → perfil legível → `proveniencia.json` → SVG em cache. Página `EDITADA`/`REVISADA` nunca é tocada |
 | dúvidas por trecho | só o agregado do bloco | o importador embrulha os trechos `REVIEW`/`ABSTAINED` num `Span` com `provenance` (sem migração); o perfil legível não escreve esse `Span` e grava o intervalo (N3) |
 
 **S3b — O CSS do projeto e o mapa de estilo**
@@ -1247,7 +1263,8 @@ pronto → «remover» → ausente
 
 **O livro exportado.** A meta é EPUB Accessibility 1.1 com o **WCAG 2.2 AA inteiro**, **mais todo
 critério AAA que se aplica a um livro estático**, com portão. A tabela abaixo cobre **todos** os
-critérios AAA do WCAG 2.2. O Q7 decide o tema padrão.
+critérios AAA do WCAG 2.2. Com o Q7 = (i), o tema «Leitura AAA» fica disponível, sem ser o
+padrão; o padrão sai do Q6.
 
 | critério AAA | aplica ao livro? | o que o editor faz | portão |
 |---|---|---|---|
@@ -1255,7 +1272,7 @@ critérios AAA do WCAG 2.2. O Q7 decide o tema padrão.
 | 1.3.6 identificar o propósito | sim: regiões | `epub:type`/`role` em capítulo, nota, figura; `landmarks` no `nav` | H24: 100 % das seções e notas com papel |
 | 1.4.6 contraste melhorado | sim | 7:1 para texto normal e 4,5:1 para grande, com **qualquer** CSS, medido nas páginas renderizadas | H10, H19, H24 |
 | 1.4.7 áudio de fundo | não | — | — |
-| 1.4.8 apresentação visual | sim, mas **conflita com o texto justificado**, a norma tipográfica do livro de xadrez | tema «Leitura AAA», com as cinco exigências do critério: (1) **cores selecionáveis pelo usuário** — o tema não fixa `color` nem `background-color` do conteúdo principal, só de elementos secundários (técnicas C23/C25 do W3C), e nunca com `!important`, então o tema do leitor de EPUB (claro, sépia, noturno) vale; (2) largura ≤ 80 caracteres; (3) não justificado; (4) entrelinha ≥ 1,5 e espaço entre parágrafos ≥ 1,5 × a entrelinha; (5) sem rolagem horizontal a 200 %. Se é o padrão, decide o **Q7** | H19: as cinco medidas; a (1) por análise do CSS **e** renderizando com uma folha do usuário que troca as cores — o texto principal tem de assumi-las |
+| 1.4.8 apresentação visual | sim, mas **conflita com o texto justificado**, a norma tipográfica do livro de xadrez | tema «Leitura AAA», com as cinco exigências do critério: (1) **cores selecionáveis pelo usuário** — o tema não fixa `color` nem `background-color` do conteúdo principal, só de elementos secundários (técnicas C23/C25 do W3C), e nunca com `!important`, então o tema do leitor de EPUB (claro, sépia, noturno) vale; (2) largura ≤ 80 caracteres; (3) não justificado; (4) entrelinha ≥ 1,5 e espaço entre parágrafos ≥ 1,5 × a entrelinha; (5) sem rolagem horizontal a 200 %. Com o **Q7** = (i), ele fica disponível e não é o padrão | H19: as cinco medidas; a (1) por análise do CSS **e** renderizando com uma folha do usuário que troca as cores — o texto principal tem de assumi-las |
 | 1.4.9 imagem de texto (sem exceção) | sim: a região «mantida como imagem» **é** imagem de texto, e já fere o 1.4.5 AA — a exceção é só decorativa ou essencial, e **transcrição no alt não basta** | «Transcrever a região»: o texto revisado **substitui** a imagem, e a página vira `EDITADA`. Com qualquer imagem de texto restante, **nenhuma** declaração de conformidade (nem AA). O relatório as conta | H10, H24: 0 imagens de texto para declarar |
 | 2.1.3 teclado (sem exceção) | sim: só links | o validador reprova todo interativo além de `<a href>`: `<form>`, `<input>`, `<button>`, `<select>`, `<textarea>`, `<details>`, `contenteditable`, `tabindex` > 0, `on*` | H10 (fixture de cada um), H24 |
 | 2.2.3–2.2.6 (tempo) | não: sem limite de tempo | o validador reprova `<meta http-equiv="refresh">` e script (R4.2) | H10, H24 |
@@ -1268,7 +1285,7 @@ critérios AAA do WCAG 2.2. O Q7 decide o tema padrão.
 | 2.5.6 mecanismos de entrada | sim | nenhum conteúdo restringe a modalidade de entrada (sem script, R4.2) | H10 (a regra de script) |
 | 3.1.3 palavras incomuns | sim: símbolos de avaliação **e jargão** | **glossário** gerado e ligado no `nav`, a partir de um **inventário revisado de candidatos**. Os candidatos: (1) os NAG e as figurinas usados; (2) os termos do **léxico do contrato** (`editor/glossario/<idioma>.json`: zugzwang, oposição, fortaleza, casa de fuga…, pt/en/de/ru/es) presentes no livro; (3) toda palavra que o dicionário geral do idioma do livro não conhece e que não é notação; (4) os termos que o usuário marcar. **Uso restrito de palavra comum** (a «oposição» do xadrez) só se detecta pelo léxico ou pela pessoa — por isso a revisão é humana: cada candidato recebe «definir» (vai ao glossário com a definição) ou «uso comum» (fica registrado), e o inventário leva a **atestação** de quem revisou e quando (`editor/glossario/revisao.json`). Como a palavra comum usada como jargão **só uma pessoa acha**, a atestação é de **leitura integral**: o modo «Revisão de termos» percorre cada capítulo parágrafo a parágrafo, deixa marcar qualquer palavra como termo, e registra por capítulo quem o percorreu inteiro, quando e o **SHA-256 do texto do capítulo** revisado (os nós de texto do XHTML, normalizados). **Qualquer mudança no texto do capítulo vence a atestação**: o validador mostra «atestação vencida» e o capítulo volta a precisar da leitura | H24: 100 % dos candidatos com decisão, 100 % dos «definir» com definição e **100 % dos capítulos com a atestação de leitura integral cujo hash é o do texto atual** — só então o 3.1.3 conta como cumprido. O limite fica dito no relatório: a completude do jargão é atestada por uma pessoa, não medida por máquina |
 | 3.1.4 abreviaturas | sim (GM, MI, ECO…) | `<abbr title>` para as abreviaturas de uma lista do contrato | H24: 100 % das da lista |
-| 3.1.5 nível de leitura | sim | o critério aceita **conteúdo suplementar**: o editor oferece o bloco «Resumo em linguagem simples» (`section.cb-resumo-simples`) por capítulo, escrito pelo usuário. Exigir em **todo** capítulo é mais estrito que o WCAG, que pede o suplemento onde o texto exige leitura avançada; como o nível de um texto técnico de xadrez não se mede com confiança, fica a regra conservadora. Sem o resumo, o 3.1.5 fica **não cumprido** e dito | H24: com o Q7 (iv), 100 % dos capítulos com o resumo |
+| 3.1.5 nível de leitura | sim | o critério aceita **conteúdo suplementar**: o editor oferece o bloco «Resumo em linguagem simples» (`section.cb-resumo-simples`) por capítulo, escrito pelo usuário. Exigir em **todo** capítulo é mais estrito que o WCAG, que pede o suplemento onde o texto exige leitura avançada; como o nível de um texto técnico de xadrez não se mede com confiança, fica a regra conservadora. Sem o resumo, o 3.1.5 fica **não cumprido** e dito | H24: o relatório conta os capítulos com o resumo; com o Q7 = (i), o 3.1.5 não é exigido |
 | 3.1.6 pronúncia | não | — | — |
 | 3.2.5 mudança a pedido | sim | sem script (R4.2) e sem `meta refresh` | H10, H24 |
 | 3.3.5, 3.3.6, 3.3.9 (formulários) | não: o livro não tem formulário | o validador reprova `<form>` e controles (a regra do 2.1.3) | H10, H24 |
@@ -1279,7 +1296,13 @@ critérios AAA do WCAG 2.2. O Q7 decide o tema padrão.
   - zero imagens de texto (1.4.9);
   - o resumo em linguagem simples em todo capítulo, escrito pelo usuário (3.1.5).
 - Sem elas, o livro declara **AA** e o relatório lista, critério a critério, cada AAA cumprido.
-- Qual das duas o produto entrega é do usuário (**Q7**). **H19 e H24 não começam sem a resposta.**
+- **O usuário escolheu em 2026-09-24 (Q7 = i):** «O triplo-AAA significa altíssimo padrão.» O livro cumpre:
+  - o AA inteiro;
+  - todo AAA aplicável que não muda a tipografia.
+
+  Ele declara AA, e o tema «Leitura AAA» fica **disponível**, sem ser o padrão (o padrão sai do
+  Q6). O «altíssimo padrão» é a régua da carta do crítico: indistinguível ou melhor que a
+  referência da indústria, às cegas.
 
 Em detalhe:
 - `lang` no documento e nos trechos.
@@ -1346,27 +1369,28 @@ Em detalhe:
 | # | questão | bloqueia | recomendação |
 |---|---|---|---|
 | Q0 | Aprovar D1–D5 como ADR-0010…0014 em `docs/adr/README.md`? | registro das ADRs | sim, depois da crítica |
-| **Q1** | **Qual OCR alimenta o editor?** (A) o **do produto** (`import_pdf` → IR, o que a exportação usa, com as decisões de revisão e de diagrama, a cifra e o modelo do livro), com a ponte da aba Texto **obrigatória** (H26); (B) o **da aba Texto** (`ler_pagina`), o que exige FEN nos diagramas dele, um importador `PaginaLida → IR` novo e as decisões refeitas nesse caminho; (C) **unificar**: a aba Texto passa a mostrar o OCR do produto, e o leitor dela vira mais um candidato do produto, como o leitor de glifos já é | **H8** (geração) e H26 | decidir **com os números do H0** e pela **regra de decisão** dele. **Medida:** ≥ 150 regiões com verdade de ≥ 2 livros (um digitalizado, um nativo), partições `dev`+`calib`, a cega fora, com o hash do manifesto registrado. **Estatística:** por estrato *s*, Δ*s* = CER(aba Texto) − CER(produto), com intervalo de 95 % por reamostragem; o leitor da aba Texto **vence** em *s* ⇔ o limite **superior** do intervalo de Δ*s* < 0. **Regra, mutuamente exclusiva, nesta precedência:** **B** ⇔ vence em todos os estratos; senão **C** ⇔ vence em ao menos um (entra como candidato do produto onde vence); senão **A**. Recomendação provisória, até os números: **A agora, C como direção** |
+| **Q1** | **Qual OCR alimenta o editor? — RESPONDIDA pelo usuário em 2026-09-24:** «O OCR que alimenta o editor deve ser o mais preciso para textos e símbolos de xadrez, ou as combinações dos vários OCR, mirando na precisão e qualidade final. Também vamos precisar dos diagramas, e nosso OCR de diagramas já tem uma precisão altíssima.» **Decisão: C, a combinação guiada por medição.** O editor recebe o IR do produto, que já é a fusão dos leitores (camada, Tesseract, RapidOCR, o classificador de glifos do tronco, modelo e cifra do livro); os diagramas vêm do OCR de diagramas do produto. O H0 mede o leitor da aba Texto contra o produto, estrato por estrato, em CER, lances certos e inventados, figurinas e ordem de leitura. O H0b estende o candidato de glifo que a fusão já tem com o que a aba faz de diferente: ler toda região, e não só a de lance (`ocr_service.py:1408-1409`), e o léxico e o juntador de lance do tronco. Ele também pode ligar o RapidOCR fora da página degradada (o modo bloco). A configuração da fusão é **uma só, global**. A medição é por estrato, e uma configuração que melhora um estrato e piora outro não liga. Ela é escolhida em `dev` + `calib` e só liga se **confirma uma vez na partição cega**, com um teste unilateral registrado antes. A R1.4 proíbe treino, calibração e correção com a cega, e não a avaliação. Há falha fechada quando falta evidência. O mesmo classificador nunca vale como dois apoios. À parte, o H0b dá o **veredito da aba por estrato** (produto ou leitor antigo), que o H26 segue; ele não é roteamento da fusão. Nos estratos que a configuração final muda, o veredito usa a leitura cega da configuração final e dos três modos do leitor da aba | — (respondida) | o critério de aceite da SOL-6 (`Sol.md`), agora com o leitor da aba entre os leitores isolados: a fusão supera ou iguala cada leitor isolado em todos os estratos, e a taxa de inserção não sobe (H0b) |
 | Q2 | O motor Chromium: (a) componente sob demanda; (b) dentro do instalador (fura o teto de 150 MB); (c) só MuPDF | H14 | **(a)**, se o H1 aprovar a sonda PyInstaller e a máquina limpa; senão a pergunta volta com os números |
 | Q3 | Adotar o contrato `cb-*` como contrato público do Caissa (D2)? | H5 | **sim** |
 | Q4 | Onde mora o projeto: `editor/` ao lado do executável ou pasta escolhida? | H6 | a padrão ao lado do executável, com «Mover o projeto…» |
 | Q5 | Fontes de xadrez sem licença declarada: embutir quando o usuário declara, ou nunca? | H24 | **só com declaração** (R1.14) |
 | Q6 | Tema padrão do livro | H19 | comparação às cegas de `quality-chess`, `nic-classic` e `informator` contra páginas reais |
-| **Q7** | **O «AAA» do livro** (§5.6). **(i)** AA inteiro + todo AAA aplicável que não muda o livro; declara AA. **(ii)** o mesmo, com o tema «Leitura AAA» (não justificado) como padrão; declara AA. **(iii)** só AA. **(iv) AAA formal:** tema «Leitura AAA», zero imagens de texto e o resumo em linguagem simples em todo capítulo; declara **AAA** | **bloqueia H19 e H24** | **sem padrão: muda o produto.** A nota técnica: (iv) é viável, mas custa a tipografia justificada e a escrita dos resumos; (i) mantém a tipografia tradicional e cumpre todo AAA que não a muda. O pedido «nível AAA» pode ser qualidade de produto ou WCAG AAA — só o usuário diz |
+| **Q7** | **O «AAA» do livro — RESPONDIDA pelo usuário em 2026-09-24:** «O triplo-AAA significa altíssimo padrão.» **Decisão: (i)** — AA inteiro + todo AAA aplicável que não muda a tipografia; declara AA; o tema «Leitura AAA» disponível, não padrão; as opções (ii)–(iv) ficam registradas e fora do plano | — (respondida) | a régua do altíssimo padrão é a da carta do crítico |
 
 ---
 
 ## 8. PASSAGEM
 
 - **Pronto para implementação direta:**
-  - **H0** (a infraestrutura dos portões e a medição que informa o Q1);
-  - depois dele, H1–H4 e H6–H7, independentes entre si.
+  - **H0**: a infraestrutura dos portões e a medição dos leitores (Q1 = C);
+  - o **H0b** (a combinação), depois do H0;
+  - depois do H0, H1–H4 e H6–H7, independentes entre si.
 - **Precisa de decisão do usuário:**
-  - Q1, antes do H8, com os números do H0;
   - Q2, antes do H14, com os números do H1;
   - Q3, antes do H5;
-  - Q5, antes do H24;
-  - Q7 (o «AAA» do livro), antes do H19 e do H24.
+  - Q5, antes do H24.
+- **Respondidas pelo usuário em 2026-09-24:** Q1 (C, a combinação guiada por medição) e Q7 ((i),
+  altíssimo padrão).
 - **Precisa de ação do usuário:**
   - habilitar o Windows Sandbox, ou dar uma VM, para a máquina limpa do H1 e do H14;
   - consentir os downloads de medição (rodas do QtWebEngine; `pywinauto`; Ace via npm).
@@ -1498,6 +1522,137 @@ dois não bloqueantes que ele deixou, a versão final trata os dois:
 - o histórico do roadmap §9 fica em ordem cronológica.
 
 Veredito: «A 1.10 pode avançar para execução dos passos».
+
+**Decisões do usuário em 2026-09-24 (versão 1.11).**
+- **Q1 = C, a combinação guiada por medição:** «O OCR que alimenta o editor deve ser o mais preciso para textos e símbolos de xadrez, ou as combinações dos vários OCR, mirando na precisão e qualidade final. Também vamos precisar dos diagramas, e nosso OCR de diagramas já tem uma precisão altíssima.»
+  - O H0 passa a **só medir**, e não a escolher a fonte.
+  - Nasce o **H0b**, a combinação. O que o leitor da aba Texto faz de diferente vira alavanca da
+    fusão, ligada por estrato só onde a medição prova ganho (assim na 1.11; a 1.12 tornou a
+    configuração uma só, global, e o ciclo 12 diz por quê):
+    - a leitura de página inteira do classificador de glifos;
+    - o RapidOCR fora da página degradada.
+
+    O portão é o critério de aceite da SOL-6, com o leitor da aba entre os leitores isolados.
+  - **Achado ao escrever o H0b.** O classificador de glifos do tronco **já é** candidato da
+    fusão (`ocr/engines/glyph.py`), só em região de lance.
+    - Um motor novo, com outro nome, contaria o mesmo erro como dois apoios independentes: o
+      `_independent_agreement` de `fusion.py` separa as fontes pelo nome do motor.
+    - A regra da família fecha isso: a leitura de página inteira **substitui** o candidato de
+      glifo, com o mesmo nome de motor, e nunca soma com ele.
+  - O **H26** passa a ser: a aba Texto lê pela mesma fusão, e a formatação dela vai ao editor.
+  - O H8 deixa de esperar o Q1.
+- **Q7 = (i), altíssimo padrão:** «O triplo-AAA significa altíssimo padrão.»
+  - H19 e H24 deixam de estar bloqueados.
+  - O tema «Leitura AAA» fica disponível, não padrão.
+  - Os portões da opção (iv) (AAA formal) saem do H24.
+
+**O ciclo 12 (versão 1.11)** reprovou com 5 bloqueantes, todos no H0b e no H26 novos. A fidelidade
+às respostas do usuário ficou confirmada. A versão 1.12:
+
+| # | bloqueante c12 | o que mudou |
+|---|---|---|
+| 1 | a geometria do `ler_pagina`: o crítico leu as linhas internas (`_Cru`, pixels) e deu a afirmação «caixas em pontos PDF» por falsa | a `PaginaLida` sai **em pontos**: o `montar` converte cada linha por `_para_pontos` (`text/leitor.py:660-668, 1060`). Então a afirmação da 1.11 valia para a saída. Mas a conferência achou um defeito maior: a `PaginaLida` só tem **caixa por linha**, e a fusão é **por token**. O adaptador do produto existe justamente para recuperar a caixa por glifo (a docstring de `glyph.py`). A 1.12 **tira o `ler_pagina` da fusão**. O H0 escreve as duas unidades e prova a conversão com uma fixture de coordenadas conhecidas |
+| 2 | a fonte `pagina_do_tronco` precisava do PDF e do índice, e o caminho do arnês (`bench_sol` → `recognize_image` → `PageTask`) só leva a imagem (`ocr_service.py:750-755`) | as alavancas **estendem o adaptador que já existe**, que lê a imagem e dá caixa por glifo: `glyph_scope` (toda região, e não só a de lance) e `glyph_texto_do_tronco` (o léxico e o juntador do tronco nas palavras do candidato). Nada precisa do PDF. O portão (b) prova que cada alavanca está viva, com a sabotagem `escopo_inerte` |
+| 3 | o estrato decidido por página não chega ao serviço pelo arnês | as alavancas são **globais**, e a medição continua por estrato. A regra exige ganho em ≥ 1 estrato e nenhuma perda, e o serviço não precisa saber o estrato. Onde o H26 precisa dele (a aba que não troca de leitor num estrato), ele vem da decisão de fonte do importador (`importer.py:953-1043`) |
+| 4 | escolher e medir o ganho nas mesmas partições dá ganho otimista, e o Bonferroni não corrige a seleção | **seleção numa metade das páginas e confirmação na outra**: as metades são disjuntas por página, estratificadas por livro e estrato, sorteadas com semente fixa e gravadas antes da medição, e o processo roda nas duas direções. A alavanca liga só se as duas seleções escolhem a mesma configuração e as duas confirmações passam: o mesmo par (estrato, métrica) com ganho, sem perda em par nenhum, e o critério da SOL-6 completo. A partição cega continua para o portão de liberação |
+| 5 | o H26 não carregava nem testava os diagramas | o adaptador leva à aba, com o bloco de diagrama, a FEN, o lado a jogar, o número, a legenda e a estipulação do IR (campos novos em `BlocoDeDiagrama`, com padrão vazio). A ponte escreve o `figure.cb-diagram` do perfil legível (§5.2), nunca `[Diagrama N]`. Portão (f) e sabotagens `sem_diagramas` e `diagrama_como_texto` |
+
+Dos não bloqueantes, a 1.12 trata três:
+- o comparador **direcional** escrito para as métricas, porque o `sol_gate` compara CER, inserção e
+  ordem de leitura, e não lances nem figurinas (`gates.py:269-288`). A 1.12 dizia «só CER e
+  inserção», e o ciclo 13 corrigiu;
+- a decisão humana precisão × tempo gravada no JSON da configuração e no relatório;
+- o portão das cores só nos blocos lidos por OCR, porque a aba pinta de «tranquilo» os blocos de
+  camada e de correção humana (`text/documento.py:56-69`).
+
+O quarto fica: o H1 depende do H0 pelo **executor de portões**, que todo passo usa. É dependência
+de uso, e o paralelismo vale depois dele.
+
+**O ciclo 13 (versão 1.12)** reprovou com 5 bloqueantes. Dos 5 do ciclo 12, 3 ficaram resolvidos e 2
+parciais. O crítico conferiu que a `PaginaLida` sai em pontos e corrigiu a própria leitura do ciclo
+12. A versão 1.13:
+
+| # | bloqueante c13 | o que mudou |
+|---|---|---|
+| 1 | a §7 e a §9 ainda falavam em ligar «por estrato», e a 1.12 tinha alavancas globais | a §7 diz «uma configuração só, global; a medição é por estrato; a que melhora um estrato e piora outro não liga». O bloco da 1.11 na §9 ganhou a nota de que a 1.12 tornou a configuração global |
+| 2 | as metades não tinham piso, regra para célula vazia nem falha fechada, e a confirmação não tinha a independência declarada | **Piso:** 20 regiões e 3 páginas por (estrato, metade); abaixo disso, a célula fica «sem evidência», e isso reprova (falha fechada). **Margens de não inferioridade:** 0,002 para CER e inserção, as tolerâncias do `sol_gate` (`gates.py:54-55`); 0,01 para lances, figurinas e ordem de leitura. **A independência escrita:** em cada direção, a metade que confirma nunca foi vista pela seleção, então a confirmação passa por acaso com probabilidade ≤ 2,5 %. **O instrumento** passou a ser o do H0: o `import_pdf` com `ocr_config` (`importer.py:351`), que é o caminho do produto, e não o `bench_sol`, que lê a imagem até da página nativa |
+| 3 | sabotagens que podiam não morder | `configuracao_trocada` no lugar de `liga_tudo`. As alavancas ganharam fixtures sintéticas (alcance, tipo, texto), com as sabotagens `escopo_inerte`, `tipo_fixo` e `texto_inerte`. No primeiro caso da fixture da fusão, o candidato é `ACCEPTED`, tem pontuação maior e traz uma palavra do dicionário: sem `secondary=True`, ele ganha a âncora (`fusion.py:351-356`), e a regra da âncora suportada o mantém (`fusion.py:696-704`). A família passa a ser contada pela identidade do classificador (o hash dos pesos no `meta`), e não pelo nome do motor |
+| 4 | o portão dos diagramas podia passar por vacuidade | uma fixture de IR com 2 diagramas e todos os campos não vazios, contra a qual rodam `sem_diagramas` e `diagrama_como_texto`. Nas páginas reais, denominador zero reprova |
+| 5 | `blank`, `image-only` e `rejected` não tinham política | as sete saídas da decisão de fonte ganharam o que a aba faz com cada uma, e o portão (g) tem um teste por saída e a sabotagem `sem_rota`. O «Ler folha» passa a pedir a página do IR ao `import_pdf`, e não só ao serviço de OCR |
+
+Dos não bloqueantes, a 1.13 trata os quatro:
+- a afirmação sobre o `sol_gate` corrigida;
+- o tempo definido como a mediana em regime;
+- a fixture de geometria com duas linhas;
+- as linhas do painel citadas no HEAD e na árvore de trabalho.
+
+**O ciclo 14 (versão 1.13)** reprovou com 3 bloqueantes. Dos 5 do ciclo 13, 3 ficaram resolvidos (as
+sabotagens, os diagramas, as sete saídas) e 2 parciais. A versão 1.14:
+
+| # | bloqueante c14 | o que mudou |
+|---|---|---|
+| 1 | a configuração global contradizia a política por estrato do H26 | o H0b tem **duas saídas**, com regras separadas: (1) a configuração da fusão, uma só e global; (2) o veredito da aba por estrato, «produto» ou «leitor antigo», calculado com a configuração final. A aba segue o veredito. A fusão não tem roteamento por estrato |
+| 2 | as metades não davam um conjunto final intocado, e a cota de 2,5 % não decorria do intervalo | as metades saíram. A escolha usa `dev` + `calib` inteiros, e a candidata e o par (*s*\*, *m*\*) são gravados, com hash, **antes** de abrir a cega. A confirmação é **um só teste unilateral** na partição cega (bootstrap percentil de 97,5 %, reamostrando **páginas**), uma vez, sem nova escolha depois. A R1.4 proíbe treino, calibração e correção com a cega (`OCR_UI_SPEC.md:44`), e não a avaliação, que o `sol_gate --blind` já faz. A cota fica dita como aproximada. As células que a configuração não muda (leituras idênticas) ficam «inalteradas» e não precisam de evidência; as que ela muda e não chegam ao piso (20 regiões e 5 páginas) reprovam. A cega tem hoje 57 regiões digitalizadas em 14 páginas, e 8 nativas em 8 |
+| 3 | na página `blank`, a ponte não enviava nada, e o que se digitasse na aba se perdia | a página em branco abre vazia e editável; «Enviar ao Editor» envia o que houver, com a procedência «humano», e só diz «nada a enviar» se a aba está vazia. O portão (g) passou a ser editar → enviar → reabrir nas sete saídas, com a sabotagem `branco_descarta` |
+
+Dos não bloqueantes, a 1.14 trata os três:
+- a cota com o método (unilateral, percentil, reamostragem por página);
+- a `configuracao_trocada` na ordem circular das 8;
+- a identidade do classificador pelo `modelo_sha256` completo. Hoje o `meta` leva só 12 caracteres, dentro do texto `model` (`glyph.py:279-282, 468`).
+
+**O ciclo 15 (versão 1.14)** reprovou com 1 bloqueante. Os 3 do ciclo 14 ficaram resolvidos. A
+versão 1.15:
+
+| # | bloqueante c15 | o que mudou |
+|---|---|---|
+| 1 | o veredito da aba não tinha avaliação cega especificada, e a frase «sempre dados que nenhuma escolha viu» convivia com o reuso do H0, medido em `dev` + `calib` | **A leitura cega** (`editor_combinacao.py --cega`), uma vez, lê as páginas `blind` com o produto na configuração de hoje, o produto na candidata e os **três modos do leitor da aba**. As mesmas leituras servem às duas saídas. **A regra do veredito** vale por estrato: (a) se a configuração final dá leituras idênticas às de hoje em todas as páginas medidas do estrato (`dev`, `calib` e `blind`), valem os números do H0; (b) senão, valem os da leitura cega, em todas as métricas, com o piso, e «sem evidência» dá «leitor antigo». **A prova do caso (a):** nessas páginas, o produto final **é** o de hoje. Então a comparação é a do H0, entre dois leitores fixados antes de qualquer medição: a configuração de hoje é a referência do pré-registro, e o leitor da aba não muda. A escolha do H0b compara alternativas com a configuração de hoje, nunca com o leitor da aba, e por isso nenhuma escolha usou essa comparação. **O JSON** do veredito registra, por estrato, a fonte dos números. A sabotagem nova é `veredito_do_h0_alterado` |
+
+Dos não bloqueantes, a 1.15 trata dois:
+- as 3 execuções não são 3 testes: o teste estatístico é um só, sobre leituras determinísticas;
+- o comando da leitura cega do H0b fica separado do `sol_gate --blind`.
+
+O terceiro, o `modelo_sha256` completo, é mudança de código do próprio H0b.
+
+**O ciclo 16 (versão 1.15)** reprovou com 2 bloqueantes, os dois no caso (a) do veredito da aba. A
+versão 1.16:
+
+| # | bloqueante c16 | o que mudou |
+|---|---|---|
+| 1 | o H0 não publicava a ordem de leitura, e o veredito a exige | o H0 mede e publica a **ordem de leitura** para todos os leitores e modos, por estrato, com intervalo. A régua é `reading_order_accuracy` (`ocr/metrics.py:239-250`), sobre a ordem das regiões casadas de cada página, a mesma do `sol_gate`. As métricas ficaram iguais no H0, no H0b e na §7 |
+| 2 | o piso só valia na leitura cega (caso b) | o piso de 20 regiões e 5 páginas vale **nos dois casos**: no caso (a), a célula do estrato no H0 precisa passar nele, e abaixo o veredito é «leitor antigo». A regra sintética ganhou o caso (a) abaixo do piso, com a sabotagem `piso_so_na_cega` |
+
+O crítico pediu também a igualdade canônica, e a 1.16 a define. «Idênticas» quer dizer o mesmo
+SHA-256 do JSON canônico da página do IR, com chaves ordenadas, caixas arredondadas a 0,01 pt e
+confiança a 4 casas. O JSON cobre tudo o que a aba mostra ou envia:
+- o texto de cada bloco e linha, com as caixas e a confiança;
+- a procedência por token e as figurinas;
+- os diagramas, com FEN, lado, número, legenda, estipulação e caixa.
+
+Um teste a confere, com a sabotagem `igualdade_so_texto`.
+
+Dos não bloqueantes, a frase do H26 «as duas abas mostram a mesma leitura» passou a valer nos
+estratos com veredito «produto».
+
+**O ciclo 17 (versão 1.16)** reprovou com 2 bloqueantes, os dois parciais do ciclo 16. A versão 1.17:
+
+| # | bloqueante c17 | o que mudou |
+|---|---|---|
+| 1 | a ordem de leitura podia faltar sem reprovar: o `sol_gate` pula o portão quando ela falta (`gates.py:282-288`) | as cinco métricas (CER, lances certos, lances inventados, figurinas certas e ordem de leitura) são **campos obrigatórios** do JSON do H0 e do H0b, com valor e intervalo para cada leitor, modo e estrato. O `editor_portoes.py` reprova «métrica ausente» se qualquer uma faltar ou vier nula. Há a sabotagem `sem_ordem` no H0 e no H0b |
+| 2 | o caso (a) abaixo do piso não tinha fixture identificada | a fixture `tests/fixtures/editor/h0b/veredito_caso_a_abaixo_do_piso.json` foi escrita antes da implementação e é congelada por SHA-256 no teste. Ela tem 150 regiões: 140 digitalizadas em 12 páginas e 10 nativas em 4, com a configuração final igual à de hoje e o produto à frente no nativo. A saída esperada fica no `.esperado.json`: digitalizado «produto»; nativo «leitor antigo», «abaixo do piso: 10 regiões, 4 páginas». A sabotagem `piso_so_na_cega` roda contra ela |
+
+Dos não bloqueantes, a 1.17 trata três:
+- **O JSON canônico:** UTF-8, texto em NFC, `sort_keys` e separadores fixos, números já arredondados e
+  listas na ordem do IR.
+- **O teste da igualdade:** um caso por campo, incluindo cada campo do diagrama.
+- **A precisão de regiões** (casadas ÷ lidas) fica publicada ao lado da ordem de leitura, porque a
+  régua da ordem não vê região a mais. Ela não entra no veredito.
+
+**O ciclo 18 (versão 1.17): APROVADO**, sem bloqueante. Os 2 do ciclo 17 ficaram resolvidos. Dos
+dois não bloqueantes que ele deixou, a versão final trata os dois:
+- as métricas obrigatórias na leitura cega valem «quando houver» leitura cega;
+- o valor literal do hash da fixture do caso (a) fica gravado no teste quando a fixture é escrita.
+
+Veredito: «A versão 1.17 pode avançar para implementação dos passos H0/H0b».
 
 ---
 
