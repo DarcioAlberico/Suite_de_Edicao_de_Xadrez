@@ -712,7 +712,7 @@ def test_an_accept_of_the_page_nobody_read_accepts_nothing_on_the_next_import(
     (item,) = queue.items
     assert item.kind == "page"
     assert item.text == ""
-    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
+    assert queue.refusal(item.key, Action.ACCEPT).startswith("o OCR não leu esta página")
     queue.decide(item.key, Action.ACCEPT)
     written = review.ReviewDecisions(entries=(
         review.Decided(item.page_index, item.rect, Action.ACCEPT, reviewer="ana"),))

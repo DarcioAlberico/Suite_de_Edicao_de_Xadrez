@@ -252,6 +252,70 @@ def test_the_arrows_walk_the_lines_with_the_focus_in_the_table_and_enter_goes_to
     painel.close()
 
 
+def _clique_numa_linha(app, janela, tabela, verdade, *, no_fim: bool):
+    """A rolagem da janela num extremo, um clique pelo ``QWindow`` numa linha inteira à vista e
+    diferente da atual (o instrumento do portão), e o texto digitado depois: a linha clicada, a
+    verdade à vista (px) e se ela está inteira na rolagem que segue o foco, e o texto dela."""
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QScrollArea
+
+    from caissa.ui.audit import teclado
+
+    for rolagem in janela.findChildren(QScrollArea):
+        barra = rolagem.verticalScrollBar()
+        barra.setValue(barra.maximum() if no_fim else barra.minimum())
+    app.processEvents()
+    achada = teclado._linha_inteira_a_vista(tabela, tabela.currentRow())
+    assert achada is not None, "a line whole in sight to click"
+    linha, ponto = achada
+    antes = verdade.visibleRegion().boundingRect().intersected(verdade.rect())
+    if app.focusWidget() is not None:
+        app.focusWidget().clearFocus()
+        app.processEvents()
+    teclado._clique_com_acao(janela, tabela.viewport().mapTo(janela, ponto))
+    foco = app.focusWidget()
+    QTest.keyClicks(foco, "XYZ")
+    app.processEvents()
+    vista = verdade.visibleRegion().boundingRect().intersected(verdade.rect())
+    rolagem = teclado._rolagem_que_segue(verdade)
+    inteira = rolagem is not None and teclado._inteiro_na_rolagem(rolagem, verdade)
+    return {"linha": linha, "linha_depois": tabela.currentRow(), "foco": foco,
+            "antes_px": [antes.width(), antes.height()],
+            "depois_px": [vista.width(), vista.height()],
+            "inteira": inteira, "digitado": "XYZ" in verdade.toPlainText()}
+
+
+def test_a_click_on_a_line_shows_the_truth_after_the_release_and_the_typing_goes_there(
+        app, tmp_path: Path, monkeypatch):
+    """Crítico da fase 5, ciclo 7: the table «Linhas da página» changes the line on the *press*, and
+    the panel sends the focus to «Verdade da linha» right there; the guard of cycle 7 (a button is
+    down) took that focus for the mouse's and the follower did not scroll: the truth stayed at 0x0
+    px at 1280x641 in the three skins, and what was typed went into it.  The tab with a page of
+    lines, short enough that the truth is out of sight with the scroll area at its end: a click
+    through the ``QWindow`` on a line whole in sight changes the line, and after the release the
+    truth is whole in sight, with the typing in it.  The sabotage: the guard of cycle 7 -- the truth
+    stays at 0 px."""
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets import foco_a_vista
+
+    painel = _rotulagem_com_linhas(app, tmp_path)
+    # the table's lines in sight and the truth above the fold, with the scroll area at its end
+    painel.resize(1000, 400)
+    for _vez in range(2):
+        app.processEvents()
+    feito = _clique_numa_linha(app, painel, painel.table, painel.truth, no_fim=True)
+    assert feito["antes_px"] == [0, 0], ("the truth starts out of sight", feito)
+    assert feito["linha_depois"] == feito["linha"], feito
+    assert feito["foco"] is painel.truth, feito
+    assert feito["inteira"], ("the truth whole in sight after the release", feito)
+    assert feito["digitado"], feito
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ciclo_7)
+    feito = _clique_numa_linha(app, painel, painel.table, painel.truth, no_fim=True)
+    assert feito["foco"] is painel.truth, feito
+    assert feito["depois_px"] == [0, 0], ("sabotaged: the truth stays out of sight", feito)
+    painel.close()
+
+
 def test_the_gate_records_the_lines_of_the_table_the_key_walked(app, tmp_path: Path):
     """Construtor, fase 5, ciclo 6: the keyboard gate recorded «linhas_na_medida» with `setdefault`
     in every area, and the first one -- not the Rotulagem -- wrote `None` for good: the JSON never

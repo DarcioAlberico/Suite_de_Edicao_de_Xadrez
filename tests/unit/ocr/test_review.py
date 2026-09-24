@@ -234,42 +234,90 @@ def _whole_page_recognition():
 
 
 @pytest.mark.parametrize("which", sorted(PAGE_ITEMS))
-def test_an_accept_of_no_reading_is_refused_left_out_and_never_applied(monkeypatch, which):
+def test_a_decision_on_a_page_item_is_refused_left_out_and_never_applied(monkeypatch, which):
     """Crítico da fase 5, ciclo 6: the page item of a ``MemoryError``, accepted with the Enter on
     the empty truth, was an accept over the whole page, and the next import applied it to the
     reading that came then -- «aceita pelo revisor», verified, out of the queue; the contested
-    page the OCR could not answer is the same item.  The window refuses it, the decisions leave it
-    out, and a file written before is not applied.  The sabotage: an accept of nothing counts
-    again, and the whole page is accepted."""
+    page the OCR could not answer is the same item.  Ciclo 7: the refusal told the reviewer to
+    write the text or keep the page as a picture, and on a page of several regions the next import
+    applied neither.  Every decision on a page item is refused, with a phrase that promises nothing
+    the import does not do; none is left in the decisions or counted as taken -- the page stays
+    pending --, and a file written before with the accept is not applied.  The sabotage: a decision
+    that decides nothing counts again, and the whole page is accepted."""
     from caissa.ocr import review
     from caissa.ocr.decision import Decision
     from caissa.ocr.review import Decided, ReviewDecisions
 
     queue = ReviewQueue.from_import(_page_item_report(which), document="livro", reviewer="ana")
     (item,) = queue.items
-    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
-    assert queue.refusal(item.key, Action.EDIT) == ""
-    assert queue.refusal(item.key, Action.KEEP_IMAGE) == ""
+    for action in (Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE):
+        frase = queue.refusal(item.key, action)
+        assert frase.startswith("o OCR não leu esta página"), (action, frase)
+        assert "grave a edição" not in frase
+        assert "mantenha" not in frase
+    assert queue.refusal(item.key, Action.SKIP) == ""
     queue.decide(item.key, Action.ACCEPT)          # an old window, or a script
+    queue.decide(item.key, Action.KEEP_IMAGE, note="uma janela do ciclo 7")
     assert len(queue.decisions()) == 0
+    assert queue.pending() == [item], "the page stays pending"
     old_file = ReviewDecisions(entries=(Decided(3, item.rect, Action.ACCEPT, reviewer="ana"),))
     recognition = _whole_page_recognition()
     assert old_file.apply(recognition, _Frame()) == 0
     assert recognition.regions[0].decision.decision is Decision.REVIEW
     assert not recognition.regions[0].verified
-    # what the reviewer can do with a page nobody read: write its text, or keep it as a picture
-    typed = ReviewDecisions(entries=(Decided(3, item.rect, Action.EDIT, text="1 e4 e5"),))
-    recognition = _whole_page_recognition()
-    assert typed.apply(recognition, _Frame()) == 1
-    assert recognition.regions[0].result.text == "1 e4 e5"
 
+    monkeypatch.setattr(review, "sem_efeito", lambda kind, action, reading: False)
     monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
     assert queue.refusal(item.key, Action.ACCEPT) == ""
     assert len(queue.decisions()) == 1
+    assert queue.pending() == []
     recognition = _whole_page_recognition()
     assert old_file.apply(recognition, _Frame()) == 1
     assert recognition.regions[0].verified
     assert "aceita pelo revisor" in recognition.regions[0].decision.reasons_pt
+
+
+def test_an_old_log_with_a_decision_on_the_page_nobody_read_does_not_hide_it(
+        monkeypatch, tmp_path):
+    """Crítico da fase 5, ciclo 7: the queue file the tab of cycle 6 wrote after the Enter on the
+    page item (an accept with no text) was taken up again with «0 pendente(s) de 1», and the next
+    import's queue took the accept over (`carry_over`): the page left the list read page by page,
+    which is what the page item exists for.  Loaded, the page is pending; carried over, it is
+    pending in the new queue too.  The sabotage: the old accept counts, and the page hides."""
+    from caissa.ocr import review
+
+    queue = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    (item,) = queue.items
+    queue.decide(item.key, Action.ACCEPT)          # the log of the tab of cycle 6
+    queue.save(tmp_path / "livro.fila.json")
+    retomada = ReviewQueue.load(tmp_path / "livro.fila.json")
+    assert [i.key for i in retomada.pending()] == [item.key]
+    nova = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    nova.carry_over(retomada)
+    assert [i.page_index for i in nova.pending()] == [item.page_index]
+    assert len(nova.decisions()) == 0
+
+    monkeypatch.setattr(review, "sem_efeito", lambda kind, action, reading: False)
+    assert retomada.pending() == []
+    sabotada = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    sabotada.carry_over(retomada)
+    assert sabotada.pending() == [], "sabotaged: the old accept is carried over and hides the page"
+
+
+def test_a_region_with_no_reading_refuses_the_accept_but_not_the_edit():
+    """A region the OCR read to nothing (abstained, no text) is not a page: the accept is refused
+    -- there is nothing to accept --, and the edit and «keep as image», which the next import
+    applies to the region, are what the phrase offers."""
+    report = _report()
+    report.review_items = [report.review_items[1]]      # the abstained movetext, text ""
+    queue = ReviewQueue.from_import(report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind != "page"
+    frase = queue.refusal(item.key, Action.ACCEPT)
+    assert frase.startswith("não há leitura para aceitar: o OCR não leu esta região"), frase
+    assert "grave a edição" in frase
+    assert queue.refusal(item.key, Action.EDIT) == ""
+    assert queue.refusal(item.key, Action.KEEP_IMAGE) == ""
 
 
 def test_a_blind_page_refuses_accept_and_edit_with_the_phrase_but_not_the_image():

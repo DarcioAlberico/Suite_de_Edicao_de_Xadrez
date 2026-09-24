@@ -148,10 +148,82 @@ def test_a_click_on_a_control_half_in_sight_counts_where_it_was_given(app, monke
     assert app.focusWidget() is caixa, "the keyboard is still followed"
     assert _inteiro(rolagem, caixa), "the keyboard is still followed"
 
+    # the sabotage of cycle 6: the follower scrolls on the press itself
     monkeypatch.setattr(foco_a_vista, "veio_do_mouse", lambda _controle: False)
+    monkeypatch.setattr(foco_a_vista, "no_meio_do_clique", lambda: False)
     antes, depois = clicar_junto_do_corte()
     assert depois != antes, "sabotaged: the click is lost"
     assert not marca.isChecked(), "sabotaged: the click is lost"
+    janela.close()
+
+
+def test_the_focus_the_program_moves_during_a_click_is_shown_after_the_release(app, monkeypatch):
+    """Crítico da fase 5, ciclo 7: a row of the tables of the Rotulagem and of the Revisão de texto
+    sends the focus to «Verdade da linha» on the *press* of the click, and the guard of cycle 7 (a
+    button is down) took that focus for the mouse's -- the truth stayed out of sight (0x0 px at
+    1280x641), and what was typed went there.  Here a list at the top of the scroll area sends the
+    focus to the text box at the bottom when its row changes, on the press: the click ends where it
+    was given (the row is clicked once), and then the box is shown whole, and the typing goes into
+    it.  The sabotages: the guard of cycle 7 (the box stays hidden); the follower of cycle 6, which
+    scrolled on the press (the list moves away and the click is lost)."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication, QListWidget
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, conteudo, _campos, caixa, botao, _segue = _janela(app)
+    linhas = QListWidget(conteudo)
+    linhas.addItems(["linha 1", "linha 2", "linha 3"])
+    linhas.setFixedHeight(90)
+    conteudo.layout().insertWidget(0, linhas)
+    # the panels: the row chosen on the press sends the focus to the truth
+    linhas.currentRowChanged.connect(lambda _r: caixa.setFocus(Qt.FocusReason.OtherFocusReason))
+    clicado: list[int] = []
+    linhas.clicked.connect(lambda indice: clicado.append(indice.row()))
+    for _vez in range(2):
+        app.processEvents()
+
+    def clicar_a_linha() -> None:
+        clicado.clear()
+        linhas.setCurrentRow(0)
+        caixa.setPlainText("uma leitura")
+        rolagem.verticalScrollBar().setValue(0)
+        botao.setFocus(Qt.FocusReason.OtherFocusReason)
+        app.processEvents()
+        assert caixa.visibleRegion().isEmpty(), "the box starts below the fold"
+        alvo = linhas.visualItemRect(linhas.item(1))
+        ponto = linhas.viewport().mapTo(janela, alvo.center())
+        alca = janela.windowHandle()
+        QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        app.processEvents()
+        QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+        for _vez in range(3):  # the release, then the scroll after it
+            app.processEvents()
+        QTest.keyClicks(app.focusWidget(), "XYZ")
+        app.processEvents()
+
+    clicar_a_linha()
+    assert clicado == [1], "the click ends where it was given"
+    assert linhas.currentRow() == 1
+    assert app.focusWidget() is caixa
+    assert _inteiro(rolagem, caixa), "the focus the program moved is shown after the release"
+    assert "XYZ" in caixa.toPlainText(), "and the typing goes where the eyes are"
+
+    def guarda_do_ciclo_7(controle) -> bool:
+        if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
+            return True
+        return controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse()
+
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", guarda_do_ciclo_7)
+    clicar_a_linha()
+    assert app.focusWidget() is caixa
+    assert caixa.visibleRegion().isEmpty(), "sabotaged (cycle 7): the focus stays out of sight"
+
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", lambda _controle: False)
+    monkeypatch.setattr(foco_a_vista, "no_meio_do_clique", lambda: False)
+    clicar_a_linha()
+    assert clicado == [], "sabotaged (cycle 6): the scroll on the press loses the click"
     janela.close()
 
 
@@ -217,6 +289,47 @@ def test_the_pointer_held_still_is_not_the_mouse_but_the_wheel_is(app, monkeypat
     pele.setFocus(Qt.FocusReason.MouseFocusReason)
     app.processEvents()
     assert rolagem.verticalScrollBar().value() != antes, "sabotaged: the combo box jumps"
+    janela.close()
+
+
+def test_a_control_that_only_just_fits_is_shown_whole(app, monkeypatch):
+    """A control 1 px shorter than the view fits it, but not with the margin around it: it is shown
+    whole, with less margin -- the «Verdade da linha» of the Rotulagem is 549 px in a view of 550,
+    and the whole margin left 3 px of it cut (crítico da fase 5, ciclo 7: «546 à vista»).  The
+    sabotage: the fit of cycle 7, which showed its start with the margin, and cut its end."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    janela, rolagem, _conteudo, _campos, caixa, botao, _segue = _janela(app)
+    caixa.setFixedHeight(rolagem.viewport().height() - 1)
+    for _vez in range(2):
+        app.processEvents()
+
+    def de_volta_do_botao() -> bool:
+        rolagem.verticalScrollBar().setValue(0)
+        botao.setFocus(Qt.FocusReason.TabFocusReason)
+        app.processEvents()
+        QTest.keyClick(botao, Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier)
+        app.processEvents()
+        assert app.focusWidget() is caixa
+        return _inteiro(rolagem, caixa)
+
+    assert de_volta_do_botao(), "a control that fits is shown whole"
+
+    def encaixe_do_ciclo_7(barra, inicio, fim, vista):
+        atual = barra.value()
+        if fim - inicio + 2 * foco_a_vista.FOLGA > vista or inicio - foco_a_vista.FOLGA < atual:
+            alvo = inicio - foco_a_vista.FOLGA
+        elif fim + foco_a_vista.FOLGA > atual + vista:
+            alvo = fim + foco_a_vista.FOLGA - vista
+        else:
+            return
+        barra.setValue(max(barra.minimum(), min(barra.maximum(), alvo)))
+
+    monkeypatch.setattr(foco_a_vista, "_encaixar", encaixe_do_ciclo_7)
+    assert not de_volta_do_botao(), "sabotaged: the margin cuts its end"
     janela.close()
 
 

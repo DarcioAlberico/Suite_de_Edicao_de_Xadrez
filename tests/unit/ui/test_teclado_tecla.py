@@ -183,7 +183,9 @@ def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_c
             modulo = importlib.import_module(nome)
         except ImportError:
             continue
-        monkeypatch.setattr(modulo, "veio_do_mouse", modulo.veio_do_mouse)  # undone at teardown
+        for funcao in ("veio_do_mouse", "no_meio_do_clique"):  # undone at teardown
+            if hasattr(modulo, funcao):
+                monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
     monkeypatch.setitem(teclado._PASSADA, "sabotagem", "clique")
     teclado._sabotar(janela)
     cliques = teclado._cliques_meio_a_vista(janela)
@@ -192,6 +194,82 @@ def test_the_gate_clicks_the_controls_half_in_sight_and_the_sabotage_loses_the_c
     assert cliques[0]["rolou_px"] > 0, cliques
     assert not cliques[0]["soltar_dentro"]
     assert teclado.Aba(nome="Janela", cliques=cliques).cliques_perdidos()
+    janela.close()
+
+
+def test_the_gate_clicks_a_line_with_the_action_and_finds_the_focus_left_out_of_sight(
+        app, monkeypatch):
+    """Crítico da fase 5, ciclo 7: a line of the tables of the Rotulagem and of the Revisão de texto
+    sends the focus to «Verdade da linha» on the press, and the guard of cycle 7 left the truth out
+    of sight -- the gate did not see it: its click swallows the press and the release, and no panel
+    moves the focus.  The click with the action: in each item view of the area with two lines or
+    more, a click through the ``QWindow`` on a line whole in sight, no filter, and the focus left
+    after it has to be whole in the scroll area that follows it.  Here a list at the top of the
+    area sends the focus to the text box below the fold: shown after the release, it passes; the
+    sabotage ``guarda`` (the guard of cycle 7) leaves it out of sight, and the screen fails."""
+    import importlib
+
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtWidgets import (
+        QLineEdit,
+        QListWidget,
+        QPushButton,
+        QScrollArea,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
+
+    janela = QWidget()
+    coluna = QVBoxLayout(janela)
+    rolagem = QScrollArea(janela)
+    rolagem.setWidgetResizable(True)
+    conteudo = QWidget(rolagem)
+    pilha = QVBoxLayout(conteudo)
+    linhas = QListWidget(conteudo)
+    linhas.addItems(["linha 1", "linha 2", "linha 3"])
+    linhas.setFixedHeight(90)
+    pilha.addWidget(linhas)
+    for k in range(12):
+        pilha.addWidget(QLineEdit(f"campo {k}", conteudo))
+    verdade = QTextEdit(conteudo)
+    verdade.setFixedHeight(60)
+    pilha.addWidget(verdade)
+    rolagem.setWidget(conteudo)
+    coluna.addWidget(rolagem)
+    coluna.addWidget(QPushButton("Abrir PDF", janela))
+    RolagemSegueOFoco(rolagem)
+    # the panels: the line chosen on the press sends the focus to the truth
+    linhas.currentRowChanged.connect(lambda _r: verdade.setFocus(Qt.FocusReason.OtherFocusReason))
+    janela.resize(360, 260)
+    janela.show()
+    for _vez in range(2):
+        app.processEvents()
+
+    cliques = teclado._cliques_com_acao(janela, janela)
+    medidos = [c for c in cliques if c["linha"] is not None]
+    assert medidos, cliques
+    assert all(c["foco"] == teclado._nome_curto(verdade) for c in medidos), medidos
+    assert all(c["a_vista"] for c in medidos), medidos
+    assert not teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
+
+    for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
+        try:
+            modulo = importlib.import_module(nome)
+        except ImportError:
+            continue
+        for funcao in ("veio_do_mouse", "no_meio_do_clique"):  # undone at teardown
+            if hasattr(modulo, funcao):
+                monkeypatch.setattr(modulo, funcao, getattr(modulo, funcao))
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "guarda")
+    teclado._sabotar(janela)
+    cliques = teclado._cliques_com_acao(janela, janela)
+    escondidos = teclado.Aba(nome="Janela", cliques_com_acao=cliques).focos_escondidos()
+    assert escondidos, cliques
+    assert escondidos[0]["a_vista_px"] == [0, 0], escondidos
     janela.close()
 
 
