@@ -17,6 +17,13 @@ se ele é dela.
 texto — o retângulo do cursor —, e a «Leitura do motor» da Revisão de texto recebia o foco com 28
 de 48 px à vista na pele Fita (crítico da fase 5, ciclo 5). :func:`mostrar` rola até o retângulo do
 controle; quando ele é maior que a vista, até o começo dele.
+
+**Só o foco do teclado.** O Qt dá o foco ao controle no *pressionar* do clique, antes de entregar o
+evento; rolar ali tirava o controle de baixo do ponteiro, e o *soltar* caía noutro lugar — o clique
+se perdia (crítico da fase 5, ciclo 6: 15 de 15 cliques em controles meio à vista, o «Gravar» da
+Galeria, o rádio do lado a jogar do Resultado). O foco que o mouse dá fica onde está
+(:func:`veio_do_mouse`): o controle já está sob o ponteiro, à vista. O gêmeo deste arquivo no tronco
+é `chess_diagram_ocr.qt.foco_a_vista`.
 """
 
 from __future__ import annotations
@@ -53,6 +60,20 @@ def _encaixar(barra: QScrollBar, inicio: int, fim: int, vista: int) -> None:
     barra.setValue(max(barra.minimum(), min(barra.maximum(), alvo)))
 
 
+def veio_do_mouse(controle: QWidget) -> bool:
+    """O foco que ``controle`` acaba de receber veio do mouse.
+
+    Um botão está apertado (o clique dá o foco no pressionar), ou foi a roda: o controle toma o foco
+    dela (`Qt.FocusPolicy.WheelFocus`: as caixas de escolha e de número) e está sob o ponteiro.
+    Estar sob o ponteiro parado não basta: o Tab que cai num botão sob o ponteiro rola até ele como
+    até qualquer outro. Numa caixa de escolha sob o ponteiro parado, o Tab não rola (o sinal não diz
+    se o foco veio da roda ou da tecla); ela já está à vista, ao menos onde o ponteiro está.
+    """
+    if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
+        return True
+    return controle.focusPolicy() == Qt.FocusPolicy.WheelFocus and controle.underMouse()
+
+
 def mostrar(rolagem: QScrollArea, controle: QWidget) -> None:
     """Rola ``rolagem`` até ``controle`` ficar inteiro à vista, ou o começo dele quando não cabe."""
     conteudo = rolagem.widget()
@@ -77,7 +98,7 @@ class RolagemSegueOFoco(QObject):
 
     @pyqtSlot(QWidget, QWidget)
     def _foco_mudou(self, _antigo: QWidget | None, novo: QWidget | None) -> None:
-        if self._ligado and novo is not None:
+        if self._ligado and novo is not None and not veio_do_mouse(novo):
             mostrar(self._rolagem, novo)
 
     def desligar(self) -> None:

@@ -478,9 +478,19 @@ class Aba:
     """A volta da **tecla** `Tab` de verdade. Ver `_volta_da_tecla`."""
     tecla_de_volta: VoltaDaTecla = field(default_factory=lambda: VoltaDaTecla(fecha=True))
     """...e a do `Shift+Tab`."""
+    cliques: list[dict[str, Any]] = field(default_factory=list)
+    """Os cliques nos controles meio à vista das rolagens que seguem o foco. Ver
+    `_cliques_meio_a_vista`."""
 
     def focaveis(self) -> int:
         return len(self.controles)
+
+    def cliques_perdidos(self) -> list[dict[str, Any]]:
+        """Os cliques que se perderam.
+
+        A rolagem se mexeu entre o pressionar e o soltar, ou o soltar caiu fora do controle.
+        """
+        return [clique for clique in self.cliques if not clique["no_lugar"]]
 
     def alcancados(self) -> int:
         return sum(1 for controle in self.controles if controle.alcancavel())
@@ -530,6 +540,7 @@ class Aba:
             and not self.nomes_vazios()
             and self.tecla.passou()
             and self.tecla_de_volta.passou()
+            and not self.cliques_perdidos()
         )
 
 
@@ -547,6 +558,7 @@ def _como_json(aba: Aba) -> dict[str, Any]:
         "passos": aba.passos_ate_fechar,
         "tecla": asdict(aba.tecla),
         "tecla_de_volta": asdict(aba.tecla_de_volta),
+        "cliques": list(aba.cliques),
         "sem_nome": [asdict(c) for c in aba.anonimos()],
         "sem_papel": [asdict(c) for c in aba.sem_papel()],
         "nome_vazio_de_sentido": [
@@ -838,6 +850,140 @@ def _rolagens_no_topo(janela: Any) -> None:
         rolagem.verticalScrollBar().setValue(rolagem.verticalScrollBar().minimum())
         rolagem.horizontalScrollBar().setValue(rolagem.horizontalScrollBar().minimum())
     QApplication.processEvents()
+
+
+LIMITE_DE_CLIQUES = 6
+"""Quantos controles meio à vista o portão clica em cada rolagem que segue o foco."""
+
+A_MOSTRA_MINIMA = 3
+"""Quantos px de um controle cortado pela borda da vista o portão pede para clicá-lo."""
+
+
+def _seguidores_de(rolagem: Any) -> list[Any]:
+    """Os seguidores de foco da rolagem (`foco_a_vista.RolagemSegueOFoco`, suíte ou tronco)."""
+    from PyQt6.QtCore import QObject
+
+    return [o for o in rolagem.findChildren(QObject) if type(o).__name__ == "RolagemSegueOFoco"]
+
+
+def _meio_a_vista(rolagem: Any) -> list[Any]:
+    """Os controles da ``rolagem`` que o clique alcança e que a borda da vista corta.
+
+    Com :data:`A_MOSTRA_MINIMA` px ou mais à mostra: onde um clique dá o foco a um controle que
+    não está inteiro à vista.
+    """
+    from PyQt6.QtCore import QPoint, QRect, Qt
+
+    conteudo = rolagem.widget()
+    if conteudo is None:
+        return []
+    vista = rolagem.viewport()
+    achados = []
+    for controle in _focaveis(conteudo):
+        if not controle.focusPolicy().value & Qt.FocusPolicy.ClickFocus.value:
+            continue
+        inteiro = QRect(controle.mapTo(vista, QPoint(0, 0)), controle.size())
+        visivel = inteiro.intersected(vista.rect())
+        if visivel.isEmpty():
+            continue
+        if (A_MOSTRA_MINIMA <= visivel.height() < inteiro.height() - 1
+                or A_MOSTRA_MINIMA <= visivel.width() < inteiro.width() - 1):
+            achados.append(controle)
+    return achados
+
+
+def _cliques_meio_a_vista(raiz: Any) -> list[dict[str, Any]]:
+    """O mouse onde o usuário o usa: um clique em cada controle meio à vista.
+
+    Nas rolagens que seguem o foco, até :data:`LIMITE_DE_CLIQUES` por rolagem, com as rolagens no
+    topo. O crítico da fase 5 (ciclo 6) achou o seguidor rolando no clique: o Qt dá o foco no
+    *pressionar*, antes de entregar o evento, e o *soltar* caía fora do controle -- 15 de 15
+    cliques, um lance que ninguém jogou no Estudo, o rádio «Pretas» que não marcava. O clique é o
+    dele: pressionar e soltar no mesmo ponto da janela, pelo `QWindow` (o despacho do Qt), 2 px
+    para dentro da parte à vista, junto do corte. Um filtro no controle e nos filhos engole o
+    pressionar e o soltar -- nenhuma ação roda -- e anota onde o soltar caiu; o foco o Qt dá antes
+    dos filtros (`QApplication.notify`), e é ele que o seguidor ouve. No fim o ponteiro sai da
+    janela: um controle da próxima área não nasce «sob o mouse».
+    """
+    from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QAbstractButton, QApplication, QScrollArea, QWidget
+
+    alca = raiz.windowHandle()
+    if alca is None:
+        return []
+
+    class _Engole(QObject):
+        def __init__(self, alvo: Any) -> None:
+            super().__init__()
+            self.alvo = alvo
+            self.soltar_dentro = False
+
+        def eventFilter(self, objeto: Any, evento: Any) -> bool:  # noqa: N802 - assinatura do Qt
+            tipo = evento.type()
+            if tipo in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick):
+                return True
+            if tipo == QEvent.Type.MouseButtonRelease:
+                ponto = evento.position().toPoint()
+                if objeto is not self.alvo:
+                    ponto = objeto.mapTo(self.alvo, ponto)
+                self.soltar_dentro = self.alvo.rect().contains(ponto)
+                return True
+            return False
+
+    cliques: list[dict[str, Any]] = []
+    rolagens = [r for r in raiz.findChildren(QScrollArea) if r.isVisible() and _seguidores_de(r)]
+    for rolagem in rolagens:
+        _rolagens_no_topo(raiz)
+        for controle in _meio_a_vista(rolagem)[:LIMITE_DE_CLIQUES]:
+            _rolagens_no_topo(raiz)
+            vista = rolagem.viewport()
+            inteiro = QRect(controle.mapTo(vista, QPoint(0, 0)), controle.size())
+            visivel = inteiro.intersected(vista.rect())
+            if visivel.isEmpty():
+                continue
+            y = visivel.bottom() - 2 if inteiro.bottom() > visivel.bottom() else visivel.top() + 2
+            ponto = vista.mapTo(raiz, QPoint(visivel.center().x(), y))
+            barras = (rolagem.verticalScrollBar(), rolagem.horizontalScrollBar())
+            # o foco longe do controle: o clique é o que o dá (a volta da tecla, ou o clique de
+            # antes, pode tê-lo deixado nele, e aí o pressionar não troca o foco de ninguém)
+            atual = QApplication.focusWidget()
+            if atual is not None:
+                atual.clearFocus()
+                QApplication.processEvents()
+            antes = [barra.value() for barra in barras]
+            engole = _Engole(controle)
+            vigiados = [controle, *controle.findChildren(QWidget)]
+            for vigiado in vigiados:
+                vigiado.installEventFilter(engole)
+            try:
+                QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                                 ponto)
+                QApplication.processEvents()
+                depois = [barra.value() for barra in barras]
+                QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier,
+                                   ponto)
+                QApplication.processEvents()
+            finally:
+                for vigiado in vigiados:
+                    vigiado.removeEventFilter(engole)
+            if isinstance(controle, QAbstractButton) and controle.isDown():
+                controle.setDown(False)
+            rolou = max(abs(d - a) for d, a in zip(depois, antes, strict=True))
+            cliques.append({
+                "controle": _nome_curto(controle),
+                "classe": type(controle).__name__,
+                "caixa_px": [inteiro.width(), inteiro.height()],
+                "a_vista_px": [visivel.width(), visivel.height()],
+                "rolou_px": rolou,
+                "soltar_dentro": engole.soltar_dentro,
+                "no_lugar": rolou == 0 and engole.soltar_dentro,
+            })
+    if cliques:
+        QTest.mouseMove(alca, QPoint(-20, -20))
+        QApplication.processEvents()
+    _rolagens_no_topo(raiz)
+    return cliques
 
 
 def _volta_da_tecla(janela: Any, focaveis: Sequence[Any], *, de_volta: bool = False,
@@ -1151,12 +1297,13 @@ def _sala_de_dialogos(janela: Any) -> _Sala:
     )
 
 
-SABOTAGENS = ("foco", "tabela")
-"""As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 e 5) e que
+SABOTAGENS = ("foco", "tabela", "clique")
+"""As sabotagens do teclado, cada uma um defeito que o crítico da fase 5 achou (ciclos 4 a 6) e que
 o portão tem de reprovar: ``foco`` desliga todo seguidor de foco das rolagens (`foco_a_vista`, da
 suíte e do tronco) -- o foco que entra numa rolagem de fora volta a cair fora da vista; ``tabela``
 devolve o Tab à tabela «Linhas da página» da Rotulagem -- com a página reconhecida, a tecla volta a
-não sair do laço."""
+não sair do laço; ``clique`` tira a guarda do mouse dos dois seguidores (`veio_do_mouse`) -- a
+rolagem volta a se mexer entre o pressionar e o soltar, e o clique se perde."""
 
 _PASSADA: dict[str, str] = {"sabotagem": ""}
 """A sabotagem desta passada (`auditar`), posta também em cada diálogo que o portão abre."""
@@ -1177,6 +1324,15 @@ def _sabotar(raiz: Any) -> None:
         for tabela in raiz.findChildren(QTableWidget):
             if tabela.accessibleName() == "Linhas da página":
                 tabela.setTabKeyNavigation(True)
+    elif sabotagem == "clique":
+        import importlib
+
+        for nome in ("caissa.ui.widgets.foco_a_vista", "chess_diagram_ocr.qt.foco_a_vista"):
+            try:
+                modulo = importlib.import_module(nome)
+            except ImportError:  # sem o tronco (um teste da suíte): só o seguidor da suíte
+                continue
+            modulo.veio_do_mouse = lambda _controle: False  # type: ignore[attr-defined]
 
 
 PAGINA_DA_ROTULAGEM = 6
@@ -1299,6 +1455,8 @@ def _medir_uma_tela(nome: str, raiz: Any) -> Aba:
     aba.passos_ate_fechar, aba.fechou = passos, fechou
     aba.tecla = _volta_da_tecla(raiz, focaveis)
     aba.tecla_de_volta = _volta_da_tecla(raiz, focaveis, de_volta=True)
+    # depois das voltas da tecla: o clique deixa o foco onde caiu
+    aba.cliques = _cliques_meio_a_vista(raiz)
     if not focaveis:
         # Uma tela sem controle nenhum não tem volta para fechar, e `NÃO FECHA` ali seria uma
         # acusação sobre o que não existe. Ver `_controlador_de_treino`.
@@ -1528,6 +1686,13 @@ def auditar(
                 f"com um livro, a p. {PAGINA_DA_ROTULAGEM} dele reconhecida pelo serviço do "
                 "produto num projeto temporário: a tabela «Linhas da página» cheia"
             ),
+            "clique": (
+                "depois das voltas da tecla, com as rolagens no topo: em cada rolagem que segue o "
+                f"foco, até {LIMITE_DE_CLIQUES} controles meio à vista, cada um com pressionar e "
+                "soltar no mesmo ponto da janela pelo QWindow, 2 px para dentro do corte; um "
+                "filtro engole os dois (nenhuma ação roda); o clique se perde quando a rolagem se "
+                "mexe entre eles ou o soltar cai fora do controle"
+            ),
             "nome": "accessibleName, senão text(), senão a 1a linha da dica -- a ordem do Qt",
             "grupo": (
                 "o accessibleName do conteiner nomeado mais proximo -- a primeira metade do que "
@@ -1717,6 +1882,14 @@ def _a_tecla(aba: dict[str, Any]) -> str:
         if volta.get("escondidos"):
             texto += f", foco FORA DA VISTA em {volta['escondidos'][:3]!r}"
         partes.append(texto)
+    cliques = aba.get("cliques") or []
+    if cliques:
+        perdidos = [c for c in cliques if not c.get("no_lugar")]
+        if perdidos:
+            partes.append(f"clique PERDIDO em {len(perdidos)} de {len(cliques)} "
+                          f"{[c['controle'] for c in perdidos][:3]!r}")
+        else:
+            partes.append(f"clique {len(cliques)} no lugar")
     return " · ".join(partes)
 
 
