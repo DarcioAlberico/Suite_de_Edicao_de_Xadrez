@@ -333,6 +333,68 @@ def test_a_control_that_only_just_fits_is_shown_whole(app, monkeypatch):
     janela.close()
 
 
+def _montar_e_destruir(app) -> None:
+    """A scroll area with a follower and a field that has the focus, deleted with the focus in it --
+    as the dialog «Base de partidas» is, after its question (`perguntar_bases`)."""
+    from PyQt6.QtCore import QCoreApplication, QEvent
+    from PyQt6.QtWidgets import QLineEdit, QScrollArea, QVBoxLayout, QWidget
+
+    from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
+
+    janela = QWidget()
+    coluna = QVBoxLayout(janela)
+    rolagem = QScrollArea(janela)
+    conteudo = QWidget(rolagem)
+    campo = QLineEdit(conteudo)
+    QVBoxLayout(conteudo).addWidget(campo)
+    rolagem.setWidget(conteudo)
+    coluna.addWidget(rolagem)
+    RolagemSegueOFoco(rolagem)
+    janela.show()
+    app.processEvents()
+    campo.setFocus()
+    app.processEvents()
+    assert app.focusWidget() is campo
+    rolagem.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete.value)
+    app.processEvents()
+    janela.close()
+
+
+def test_a_follower_whose_scroll_area_is_deleted_asks_it_nothing(app, monkeypatch):
+    """Found by the builder (fase 5, ciclo 8), with the critic's probe of the dead scroll area: a
+    scroll area deleted with the focus in it -- the dialog of bases after its question -- clears the
+    focus in its destructor, after the scroll area's wrapper is gone and before the follower, its
+    child, is; the first version of cycle 8 asked the dead scroll area for its content before asking
+    whether there was a new focus: «wrapped C/C++ object of type QScrollArea has been deleted», 20
+    times in 20 questions, and an access violation at the end.  The follower asks first whether
+    there is a new focus and whether its scroll area lives.  The sabotage: the order of that first
+    version."""
+    import sys
+
+    from caissa.ui.widgets import foco_a_vista
+
+    erros: list[str] = []
+    def anotar(tipo, valor, _tb) -> None:
+        erros.append(f"{tipo.__name__}: {valor}")
+
+    monkeypatch.setattr(sys, "excepthook", anotar)
+    _montar_e_destruir(app)
+    assert erros == [], erros
+
+    def primeira_versao(self, _antigo, novo):  # a plain callable: connected by PyQt's proxy
+        conteudo = self._rolagem.widget()
+        if (not self._ligado or novo is None or conteudo is None or not conteudo.isAncestorOf(novo)
+                or foco_a_vista.veio_do_mouse(novo)):
+            return
+        foco_a_vista.mostrar(self._rolagem, novo)
+
+    monkeypatch.setattr(foco_a_vista.RolagemSegueOFoco, "_foco_mudou", primeira_versao)
+    _montar_e_destruir(app)
+    mortas = [erro for erro in erros if "has been deleted" in erro]
+    assert mortas, ("sabotaged: the dead scroll area is asked", erros)
+
+
 def test_a_control_taller_than_the_view_shows_its_top(app):
     """A control taller than the view cannot be shown whole: its top is, and not its middle."""
     from PyQt6.QtCore import QPoint
