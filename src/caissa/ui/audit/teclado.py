@@ -1256,12 +1256,27 @@ def _veredito_da_passada(das_telas: str, tabuleiro: dict[str, Any],
                          rotulagem: dict[str, Any]) -> str:
     """O veredito das telas, o do tabuleiro, e o da Rotulagem no estado de trabalho.
 
-    REPROVOU quando o livro foi dado e a página da Rotulagem não se reconheceu: o portão não diz
-    PASSOU sobre o estado de trabalho que não mediu.
+    REPROVOU quando o livro foi dado e a página da Rotulagem não se reconheceu, ou se reconheceu e a
+    tabela não estava cheia quando a tecla andou pela aba: o portão não diz PASSOU sobre o estado de
+    trabalho que não mediu.
     """
     if rotulagem.get("falhou") or not tabuleiro.get("anuncia_a_casa", True):
         return "REPROVOU"
+    if rotulagem.get("medida") and not rotulagem.get("linhas_na_medida"):
+        return "REPROVOU"
     return das_telas
+
+
+def _anotar_as_linhas_na_medida(rotulagem: dict[str, Any], janela: Any) -> None:
+    """Grava as linhas da tabela «Linhas da página» quando a Rotulagem é a área à vista.
+
+    As outras áreas não dizem nada da tabela. O ciclo 6 gravava com `setdefault` em toda área, e a
+    primeira, o Resultado, gravava `None` para sempre: o JSON nunca disse as linhas que a tecla
+    andou (o construtor, no mesmo ciclo).
+    """
+    linhas = _linhas_da_rotulagem_a_vista(janela)
+    if linhas is not None:
+        rotulagem["linhas_na_medida"] = linhas
 
 
 def _linhas_da_rotulagem_a_vista(janela: Any) -> int | None:
@@ -1462,7 +1477,7 @@ def auditar(
         # Ver `_medir_uma_tela`: duas cópias do laço eram duas oportunidades de a aba e o
         # diálogo passarem a ser medidos por réguas que divergem sem ninguém notar.
         # a tabela que a tecla anda de fato, no momento da medida
-        rotulagem.setdefault("linhas_na_medida", _linhas_da_rotulagem_a_vista(janela))
+        _anotar_as_linhas_na_medida(rotulagem, janela)
         aba = _medir_uma_tela(area.nome, janela)
         abas.append(aba)
         print(
@@ -1472,6 +1487,9 @@ def auditar(
             f"{len(aba.anonimos()):>3} sem nome  {len(aba.sem_papel()):>3} sem papel  "
             f"{len(aba.nomes_vazios()):>3} nome vazio  {_a_tecla(_como_json(aba))}"
         )
+    if rotulagem.get("medida"):
+        print(f"  Rotulagem medida com {rotulagem.get('linhas_na_medida')} linhas na tabela "
+              f"(reconhecidas: {rotulagem.get('linhas')})")
     # **Os diálogos depois das abas, e é a metade que faltava** (F9-C12). Ver
     # `_medir_os_dialogos`: por onze ciclos este portão publicou `0 sem nome` sobre a janela
     # principal e nunca abriu um dos doze `QDialog` do produto.

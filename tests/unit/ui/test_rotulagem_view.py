@@ -252,6 +252,44 @@ def test_the_arrows_walk_the_lines_with_the_focus_in_the_table_and_enter_goes_to
     painel.close()
 
 
+def test_the_gate_records_the_lines_of_the_table_the_key_walked(app, tmp_path: Path):
+    """Construtor, fase 5, ciclo 6: the keyboard gate recorded «linhas_na_medida» with `setdefault`
+    in every area, and the first one -- not the Rotulagem -- wrote `None` for good: the JSON never
+    said which table the key walked.  The areas one after the other, the Rotulagem in the middle:
+    the lines are recorded when it is the area in sight, and the gate fails a pass that measured
+    the tab without the page it recognised.  The sabotage: the cycle-6 record."""
+    from PyQt6.QtWidgets import QLabel, QStackedWidget
+
+    from caissa.ui.audit import teclado
+
+    painel = _rotulagem_com_linhas(app, tmp_path)
+    janela = QStackedWidget()
+    outra = QLabel("Resultado")
+    janela.addWidget(outra)
+    janela.addWidget(painel)
+    janela.show()
+
+    def andar(anotar) -> dict:
+        rotulagem = {"medida": True, "linhas": painel.table.rowCount()}
+        for area in (outra, painel, outra):
+            janela.setCurrentWidget(area)
+            app.processEvents()
+            anotar(rotulagem)
+        return rotulagem
+
+    rotulagem = andar(lambda r: teclado._anotar_as_linhas_na_medida(r, janela))
+    assert rotulagem["linhas_na_medida"] == 12
+    assert teclado._veredito_da_passada("PASSOU", {}, rotulagem) == "PASSOU"
+    vazia = {**rotulagem, "linhas_na_medida": 0}
+    assert teclado._veredito_da_passada("PASSOU", {}, vazia) == "REPROVOU"
+    assert teclado._veredito_da_passada("PASSOU", {}, {"medida": False}) == "PASSOU"
+    antigo = andar(lambda r: r.setdefault("linhas_na_medida",
+                                          teclado._linhas_da_rotulagem_a_vista(janela)))
+    assert antigo["linhas_na_medida"] is None
+    assert teclado._veredito_da_passada("PASSOU", {}, antigo) == "REPROVOU"
+    janela.close()
+
+
 def test_the_tab_opens_a_book_and_defaults_training_to_it(app, tmp_path: Path):
     pymupdf = pytest.importorskip("pymupdf")
     from caissa.ui.views.rotulagem import DialogoDeTreino, PainelDeRotulagem, abrir_projeto
