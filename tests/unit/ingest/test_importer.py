@@ -666,6 +666,78 @@ class _ServiceLikeOcr:
         return self.last.to_page_text(frame)
 
 
+class _WholePageOcr(_ServiceLikeOcr):
+    """The page read again after an OCR that raised: one region over the whole page, for review --
+    the Gallagher p. 54 of the critic (fase 5, ciclo 6), whose region the arbiter sent to review for
+    moves it suspected were invented."""
+
+    def __call__(self, _page, frame, _verdict):
+        from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+        from caissa.ocr.decision import Decision, RegionDecision
+        from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+        box = BBox(0.0, 0.0, frame.width * 300.0 / 72.0, frame.height * 300.0 / 72.0)
+        words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                      for w in ("1", "e4", "e5", "2", "e4", "e5"))
+        result = OcrResult(engine="tesseract", lang="eng", lines=(
+            OcrLine(words=words, box=box, kind=RegionKind.PARAGRAPH),))
+        self.last = PageRecognition(page_index=frame.index, dpi=300.0, regions=[RegionRecognition(
+            reading_order=0, kind=RegionKind.PARAGRAPH, box_px=box, result=result,
+            decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                    ("sequência de lances repetida: suspeita de invenção",)),
+            engine="tesseract", variant="base", score=0.6)],
+            portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+        return self.last.to_page_text(frame)
+
+
+def test_an_accept_of_the_page_nobody_read_accepts_nothing_on_the_next_import(
+        pdf_file, monkeypatch):
+    """Crítico da fase 5, ciclo 6: the OCR raised on the page, the page item went to the review
+    queue with no reading, and the Enter on its empty truth recorded an accept over the whole page;
+    the next import applied it to the reading that came then -- «aceita pelo revisor», verified, out
+    of the queue.  The window refuses the accept, and an accept written anyway (an older window, a
+    script) settles nothing: the page is still for review.  The sabotage: the accept of nothing
+    counts, and the page leaves the queue accepted."""
+    from caissa.ocr import review
+    from caissa.ocr.review import Action, ReviewQueue
+
+    spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
+    path = pdf_file([spec])
+
+    def broken(*_args):
+        raise MemoryError("bad allocation")
+
+    failed = import_pdf(path, PdfImportOptions(ocr=broken, detect_diagrams=False))
+    queue = ReviewQueue.from_import(failed.report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind == "page"
+    assert item.text == ""
+    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
+    queue.decide(item.key, Action.ACCEPT)
+    written = review.ReviewDecisions(entries=(
+        review.Decided(item.page_index, item.rect, Action.ACCEPT, reviewer="ana"),))
+
+    for decisions in (queue.decisions(), written):
+        provider = _WholePageOcr()
+        again = import_pdf(path, PdfImportOptions(
+            ocr=provider, detect_diagrams=False, review_decisions=decisions))
+        assert again.report.counters["review_decisions_applied"] == 0
+        assert [i.page_index for i in again.report.review_items] == [0]
+        (region,) = provider.last.regions
+        assert not region.verified
+        assert "aceita pelo revisor" not in region.decision.reasons_pt
+
+    monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
+    provider = _WholePageOcr()
+    sabotaged = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=written))
+    assert sabotaged.report.counters["review_decisions_applied"] == 1
+    assert sabotaged.report.review_items == []
+    (region,) = provider.last.regions
+    assert region.verified
+    assert "aceita pelo revisor" in region.decision.reasons_pt
+
+
 def test_review_decisions_settle_the_region_on_import(pdf_file):
     from caissa.ocr.review import Action, Decided, ReviewDecisions
 

@@ -43,6 +43,7 @@ __all__ = [
     "ReviewDecisions",
     "ReviewItem",
     "ReviewQueue",
+    "accepts_nothing",
     "blind_guard",
     "decisions_path",
 ]
@@ -55,6 +56,19 @@ class Action(StrEnum):
     EDIT = "edit"              # the reviewer typed the text
     KEEP_IMAGE = "keep_image"  # leave the region as a picture
     SKIP = "skip"
+
+
+def accepts_nothing(action: Action, reading: str) -> bool:
+    """An accept of no reading: «Aceitar leitura», or the Enter on an empty truth, accepts nothing.
+
+    The item was never read: a page whose OCR raised, a contested page the OCR could not answer.
+    Crítico da fase 5, ciclo 6: the page item of a ``MemoryError``, accepted with the Enter, became
+    an accept over the whole page's rectangle, and the next import applied it to the reading that
+    came then -- «aceita pelo revisor», verified, out of the queue -- a reading nobody saw.  An
+    accept records the reading it accepted (:meth:`ReviewQueue.decide`), so an accept without one
+    is refused by the window, left out of the decisions and not applied to a region.
+    """
+    return action is Action.ACCEPT and not reading.strip()
 
 
 @dataclass(frozen=True, slots=True)
@@ -270,11 +284,17 @@ class ReviewQueue:
         phrase (SOL-11): the partition exists to measure, and a page the
         reviewer fixed by hand would measure the reviewer.  Keeping the
         region as an image or skipping it changes no text and is allowed.
+        And an accept of an item without a reading is refused: there is
+        nothing to accept (:func:`accepts_nothing`).
         """
         item = self._item(key)
         if action in (Action.ACCEPT, Action.EDIT) and self.blind(item.document, item.page_index):
             return (f"página {item.page_index + 1} está na partição cega: "
                     "a leitura não pode ser aceita nem corrigida aqui (ela mede o OCR).")
+        if accepts_nothing(action, item.text):
+            return ("não há leitura para aceitar: o OCR não leu esta "
+                    f"{'página' if item.kind == 'page' else 'região'}. Escreva o texto e grave a "
+                    "edição, ou mantenha-a como imagem.")
         return ""
 
     def carry_over(self, previous: ReviewQueue | None) -> int:
@@ -331,13 +351,19 @@ class ReviewQueue:
         return out
 
     def decisions(self) -> ReviewDecisions:
-        """The decisions the importer applies (blind pages withheld, as in :meth:`corrections`)."""
+        """The decisions the importer applies (blind pages withheld, as in :meth:`corrections`).
+
+        An accept of an item without a reading is none (:func:`accepts_nothing`) -- a log written
+        before the window refused it would otherwise hand the importer an accept over the page.
+        """
         entries = []
         for key, entry in self.decided().items():
             item = self._item(key)
             if entry.action in (Action.ACCEPT, Action.EDIT) and self.blind(
                 item.document, item.page_index
             ):
+                continue
+            if accepts_nothing(entry.action, item.text):
                 continue
             entries.append(Decided(page_index=item.page_index, rect=item.rect,
                                    action=entry.action, text=entry.text, reviewer=entry.reviewer,
@@ -473,8 +499,11 @@ class ReviewDecisions:
         return [d for d in self.entries if d.page_index == page_index]
 
     def match(self, page_index: int, rect: RectT) -> Decided | None:
+        """The decision over ``rect`` -- never an accept of no reading (:func:`accepts_nothing`)."""
         best, best_iou = None, 0.0
         for decided in self.for_page(page_index):
+            if accepts_nothing(decided.action, decided.text):
+                continue
             iou = _iou(decided.rect, rect)
             if iou > best_iou:
                 best, best_iou = decided, iou
@@ -486,7 +515,9 @@ class ReviewDecisions:
         ``accept`` → the region is accepted and verified; ``edit`` → its
         reading becomes the reviewer's text (one line over the region's box
         when the line count differs), accepted and verified; ``keep_image``
-        → abstained, so the importer keeps the region as a picture.
+        → abstained, so the importer keeps the region as a picture.  An
+        accept that carries no reading accepted nothing and is not applied
+        (:func:`accepts_nothing`): the file may predate the window's refusal.
         """
         from dataclasses import replace
 
