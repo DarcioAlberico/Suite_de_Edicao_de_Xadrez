@@ -977,6 +977,45 @@ def test_at_the_top_the_card_that_shrinks_leaves_a_margin_until_the_mouse_is_cal
     janela.close()
 
 
+def test_the_anchor_is_one_per_scroll_area_and_outlives_its_release(app, monkeypatch):
+    """Construtor, ciclo 9 da fase 5: the first version made one anchor per click and, on release,
+    disconnected the scroll bar's signals -- PyQt deletes the proxy of a disconnected Python slot
+    with ``deleteLater``, and the critic's probe that leaves by ``os._exit`` right after a click
+    showed an «access violation» at the exit, with the deletion pending.  One anchor per scroll
+    area, made on the first click and used again, its signals connected once: three double clicks
+    on three lines leave one anchor, holding nothing once the mouse is calm; and it goes with the
+    scroll area.  The sabotage: an anchor made on every click (the old one never found) -- three."""
+    from PyQt6 import sip
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    def tres_duplos_cliques():
+        janela, rolagem, _cartao, lista, _segue = _janela_do_cartao(app)
+        alca = janela.windowHandle()
+        for linha in (5, 7, 9):
+            ponto = _no_fim_e_na_linha(app, janela, rolagem, lista, linha)
+            _clique(app, alca, ponto)
+            QTest.qWait(80)  # the time between the two clicks of a double click
+            _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+            _sossegar(app)
+        ancoras = [o for o in rolagem.children() if isinstance(o, foco_a_vista._Ancora)]
+        return janela, rolagem, ancoras
+
+    janela, rolagem, ancoras = tres_duplos_cliques()
+    assert len(ancoras) == 1, "one anchor for the scroll area, used again"
+    assert ancoras[0].segurando() is None, "once the mouse is calm it holds nothing"
+    endereco = foco_a_vista._endereco(rolagem)
+    assert foco_a_vista._ANCORAS.get(endereco) is ancoras[0]
+    sip.delete(janela)
+    assert endereco not in foco_a_vista._ANCORAS, "and it goes with the scroll area"
+
+    monkeypatch.setattr(foco_a_vista, "_a_ancora_de", lambda _rolagem: None)
+    janela, _rolagem, ancoras = tres_duplos_cliques()
+    assert len(ancoras) == 3, "sabotaged: an anchor made on every click"
+    janela.close()
+
+
 def _montar_e_destruir(app) -> None:
     """A scroll area with a follower and a field that has the focus, deleted with the focus in it --
     as the dialog «Base de partidas» is, after its question (`perguntar_bases`)."""

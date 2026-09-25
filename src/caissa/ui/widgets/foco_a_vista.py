@@ -67,6 +67,7 @@ soltam a âncora, e o seguidor a solta antes de mostrar um controle. O gêmeo de
 from __future__ import annotations
 
 import time
+from typing import cast
 
 from PyQt6 import sip
 from PyQt6.QtCore import QEvent, QObject, QPoint, QRect, Qt, QTimer, pyqtSlot
@@ -244,39 +245,58 @@ def mostrar(rolagem: QScrollArea, controle: QWidget) -> None:
 class _Ancora(QObject):
     """Mantém um controle no mesmo lugar da vista de uma rolagem até o mouse sossegar.
 
-    Cada vez que o controle, ou um dos que o contêm dentro do conteúdo, se move (o que está acima
-    dele mudou de altura), e cada vez que o alcance da barra muda (o conteúdo cresceu ou encolheu),
-    a barra anda o que o controle andou na vista, e ele volta aonde estava. O conteúdo mesmo não é
-    vigiado: ele se move com a rolagem. Quando o que está acima encolhe mais do que a barra pode
-    subir (ela está no começo), a diferença vira uma folga no alto do conteúdo, que a âncora tira ao
-    se soltar, subindo a barra outro tanto quando pode. A âncora se solta quando o mouse sossega
-    (uma vigia pergunta a :func:`mouse_sossegado`), quando a pessoa rola -- a roda, a barra, as
-    teclas da rolagem (`actionTriggered`): o que ela rola não é desfeito -- e quando o seguidor
-    mostra um controle (:func:`mostrar`).
+    Uma por rolagem, feita no primeiro :func:`ancorar` dela e usada de novo a cada clique: ela
+    segura um controle (:meth:`segurar`) e o solta (:meth:`soltar`). Enquanto segura, cada vez que o
+    controle, ou um dos que o contêm dentro do conteúdo, se move (o que está acima dele mudou de
+    altura), e cada vez que o alcance da barra muda (o conteúdo cresceu ou encolheu), a barra anda o
+    que o controle andou na vista, e ele volta aonde estava. O conteúdo mesmo não é vigiado: ele se
+    move com a rolagem. Quando o que está acima encolhe mais do que a barra pode subir (ela está no
+    começo), a diferença vira uma folga no alto do conteúdo, que a âncora tira ao soltar, subindo a
+    barra outro tanto quando pode. Ela solta quando o mouse sossega (uma vigia pergunta a
+    :func:`mouse_sossegado`), quando a pessoa rola -- a roda, a barra, as teclas da rolagem
+    (`actionTriggered`): o que ela rola não é desfeito -- e quando o seguidor mostra um controle
+    (:func:`mostrar`).
+
+    **Os sinais ligados uma vez, e nunca desligados.** A primeira versão (o `5f3c581`) fazia uma
+    âncora por clique e desligava os sinais da barra ao soltar: o PyQt apaga o intermediário de um
+    slot Python desligado com `deleteLater`, e a sonda do crítico que sai por `os._exit` logo depois
+    do clique (`clique_linha_c7.py`) passou a mostrar «access violation» na saída, com o apagamento
+    pendente (construtor, ciclo 9: 2 de 2 com a âncora, 0 de 2 sem ela; na bisseção do soltar, só
+    com os sinais desligados). O produto não sai por `os._exit`, e o laço de eventos apaga o que
+    está pendente ao terminar; a âncora não deixa mais nada pendente.
     """
 
-    def __init__(self, rolagem: QScrollArea, barra: QScrollBar, controle: QWidget,
-                 vigiados: list[QWidget]) -> None:
+    def __init__(self, rolagem: QScrollArea, barra: QScrollBar) -> None:
         super().__init__(rolagem)
         self._rolagem = rolagem
         self._barra = barra
-        self._controle = controle
-        self._vigiados = vigiados
-        self._solta = False
+        self._controle: QWidget | None = None
+        self._vigiados: list[QWidget] = []
         self._devolvendo = False
         self._folga = 0
-        self._y = self._onde()
-        for vigiado in vigiados:
-            vigiado.installEventFilter(self)
+        self._y = 0
         barra.rangeChanged.connect(self._devolver)
         barra.actionTriggered.connect(self._a_pessoa_rolou)
         self._vigia = QTimer(self)
         self._vigia.setInterval(INTERVALO_DA_VIGIA)
         self._vigia.timeout.connect(self._talvez_soltar)
+
+    def segurando(self) -> QWidget | None:
+        """O controle que a âncora segura agora, ou None."""
+        return self._controle
+
+    def segurar(self, controle: QWidget, vigiados: list[QWidget]) -> None:
+        """Segura ``controle`` onde ele está na vista (``vigiados``: ele e os que o contêm)."""
+        self.soltar()
+        self._controle = controle
+        self._vigiados = vigiados
+        self._y = self._onde(controle)
+        for vigiado in vigiados:
+            vigiado.installEventFilter(self)
         self._vigia.start()
 
-    def _onde(self) -> int:
-        return self._controle.mapTo(self._rolagem.viewport(), QPoint(0, 0)).y()
+    def _onde(self, controle: QWidget) -> int:
+        return controle.mapTo(self._rolagem.viewport(), QPoint(0, 0)).y()
 
     def eventFilter(self, _objeto: QObject | None, evento: QEvent | None) -> bool:  # noqa: N802 - Qt
         if evento is not None and evento.type() == QEvent.Type.Move:
@@ -284,20 +304,21 @@ class _Ancora(QObject):
         return False
 
     def _devolver(self, *_alcance: int) -> None:
-        if self._solta or self._devolvendo:
+        controle = self._controle
+        if controle is None or self._devolvendo:
             return
-        if (sip.isdeleted(self._rolagem) or sip.isdeleted(self._barra)
-                or sip.isdeleted(self._controle) or mouse_sossegado()):
+        if (sip.isdeleted(self._rolagem) or sip.isdeleted(self._barra) or sip.isdeleted(controle)
+                or mouse_sossegado()):
             self.soltar()
             return
         self._devolvendo = True
         try:
-            diferenca = self._onde() - self._y
+            diferenca = self._onde(controle) - self._y
             if diferenca:
                 self._barra.setValue(self._barra.value() + diferenca)
             # o que a barra não devolveu: acima, só uma folga no alto do conteúdo (a barra está no
             # começo); abaixo, a folga posta antes encolhe -- ou o alcance novo da barra devolve
-            resto = self._onde() - self._y
+            resto = self._onde(controle) - self._y
             if resto < 0:
                 self._folgar(-resto)
             elif resto > 0 and self._folga:
@@ -325,27 +346,42 @@ class _Ancora(QObject):
             self.soltar()
 
     def soltar(self) -> None:
-        """Solta a âncora: o controle volta a ir com o conteúdo."""
-        if self._solta:
+        """Solta o controle: ele volta a ir com o conteúdo, e a folga sai."""
+        if self._controle is None:
             return
-        self._solta = True
+        self._controle = None
         self._vigia.stop()
         for vigiado in self._vigiados:
             if not sip.isdeleted(vigiado):
                 vigiado.removeEventFilter(self)
-        if not sip.isdeleted(self._barra):
-            self._barra.rangeChanged.disconnect(self._devolver)
-            self._barra.actionTriggered.disconnect(self._a_pessoa_rolou)
-            if self._folga and not sip.isdeleted(self._rolagem):
-                folga = self._folga
-                self._folgar(-folga)
-                self._barra.setValue(self._barra.value() - folga)
-        self.deleteLater()
+        self._vigiados = []
+        if self._folga and not sip.isdeleted(self._rolagem) and not sip.isdeleted(self._barra):
+            folga = self._folga
+            self._folgar(-folga)
+            self._barra.setValue(self._barra.value() - folga)
+
+
+#: A âncora de cada rolagem, pelo endereço dela: o objeto Python da âncora vive enquanto a rolagem
+#: vive (sai daqui quando a âncora, filha dela, é destruída).
+_ANCORAS: dict[int, _Ancora] = {}
+
+
+def _endereco(objeto: QObject) -> int:
+    """O endereço do objeto C++ de ``objeto``."""
+    # o stub do PyQt6 diz que `unwrapinstance` não devolve nada; ele devolve o endereço
+    return cast(int, sip.unwrapinstance(objeto))
+
+
+def _a_ancora_de(rolagem: QScrollArea) -> _Ancora | None:
+    """A âncora da ``rolagem``, se ela já tem uma."""
+    ancora = _ANCORAS.get(_endereco(rolagem))
+    return None if ancora is None or sip.isdeleted(ancora) else ancora
 
 
 def soltar_as_ancoras(rolagem: QScrollArea) -> None:
-    """Solta a âncora da ``rolagem``, se ela tem uma (:func:`ancorar`)."""
-    for ancora in rolagem.findChildren(_Ancora, options=Qt.FindChildOption.FindDirectChildrenOnly):
+    """Solta o controle que a âncora da ``rolagem`` segura, se ela tem uma (:func:`ancorar`)."""
+    ancora = _a_ancora_de(rolagem)
+    if ancora is not None:
         ancora.soltar()
 
 
@@ -354,19 +390,25 @@ def ancorar(rolagem: QScrollArea, controle: QWidget) -> None:
 
     Para o clique num controle que o painel responde mudando a altura do que está acima dele na
     mesma rolagem: o segundo clique de um duplo clique cai onde o primeiro caiu. Uma âncora por
-    rolagem: a nova solta a velha. Um controle fora do conteúdo da rolagem não é ancorado.
+    rolagem, feita na primeira vez: o controle novo toma o lugar do velho. Um controle fora do
+    conteúdo da rolagem não é ancorado.
     """
     conteudo = rolagem.widget()
     barra = rolagem.verticalScrollBar()
     if conteudo is None or barra is None or not conteudo.isAncestorOf(controle):
         return
-    soltar_as_ancoras(rolagem)
     vigiados: list[QWidget] = []
     parte: QWidget | None = controle
     while parte is not None and parte is not conteudo:
         vigiados.append(parte)
         parte = parte.parentWidget()
-    _Ancora(rolagem, barra, controle, vigiados)
+    ancora = _a_ancora_de(rolagem)
+    if ancora is None:
+        endereco = _endereco(rolagem)
+        ancora = _Ancora(rolagem, barra)
+        _ANCORAS[endereco] = ancora
+        ancora.destroyed.connect(lambda _objeto=None, chave=endereco: _ANCORAS.pop(chave, None))
+    ancora.segurar(controle, vigiados)
 
 
 class RolagemSegueOFoco(QObject):
