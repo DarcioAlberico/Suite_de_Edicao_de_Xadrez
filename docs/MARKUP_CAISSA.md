@@ -250,6 +250,28 @@ Zobrist).
 
 Qualquer outra diferença na ida e volta reprova o portão do H5.
 
+**Como o IR as lê** — a forma normal, `caissa.export.legivel.forma_normal`, que o portão da ida
+compara com `ler(escrever(ir))` pelo `semantic_diff`, cada normalização contada por nó e campo:
+- **N1** — `font_family` e `font_size` das `RunProps` do nó cuja proveniência (a dele ou a do
+  bloco de cima) é `ocr`.
+- **N2** — a formatação direta que o perfil de máquina escreve nas classes geradas: as
+  `ParagraphProps` além do `style`; as `RunProps` além do `style` e da `language` (inteiras no
+  `run_props` do título e do código, no `MathInline` e nas opções da partida); o alinhamento, as
+  bordas, o recuo e o fundo da célula; as bordas, o recuo e o fundo do destaque; as bordas, o recuo
+  das células e as colunas da tabela; o traço da linha horizontal; o tamanho da imagem e o
+  deslocamento da imagem no texto; o `DiagramStyle` além do nome (o tema decide).
+- **N3** — a proveniência que não tem `id` para voltar (o nó de dentro do parágrafo, o lance, a
+  linha e a célula da tabela, o item da lista, o bloco sem página nem âncora), e o reconhecimento,
+  a origem da imagem e a conferência do diagrama sem `id`; o `Span` que só carrega proveniência
+  sai, e o conteúdo dele fica no lugar.
+- **N4** — a árvore XML: o `Text` vazio sai; o texto solto se junta ao vizinho solto e separa os
+  espaços especiais em nós; o `Span` com atributos e só texto dentro é o `Text` com as props e os
+  atributos dele; os `html_attributes` na ordem do `canon`; o bruto `xhtml` na serialização do
+  leitor.
+
+Essa leitura foi fixada no H5 e vai ao crítico com o portão (roadmap §10): a lista continua
+fechada, e o que ela não cobre o XHTML diz (§12).
+
 ## 9. A política de CSS (spec S3b)
 
 **A fonte.** As folhas em `OEBPS/Styles/` são a verdade. O IR as carrega como
@@ -336,6 +358,7 @@ tabela é a que o `benchmarks/editor_contrato.py` confere (100 % das linhas com 
 | `RawPassthrough`/`RawInline` | `bruto.xhtml` |
 | `html_attributes` | `atributos.xhtml` |
 | combinações | `combinacao_capitulo.xhtml`, `combinacao_partida_com_diagrama.xhtml` |
+| as extensões do H5 (§12) | `extensoes_blocos.xhtml`, `extensoes_texto.xhtml`, `extensoes_xadrez.xhtml` |
 | o legado do `XhtmlBuilder` de hoje | `legado_xhtml_builder.xhtml` |
 
 - **As negativas** ficam fora do conjunto limpo, em `tests/fixtures/editor/contrato_negativas/`:
@@ -345,3 +368,88 @@ tabela é a que o `benchmarks/editor_contrato.py` confere (100 % das linhas com 
   mapa por arquivo, e o aviso esperado).
 - **O sidecar** (spec Apêndice C): `tests/fixtures/editor/sidecar/`, escritas pelo crítico, com o
   SHA-256 no relatório do H3.
+- **As extensões** (§12): as três `extensoes_*.xhtml` saem de documentos pequenos pelo escritor
+  legível (`benchmarks/editor_contrato.py --regerar-extensoes`), e o portão do H3 as confere como
+  às outras.
+
+## 12. As extensões do perfil legível (H5)
+
+O que o IR diz e o HTML e o MARKUP não dizem vai num `data-*` deste contrato (§10), no elemento do
+nó. A regra: **o que o HTML diz, o legível diz com o HTML** (`th`, `thead`, `tfoot`, `start`,
+`value`, `title`, `alt`, `aria-label`, a posição da `figcaption`); **o que é de xadrez, com o
+`cb-*`**; **o que é da máquina, no `proveniencia.json`** (R2.4); **a formatação direta é a N2**
+(§8). Um atributo só sai quando o valor não é o padrão do campo, e o leitor devolve o padrão
+quando ele falta. Os valores compostos do IR (a geometria da página, as colunas, a numeração)
+vão em JSON, pela serialização do próprio IR; as medidas, como no perfil de máquina (`12.5mm`, e
+`:twip` quando a unidade é o twip); as marcas do tabuleiro, na codificação das marcas do perfil de
+máquina.
+
+**O `id` e o `proveniencia.json`.** Todo bloco com `id` tem um registro no mapa: o `ir_id`, de onde
+o `id` veio (`pagina` — o gerado, `p55-3`; `ancora`; `html`, o do arquivo; `nota`) e a
+proveniência inteira; o do diagrama, também a origem da imagem, o reconhecimento e a conferência
+humana. O bloco ganha `id` em qualquer profundidade quando tem âncora, `id` próprio ou página de
+origem (a da proveniência, ou a da imagem no diagrama).
+
+### 12.1 Blocos
+
+| nó do IR | a forma e os atributos |
+|---|---|
+| `Heading` | `data-level` (o nível fora de 1–6; a etiqueta fica no mais próximo), `data-toc-text`, `data-in-toc="0"`, `data-numbering`; a classe do estilo |
+| `ListBlock` | `start` (no `ol`) ou `data-start`; `data-marker-style` quando não é o do tipo (`decimal` no `ol`, `bullet` no resto); `data-marker-text`, `data-tight="1"`, `data-numbering`, `data-indent` |
+| `ListItem` | `value` (no `ol`) ou `data-value`; `data-marker`; `data-checked` (`1`/`0`); o `term` fora da lista de definição num `span.cb-term` no começo do `li` |
+| `Table` | `th` quando a célula é de cabeçalho, `td` quando não é, em qualquer grupo; as linhas do `thead` e do `tfoot` são as contagens do IR; `data-caption-above`, `data-repeat-header="0"`, `data-width`, `data-alignment`, `data-number`, `data-summary`; a classe do estilo |
+| `TableRow` | `data-height`, `data-header`, `data-repeat`, `data-keep` |
+| `ImageBlock` | `figure.cb-image` > `img[src][alt][title]` (sem `alt` = sem descrição); `data-alignment`, `data-crop` |
+| `Figure` | `figcaption` > `span.cb-figure-label` e `span.cb-caption-text`; a `figcaption` antes do conteúdo diz a legenda em cima (`data-caption-above` quando a posição não diz); `data-number`, `data-placement`, `aria-label` (o `alt_text`) |
+| `Footnote` / `Endnote` | `data-marker` |
+| `Callout` | `data-collapsed="1"` |
+| `CodeBlock` | `data-line-numbers="1"` |
+| `MathBlock` | `display="block"` ou `"inline"`, `data-numbered`, `data-label`, `data-mathml` |
+| `SectionBreak` | `hr.cb-section-break`, ou `div.cb-section-break` com `span.cb-running-head` e `span.cb-running-foot`; `data-kind`, `data-columns`, `data-geometry`, `data-different-first`, `data-different-odd-even`, `data-page-number-start`, `data-page-number-format`, `data-vertical-alignment` |
+| `ThematicBreak` | `hr`; com ornamento, `p.cb-ornament` com ele |
+| `Group` | `div`, com `data-role` fora do `generic`; `section.cb-chapter` no capítulo; o título num `p.cb-group-title`; `data-columns`; a classe do estilo |
+| `TableOfContents` | `data-page-numbers="0"`, `data-leader="0"`, `data-scope` |
+| `RawPassthrough` `xhtml` | o elemento como está quando ele volta bruto; senão `pre.cb-raw[data-format="xhtml"]` |
+
+### 12.2 Dentro do parágrafo
+
+| nó do IR | a forma e os atributos |
+|---|---|
+| `Text` com estilo ou língua | um `span` com a classe do estilo e o par `lang`/`xml:lang`; o `span` com atributos e só texto dentro volta como `Text` |
+| `Span` | `span`; o `Span` sem nada além do conteúdo é o `span` sem atributo |
+| `Link` | `href` = o alvo, como está; `title` = a dica (`tooltip`); `data-title`; `data-kind` quando o `href` não diz o tipo (`#` interno, `mailto:` e-mail, `://` externo, o resto recurso); o link dentro de um link, `span.cb-link[data-href]` |
+| `Anchor` | `span[id]`, com `title` |
+| `NoteRef` | o marcador é o texto; `data-marker=""` quando o marcador é vazio (sem texto nem atributo, o automático); dentro de um link, `span.cb-noteref[data-href]` |
+| `ImageInline` | sem `alt` = sem descrição |
+| `MathInline` | `data-mathml` |
+| `InlineDiagram` | `data-size`, `data-marks`; a classe do estilo |
+| `IndexEntry` | `data-sort-key`, `data-see-also`, `data-primary` |
+| `RawInline` de outro formato | `span.cb-raw[data-format]`, com o texto escapado |
+| `PieceGlyph` | `data-font-family` |
+| `Move` | `span.cb-move[data-san]`, com `data-fen-before`, `data-uci` (quando o IR o tem), `data-fen` (derivado, quando o lance se joga), `data-ply` (quando a posição não diz), o `span.cb-movenum` dentro quando o número aparece, `data-number-text`, os `span.cb-nag` dentro, e `data-render`/`data-language`/`data-figurine-set` quando a peça impressa não diz |
+
+### 12.3 O xadrez
+
+- **Diagrama.** `data-number` quando o rótulo é outro texto (o «Diagrama N» diz o número); o
+  rótulo escrito que parece o automático leva `data-literal="1"`; `data-marks`; a classe
+  `cb-style-<slug>` do nome do estilo; a solução é uma `section.cb-game.cb-solution` dentro da
+  figura, depois da legenda.
+- **A forma do contrato** (o lance que o tabuleiro joga): `data-uci` só quando o IR tem o uci, e o
+  `data-fen`; quando o IR diz outra coisa que o tabuleiro, `data-san`, `data-fen-before`,
+  `data-fen-after` e `data-ply`. O leitor acha o lance pela FEN quando não há `data-uci`.
+- **A forma literal** (o lance que não se joga dali, e o resto da linha dele): `data-san`,
+  `data-ply`, e `data-uci`, `data-fen-before` e `data-fen-after` quando o IR os tem — **sem
+  `data-fen`**, e o CB o lê como anterior ao contrato. O `p.cb-line` que começa uma variante com um
+  lance literal leva `data-variation-start="1"`; a variante de um lance literal parte da posição de
+  antes dele.
+- **As anotações do lance:** `data-emphasis`, `data-clock` (com `data-clock-kind` e
+  `data-clock-seconds`), `data-eval` (com `data-eval-kind`, `data-eval-value`, `data-eval-depth`),
+  `data-arrows`, `data-highlights`.
+- **O comentário antes do lance** (`comment_before`): `p.cb-comment[data-attach="before"]`.
+- **A seção:** `data-initial-fen` sempre que o IR a tem; `data-variant`; `data-show-result="0"`
+  (resultado desconhecido que a partida não imprime); `data-result-empty`; `data-variation-style`;
+  `data-max-variation-depth`; `data-render`, `data-language` e `data-figurine-set` quando as peças
+  impressas não dizem; o título num `p.cb-game-title`.
+- **O cabeçalho:** `hidden` quando a partida não o mostra (os dados continuam nele);
+  `p.cb-tag[data-name]` para as etiquetas fora do MARKUP; `data-tag-order` quando a ordem do IR não
+  é a do MARKUP.

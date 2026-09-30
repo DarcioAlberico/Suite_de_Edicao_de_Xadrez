@@ -484,12 +484,21 @@ class NodeFactory:
     # -- inlines -----------------------------------------------------------
 
     def text(self) -> Text:
+        ident = self.next_ulid()
+        provenance = self.provenance() if self.maybe(0.3) else None
+        atributos = self.html_attributes()
+        content = self.sentence(self.random.randrange(1, 8))
+        props = self.run_props(rich=self.maybe(0.4))
+        if props.language:
+            # O `lang` preservado ao lado da língua modelada: o leitor legível nunca monta os
+            # dois (o par `lang`/`xml:lang` é a língua; o `lang` sozinho, um atributo da pessoa).
+            atributos = tuple(par for par in atributos if par[0] != "lang")
         return Text(
-            id=self.next_ulid(),
-            provenance=self.provenance() if self.maybe(0.3) else None,
-            html_attributes=self.html_attributes(),
-            content=self.sentence(self.random.randrange(1, 8)),
-            props=self.run_props(rich=self.maybe(0.4)),
+            id=ident,
+            provenance=provenance,
+            html_attributes=atributos,
+            content=content,
+            props=props,
         )
 
     def move(self) -> Move:

@@ -40,7 +40,7 @@ def test_a_volta_fecha_nas_fixtures_do_contrato(fixture: Path) -> None:
 
 
 def test_as_fixtures_existem() -> None:
-    assert len(FIXTURES) == 16
+    assert len(FIXTURES) == 19
 
 
 def test_o_canon_normaliza_so_o_insignificante() -> None:
@@ -115,8 +115,9 @@ def test_o_mapa_da_proveniencia_leva_o_id_e_a_pagina_e_os_devolve() -> None:
     assert canon(de_novo) == canon(escrito)
     sem_mapa = ler_capitulo(escrito)
     assert isinstance(sem_mapa.blocos[0], RawPassthrough), "o marcador fica como veio"
+    assert sem_mapa.blocos[1].anchor == "p55-1", "o título tem âncora: o id vai para ela"
     assert [dict(b.html_attributes).get("id") for b in sem_mapa.blocos[1:]] == [
-        "p55-1", "p55-2", None]
+        None, "p55-2", None]
     de_novo, _ = escrever_capitulo(sem_mapa)
     assert canon(de_novo) == canon(escrito)
 

@@ -7,6 +7,8 @@ Este instrumento confere, sem implementar nada do que o H5 vai construir:
    nomeia a mesma — 100 %.
 2. **O `CB validate`** (`..\Sigil-master\...\sigil_chess\validate.py`, no `sys.path` só aqui) sobre
    as fixtures do contrato e as combinações, com as imagens que o livro leva: **0 erro**.
+   As extensões do H5 (o §12 do contrato) têm as fixtures `extensoes_*.xhtml`, que o
+   `--regerar-extensoes` escreve pelo escritor legível, e que entram na cobertura e no CB.
 3. **A fixture legada** (`legado_xhtml_builder.xhtml`, saída do exportador HTML de hoje, no perfil
    de máquina) é lida pelo leitor atual (`read_html_text`) e traz o título, o parágrafo, o
    diagrama e a partida.
@@ -23,6 +25,7 @@ Uso::
 
     & $PY benchmarks\editor_contrato.py --saida benchmarks\reports\editor\h3\1
     & $PY benchmarks\editor_contrato.py --regerar-legada
+    & $PY benchmarks\editor_contrato.py --regerar-extensoes
 """
 
 from __future__ import annotations
@@ -67,6 +70,8 @@ LINHAS_DO_S4: dict[str, str] = {
     "html_attributes": "atributos.xhtml",
 }
 COMBINACOES = ("combinacao_capitulo.xhtml", "combinacao_partida_com_diagrama.xhtml")
+#: As extensões do perfil legível (o §12 do contrato, passo H5).
+EXTENSOES = ("extensoes_blocos.xhtml", "extensoes_texto.xhtml", "extensoes_xadrez.xhtml")
 LEGADA = "legado_xhtml_builder.xhtml"
 SIDECAR_DOURADAS = ("v2_completo.jsonl", "v1_de_hoje.jsonl", "v1_migrado_esperado.jsonl")
 ASSINATURA = "escrito pelo crítico (Codex)"
@@ -104,10 +109,12 @@ def conferir_cobertura() -> list[str]:
               for linha, nome in LINHAS_DO_S4.items() if not (CONTRATO / nome).is_file()]
     faltas += [f"a combinação {nome} não existe" for nome in COMBINACOES
                if not (CONTRATO / nome).is_file()]
+    faltas += [f"a fixture de extensão {nome} não existe" for nome in EXTENSOES
+               if not (CONTRATO / nome).is_file()]
     texto = DOCUMENTO.read_text(encoding="utf-8") if DOCUMENTO.is_file() else ""
     secao = texto.split("## 11.", 1)[-1] if "## 11." in texto else ""
     faltas += [f"o §11 do contrato não nomeia {nome}"
-               for nome in (*LINHAS_DO_S4.values(), *COMBINACOES, LEGADA)
+               for nome in (*LINHAS_DO_S4.values(), *COMBINACOES, *EXTENSOES, LEGADA)
                if f"`{nome}`" not in secao]
     return faltas
 
@@ -260,6 +267,250 @@ def regerar_legada() -> Path:
 
 
 # --------------------------------------------------------------------------- #
+# As extensões do perfil legível (o §12 do contrato)
+# --------------------------------------------------------------------------- #
+
+_INICIO = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+_DEPOIS_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
+_DEPOIS_E5 = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"
+_REIS = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"
+
+
+def _extensoes_blocos() -> tuple[Any, ...]:
+    from caissa.core.model import (
+        Alignment,
+        Callout,
+        CalloutKind,
+        CodeBlock,
+        Figure,
+        FigurePlacement,
+        Footnote,
+        Group,
+        GroupRole,
+        Heading,
+        ImageBlock,
+        ListBlock,
+        ListItem,
+        ListMarkerStyle,
+        MathBlock,
+        Measure,
+        NumberingRef,
+        PageGeometry,
+        Paragraph,
+        RawPassthrough,
+        SectionBreak,
+        SectionBreakKind,
+        Table,
+        TableCell,
+        TableOfContents,
+        TableRow,
+        Text,
+        ThematicBreak,
+    )
+    from caissa.core.model.blocks import ListKind
+    from caissa.core.model.props import LengthUnit
+
+    def p(texto: str) -> Paragraph:
+        return Paragraph(content=(Text(content=texto),))
+
+    def celula(texto: str, *, cabeca: bool = False) -> TableCell:
+        return TableCell(content=(p(texto),), is_header=cabeca)
+
+    return (
+        Heading(level=2, anchor="cap-2", numbering_text="2", toc_text="Capítulo",
+                list_in_toc=False, numbering=NumberingRef(definition="Titulo1", level=0),
+                content=(Text(content="Um capítulo com a entrada do sumário própria"),)),
+        Heading(level=7, content=(Text(content="Um nível abaixo do h6"),)),
+        ListBlock(kind=ListKind.ORDERED, start=3, marker_style=ListMarkerStyle.LOWER_ROMAN,
+                  tight=True, items=(ListItem(content=(p("começa no cinco"),),
+                                              start_override=5),
+                                     ListItem(content=(p("feito"),), checked=True))),
+        ListBlock(marker_style=ListMarkerStyle.DASH, items=(
+            ListItem(term=(Text(content="termo"),), content=(p("com termo"),)),
+            ListItem(content=(p("por fazer"),), checked=False, marker_override="→"))),
+        ListBlock(kind=ListKind.DEFINITION, items=(
+            ListItem(term=(Text(content="Zugzwang"),),
+                     content=(p("a obrigação de jogar"),), start_override=2),)),
+        Table(caption=(Text(content="Resultados"),), caption_above=True, number=4,
+              width=Measure(value=80, unit=LengthUnit.PERCENT), alignment=Alignment.CENTER,
+              repeat_header=False, summary="o placar", header_row_count=1, footer_row_count=1,
+              rows=(TableRow(cells=(celula("Jogador", cabeca=True),
+                                    celula("Pontos", cabeca=True))),
+                    TableRow(cells=(celula("Carlsen", cabeca=True), celula("7")),
+                             height=Measure(value=12, unit=LengthUnit.MM)),
+                    TableRow(cells=(celula("Total"), celula("7")), keep_together=True))),
+        ImageBlock(resource="figura.svg", alt_text="Uma figura", title="A figura de teste",
+                   alignment=Alignment.RIGHT, crop=(0.1, 0.0, 0.1, 0.0)),
+        Figure(content=(p("o conteúdo da figura"),), caption=(Text(content="A legenda"),),
+               caption_above=True, number=2, label="Figura 2",
+               placement=FigurePlacement.TOP, alt_text="Uma figura com legenda"),
+        Footnote(ref="nota-1", marker="*", content=(p("A nota."),)),
+        Callout(kind=CalloutKind.TIP, title=(Text(content="Dica"),),
+                content=(p("Recolhido."),), collapsed=True),
+        CodeBlock(language="pgn", text="1. e4 e5", show_line_numbers=True),
+        MathBlock(latex="x^2", display=False, numbered=True, label="eq-1"),
+        SectionBreak(kind=SectionBreakKind.ODD_PAGE, header_text=(Text(content="Cabeço"),),
+                     footer_text=(Text(content="Rodapé"),), different_first_page=True,
+                     page_number_start=1, page_number_format="lower-roman",
+                     geometry=PageGeometry(width=Measure(value=148, unit=LengthUnit.MM),
+                                           height=Measure(value=210, unit=LengthUnit.MM))),
+        ThematicBreak(ornament="❦"),
+        Group(role=GroupRole.EXERCISE_SET, title=(Text(content="Exercícios"),), columns=2,
+              content=(p("Um exercício."),)),
+        TableOfContents(title=(Text(content="Sumário"),), show_page_numbers=False,
+                        leader=False, scope="document"),
+        RawPassthrough(format="xhtml", text="<p>um parágrafo guardado como bruto</p>"),
+    )
+
+
+def _extensoes_texto() -> tuple[Any, ...]:
+    from caissa.core.chess.notation_tables import FigurineSet, MoveRenderStyle, PieceType
+    from caissa.core.model import (
+        Anchor,
+        Emphasis,
+        ImageInline,
+        IndexEntry,
+        InlineDiagram,
+        Link,
+        LinkKind,
+        Mark,
+        MarkKind,
+        MathInline,
+        Measure,
+        Move,
+        NoteRef,
+        Paragraph,
+        PieceGlyph,
+        RawInline,
+        RunProps,
+        Span,
+        Text,
+    )
+    from caissa.core.model.props import LengthUnit
+
+    return (
+        Paragraph(content=(
+            Text(content="Um trecho com estilo e língua",
+                 props=RunProps(style="Lance", language="en")),
+            Text(content=", um "),
+            Span(props=RunProps(language="de"), content=(
+                Text(content="Zwischenzug"), Emphasis(content=(Text(content=" (intermédio)"),)))),
+            Text(content=", "),
+            Link(target="capitulo-2.xhtml", kind=LinkKind.INTERNAL, tooltip="Vai ao capítulo",
+                 title="cap2", content=(
+                     Text(content="o capítulo "),
+                     Link(target="https://exemplo.org", content=(Text(content="e o site"),)))),
+            Text(content=", as notas"),
+            NoteRef(ref="nota-1", marker=""),
+            NoteRef(ref="nota-2"),
+            Anchor(name="aqui", title="Um ponto do texto"),
+            IndexEntry(terms=("Finais", "Torre"), sort_key="torre", see_also=("Peões",),
+                       primary=True),
+            Text(content=" e uma posição "),
+            InlineDiagram(fen=_REIS, size=Measure(value=2, unit=LengthUnit.EM),
+                          marks=(Mark(kind=MarkKind.CIRCLE, squares=("e4",)),),
+                          style="Miniatura"),
+            RawInline(format="latex", text=r"\kern1pt"),
+            Text(content=" com a peça "),
+            PieceGlyph(piece=PieceType.KNIGHT, figurine_set=FigurineSet.WHITE,
+                       font_family="Merida"),
+            Text(content=", o lance "),
+            Move(san="Nf3", position_before=_INICIO, ply=1, show_move_number=True, nags=(1,),
+                 render=MoveRenderStyle.FIGURINE, figurine_set=FigurineSet.WHITE),
+            Text(content=" e o "),
+            Move(san="e5", position_before=_DEPOIS_E4, ply=2, move_number_text="1…"),
+            Text(content=", a imagem "),
+            ImageInline(resource="figura.svg"),
+            Text(content=" e a fórmula "),
+            MathInline(latex=r"\frac{1}{2}", mathml="<math/>"),
+        )),
+    )
+
+
+def _extensoes_xadrez() -> tuple[Any, ...]:
+    from caissa.core.chess.notation_tables import FigurineSet, MoveRenderStyle
+    from caissa.core.model import (
+        ClockAnnotation,
+        ClockKind,
+        Diagram,
+        DiagramStyle,
+        EvalAnnotation,
+        GameHeaders,
+        GameRenderOptions,
+        GameScore,
+        Mark,
+        MarkKind,
+        MoveNode,
+        PgnTag,
+        VariationStyle,
+    )
+
+    solucao = GameScore(children=(MoveNode(san="e4", ply=1, position_before=_INICIO,
+                                           position_after=_DEPOIS_E4),))
+    e5 = MoveNode(san="e5", ply=2, position_before=_DEPOIS_E4, position_after=_DEPOIS_E5,
+                  comment_before="a resposta simétrica")
+    literal = MoveNode(san="Zz9", ply=2, comment_after="um lance que o OCR leu errado")
+    outra = MoveNode(san="Zz8", ply=2)
+    e4 = MoveNode(san="e4", ply=1, position_before=_INICIO, position_after=_DEPOIS_E4,
+                  clock=ClockAnnotation(kind=ClockKind.CLOCK, text="1:59:30", seconds=7170.0),
+                  evaluation=EvalAnnotation(value=0.3, depth=20, text="+0.30"),
+                  arrows=(Mark(kind=MarkKind.ARROW, squares=("e2", "e4")),),
+                  emphasis=True, children=(literal, e5, outra))
+    partida = GameScore(
+        title="Uma partida com lances literais",
+        headers=GameHeaders(white="Branco", black="Preto",
+                            extra=(PgnTag(name="Annotator", value="X"),
+                                   PgnTag(name="ECO", value="C20"))),
+        initial_fen=_INICIO, variant="chess960",
+        render=GameRenderOptions(render=MoveRenderStyle.FIGURINE,
+                                 figurine_set=FigurineSet.WHITE,
+                                 variation_style=VariationStyle.INDENTED,
+                                 max_variation_depth=2, show_headers=False, show_result=False),
+        children=(e4,))
+    # O CB confere o diagrama contra o lance acima dele no livro: o da solução fica por último.
+    return (
+        Diagram(fen=_REIS, label="Diagrama 9"),
+        Diagram(fen="6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1", label="Posição A", number=7,
+                marks=(Mark(kind=MarkKind.ARROW, squares=("d1", "d8")),),
+                style=DiagramStyle(name="Grande"), solution=solucao),
+        partida,
+    )
+
+
+def regerar_extensoes() -> list[Path]:
+    """As fixtures das extensões (§12): documentos pequenos pelo escritor legível.
+
+    Cada nó é o da linha do §12 com o campo que a extensão diz; as imagens dos diagramas, que são
+    derivadas, vão para `Images/` como as das outras fixtures.
+    """
+    from caissa.core.model import Document
+    from caissa.export.legivel import Capitulo, escrever_capitulo
+
+    alvos = []
+    for nome, construir, titulo in (
+            ("extensoes_blocos.xhtml", _extensoes_blocos, "As extensões dos blocos"),
+            ("extensoes_texto.xhtml", _extensoes_texto, "As extensões dentro do parágrafo"),
+            ("extensoes_xadrez.xhtml", _extensoes_xadrez, "As extensões do xadrez")):
+        blocos = construir()
+        documento = Document(body=blocos)
+        texto, escritor = escrever_capitulo(
+            Capitulo(blocos=blocos, titulo=titulo, folhas=("../Styles/livro.css",)), documento)
+        alvo = CONTRATO / nome
+        alvo.write_text(texto, encoding="utf-8", newline="\n")
+        for imagem, svg in escritor.imagens.items():
+            destino = CONTRATO / "Images" / imagem
+            if svg and not destino.exists():
+                destino.write_text(svg, encoding="utf-8", newline="\n")
+        alvos.append(alvo)
+    figura = CONTRATO / "Images" / "figura.svg"
+    if not figura.exists():
+        figura.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">'
+                          '<rect width="10" height="10"/></svg>\n', encoding="utf-8",
+                          newline="\n")
+    return alvos
+
+
+# --------------------------------------------------------------------------- #
 # O portão
 # --------------------------------------------------------------------------- #
 
@@ -269,9 +520,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--saida", type=Path)
     parser.add_argument("--sabotar", choices=SABOTAGENS)
     parser.add_argument("--regerar-legada", action="store_true")
+    parser.add_argument("--regerar-extensoes", action="store_true")
     args = parser.parse_args(argv)
     if args.regerar_legada:
         print(f"a fixture legada regravada: {regerar_legada()}")
+        return 0
+    if args.regerar_extensoes:
+        for alvo in regerar_extensoes():
+            print(f"a fixture de extensão regravada: {alvo}")
         return 0
 
     exigencias: dict[str, bool] = {}
@@ -279,7 +535,7 @@ def main(argv: list[str] | None = None) -> int:
     exigencias["cobertura: 100 % das linhas da S4 com fixture, e o §11 com as mesmas"
                + ("" if not cobertura else " -- " + "; ".join(cobertura))] = not cobertura
 
-    limpas = [CONTRATO / n for n in (*LINHAS_DO_S4.values(), *COMBINACOES)
+    limpas = [CONTRATO / n for n in (*LINHAS_DO_S4.values(), *COMBINACOES, *EXTENSOES)
               if (CONTRATO / n).is_file()]
     if args.sabotar == "sem_fen":
         limpas.append(NEGATIVAS / "negativa_sem_fen.xhtml")
