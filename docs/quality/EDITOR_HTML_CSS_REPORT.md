@@ -25,6 +25,57 @@ dia todo, e medir junto contaminaria os tempos das duas.
   `& $PY -c "import sys; sys.path[:0]=['benchmarks','src']; import editor_portoes as P; from caissa.ocr.golden import load_manifest; print(P._contar_o_manifesto(load_manifest(P.manifesto_do_executor()))[1])"`
 - **A medição:** pendente — `& $PY benchmarks\editor_portoes.py --passo H0 --saida benchmarks\reports\editor\h0`.
 
+## H1 — Motores de pré-visualização, medidos
+
+**Estado:** em curso. Prontos e medidos: o arnês de medição Chromium (tarefa 5, `cc20e00`), a
+matriz de CSS (tarefa 1) e o livro hostil (tarefa 4). Pendentes: a latência e as posições (tarefa
+2: os capítulos do `PEDIDO` p. 50–60 saem do mesmo IR real do H5, que espera a máquina livre), a
+sonda congelada (tarefa 3b: uma construção PyInstaller) e a máquina limpa (3c: o Windows Sandbox
+ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entrada do executor.
+
+- **O ambiente de medição:** o venv de rascunho `C:\Python-Chess2\_h1_webengine\.venv` (Python
+  3.11, `PyQt6-WebEngine` 6.11.0 e `PyQt6-WebEngine-Qt6` 6.11.2, o download consentido em
+  2026-09-24), fora do repositório; o produto não o leva.
+- **O arnês** (`benchmarks/editor_chromium_medicao.py`): o autoteste das sete fixtures do Apêndice
+  D passa (7/7), e a sabotagem `pseudo_do_body` reprova só a (6). **Achado:** fora da tela, o Qt
+  não dá ao Chromium as famílias genéricas — `serif`, `sans-serif` e `monospace` caíam todas na
+  mesma fonte; o arnês agora as diz (as do Chrome no Windows: Times New Roman, Arial, Consolas).
+  `& $MEDICAO benchmarks\editor_chromium_medicao.py --autoteste --saida <pasta>`
+- **A matriz de CSS** (`benchmarks/editor_motores.py --matriz`, ~2 min): as declarações dos 9 temas
+  do CB, do `BASE_CSS` e do `CHESS_CSS` — **216 casos** (214 pares e os 2 controles), **58
+  propriedades**; os controles passam (`color: #c00` desenha nos dois motores, `color: #000` em
+  nenhum). Com o Chromium como referência: **21 propriedades desenham nos dois**, 9 só em parte no
+  MuPDF, **10 o MuPDF não desenha**, 17 não têm efeito visível na página de prova (a paginação,
+  sobretudo) e **1 trava o MuPDF**. O que o MuPDF não desenha — a lista para o validador (H10):
+  - **`var()`**: nenhuma variável CSS resolve — toda cor, borda e medida do `BASE_CSS` por
+    variável cai no padrão;
+  - **as fontes do sistema** (Georgia, Palatino Linotype, DejaVu Sans…): o MuPDF só tem as dele, e
+    a família nomeada cai em silêncio na genérica;
+  - `border-radius`, `opacity`, `float`, `display: inline-block`, `font-variant: small-caps`,
+    `letter-spacing`, `height`, `vertical-align: middle`, e o `::first-letter` (a capitular: o
+    corpo, a entrelinha e o recuo dela).
+  - **O laço:** `page-break-before: always` no primeiro elemento faz o `Story.place` do MuPDF
+    paginar sem fim (o teste `test_o_mupdf_entra_em_laco_com_a_quebra_antes_do_primeiro_elemento`
+    o prova); a prévia pelo MuPDF (H13) precisa de teto de páginas.
+
+  `& $PY benchmarks\editor_motores.py --matriz --saida <pasta>` (`matriz_css.json`)
+- **O livro hostil** (`tests/fixtures/editor/hostil/`, uma página por vetor; os endereços de fora
+  são um servidor em `127.0.0.1` que só conta o que chega: nada sai da máquina):
+  **Chromium: 0 requisições, 0 scripts, 0 pedidos de fora do livro, 0 navegações para fora**
+  (5 recusados pelas guardas); **MuPDF: 0 requisições, a sentinela de fora do livro não lida, sem
+  motor de script** (o controle: a imagem de dentro desenha); **o controle com o JavaScript
+  ligado** roda 4 scripts (o `<script>`, o `onerror`, o link `javascript:` e o do SVG no texto).
+  Sabotagens: `sem_interceptador` reprova (3 arquivos de fora passam); `sem_guarda_de_rede` (sem
+  as três camadas) reprova com 8 requisições no servidor. **Achado para o H14:** o Chromium tem
+  três camadas — o `LocalContentCanAccessRemoteUrls` desligado barra o endereço de rede antes do
+  interceptador; o interceptador barra o arquivo de fora da pasta; e **faltava a guarda de
+  navegação**: o `<meta http-equiv="refresh">` levava a prévia para fora do livro (a requisição
+  barrada, mas a página ia embora). O arnês agora recusa no `acceptNavigationRequest` toda
+  navegação para fora da pasta, e o componente do H14 tem de fazer o mesmo.
+  `& $PY benchmarks\editor_motores.py --hostil [--sabotar sem_interceptador|sem_guarda_de_rede] --saida <pasta>`
+- **Os testes:** `tests/unit/editor/test_motores.py` (11: a extração dos casos, a genérica da
+  `font-family`, o veredito, os pixels, o laço e o `var()` do MuPDF, o livro hostil).
+
 ## H2 — O editor de código nativo aguenta, com tudo ligado?
 
 **Estado:** o léxico, o protótipo e os dois instrumentos prontos; **a sonda UIA passou**; o arnês

@@ -62,6 +62,10 @@ BANDEIRAS_DO_CHROMIUM = "--disable-gpu --disable-gpu-compositing"
 FOLHA_DE_MEDICAO = ("*, *::before, *::after { animation: none !important; "
                     "transition: none !important; caret-color: transparent !important; }")
 SABOTAGENS = ("pseudo_do_body",)
+FAMILIAS_GENERICAS = {"StandardFont": "Times New Roman", "SerifFont": "Times New Roman",
+                      "SansSerifFont": "Arial", "FixedFont": "Consolas",
+                      "CursiveFont": "Comic Sans MS", "FantasyFont": "Impact"}
+"""As famílias genéricas do Chrome no Windows (o `QWebEngineSettings.FontFamily` de cada uma)."""
 
 
 def _preparar_ambiente() -> None:
@@ -196,7 +200,14 @@ class MedidaDoLink:
 class Medidor:
     """Um `QWebEngineView` de medição: carrega um livro e mede o foco dos links dele."""
 
-    def __init__(self, *, sabotagem: str | None = None) -> None:
+    def __init__(self, *, sabotagem: str | None = None, javascript: bool = False) -> None:
+        """`javascript=True` só no controle do livro hostil (o script tem de rodar ali).
+
+        A sabotagem `sem_interceptador` (do H1) deixa o interceptador só olhar: o que sai da
+        pasta do livro vai em `permitidas`, e não é recusado. A `sem_guarda_de_rede` tira também
+        a outra camada, o `LocalContentCanAccessRemoteUrls` desligado, que barra o endereço de
+        rede antes do interceptador.
+        """
         _preparar_ambiente()
         from PyQt6.QtWebEngineCore import (
             QWebEnginePage,
@@ -211,6 +222,8 @@ class Medidor:
         self.sabotagem = sabotagem
         self.pasta: Path | None = None
         self.recusadas: list[str] = []
+        self.permitidas: list[str] = []
+        """O que saiu da pasta do livro sem ser recusado (só na sabotagem `sem_interceptador`)."""
         medidor = self
 
         class Interceptador(QWebEngineUrlRequestInterceptor):
@@ -219,19 +232,46 @@ class Medidor:
                 caminho = Path(url.toLocalFile()) if url.isLocalFile() else None
                 if caminho is None or medidor.pasta is None or not _dentro(caminho,
                                                                          medidor.pasta):
+                    if medidor.sabotagem in ("sem_interceptador", "sem_guarda_de_rede"):
+                        medidor.permitidas.append(url.toString())
+                        return
                     medidor.recusadas.append(url.toString())
                     info.block(True)
+
+        class Pagina(QWebEnginePage):
+            """A guarda de navegação: a página não sai do livro (o meta refresh, o link).
+
+            Sem ela, um `<meta http-equiv="refresh">` leva a prévia a um endereço de fora — a
+            requisição é barrada, mas a página do livro vai embora (medido no H1, livro hostil).
+            """
+
+            def acceptNavigationRequest(self, url: Any, _tipo: Any,  # noqa: N802 - o nome do Qt
+                                        _principal: bool) -> bool:
+                caminho = Path(url.toLocalFile()) if url.isLocalFile() else None
+                if (caminho is not None and medidor.pasta is not None
+                        and _dentro(caminho, medidor.pasta)) or url.toString() == "about:blank":
+                    return True
+                if medidor.sabotagem == "sem_guarda_de_rede":
+                    medidor.permitidas.append("navegação: " + url.toString())
+                    return True
+                medidor.recusadas.append("navegação: " + url.toString())
+                return False
 
         self.perfil = QWebEngineProfile()  # sem nome: fora do disco, nada guardado
         self.interceptador = Interceptador()
         self.perfil.setUrlRequestInterceptor(self.interceptador)
         self.view = QWebEngineView()
-        self.pagina = QWebEnginePage(self.perfil, self.view)
+        self.pagina = Pagina(self.perfil, self.view)
         self.view.setPage(self.pagina)
         ajustes = self.pagina.settings()
-        ajustes.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, False)
+        # Fora da tela, o Qt não dá ao Chromium as famílias genéricas: `serif`, `sans-serif` e
+        # `monospace` caem todas na mesma fonte. As do Chrome no Windows, ditas aqui.
+        familia = QWebEngineSettings.FontFamily
+        for qual, nome in FAMILIAS_GENERICAS.items():
+            ajustes.setFontFamily(getattr(familia, qual), nome)
+        ajustes.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, javascript)
         ajustes.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,
-                             False)
+                             sabotagem == "sem_guarda_de_rede")
         self.view.setZoomFactor(1.0)
         self.view.resize(LARGURA, ALTURA)
         self.view.show()
@@ -269,7 +309,8 @@ class Medidor:
         self.js("window.__medicao.quadros = 0; (function q(k){ requestAnimationFrame(() => {"
                 " window.__medicao.quadros++; if (k > 1) q(k - 1); }); })(" + str(n) + "); 0")
         for _ in range(ESPERA_DO_FOCO_MS // PASSO_MS):
-            if self.js("window.__medicao.quadros") >= n:
+            # A página que foi embora (um refresh) já não tem o `__medicao`: sem quadros.
+            if (self.js("window.__medicao ? window.__medicao.quadros : 0") or 0) >= n:
                 return
             self.esperar(PASSO_MS)
         raise RuntimeError("os quadros não vieram")
@@ -293,6 +334,7 @@ class Medidor:
         arquivo = self.pasta / "Text" / "pagina.xhtml"
         arquivo.write_text(xhtml, encoding="utf-8")
         self.recusadas.clear()
+        self.permitidas.clear()
         carregou: dict[str, bool] = {}
         laco = QEventLoop()
 
