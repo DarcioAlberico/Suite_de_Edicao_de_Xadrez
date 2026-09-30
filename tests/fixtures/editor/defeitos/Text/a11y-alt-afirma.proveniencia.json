@@ -1,0 +1,31 @@
+{
+ "formato": 2,
+ "folios": {},
+ "blocos": {},
+ "diagramas": {
+  "p1-d1": {
+   "ir_id": "00000000000000000000000001",
+   "origem": "pagina",
+   "folio": null,
+   "proveniencia": null,
+   "duvidas": [],
+   "nos": [],
+   "fonte": {
+    "type": "diagram_source",
+    "kind": "vision",
+    "page_index": 0
+   },
+   "reconhecimento": {
+    "type": "recognition_result",
+    "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "overall_confidence": 0.8,
+    "path": "neural"
+   },
+   "conferido": false,
+   "decisoes": []
+  }
+ },
+ "capitulo": {
+  "nos": []
+ }
+}

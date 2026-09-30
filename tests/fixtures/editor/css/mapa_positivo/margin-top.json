@@ -1,0 +1,11 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h1": {
+   "margin-top": "2em"
+  },
+  "p.espaco": {
+   "margin-top": "6pt"
+  }
+ }
+}

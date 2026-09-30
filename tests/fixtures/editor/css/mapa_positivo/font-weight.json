@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h3": {
+   "font-weight": "400"
+  },
+  "p.forte": {
+   "font-weight": "700"
+  },
+  "span.forte": {
+   "font-weight": "700"
+  }
+ }
+}

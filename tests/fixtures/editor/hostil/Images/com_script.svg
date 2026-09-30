@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20" viewBox="0 0 40 20">
+<script>document.documentElement.setAttribute('data-hostil', 'svg-arquivo'); new Image().src = 'http://127.0.0.1:{PORTA}/svg-arquivo';</script>
+<rect width="40" height="20" fill="#9c9"/>
+</svg>

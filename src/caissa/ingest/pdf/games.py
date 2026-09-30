@@ -32,7 +32,15 @@ from typing import Any
 
 import chess
 
-from caissa.core.model import Diagram, GameScore, MoveNode, Paragraph
+from caissa.core.chess.notation_tables import DEFAULT_LANGUAGE, MoveRenderStyle
+from caissa.core.model import (
+    Diagram,
+    GameRenderOptions,
+    GameScore,
+    MoveNode,
+    Paragraph,
+    PieceGlyph,
+)
 from caissa.core.model.inline import plain_text
 from caissa.core.model.provenance import Provenance
 from caissa.ingest.pdf.captions import move_start
@@ -247,8 +255,24 @@ def game_from_paragraph(
         initial_fen=None if start_fen == chess.STARTING_FEN else start_fen,
         children=(_chain(nodes),),
         provenance=paragraph.provenance,
+        render=render_do_livro(paragraph, notation_lang),
     )
     return score, "game"
+
+
+def render_do_livro(paragraph: Paragraph, notation_lang: str = "") -> GameRenderOptions:
+    """Como a partida sai: a notação que a coluna imprimiu, e sem cabeçalho.
+
+    A coluna do livro não traz jogadores, evento nem resultado: com o cabeçalho ligado, o
+    exportador imprimia «? – ? · *». E ela imprimiu figurinas quando tem `PieceGlyph`; senão, as
+    letras do idioma que o importador detectou (Editor HTML/CSS, H4, item 4 da spec §2.7).
+    """
+    figurinas = [i for i in paragraph.content if isinstance(i, PieceGlyph)]
+    opcoes = GameRenderOptions(show_headers=False, language=notation_lang or DEFAULT_LANGUAGE)
+    if figurinas:
+        return replace(opcoes, render=MoveRenderStyle.FIGURINE,
+                       figurine_set=figurinas[0].figurine_set)
+    return opcoes
 
 
 def _anchor_mismatch(tokens: list[str], start: int, start_fen: str) -> str | None:

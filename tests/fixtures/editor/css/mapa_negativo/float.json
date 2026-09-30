@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "float.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "float",
+   "seletor": ".fig"
+  }
+ ],
+ "estilos": {}
+}

@@ -1,0 +1,19 @@
+{
+ "avisos": [
+  {
+   "arquivo": "import.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "@import"
+  }
+ ],
+ "estilos": {
+  "p.a": {
+   "color": "#ff0000"
+  },
+  "span.a": {
+   "color": "#ff0000"
+  }
+ }
+}

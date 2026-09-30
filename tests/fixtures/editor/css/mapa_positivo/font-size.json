@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.grande": {
+   "font-size": "1.2em"
+  },
+  "p.nota": {
+   "font-size": "9pt"
+  },
+  "span.nota": {
+   "font-size": "9pt"
+  }
+ }
+}

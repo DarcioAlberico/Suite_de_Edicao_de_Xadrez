@@ -35,6 +35,7 @@ __all__ = [
     "MigrationError",
     "MigrationFn",
     "MigrationRegistry",
+    "rebaixar_para_v1",
 ]
 
 #: Anything ``json.loads`` can produce.
@@ -48,7 +49,7 @@ MigrationFn = Callable[[JsonObject], JsonObject]
 
 #: Version written by this build. Bump it whenever the on-disk shape changes,
 #: and register the matching migration in the same commit.
-CURRENT_SCHEMA_VERSION: Final = 1
+CURRENT_SCHEMA_VERSION: Final = 2
 
 
 class MigrationError(ValueError):
@@ -222,7 +223,45 @@ class MigrationRegistry:
         return current, tuple(applied)
 
 
-#: The registry the serialiser uses. Version 1 is the first published shape, so
-#: it has no steps yet; the machinery is exercised by the test suite against
-#: private registries, which is also how any future dialect reader will use it.
+#: The registry the serialiser uses. Version 1 is the first published shape;
+#: version 2 adds ``IRNode.html_attributes`` (Editor HTML/CSS, H5).
 DEFAULT_REGISTRY: Final = MigrationRegistry(CURRENT_SCHEMA_VERSION)
+
+
+@DEFAULT_REGISTRY.register(
+    1, description="v1 -> v2: IRNode.html_attributes (os atributos HTML preservados do XHTML "
+    "legível, Editor HTML/CSS H5); a v1 não tem o campo, e o padrão vazio não se grava")
+def _v1_para_v2(payload: JsonObject) -> JsonObject:
+    """Trivial: nenhum documento v1 tem atributo HTML preservado, e o vazio é o padrão."""
+    return {**payload, "schema_version": 2}
+
+
+def rebaixar_para_v1(payload: JsonObject) -> JsonObject:
+    """O caminho de volta: um documento v2 **sem** atributo HTML preservado, como v1.
+
+    O esquema v2 só acrescenta ``html_attributes``; um documento que não os usa é um documento
+    v1. Um que os usa não cabe na v1 sem perda, e é recusado -- nunca rebaixado em silêncio.
+
+    Raises:
+        MigrationError: O documento não é v2, ou algum nó tem atributos HTML preservados.
+    """
+    import copy
+
+    if payload.get("schema_version") != 2:  # noqa: PLR2004 - o rebaixamento sai da v2
+        msg = f"rebaixar para a v1 pede um documento v2, não {payload.get('schema_version')!r}"
+        raise MigrationError(msg)
+    copia = copy.deepcopy(payload)
+    pendentes: list[JsonValue] = [copia]
+    while pendentes:
+        item = pendentes.pop()
+        if isinstance(item, list):
+            pendentes.extend(item)
+        elif isinstance(item, dict):
+            atributos = item.pop("html_attributes", None)
+            if atributos:
+                msg = (f"o nó {item.get('type')!r} tem atributos HTML preservados "
+                       f"({atributos!r}); a v1 não os guarda")
+                raise MigrationError(msg)
+            pendentes.extend(item.values())
+    copia["schema_version"] = 1
+    return copia

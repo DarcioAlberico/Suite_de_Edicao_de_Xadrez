@@ -63,6 +63,7 @@ from caissa.core.model import (
     DiagramSource,
     Document,
     DocumentMetadata,
+    DocumentSettings,
     FenCandidate,
     Figure,
     FontWeight,
@@ -1387,9 +1388,29 @@ class PdfImporter:
         return Document(
             metadata=self._metadata(),
             styles=_stylesheet(self.report.body_size),
+            settings=self._notacao_do_livro(body),
             resources=tuple(self._resources),
             body=tuple(body),
         )
+
+    def _notacao_do_livro(self, body: Sequence[Block]) -> DocumentSettings:
+        """A notação que o livro imprimiu vira a do documento, que os exportadores leem.
+
+        Figurinas quando o texto as tem (o conjunto mais usado nelas); senão, as letras do idioma
+        que a detecção da notação achou. Sem isso, toda partida importada saía em letras inglesas
+        (Editor HTML/CSS, H4, item 4 da spec §2.7).
+        """
+        from caissa.core.chess.notation_tables import DEFAULT_LANGUAGE, MoveRenderStyle
+        from caissa.core.model.visitor import walk
+
+        conjuntos = Counter(no.figurine_set for bloco in body for _, no in walk(bloco)
+                            if isinstance(no, PieceGlyph))
+        idioma = self.report.notation_lang or DEFAULT_LANGUAGE
+        if conjuntos:
+            return DocumentSettings(notation_language=idioma,
+                                    move_render=MoveRenderStyle.FIGURINE,
+                                    figurine_set=conjuntos.most_common(1)[0][0])
+        return DocumentSettings(notation_language=idioma)
 
     def _metadata(self) -> DocumentMetadata:
         meta = self.document.metadata
@@ -1640,7 +1661,10 @@ class PdfImporter:
             stipulation=stipulation,
             solution=solution,
             side_to_move_indicator=side_known,
-            alt_text=(crop.description if crop else None),
+            # O alt sai da FEN na exportação (`diagram_alt_text`), no idioma do livro e com a
+            # posição que a revisão decidir: o «Imagem da página N (W × H pt)» do recorte fica
+            # só no recurso (Editor HTML/CSS, H4, item 3 da spec §2.7).
+            alt_text=None,
             provenance=self._provenance(
                 entry.page_index,
                 hit.box,

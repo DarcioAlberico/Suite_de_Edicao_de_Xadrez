@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "blockquote": {
+   "margin-right": "3em"
+  },
+  "p.estreito": {
+   "margin-right": "10%"
+  },
+  "span.estreito": {
+   "margin-right": "10%"
+  }
+ }
+}

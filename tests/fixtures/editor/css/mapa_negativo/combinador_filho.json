@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "combinador_filho.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "p > span"
+  }
+ ],
+ "estilos": {}
+}

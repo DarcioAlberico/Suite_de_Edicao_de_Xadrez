@@ -120,6 +120,10 @@ _AUDIT_FIELDS: Mapping[str, PropertySupport] = {
     "document.provenance": unsupported(
         "A proveniencia do documento e metadado de auditoria do IR."
     ),
+    "*.html_attributes": unsupported(
+        "Os atributos HTML que o XHTML legivel do editor preservou (style, title, aria-*, "
+        "data-*) so voltam no perfil legivel; este formato nao os escreve."
+    ),
 }
 
 
@@ -986,13 +990,24 @@ _CSS_FEATURES: Mapping[str, PropertySupport] = {
 }
 
 
+#: HTML e EPUB escrevem e releem os dois campos de auditoria do diagrama (`data-verified`,
+#: `data-move-context`, `html.py` `_block_diagram` e `_read_diagram`): declará-los «não
+#: suportados» registrava uma perda que não acontece em todo diagrama exportado (Editor HTML/CSS,
+#: H4, item 8 da spec §2.7). O DOCX faz o mesmo em `_DOCX_NODE_FIELDS`.
+_CSS_NODE_FIELDS: Mapping[str, PropertySupport] = {
+    **_AUDIT_FIELDS,
+    "diagram.verified_by_human": full(),
+    "diagram.move_context": full(),
+}
+
+
 HTML_PROFILE = FormatProfile(
     name="html",
     nodes=_CSS_NODES,
     run=_CSS_RUN,
     paragraph=_CSS_PARAGRAPH,
     features=_CSS_FEATURES,
-    node_fields=_AUDIT_FIELDS,
+    node_fields=_CSS_NODE_FIELDS,
     vector_diagrams=True,
 )
 
@@ -1002,7 +1017,7 @@ EPUB_PROFILE = FormatProfile(
     nodes=_CSS_NODES,
     run=_CSS_RUN,
     paragraph=_CSS_PARAGRAPH,
-    node_fields=_AUDIT_FIELDS,
+    node_fields=_CSS_NODE_FIELDS,
     features={
         **_CSS_FEATURES,
         "interactive_replay": approximate(

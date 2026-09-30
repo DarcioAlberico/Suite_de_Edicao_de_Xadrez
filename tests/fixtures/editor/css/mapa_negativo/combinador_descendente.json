@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "combinador_descendente.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "div p"
+  }
+ ],
+ "estilos": {}
+}

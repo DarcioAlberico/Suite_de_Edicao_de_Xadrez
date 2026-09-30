@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "blockquote": {
+   "font-style": "normal"
+  },
+  "p.it": {
+   "font-style": "italic"
+  },
+  "span.it": {
+   "font-style": "italic"
+  }
+ }
+}

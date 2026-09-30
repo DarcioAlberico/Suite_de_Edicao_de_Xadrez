@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.versal": {
+   "font-variant": "small-caps"
+  },
+  "span.normal": {
+   "font-variant": "normal"
+  },
+  "span.versal": {
+   "font-variant": "small-caps"
+  }
+ }
+}

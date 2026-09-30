@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="pt-BR" xml:lang="pt-BR">
+<head>
+<title>Um limpo</title>
+<style>
+:root { --tinta: #1a1a1a; }
+body { color: var(--tinta); }
+.caixa-escura { background-color: #222222; color: #ffffff; }
+.realce { background-color: #fff3b0; }
+.translucido { background-color: rgba(255, 255, 0, 0.3); }
+.alfa { color: rgba(0, 0, 0, 0.9); }
+h1 { page-break-before: always; }
+</style>
+</head>
+<body>
+<h1>O capítulo</h1>
+<p>O mesmo texto.</p>
+<p>O mesmo texto.</p>
+<div class="caixa-escura">
+<p>Branco na caixa escura, com a caixa do trecho passando da linha.</p>
+</div>
+<p>Um texto com <span class="realce">um realce claro</span> no meio.</p>
+<p class="translucido">Preto no fundo amarelo translúcido.</p>
+<p class="alfa">Quase preto, com alfa.</p>
+<p><u>Sublinhado</u>, <s>riscado</s> e <a href="#fim">um link para o fim</a>.</p>
+<ul>
+<li>Um item.</li>
+<li>Outro item.</li>
+</ul>
+<div style="position: relative">
+<img src="../Images/escura.png" alt="Um fundo escuro"/>
+<p style="position: absolute; top: 0; color: #ffffff">Branco sobre a imagem escura.</p>
+</div>
+<p id="fim">O fim.</p>
+</body>
+</html>

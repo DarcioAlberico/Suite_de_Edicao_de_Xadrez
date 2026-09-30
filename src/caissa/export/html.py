@@ -168,6 +168,9 @@ __all__ = [
 # --------------------------------------------------------------------------- #
 # Stylesheet
 # --------------------------------------------------------------------------- #
+PILHA_DE_FIGURINAS = '"DejaVu Sans", "Segoe UI Symbol", "Arial Unicode MS", serif'
+"""A pilha da `.piece` de `BASE_CSS` (as faces com as figurinas Unicode); um teste a confere."""
+
 BASE_CSS = """\
 /* Caissa Studio -- folha base. Claro e escuro sao dois projetos, nao um invertido. */
 :root {
@@ -1977,7 +1980,7 @@ class XhtmlBuilder:
         self.runs = CssRegistry("r")
         self.paragraphs = CssRegistry("p")
         self.decorations = CssRegistry(DECORATION_PREFIX)
-        self.diagrams = DiagramRenderer(context)
+        self.diagrams = DiagramRenderer(context, tinta_do_leitor=True)
         self.headings: list[tuple[int, str, str]] = []
         self.notes: list[Footnote | Endnote] = []
         self.index_entries: list[tuple[tuple[str, ...], str]] = []
@@ -2522,9 +2525,11 @@ class XhtmlBuilder:
             The ``<figcaption>``, or an empty string.
         """
         pieces: list[str] = []
-        label = node.label or (
-            f"Diagrama {node.number}" if node.number is not None else ""
-        )
+        # O número automático (H4, item 9) só vai para a legenda: o `data-number` fica com o
+        # número explícito, para o leitor não o congelar como impresso.
+        numero = node.number if node.number is not None else self._numeros_automaticos().get(
+            str(node.id))
+        label = node.label or (f"Diagrama {numero}" if numero is not None else "")
         if label:
             pieces.append(f'<span class="label">{escape(label)}</span>')
         if node.stipulation:
@@ -2534,6 +2539,16 @@ class XhtmlBuilder:
         if not pieces:
             return ""
         return f"<figcaption>{' '.join(pieces)}</figcaption>"
+
+    def _numeros_automaticos(self) -> dict[str, int]:
+        """A numeração automática dos diagramas do documento, calculada uma vez."""
+        numeros = getattr(self, "_numeros_de_diagrama", None)
+        if numeros is None:
+            from caissa.export.diagrams import numeros_de_diagrama
+
+            numeros = numeros_de_diagrama(self.context.document)
+            self._numeros_de_diagrama = numeros
+        return numeros
 
     def _record_diagram_losses(self, node: Diagram) -> None:
         """Record the diagram data XHTML deliberately does not carry.
@@ -2603,18 +2618,28 @@ class XhtmlBuilder:
         assert isinstance(node, GameScore)
         pgn = game_to_pgn(node)
         headers = ""
+        cabecalho_vazio = False
         if node.render.show_headers:
-            names = f"{escape(node.headers.white)} &#8211; {escape(node.headers.black)}"
+            # Um campo que falta nunca se imprime como «?» nem «*» (o MARKUP; Editor HTML/CSS,
+            # H4, item 4): o PGN do `data-pgn` guarda os valores, e o parágrafo mostra os que há.
+            branco, preto = (
+                name if name and name != "?" else "" for name in (node.headers.white,
+                                                                   node.headers.black)
+            )
+            names = " &#8211; ".join(escape(name) for name in (branco, preto) if name)
+            if names and not (branco and preto):
+                names = f"{names} &#8211;" if branco else f"&#8211; {names}"
             place = ", ".join(
                 part
                 for part in (node.headers.event, node.headers.site, node.headers.date)
                 if part and part not in ("?", "????.??.??")
             )
-            headers = (
-                f'<p class="headers">{names}'
-                + (f" &#183; {escape(place)}" if place else "")
-                + f" &#183; {escape(node.headers.result)}</p>"
-            )
+            result = node.headers.result if node.headers.result not in ("", "*", "?") else ""
+            parts = [part for part in (names, escape(place), escape(result)) if part]
+            if parts:
+                headers = f'<p class="headers">{" &#183; ".join(parts)}</p>'
+            else:
+                cabecalho_vazio = True
         title = f"<p class=\"game-title\">{escape(node.title)}</p>" if node.title else ""
         board = ""
         if self.interactive:
@@ -2636,6 +2661,8 @@ class XhtmlBuilder:
                 "data-language": node.render.language,
                 "data-render": node.render.render.value,
                 "data-variation-style": node.render.variation_style.value,
+                # O cabeçalho ligado sem nada a mostrar: o leitor não o acharia pelo parágrafo.
+                "data-headers": "1" if cabecalho_vazio else None,
             }
         )
         comment = (
@@ -3093,9 +3120,16 @@ class XhtmlBuilder:
 
     def _inline_piece_glyph(self, node: Any) -> str:
         klass = self._run_class(node.props, node)
-        declarations = (
-            {"font-family": _quote_family(node.font_family)} if node.font_family else {}
-        )
+        spec = chess_font_spec(node.font_family) if node.font_family else None
+        if spec is not None:
+            # Uma face de xadrez conhecida: o nome é o do `@font-face` que o EPUB embute.
+            declarations = {"font-family": _quote_family(spec.family)}
+        elif node.font_family:
+            # A face do PDF nunca vai no pacote, e a figurina já é Unicode: ela fica com a pilha
+            # da `.piece`, que precisa ganhar da classe da corrida (Editor HTML/CSS, H4, item 7).
+            declarations = {"font-family": PILHA_DE_FIGURINAS}
+        else:
+            declarations = {}
         # The face the glyph needs is the *node's* font, not the run's: putting
         # it in the run rule would hand it back as a run property on re-import.
         family_class = self.decorations.intern(declarations, declarations)
@@ -5113,7 +5147,7 @@ class _Reader:
             variation_style=(
                 VariationStyle(variation_style) if variation_style else render.variation_style
             ),
-            show_headers=any(
+            show_headers=element.get("data-headers") == "1" or any(
                 child.get("class") == "headers" for child in element.iter() if child is not element
             ),
         )

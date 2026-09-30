@@ -1,0 +1,4 @@
+@import url(http://127.0.0.1:{PORTA}/import.css);
+@font-face { font-family: "Externa"; src: url(http://127.0.0.1:{PORTA}/fonte.woff); }
+body { background-image: url(http://127.0.0.1:{PORTA}/fundo.png); }
+.fonte-externa { font-family: "Externa", serif; }

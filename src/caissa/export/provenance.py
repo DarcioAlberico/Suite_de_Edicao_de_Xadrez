@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from caissa.core.model import Diagram, Document, GameScore
+from caissa.core.model import Diagram, Document, GameScore, Rect
 
 __all__ = [
     "SIDECAR_SUFFIX",
@@ -78,13 +78,27 @@ def _walk(document: Document) -> Iterator[Any]:
         yield node
 
 
+def _rect_record(rect: Any) -> dict[str, Any] | list[Any] | None:
+    """A rectangle as the sidecar writes it.
+
+    The IR's :class:`~caissa.core.model.Rect` -- what every real import stores -- is not a
+    sequence, so it is written by name, unit included; ``list()`` of it raised and the whole
+    sidecar went missing.  A bare tuple (the synthetic items of older callers) stays the
+    list it always was.
+    """
+    if isinstance(rect, Rect):
+        return {"x": rect.x, "y": rect.y, "width": rect.width, "height": rect.height,
+                "unit": rect.unit}
+    return list(rect) if rect else None
+
+
 def _provenance_dict(provenance: Any) -> dict[str, Any] | None:
     if provenance is None:
         return None
     return {
         "kind": str(getattr(provenance, "kind", "") or ""),
         "page_index": getattr(provenance, "page_index", None),
-        "rect": list(provenance.rect) if getattr(provenance, "rect", None) else None,
+        "rect": _rect_record(getattr(provenance, "rect", None)),
         "engine": getattr(provenance, "engine", None),
         "engine_version": getattr(provenance, "engine_version", None),
         "model_hash": getattr(provenance, "model_hash", None),
@@ -111,7 +125,7 @@ def records_for(document: Document) -> list[dict[str, Any]]:
                 "key": f"p{page if page is not None else '?'}:d{ordinal}",
                 "id": str(block.id),
                 "page_index": page,
-                "rect": list(source.rect) if source is not None and source.rect is not None else None,
+                "rect": _rect_record(source.rect) if source is not None else None,
                 "image_hash": source.image_hash if source is not None else None,
                 "content_hash": source.content_hash if source is not None else None,
                 "dpi": source.dpi if source is not None else None,

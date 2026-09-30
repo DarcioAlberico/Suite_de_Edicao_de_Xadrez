@@ -11,11 +11,13 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from corpus import local_paths_in_epub
 
 _INGEST_TESTS = Path(__file__).resolve().parent.parent / "ingest"
 if str(_INGEST_TESTS) not in sys.path:
     sys.path.insert(0, str(_INGEST_TESTS))
 
+from caissa.core.model import Diagram, RecognitionPath  # noqa: E402
 from caissa.export import (  # noqa: E402
     BOOK_FORMATS,
     ExportError,
@@ -29,7 +31,8 @@ from caissa.export import (  # noqa: E402
 )
 from caissa.export.book import format_for_path  # noqa: E402
 from caissa.export.cli import main  # noqa: E402
-from caissa.ingest.pdf import ImportCanceled  # noqa: E402
+from caissa.ingest.pdf import DiagramHit, ImportCanceled, PdfImportOptions  # noqa: E402
+from caissa.ocr.diagram_decisions import ENV_ROOT  # noqa: E402
 
 PNG_HEAD = bytes([0x89]) + b"PNG"
 from conftest import PageSpec, build_pdf, requires_pymupdf  # noqa: E402
@@ -199,6 +202,40 @@ def test_the_images_of_the_pages_travel_inside_the_epub(tmp_path: Path):
     assert f'href="Images/{images[0].rsplit("/", 1)[1]}"' in opf
     # the scratch folder is gone with the export
     assert not [p for p in tmp_path.iterdir() if p.name.startswith("caissa-export-")]
+
+
+@requires_pymupdf
+def test_no_path_of_this_machine_travels_inside_the_epub(tmp_path: Path, monkeypatch):
+    """The importer records where the PDF was and where each image was extracted --
+    absolute paths, the user's name in them on Windows -- in the book's ``source``, in
+    every node's provenance, in the diagram's source and in the resources.  The package
+    names the files only (embedded IR, ``dc:source``, pages), the content hash still says
+    which PDF it was; the document in memory keeps the real paths."""
+    monkeypatch.setenv(ENV_ROOT, str(tmp_path / "decisoes"))
+    spec = PageSpec(images=[(72.0, 72.0, 272.0, 272.0, 120, 120)]).text(
+        "Uma figura acima e este parágrafo abaixo dela.", 72, 320
+    )
+    pdf = tmp_path / "Ilustrado.pdf"
+    pdf.write_bytes(build_pdf([spec]))
+    hit = DiagramHit(box=(72.0, 400.0, 272.0, 600.0), fen="8/8/8/4k3/8/8/4K3/8 w - - 0 1",
+                     confidence=0.9, path=RecognitionPath.NEURAL, method="contour",
+                     square_confidences=(0.95,) * 64)
+    result = export_book(pdf, None, "epub", enable_ocr=False, import_options=PdfImportOptions(
+        diagram_finder=lambda *_: [hit], games=False))
+    source = result.document.metadata.source
+    assert source is not None
+    assert Path(source).is_absolute(), "the IR in memory keeps the path"
+    assert local_paths_in_epub(result.path, tmp_path) == []
+    back = read_epub(result.path, use_sidecar=True)
+    (original,) = [b for b in result.document.body if isinstance(b, Diagram)]
+    (diagram,) = [b for b in back.body if isinstance(b, Diagram)]
+    assert back.metadata.source == diagram.source.path == "Ilustrado.pdf"
+    assert original.source.content_hash
+    assert diagram.source.content_hash == original.source.content_hash
+    assert back.resources
+    assert {r.path for r in back.resources} == {
+        Path(r.path).name for r in result.document.resources if r.path
+    }
 
 
 @requires_pymupdf

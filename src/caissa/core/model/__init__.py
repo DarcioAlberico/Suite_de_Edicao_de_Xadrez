@@ -169,6 +169,7 @@ from caissa.core.model.migrations import (
     Migration,
     MigrationError,
     MigrationRegistry,
+    rebaixar_para_v1,
 )
 from caissa.core.model.props import (
     EMPTY_PARAGRAPH_PROPS,
@@ -434,6 +435,7 @@ __all__ = [
     "node_from_payload",
     "node_to_payload",
     "plain_text",
+    "rebaixar_para_v1",
     "resolve_paragraph_props",
     "resolve_run_props",
     "semantic_diff",

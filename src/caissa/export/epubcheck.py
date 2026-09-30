@@ -28,7 +28,8 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-__all__ = ["EpubCheckResult", "find_epubcheck_jar", "java_available", "run_epubcheck"]
+__all__ = ["EpubCheckMessage", "EpubCheckResult", "find_epubcheck_jar", "java_available",
+           "run_epubcheck", "run_epubcheck_json"]
 
 ENV_JAR = "CAISSA_EPUBCHECK"
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -139,3 +140,56 @@ def run_epubcheck(jar: Path, package: Path, *, timeout_s: float = 600.0) -> Epub
         output=output,
         jar=Path(jar),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class EpubCheckMessage:
+    """One EPUBCheck message with where it points (Editor HTML/CSS, H10).
+
+    Attributes:
+        id: EPUBCheck's message ID (``RSC-005``, ``OPF-014``...).
+        severity: ``FATAL``, ``ERROR``, ``WARNING``, ``INFO`` or ``USAGE``.
+        message: The text.
+        path: The file inside the package (``OEBPS/Text/cap1.xhtml``), or ``""``.
+        line: 1-based line, or ``-1`` when EPUBCheck gives none.
+        column: 1-based column, or ``-1``.
+    """
+
+    id: str
+    severity: str
+    message: str
+    path: str
+    line: int
+    column: int
+
+
+def run_epubcheck_json(jar: Path, package: Path, *,
+                       timeout_s: float = 600.0) -> list[EpubCheckMessage]:
+    """Validate one ``.epub`` with ``--json``: every message, with its location.
+
+    The summary line of :func:`run_epubcheck` only counts; the JSON report says where. A
+    message with several locations yields one :class:`EpubCheckMessage` per location.
+
+    Raises:
+        OSError: Java cannot be started.
+        RuntimeError: EPUBCheck wrote no JSON report (a crash, a bad jar).
+    """
+    import json
+    import tempfile
+
+    java = shutil.which("java") or "java"
+    with tempfile.TemporaryDirectory(prefix="caissa_epubcheck_") as pasta:
+        report = Path(pasta) / "epubcheck.json"
+        result = subprocess.run(  # noqa: S603 - the JRE on PATH with a jar this module located
+            [java, "-jar", str(jar), str(package), "--json", str(report)],
+            capture_output=True, timeout=timeout_s, check=False)
+        if not report.is_file():
+            raise RuntimeError(f"EPUBCheck wrote no JSON report (exit {result.returncode})")
+        data = json.loads(report.read_text(encoding="utf-8"))
+    return [EpubCheckMessage(
+        id=str(message.get("ID") or ""), severity=str(message.get("severity") or ""),
+        message=str(message.get("message") or ""), path=str(location.get("path") or ""),
+        line=int(location["line"]) if location.get("line") is not None else -1,
+        column=int(location["column"]) if location.get("column") is not None else -1)
+        for message in data.get("messages") or []
+        for location in (message.get("locations") or [{}])]
