@@ -604,24 +604,14 @@ def _clique(app, alca, ponto) -> None:
 
 
 def _segundo_clique_de_um_duplo(app, janela, alca, ponto) -> None:
-    """The second click of a double click as Qt delivers it: the press, the double click to the
-    widget under the pointer, the release.  QTest puts the double-click interval between two clicks
-    of its own, so as never to make a double click by chance: the double click goes by hand, as the
-    critic's probe sent it (fase 5, ciclo 8)."""
-    from PyQt6.QtCore import QEvent, QPointF, Qt
-    from PyQt6.QtGui import QMouseEvent
-    from PyQt6.QtTest import QTest
-    from PyQt6.QtWidgets import QApplication
+    """The second click of a double click as the platform delivers it to the widget
+    (`teclado._segundo_clique`): the press goes to the window, which keeps it from the widget, and
+    the double click and the release go to the widget under the pointer.  Up to cycle 10 the press
+    reached the widget too, as the critic's probe of cycle 8 sent it."""
+    from caissa.ui.audit import teclado
 
-    QTest.mousePress(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
-    app.processEvents()
-    alvo = janela.childAt(ponto)
-    duplo = QMouseEvent(QEvent.Type.MouseButtonDblClick, QPointF(alvo.mapFrom(janela, ponto)),
-                        QPointF(janela.mapToGlobal(ponto)), Qt.MouseButton.LeftButton,
-                        Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
-    QApplication.sendEvent(alvo, duplo)
-    app.processEvents()
-    QTest.mouseRelease(alca, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, ponto)
+    assert alca is janela.windowHandle()
+    teclado._segundo_clique(janela, ponto)
     app.processEvents()
 
 
@@ -631,8 +621,9 @@ def test_the_second_click_of_a_double_click_lands_where_the_first_did(app, monke
     second click of a double click -- in the Rotulagem, with the scroll area at its end, the second
     click on line 4 fell on «Aceitar leitura» and accepted a reading nobody accepted.  Here the
     double click through the ``QWindow`` on the second line of the list (press, release, 80 ms, the
-    second press and release at the same point): nothing moves under the pointer between the two
-    clicks, both land on the list, which gets the double click on that line -- and sends the focus
+    second click at the same point, as the platform delivers it: the double click and the release):
+    nothing moves under the pointer between the two clicks, both land on the list, which gets the
+    double click on that line -- and sends the focus
     to the box, as the Rotulagem's double click on a line does (``table.activated``); once the
     mouse is calm the box is whole.  The sabotage: the scroll right after the release (the
     double-click interval at 0) -- the content moves, and the second click falls off the list."""
@@ -649,7 +640,8 @@ def test_the_second_click_of_a_double_click_lands_where_the_first_did(app, monke
     alca = janela.windowHandle()
 
     class Receptores(QObject):
-        """The first widget each press of the double click is delivered to."""
+        """The first widget each click of the double click is delivered to: the press of the
+        first, the double click of the second."""
 
         def __init__(self) -> None:
             super().__init__()
@@ -658,7 +650,8 @@ def test_the_second_click_of_a_double_click_lands_where_the_first_did(app, monke
 
         def eventFilter(self, objeto, evento):  # noqa: N802 - Qt
             tipo = evento.type()
-            if tipo == QEvent.Type.MouseButtonPress and isinstance(objeto, QWidget):
+            if (tipo in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick)
+                    and isinstance(objeto, QWidget)):
                 if not self._visto:
                     self.controles.append(objeto)
                     self._visto = True
@@ -684,7 +677,7 @@ def test_the_second_click_of_a_double_click_lands_where_the_first_did(app, monke
 
     sob, sob_no_segundo = duplo_clique()
     assert sob_no_segundo is sob, "nothing moves under the pointer between the two clicks"
-    assert receptores.controles == [linhas.viewport()] * 2, "both presses land on the list"
+    assert receptores.controles == [linhas.viewport()] * 2, "both clicks land on the list"
     assert duplos == [1], "the list gets the double click on its second line"
     assert _inteiro(rolagem, caixa), "and once the mouse is calm the box is whole"
 

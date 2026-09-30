@@ -1152,13 +1152,10 @@ def _clique_sem_sossego(janela: Any, ponto: Any) -> None:
 def _duplo_clique(janela: Any, ponto: Any) -> tuple[Any, int | None]:
     """Um duplo clique pelo `QWindow` no ``ponto``; devolve o controle e a linha sob o segundo.
 
-    O primeiro clique, a :data:`ESPERA_ENTRE_OS_CLIQUES`, e o segundo como o Qt o entrega: o
-    pressionar, o duplo clique ao controle sob o ponteiro, o soltar. O `QTest` põe o intervalo do
-    duplo clique entre dois cliques dele, para nunca fazer um duplo clique por acaso: o duplo clique
-    vai à mão, como na sonda do crítico (fase 5, ciclo 8). Depois, o sossego do mouse.
+    O primeiro clique, a :data:`ESPERA_ENTRE_OS_CLIQUES`, e o segundo como a plataforma o entrega
+    ao controle (:func:`_segundo_clique`). Depois, o sossego do mouse.
     """
-    from PyQt6.QtCore import QEvent, QPointF, Qt
-    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtCore import Qt
     from PyQt6.QtTest import QTest
     from PyQt6.QtWidgets import QApplication
 
@@ -1171,17 +1168,58 @@ def _duplo_clique(janela: Any, ponto: Any) -> tuple[Any, int | None]:
     _esperar(ESPERA_ENTRE_OS_CLIQUES)
     sob_no_segundo = janela.childAt(ponto)
     linha_no_segundo = _linha_sob(sob_no_segundo, janela, ponto)
-    QTest.mousePress(alca, esquerdo, nenhum, ponto)
-    QApplication.processEvents()
+    _segundo_clique(janela, ponto)
+    _sossego()
+    return sob_no_segundo, linha_no_segundo
+
+
+def _segundo_clique(janela: Any, ponto: Any) -> None:
+    """O segundo clique de um duplo clique pelo `QWindow` no ``ponto``, como a plataforma o entrega.
+
+    O `QGuiApplication` marca o segundo pressionar como duplo clique e o manda à janela com um
+    `MouseButtonDblClick` logo atrás; a `QWidgetWindow` guarda o controle sob o ponteiro -- o que
+    recebe o duplo clique e o soltar -- e **não repassa esse pressionar a ele** (QTBUG-25831). O
+    controle recebe pressionar, soltar, duplo clique, soltar: é o que o `QTest.mouseDClick` pelo
+    `QWindow`, que passa por esse caminho, entrega (`test_teclado_tecla`), mas ele manda os dois
+    cliques de uma vez, sem a espera entre eles; e o `QTest` põe o intervalo do duplo clique entre
+    dois cliques dele, para nunca fazer um duplo clique por acaso. Então o pressionar vai à janela
+    (o estado dos botões e o controle do soltar ficam os da plataforma), um filtro posto na
+    aplicação logo antes -- o primeiro a ver o evento -- o engole no controle, como a
+    `QWidgetWindow`, e o duplo clique vai à mão, na hora, ao controle que estava sob o ponteiro.
+    Até o ciclo 10 da fase 5 o portão (e a sonda do crítico do ciclo 8, de que ele veio) mandava
+    esse pressionar também ao controle: um botão baixado por ele clicava no soltar.
+    """
+    from PyQt6.QtCore import QEvent, QObject, QPointF, Qt
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication, QWidget
+
+    class _SoAJanela(QObject):
+        """Engole o pressionar que chega a um controle: a `QWidgetWindow` não o repassaria."""
+
+        def eventFilter(self, objeto: QObject | None, evento: QEvent | None) -> bool:  # noqa: N802
+            return (evento is not None and evento.type() == QEvent.Type.MouseButtonPress
+                    and isinstance(objeto, QWidget))
+
+    alca = janela.windowHandle()
+    aplicacao = QApplication.instance()
+    esquerdo, nenhum = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
     alvo = janela.childAt(ponto)
+    filtro = _SoAJanela()
+    if aplicacao is not None:
+        aplicacao.installEventFilter(filtro)
+    try:
+        QTest.mousePress(alca, esquerdo, nenhum, ponto)
+    finally:
+        if aplicacao is not None:
+            aplicacao.removeEventFilter(filtro)
     if alvo is not None:
         duplo = QMouseEvent(QEvent.Type.MouseButtonDblClick, QPointF(alvo.mapFrom(janela, ponto)),
                             QPointF(janela.mapToGlobal(ponto)), esquerdo, esquerdo, nenhum)
         QApplication.sendEvent(alvo, duplo)
-        QApplication.processEvents()
+    QApplication.processEvents()
     QTest.mouseRelease(alca, esquerdo, nenhum, ponto)
-    _sossego()
-    return sob_no_segundo, linha_no_segundo
+    QApplication.processEvents()
 
 
 def _linha_sob(widget: Any, janela: Any, ponto: Any) -> int | None:
@@ -2304,10 +2342,11 @@ def auditar(
             "duplo_clique": (
                 "depois dele, nas mesmas vistas e extremos: um duplo clique pelo QWindow numa "
                 f"linha inteira à vista e diferente da atual ({ESPERA_ENTRE_OS_CLIQUES} ms entre "
-                "os dois cliques; o segundo entregue como o Qt o entrega, com o "
-                "MouseButtonDblClick ao controle sob o ponteiro); o controle e a linha sob o "
-                "ponteiro no segundo clique têm de ser os do primeiro, e o foco que sobra, à vista "
-                "como no clique com a ação"
+                "os dois cliques; o segundo como a plataforma o entrega ao controle: o pressionar "
+                "vai à janela e não ao controle -- a QWidgetWindow o retém --, e o "
+                "MouseButtonDblClick e o soltar vão ao controle sob o ponteiro); o controle e a "
+                "linha sob o ponteiro no segundo clique têm de ser os do primeiro, e o foco que "
+                "sobra, à vista como no clique com a ação"
             ),
             "nome": "accessibleName, senão text(), senão a 1a linha da dica -- a ordem do Qt",
             "grupo": (

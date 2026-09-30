@@ -513,3 +513,72 @@ def test_the_gate_double_clicks_when_the_content_fits_the_view(app, monkeypatch)
     assert fora, ("sabotaged: a second click off the line", duplos)
     assert any(d.get("linha_no_segundo") != d["linha"] for d in fora), fora
     janela.close()
+
+
+def test_the_gates_double_click_reaches_the_widget_as_the_platform_delivers_it(app, monkeypatch):
+    """Construtor, ciclo 10 da fase 5: the gate's second click delivered the press to the widget
+    too, and then the double click -- what the platform does not do.  `QTest.mouseDClick` on the
+    ``QWindow`` goes through the platform's path (the `QGuiApplication` marks the second press as a
+    double click, and the `QWidgetWindow` keeps it from the widget, QTBUG-25831): a button gets
+    press, release, double click, release.  The gate's double click, with its wait between the two
+    clicks, delivers the same to the button.  The sabotage: the gate's second click up to cycle 10
+    (the press to the widget too) -- press, release, press, double click, release."""
+    from PyQt6.QtCore import QEvent, QObject, QPointF, Qt
+    from PyQt6.QtGui import QMouseEvent
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QApplication, QPushButton, QVBoxLayout, QWidget
+
+    from caissa.ui.audit import teclado
+
+    nomes = {
+        QEvent.Type.MouseButtonPress: "pressionar",
+        QEvent.Type.MouseButtonRelease: "soltar",
+        QEvent.Type.MouseButtonDblClick: "duplo",
+    }
+    chegou: list[str] = []
+
+    class Anota(QObject):
+        def eventFilter(self, _objeto, evento):  # noqa: N802 - Qt
+            if evento is not None and evento.type() in nomes:
+                chegou.append(nomes[evento.type()])
+            return False
+
+    janela = QWidget()
+    botao = QPushButton("Aceitar leitura")
+    QVBoxLayout(janela).addWidget(botao)
+    janela.resize(300, 80)
+    anota = Anota()
+    botao.installEventFilter(anota)
+    janela.show()
+    for _vez in range(2):
+        app.processEvents()
+    ponto = botao.mapTo(janela, botao.rect().center())
+
+    QTest.mouseDClick(janela.windowHandle(), Qt.MouseButton.LeftButton,
+                      Qt.KeyboardModifier.NoModifier, ponto)
+    app.processEvents()
+    da_plataforma = list(chegou)
+    assert da_plataforma == ["pressionar", "soltar", "duplo", "soltar"], da_plataforma
+
+    chegou.clear()
+    teclado._duplo_clique(janela, ponto)
+    assert chegou == da_plataforma, chegou
+
+    def segundo_clique_do_ciclo_9(janela_, ponto_) -> None:
+        alca = janela_.windowHandle()
+        esquerdo, nenhum = Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+        QTest.mousePress(alca, esquerdo, nenhum, ponto_)
+        QApplication.processEvents()
+        alvo = janela_.childAt(ponto_)
+        duplo = QMouseEvent(QEvent.Type.MouseButtonDblClick, QPointF(alvo.mapFrom(janela_, ponto_)),
+                            QPointF(janela_.mapToGlobal(ponto_)), esquerdo, esquerdo, nenhum)
+        QApplication.sendEvent(alvo, duplo)
+        QApplication.processEvents()
+        QTest.mouseRelease(alca, esquerdo, nenhum, ponto_)
+
+    monkeypatch.setattr(teclado, "_segundo_clique", segundo_clique_do_ciclo_9)
+    chegou.clear()
+    teclado._duplo_clique(janela, ponto)
+    assert chegou == ["pressionar", "soltar", "pressionar", "duplo", "soltar"], (
+        "sabotaged: the press reaches the button too", chegou)
+    janela.close()
