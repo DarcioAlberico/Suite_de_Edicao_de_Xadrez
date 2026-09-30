@@ -202,8 +202,25 @@ de desempenho (`editor_codigo.py`, 3×) espera a máquina livre (ele mede bloque
 ## H4 — As dívidas da exportação que o editor poria na tela
 
 **Estado:** os itens 3–9 da spec §2.7 corrigidos no produto e o contador pronto e testado
-(`8a40016`); **o portão (os três EPUBs de antes e de depois, com o EPUBCheck) ainda não rodou**:
-ele exporta três livros e espera a máquina livre.
+(`8a40016`); **o portão PASSOU no `f70acaa`** (2026-09-30, a árvore limpa, 274 s): os dez sintomas =
+0 nos **quatro** EPUBs de depois, o EPUBCheck sem erro nos quatro, os alts que reconstroem a FEN
+em 100 %, as três fixtures positivas, e as **10 sabotagens reprovando** pelo motivo declarado (os
+itens 3–9 sobre os EPUBs de antes; `rect_como_lista`, `estipulacao_sobrescrita`, `caminho_no_ir`
+sobre as fixtures). O crítico ainda não o julgou (o **H4, ciclo 1**).
+
+A primeira rodada do portão achou três coisas, corrigidas no `f70acaa`:
+
+- **O sumário do EPUB reprovava o EPUBCheck** (RSC-005 no `nav.xhtml` do `KEMERI` p. 80 e do
+  `PEDIDO` p. 55): o `_nav_list` abria um `<ol>` ao lado do que acabara de fechar quando um título
+  vinha mais raso que o anterior — duas listas no topo, ou duas no mesmo `<li>`. Agora é uma lista
+  por nível (os testes de `tests/unit/export/test_epub.py`: as ordens que quebravam e toda
+  sequência de até seis títulos com níveis de 1 a 4; seis reprovam no código de antes). O defeito
+  é do produto e está no `main` também: chega a ele com o ramo.
+- **A sabotagem do item 7 não reprovava:** nenhuma figurina de `LIVRO`, `KEMERI` e `PEDIDO` traz a
+  fonte do PDF. O portão passa a exportar também o **`DEM` p. 24** (58 figurinas `SemFig*`; 53
+  acusadas antes do passo) — a mutação **M-H4-1** (roadmap §10), que o crítico julga.
+- **A fixture do item 1 reimportava o livro inteiro:** chamava o `export_book` sem as páginas, e o
+  documento pronto de 8 páginas não cobria «o livro»; agora passa `31-38` (50 s em vez de minutos).
 
 - **Os testes:** `tests/unit/export/test_dividas_da_exportacao.py` (13) e
   `tests/unit/editor/test_dividas.py` (4).
@@ -212,7 +229,12 @@ ele exporta três livros e espera a máquina livre.
   sem olhar o código; os EPUBs de antes saem de uma árvore destacada no commit anterior ao passo
   (`a6414f3`):
   `& $PY benchmarks\editor_dividas.py --gerar --codigo C:\Python-Chess2\_h4_antes\src --saida benchmarks\reports\editor\h4_antes`
-- **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H4 --saida benchmarks\reports\editor\h4`.
+- **O portão:** `& $PY benchmarks\editor_portoes.py --passo H4 --saida benchmarks\reports\editor\h4`
+  (PASSOU no `f70acaa`; o registro, `portao.json`, diz o commit e as árvores).
+- **O EPUBCheck nos testes de uma árvore de `git worktree`:** o `tools\epubcheck-*\` é ignorado
+  pelo git e só existe no checkout principal; o `CAISSA_EPUBCHECK` não chega ao teste (o `conftest`
+  isola o ambiente). Uma junção resolve:
+  `New-Item -ItemType Junction -Path <árvore>\tools\epubcheck-4.2.6 -Target <principal>\tools\epubcheck-4.2.6`.
 - **Achado fora do passo:** `tests/unit/ingest/test_corpus.py::test_nunn_ocr_layer_keeps_the_paragraphs_whole`
   falha também no `9eb401c`, anterior ao programa; não é deste roadmap.
 
