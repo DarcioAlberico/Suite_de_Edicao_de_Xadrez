@@ -75,6 +75,17 @@ ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entr
   `& $PY benchmarks\editor_motores.py --hostil [--sabotar sem_interceptador|sem_guarda_de_rede] --saida <pasta>`
 - **Os testes:** `tests/unit/editor/test_motores.py` (11: a extração dos casos, a genérica da
   `font-family`, o veredito, os pixels, o laço e o `var()` do MuPDF, o livro hostil).
+- **Os tamanhos do componente (tarefa 3e), medidos nas rodas 6.11 do ambiente de medição** — o
+  orçamento da spec §5.5 é download ≤ 150 MB e instalado ≤ 300 MB:
+  - **download: 132,6 MB** (as duas rodas, `PyQt6-WebEngine-Qt6` 6.11.2 e `PyQt6-WebEngine`
+    6.11.0, achadas no cache HTTP do pip pelo `METADATA` de dentro do zip) — dentro;
+  - **instalado inteiro: 358,6 MB** (o `Qt6WebEngineCore.dll` sozinho tem 203,4 MB) — **fora**; a
+    spec extrapolava 207 MB de um PySide6;
+  - **aparado: 222,5 MB** — sem os `.pak` de depuração e das ferramentas do desenvolvedor
+    (90,1 MB), sem as traduções além de `pt-BR` e `en-US` (44,6 MB), sem o Qt Quick e o QML
+    (1,1 MB) e sem os arquivos de desenvolvimento (0,3 MB) — dentro, **se** a sonda congelada
+    provar que ele desenha (mais as DLL do Qt base que o WebEngine usa e o pacote não leva).
+  `& $PY benchmarks\editor_motores.py --tamanhos --saida <pasta>` (`tamanhos.json`)
 
 ## H2 — O editor de código nativo aguenta, com tudo ligado?
 

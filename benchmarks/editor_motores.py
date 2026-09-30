@@ -656,6 +656,92 @@ def hostil(saida: Path, *, sabotagem: str | None = None) -> tuple[dict[str, bool
 
 
 # --------------------------------------------------------------------------- #
+# Os tamanhos do componente
+# --------------------------------------------------------------------------- #
+
+RODAS_DO_COMPONENTE = ("pyqt6_webengine", "pyqt6_webengine_qt6")
+ORCAMENTO_MB = {"download": 150.0, "instalado": 300.0}
+"""O orçamento do componente Chromium (spec §5.5)."""
+TRADUCOES_MANTIDAS = ("pt-BR.pak", "en-US.pak")
+
+
+def _corte(nome: str) -> str | None:
+    """Por que o arquivo sai do componente aparado, ou `None` se fica."""
+    base = nome.rsplit("/", 1)[-1]
+    if base.endswith(".debug.pak") or "devtools" in base:
+        return "depuração e ferramentas do desenvolvedor"
+    if "/qtwebengine_locales/" in nome and base not in TRADUCOES_MANTIDAS:
+        return "traduções além de pt-BR e en-US"
+    if "Quick" in base or "/qml/" in nome:
+        return "Qt Quick e QML"
+    if base.endswith(".pyi") or "/bindings/" in nome or "/qsci/" in nome or ".dist-info/" in nome:
+        return "desenvolvimento"
+    return None
+
+
+def tamanhos(saida: Path) -> tuple[dict[str, bool], dict[str, Any]]:
+    """Download e instalado do componente, inteiro e aparado, contra o orçamento da spec §5.5.
+
+    O instalado sai dos `RECORD` das duas rodas no ambiente de medição; o download, das rodas no
+    cache HTTP do pip (reconhecidas pelo `METADATA` de dentro do zip).
+    """
+    import csv
+    import zipfile
+
+    pacotes = python_do_webengine().parents[1] / "Lib" / "site-packages"
+    arquivos: list[tuple[str, int]] = []
+    versoes: dict[str, str] = {}
+    for info in sorted(pacotes.glob("*.dist-info")):
+        nome, _, versao = info.name.removesuffix(".dist-info").rpartition("-")
+        if nome.lower() in RODAS_DO_COMPONENTE:
+            versoes[nome.lower()] = versao
+            with (info / "RECORD").open(encoding="utf-8") as registro:
+                arquivos += [(linha[0], int(linha[2])) for linha in csv.reader(registro)
+                             if len(linha) > 2 and linha[2].isdigit()]
+    cortes: dict[str, int] = {}
+    for nome, tamanho in arquivos:
+        motivo = _corte(nome)
+        if motivo:
+            cortes[motivo] = cortes.get(motivo, 0) + tamanho
+    inteiro = sum(t for _, t in arquivos)
+    download = 0
+    achadas: list[str] = []
+    cache = Path(os.environ.get("LOCALAPPDATA", "")) / "pip" / "cache" / "http-v2"
+    for corpo in cache.rglob("*.body") if cache.is_dir() else ():
+        if corpo.stat().st_size < 100_000:
+            continue
+        try:
+            with zipfile.ZipFile(corpo) as roda:
+                metadados = next((n for n in roda.namelist() if n.endswith(".dist-info/METADATA")),
+                                 "")
+        except (zipfile.BadZipFile, OSError):
+            continue
+        nome = metadados.split("/", 1)[0].removesuffix(".dist-info")
+        rotulo, _, versao = nome.rpartition("-")
+        if rotulo.lower() in RODAS_DO_COMPONENTE and versoes.get(rotulo.lower()) == versao:
+            download += corpo.stat().st_size
+            achadas.append(nome)
+    mb = {"download": download / 1e6, "inteiro": inteiro / 1e6,
+          "aparado": (inteiro - sum(cortes.values())) / 1e6}
+    exigencias = {
+        f"componente: download {mb['download']:.1f} MB ({len(achadas)} de "
+        f"{len(RODAS_DO_COMPONENTE)} rodas no cache) ≤ {ORCAMENTO_MB['download']:.0f} MB": (
+            len(achadas) == len(RODAS_DO_COMPONENTE)
+            and mb["download"] <= ORCAMENTO_MB["download"]),
+        f"componente aparado: {mb['aparado']:.1f} MB instalado ≤ "
+        f"{ORCAMENTO_MB['instalado']:.0f} MB (inteiro: {mb['inteiro']:.1f} MB)": (
+            0 < mb["aparado"] <= ORCAMENTO_MB["instalado"]),
+    }
+    registro = {"versoes": versoes, "rodas_no_cache": achadas, "mb": mb,
+                "cortes_mb": {k: v / 1e6 for k, v in sorted(cortes.items())},
+                "orcamento_mb": ORCAMENTO_MB}
+    saida.mkdir(parents=True, exist_ok=True)
+    (saida / "tamanhos.json").write_text(json.dumps(registro, ensure_ascii=False, indent=1),
+                                         encoding="utf-8")
+    return exigencias, registro
+
+
+# --------------------------------------------------------------------------- #
 # A linha de comando
 # --------------------------------------------------------------------------- #
 
@@ -672,6 +758,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--matriz", action="store_true")
     parser.add_argument("--hostil", action="store_true")
+    parser.add_argument("--tamanhos", action="store_true")
     parser.add_argument("--sabotar", choices=SABOTAGENS)
     parser.add_argument("--limite", type=int)
     parser.add_argument("--saida", type=Path)
@@ -690,8 +777,10 @@ def main(argv: list[str] | None = None) -> int:
         exigencias.update(matriz(saida, limite=args.limite)[0])
     if args.hostil:
         exigencias.update(hostil(saida, sabotagem=args.sabotar)[0])
+    if args.tamanhos:
+        exigencias.update(tamanhos(saida)[0])
     if not exigencias:
-        parser.error("diga o que medir: --matriz, --hostil")
+        parser.error("diga o que medir: --matriz, --hostil, --tamanhos")
     for texto, ok in exigencias.items():
         print(f"{'PASSOU' if ok else 'REPROVADO'}: {texto}")
     return 0 if all(exigencias.values()) else 1
