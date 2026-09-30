@@ -94,16 +94,18 @@ class Paginas:
 
 def paginar(texto: str, css: str = "", *, largura: float = LARGURA_PT,
             altura: float = ALTURA_PT, maximo: int = MAXIMO_DE_PAGINAS,
-            em: float = 16.0) -> Paginas:
+            em: float = 16.0, arquivo: Any = None) -> Paginas:
     """Pagina o XHTML pelo `Story` do MuPDF, com o CSS dado (as variáveis resolvidas).
 
     O `em` de 16 é o do navegador: o MuPDF conta o px do CSS como a unidade da página.
+    `arquivo` é o `pymupdf.Archive` de onde o `Story` lê as imagens (pelo `src`).
     """
     import io
 
     import pymupdf
 
-    historia = pymupdf.Story(html=texto, user_css=resolver_variaveis(css), em=em)
+    historia = pymupdf.Story(html=texto, user_css=resolver_variaveis(css), em=em,
+                             archive=arquivo)
     saida = io.BytesIO()
     escritor = pymupdf.DocumentWriter(saida)
     caixa = pymupdf.Rect(36, 36, largura - 36, altura - 36)

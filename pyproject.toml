@@ -71,6 +71,8 @@ dependencies = [
     "python-ulid>=2.7,<4",
     # O mapa de estilo do Editor HTML/CSS lê o CSS do projeto (caissa.editor.css; BSD).
     "tinycss2>=1.3,<2",
+    # A cascata do contraste da validação (caissa.editor.validacao.pagina; BSD).
+    "cssselect2>=0.7,<1",
     "tomli-w>=1.0,<2",
     "typing-extensions>=4.12,<5",
 ]
@@ -338,6 +340,12 @@ ignore_missing_imports = true
 # The ChessVisionOFF trunk is reached by path (caissa.vision.classify.cvoff),
 # never installed: its modules have no stubs mypy can see.
 module = ["chess_diagram_ocr.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# O CSS do Editor HTML/CSS (caissa.editor.css, caissa.editor.validacao): o tinycss2 e o
+# cssselect2 não trazem tipos.
+module = ["tinycss2", "tinycss2.*", "cssselect2", "cssselect2.*"]
 ignore_missing_imports = true
 
 # --------------------------------------------------------------------------- #

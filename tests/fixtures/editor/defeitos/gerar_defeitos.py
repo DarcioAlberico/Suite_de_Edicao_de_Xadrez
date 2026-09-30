@@ -1,7 +1,9 @@
 # ruff: noqa: E501 - o conteúdo das fixtures (XHTML) vai em linhas longas, como no arquivo gerado
 """Gera tests/fixtures/editor/defeitos/ (H10): um arquivo por regra, com o esperado ao lado.
 
-Roda com o Python da suíte: `python tests/fixtures/editor/defeitos/gerar_defeitos.py`.
+Roda com o Python da suíte: `python tests/fixtures/editor/defeitos/gerar_defeitos.py [pasta]`
+(sem a pasta, escreve ao lado dele; o teste `test_as_fixtures_sao_do_gerador` gera numa pasta
+temporária e compara byte a byte).
 
 O local esperado sai de um marcador no próprio texto do arquivo (a definição da regra: o `<` do
 elemento, o nome da declaração, o caractere), nunca do validador.
@@ -26,7 +28,7 @@ from caissa.export.legivel import (
     imagem_do_diagrama,
 )
 
-PASTA = Path(__file__).resolve().parent
+PASTA = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent
 INICIO = chess.STARTING_FEN
 
 
@@ -63,6 +65,30 @@ def gif_animado() -> bytes:
     quadro = (b"\x21\xf9\x04\x00\x0a\x00\x00\x00" + b"\x2c" + struct.pack("<HHHHB", 0, 0, 1, 1, 0)
               + b"\x02\x02\x44\x01\x00")
     return cabeca + laco + quadro + quadro + b"\x3b"
+
+
+def apng() -> bytes:
+    """Um PNG com o bloco `acTL` (dois quadros) antes dos dados: o APNG."""
+    normal = png(1, 1, (0, 0, 0))
+    actl = b"acTL" + struct.pack(">II", 2, 0)
+    bloco = struct.pack(">I", 8) + actl + struct.pack(">I", zlib.crc32(actl) & 0xFFFFFFFF)
+    fim_do_ihdr = 8 + 25
+    return normal[:fim_do_ihdr] + bloco + normal[fim_do_ihdr:]
+
+
+def webp_animado() -> bytes:
+    """Um WebP com a marca de animação no `VP8X`."""
+    vp8x = b"VP8X" + struct.pack("<I", 10) + bytes([0x02, 0, 0, 0]) + bytes(6)
+    return b"RIFF" + struct.pack("<I", 4 + len(vp8x)) + b"WEBP" + vp8x
+
+
+def marcador_de_pagina(ident: str, rotulo: str) -> str:
+    return f'<span epub:type="pagebreak" role="doc-pagebreak" id="{ident}" aria-label="{rotulo}"/>'
+
+
+def lista_de_paginas(entradas: list[tuple[str, str]]) -> str:
+    itens = "".join(f'<li><a href="{href}">{rotulo}</a></li>\n' for href, rotulo in entradas)
+    return f'<nav epub:type="page-list" role="doc-pagelist" hidden="hidden">\n<ol>\n{itens}</ol>\n</nav>'
 
 
 def local(texto: str, marcador: str, ocorrencia: int = 1) -> tuple[int, int]:
@@ -183,6 +209,41 @@ defeito("css-mapa-docx", t, [("css-mapa-docx", "div.nota", 1)], arquivo="Styles/
 t = xhtml('<p class="cinza">Um parágrafo em cinza, a 5,7 para 1 sobre o papel branco.</p>',
           '<link rel="stylesheet" type="text/css" href="../Styles/cinza.css"/>\n')
 defeito("css-contraste", t, [("css-contraste", '<p class="cinza"', 1)])
+# O contraste com qualquer CSS (o ciclo 1 do crítico do H10): a variável do <style> e o texto
+# repetido (acusa o segundo, e não o primeiro igual); a variável de uma classe e a do style=""
+# herdadas; o fundo que cobre parte do trecho e o translúcido; o papel do body; a imagem sob o
+# texto; e a página que não termina.
+t = xhtml('<p>O mesmo texto.</p>\n<p class="nota">O mesmo texto.</p>',
+          "<style>:root { --cinza: #767676; }\np.nota { color: var(--cinza); }</style>\n")
+defeito("css-contraste", t, [("css-contraste", '<p class="nota"', 1)],
+        arquivo="Text/css-contraste-variavel.xhtml")
+t = xhtml('<div class="aviso">\n<p>Dentro do aviso.</p>\n</div>\n<p>Fora do aviso.</p>\n'
+          '<div style="--tinta: #888888">\n<p>No estilo do pai.</p>\n</div>',
+          "<style>.aviso { --tinta: #808080; }\np { color: var(--tinta, #000000); }</style>\n")
+defeito("css-contraste", t, [("css-contraste", "<p>Dentro", 1), ("css-contraste", "<p>No estilo", 1),
+                             ("css-motor-nao-desenha", "color: var", 1)],
+        arquivo="Text/css-contraste-heranca.xhtml")
+t = xhtml('<p>Um texto com <span style="background-color: #777777">um fundo cinza</span> no meio.</p>\n'
+          '<p style="background-color: rgba(0, 0, 0, 0.6); color: #ffffff">Branco no translúcido.</p>')
+defeito("css-contraste", t, [("css-contraste", '<span style="background', 1),
+                             ("css-contraste", '<p style="background', 1),
+                             ("css-motor-nao-desenha", '<p style="background', 1)],
+        arquivo="Text/css-contraste-fundo.xhtml")
+t = xhtml("<p>Cinza no papel escuro.</p>",
+          "<style>body { background-color: #000000; color: #555555; }</style>\n")
+defeito("css-contraste", t, [("css-contraste", "<p>Cinza", 1)], arquivo="Text/css-contraste-papel.xhtml")
+# O link que o autor pinta de cinza: o MuPDF sozinho o pintaria do azul dele (e passaria).
+t = xhtml('<p>Veja <a href="#fim">o fim do capítulo</a>.</p>\n<p id="fim">O fim.</p>',
+          "<style>a { color: #999999; }</style>\n")
+defeito("css-contraste", t, [("css-contraste", '<a href="#fim"', 1)], arquivo="Text/css-contraste-link.xhtml")
+t = xhtml('<div style="position: relative">\n<img src="../Images/escura.png" alt="Um fundo escuro"/>\n'
+          '<p style="position: absolute; top: 0; color: #333333">Sobre a imagem.</p>\n</div>')
+defeito("css-contraste", t, [("css-contraste", '<p style="position', 1)],
+        arquivo="Text/css-contraste-imagem.xhtml")
+t = xhtml("\n".join(f"<p>A linha {n} de um capítulo mais alto que a página medida.</p>"
+                    for n in range(1, 501)))
+defeito("css-contraste-incompleto", t, [("css-contraste-incompleto", "<body", 1)],
+        contexto={"teto_de_paginas": 1})
 
 # --- A acessibilidade --------------------------------------------------------------------------
 t = xhtml("<p>Um livro sem a língua dita.</p>", lang=False)
@@ -194,12 +255,30 @@ defeito("a11y-alt-ausente", t, [("a11y-alt-ausente", "<img", 1)])
 t = xhtml(diagrama(INICIO, alt="Diagrama de xadrez: jogam as brancas; brancas: Rei em e1, Dama em d1."))
 defeito("a11y-alt-afirma", t, [("a11y-alt-afirma", '<img class="cb-svg"', 1)],
         contexto={"mapa": "Text/a11y-alt-afirma.proveniencia.json"})
-marcador = '<span epub:type="pagebreak" role="doc-pagebreak" id="pg5" aria-label="5"/>'
-t = xhtml(f"<p>{marcador}Um parágrafo.</p>\n<p>{marcador}Outro parágrafo.</p>")
+# A mesma página impressa duas vezes, com `id` diferentes: o número é que conta.
+t = xhtml(f"<p>{marcador_de_pagina('pg5', '5')}Um parágrafo.</p>\n"
+          f"<p>{marcador_de_pagina('pg5b', '5')}Outro parágrafo.</p>")
 defeito("a11y-pagina-duplicada", t, [("a11y-pagina-duplicada", "<span epub", 2)])
 t = xhtml('<p><span epub:type="pagebreak" role="doc-pagebreak" id="pg5" aria-label="5"/>Um parágrafo.</p>\n'
           '<p><span epub:type="pagebreak" role="doc-pagebreak" id="pg7" aria-label="7"/>Outro.</p>')
 defeito("a11y-pagina-lacuna", t, [("a11y-pagina-lacuna", '<span epub:type="pagebreak" role="doc-pagebreak" id="pg7"', 1)])
+# A page-list do nav (§5.6): a entrada que aponta para o nada, a que pula, a repetida; e, com o
+# nav do livro no contexto, o marcador que ela não lista. As entradas apontam para os marcadores
+# do `Text/apoio-paginas.xhtml` (páginas 1 a 4).
+t = xhtml(lista_de_paginas([("apoio-paginas.xhtml#pg1", "1"), ("apoio-paginas.xhtml#pg2", "2"),
+                            ("apoio-paginas.xhtml#pg9", "3")]))
+defeito("a11y-pagina-sem-alvo", t, [("a11y-pagina-sem-alvo", '<a href="apoio-paginas.xhtml#pg9"', 1)])
+t = xhtml(lista_de_paginas([("apoio-paginas.xhtml#pg1", "1"), ("apoio-paginas.xhtml#pg2", "2"),
+                            ("apoio-paginas.xhtml#pg4", "4")]))
+defeito("a11y-pagina-lacuna", t, [("a11y-pagina-lacuna", '<a href="apoio-paginas.xhtml#pg4"', 1)],
+        arquivo="Text/a11y-pagina-lacuna-lista.xhtml")
+t = xhtml(lista_de_paginas([("apoio-paginas.xhtml#pg1", "1"), ("apoio-paginas.xhtml#pg2", "2"),
+                            ("apoio-paginas.xhtml#pg2", "2")]))
+defeito("a11y-pagina-duplicada", t, [("a11y-pagina-duplicada", '<a href="apoio-paginas.xhtml#pg2"', 2)],
+        arquivo="Text/a11y-pagina-duplicada-lista.xhtml")
+t = xhtml(f"<p>{marcador_de_pagina('pg7', '7')}Uma página que o nav do livro não lista.</p>")
+defeito("a11y-pagina-fora-da-lista", t, [("a11y-pagina-fora-da-lista", "<span epub", 1)],
+        contexto={"nav": "Text/a11y-pagina-sem-alvo.xhtml"})
 t = xhtml('<p><img class="cb-imagem-de-texto" src="../Images/texto.png" '
           'alt="Trecho da página 12, mantido como imagem"/></p>')
 defeito("a11y-imagem-de-texto", t, [("a11y-imagem-de-texto", "<img", 1)])
@@ -213,6 +292,20 @@ t = xhtml('<p class="pisca">Um parágrafo.</p>', "<style>p.pisca { transition: c
 defeito("a11y-animacao", t, [("a11y-animacao", "transition", 1)])
 t = xhtml('<p><img src="../Images/animada.gif" alt="Uma animação"/></p>')
 defeito("a11y-animacao", t, [("a11y-animacao", "<img", 1)], arquivo="Text/a11y-animacao-gif.xhtml")
+# A imagem animada em toda fonte (o ciclo 1 do crítico): o srcset, a <source> da <picture>, o
+# WebP, e o url() da folha.
+t = xhtml('<p><img src="../Images/imagem.png" srcset="../Images/animada.gif 2x" alt="Uma imagem"/></p>')
+defeito("a11y-animacao", t, [("a11y-animacao", "<img", 1)], arquivo="Text/a11y-animacao-srcset.xhtml")
+t = xhtml('<picture>\n<source srcset="../Images/animada.png" type="image/apng"/>\n'
+          '<img src="../Images/imagem.png" alt="Uma imagem"/>\n</picture>')
+defeito("a11y-animacao", t, [("a11y-animacao", "<source", 1)], arquivo="Text/a11y-animacao-picture.xhtml")
+t = xhtml('<p><img src="../Images/animada.webp" alt="Uma animação"/></p>')
+defeito("a11y-animacao", t, [("a11y-animacao", "<img", 1)], arquivo="Text/a11y-animacao-webp.xhtml")
+t = xhtml('<p class="fundo">Um parágrafo.</p>',
+          "<style>p.fundo { background-image: url(../Images/animada.gif); }</style>\n")
+defeito("a11y-animacao", t, [("a11y-animacao", "background-image", 1),
+                             ("css-motor-nao-desenha", "background-image", 1)],
+        arquivo="Text/a11y-animacao-css.xhtml")
 t = xhtml('<p class="barra">Um parágrafo.</p>', "<style>p.barra { position: fixed; }</style>\n")
 defeito("a11y-fixo", t, [("a11y-fixo", "position", 1)])
 t = xhtml('<p><a href="#fim">ir ao fim</a></p>\n<p id="fim">O fim.</p>',
@@ -248,6 +341,12 @@ for nome, dados in FIXTURES.items():
 (PASTA / "Images" / "imagem.png").write_bytes(png(4, 4, (40, 120, 200)))
 (PASTA / "Images" / "texto.png").write_bytes(png(4, 4, (30, 30, 30)))
 (PASTA / "Images" / "animada.gif").write_bytes(gif_animado())
+(PASTA / "Images" / "animada.png").write_bytes(apng())
+(PASTA / "Images" / "animada.webp").write_bytes(webp_animado())
+(PASTA / "Images" / "escura.png").write_bytes(png(40, 30, (20, 20, 20)))
+(PASTA / "Text" / "apoio-paginas.xhtml").write_text(xhtml("\n".join(
+    f"<p>{marcador_de_pagina(f'pg{n}', str(n))}A página {n}.</p>" for n in range(1, 5))),
+    encoding="utf-8", newline="\n")
 svg = ('<?xml version="1.0" encoding="utf-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="8" '
        'height="8"><rect width="8" height="8" fill="#ccc"/></svg>\n')
 for nome in ("dg_000000000000.svg", imagem_do_diagrama(INICIO, "white")):
@@ -284,12 +383,15 @@ esperado = {
 (PASTA / "LEIAME.md").write_text(
     "# Os defeitos do validador (Editor HTML/CSS, H10)\n\n"
     "Um arquivo por regra (`Text/<código>.xhtml`, e o `Styles/css-mapa-docx.css`), cada um com o\n"
-    "defeito da regra e nenhum outro; `esperado.json` diz o código e a linha:coluna que o\n"
+    "defeito da regra e nenhum outro — e, para as regras que o crítico pediu mais (o contraste com\n"
+    "qualquer CSS, a imagem animada em toda fonte, a page-list), um arquivo por caso\n"
+    "(`Text/<código>-<caso>.xhtml`); `esperado.json` diz o código e a linha:coluna que o\n"
     "validador tem de dar — tirados de um marcador no texto (o `<` do elemento, o nome da\n"
     "declaração, o caractere), pela definição da regra, e não do validador. Os de apoio: as\n"
-    "imagens (`Images/`), as folhas ligadas (`Styles/cinza.css`, `Styles/fonte.css`) e os mapas\n"
-    "da proveniência (`Text/*.proveniencia.json`). O `seg-tamanho` (8 MB) o portão monta.\n"
-    "Regerar: `python tests/fixtures/editor/defeitos/gerar_defeitos.py` (o mesmo resultado; os\n"
-    "`ir_id` dos mapas saem novos a cada vez).\n",
+    "imagens (`Images/`), as folhas ligadas (`Styles/cinza.css`, `Styles/fonte.css`), os mapas\n"
+    "da proveniência (`Text/*.proveniencia.json`) e os marcadores de página que as page-list\n"
+    "apontam (`Text/apoio-paginas.xhtml`). O `seg-tamanho` (8 MB) o portão monta.\n"
+    "Regerar: `python tests/fixtures/editor/defeitos/gerar_defeitos.py` — o mesmo resultado, byte\n"
+    "a byte (os `ir_id` dos mapas são fixos); o teste `test_as_fixtures_sao_do_gerador` confere.\n",
     encoding="utf-8", newline="\n")
 print(len(FIXTURES), "arquivos de defeito;", len({d['regra'] for d in FIXTURES.values()}) + 1, "regras")

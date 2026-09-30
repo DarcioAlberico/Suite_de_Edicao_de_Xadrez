@@ -202,9 +202,12 @@ def test_a_tabela_do_h5_mede_a_ida_e_a_volta_com_as_sabotagens() -> None:
 def test_a_tabela_do_h10_valida_os_defeitos_o_limpo_e_o_epubcheck() -> None:
     passo = portoes.PASSOS["H10"]
     assert {"benchmarks/editor_validacao.py", "tests/fixtures/editor/defeitos/esperado.json",
-            "src/caissa/editor/validacao/problema.py"} <= set(passo.instrumentos)
+            "src/caissa/editor/validacao/problema.py", "src/caissa/editor/validacao/pagina.py",
+            "tests/fixtures/editor/defeitos/gerar_defeitos.py", "tests/fixtures/editor/limpos",
+            "tests/fixtures/editor/limpos/gerar_limpos.py"} <= set(passo.instrumentos)
     assert sum(i.startswith(portoes.IR_REAL_DO_H5) for i in passo.instrumentos) == 4
     assert [c.nome for c in passo.portao] == ["test_validacao", "validacao"]
+    assert [c.repeticoes for c in passo.portao] == [3, 3], "o portão roda três vezes (§0.2)"
     validacao = next(c for c in passo.portao if c.nome == "validacao")
     assert "--ir-real" in validacao.argv
     assert "--sem-desempenho" not in validacao.argv, "o portão mede o tempo"

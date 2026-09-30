@@ -690,22 +690,29 @@ PASSOS: dict[str, Passo] = {
         instrumentos=(
             *(f"src/caissa/editor/validacao/{m}.py" for m in (
                 "__init__", "problema", "contexto", "xml", "folha", "seguranca", "contrato",
-                "xadrez", "css", "acessibilidade", "ocr", "epubcheck")),
+                "xadrez", "css", "pagina", "acessibilidade", "ocr", "epubcheck")),
             "src/caissa/editor/previa.py",
             "src/caissa/export/epubcheck.py",
             "benchmarks/editor_validacao.py",
             "tests/unit/editor/test_validacao.py",
             "tests/fixtures/editor/defeitos",
             "tests/fixtures/editor/defeitos/esperado.json",
+            "tests/fixtures/editor/defeitos/gerar_defeitos.py",
+            # O limpo adversarial (o ciclo 1 do crítico): perto de um defeito, sem ser um.
+            "tests/fixtures/editor/limpos",
+            "tests/fixtures/editor/limpos/gerar_limpos.py",
             "tests/fixtures/editor/contrato",
             # O limpo: o IR real do H5, passado pelo perfil legível.
             *(f"{IR_REAL_DO_H5}/{livro}.ir.json" for livro in ("livro", "kemeri", "pedido", "dem")),
             "{principal}/tools/epubcheck-4.2.6/epubcheck.jar",
         ),
+        # Três execuções de cada (roadmap §0.2 e §11.10): a mediana do tempo sai de cada uma, e
+        # os testes regeram as fixtures e conferem que saem iguais, byte a byte.
         portao=(
-            Comando("test_validacao", _pytest("tests/unit/editor/test_validacao.py")),
+            Comando("test_validacao", _pytest("tests/unit/editor/test_validacao.py"),
+                    repeticoes=3),
             Comando("validacao", ("{py}", "benchmarks/editor_validacao.py", "--ir-real",
-                                  IR_REAL_DO_H5, "--saida", "{saida}")),
+                                  IR_REAL_DO_H5, "--saida", "{saida}"), repeticoes=3),
         ),
         sabotagens=tuple(
             Sabotagem(nome, Comando(f"validacao_{nome}", (

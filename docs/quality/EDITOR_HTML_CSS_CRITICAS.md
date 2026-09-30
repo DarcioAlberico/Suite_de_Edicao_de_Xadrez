@@ -1481,3 +1481,94 @@ O portão operacional completo do H5 continua pendente — IR real, corpus de 10
 Nada.
 
 Aprovo explicitamente a mutação **M-H5-2**. A **M-H5-1** permanece aprovada.
+
+## H10 — ciclo 1 (2026-09-30): REPROVADO, 5 bloqueantes
+
+O crítico julgou a implementação e a definição do portão do H10 (o `a2fac55`), somente leitura, com
+o portão rodado sem o tempo (`h10_c1/portao.log`: 50/50 defeitos, o limpo sem o IR real, o
+EPUBCheck 2/2) e as sabotagens (`sem_linha` e `regra_muda` reprovando). O veredito, transcrito sem
+edição:
+
+VEREDITO: REPROVADO  
+CICLO: 1  
+FRENTE: Editor HTML/CSS — H10 (implementação e definição do portão)
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| Pacote sem Qt e fora da thread da janela | `src/caissa/editor/validacao/__init__.py:3-16` | Confirmada |
+| 49 regras registradas, com problemas estruturados | `src/caissa/editor/validacao/problema.py:42-121` | Confirmada |
+| Fixtures isoladas, com locais derivados de marcadores | `tests/fixtures/editor/defeitos/gerar_defeitos.py:76-93` | Confirmada |
+| 50/50 defeitos e sabotagens | `h10_c1/portao.log`, `h10_c1/sabotagens.log` | Confirmado |
+| Testes unitários | `h10_c1/testes.log` | 131 passaram |
+| EPUBCheck com local preservado | `benchmarks/editor_validacao.py:260-307` | Confirmado para as duas injeções sintéticas |
+| Limpo real do H5 | `benchmarks/editor_validacao.py:149-203` | Pendente; o próprio log reprova por falta dos quatro IRs |
+| Contraste na página renderizada | `src/caissa/editor/validacao/css.py:247-301` | Conceito correto, implementação incompleta |
+| Portão H10 repetido pelo executor | `benchmarks/editor_portoes.py:705-714` | Não: os comandos têm uma execução |
+| Oráculo Ace/DAISY da S10 | `docs/EDITOR_HTML_CSS_SPEC.md:1181-1190` | Ausente do H10 |
+
+## Defeitos bloqueantes
+
+1. **O portão H10 não cumpre a política de repetição do executor.**  
+   `benchmarks/editor_portoes.py:705-709` registra `test_validacao` e `validacao` sem `repeticoes=3`. O roadmap exige repetição quando há medição ou variabilidade (`docs/EDITOR_HTML_CSS_ROADMAP.md:79-81`) e proíbe portão com uma execução (`docs/EDITOR_HTML_CSS_ROADMAP.md:2325`). A mediana interna de cinco tempos não substitui três execuções independentes do portão.
+
+2. **A regra de `page-list` não valida a `page-list`.**  
+   `src/caissa/editor/validacao/acessibilidade.py:172-199` examina apenas marcadores presentes no corpo, compara chaves `id`/rótulo e não valida o `nav[epub:type="page-list"]`. Também não detecta dois marcadores da mesma página com IDs diferentes. Isso não satisfaz `§5.6`, que exige `page-list` sem lacunas (`docs/EDITOR_HTML_CSS_SPEC.md:1309-1311`).
+
+3. **O contraste não cobre “qualquer CSS do projeto” como declarado.**  
+   Em `src/caissa/editor/validacao/css.py:253-260`, somente folhas ligadas são passadas por `resolver_variaveis`; variáveis definidas em `<style>` inline não são resolvidas. Além disso, `src/caissa/editor/validacao/css.py:304-313` associa o trecho renderizado ao primeiro nó de texto com o mesmo conteúdo, podendo acusar o elemento errado ou perder ocorrências repetidas. O fundo é reduzido ao último retângulo preenchido sob o centro (`:267-294`), sem composição de transparência, imagens ou fundos parcialmente sobrepostos. A abordagem é a correta em princípio, mas ainda não é uma medição geral da página renderizada exigida por S10.
+
+4. **GIF/APNG em `srcset` pode passar sem acusação.**  
+   `src/caissa/editor/validacao/acessibilidade.py:265-272` só examina `src`. A regra AAA exige reprovar imagem animada; uma imagem animada selecionada via `srcset` não é coberta.
+
+5. **O oráculo externo da S10 ficou fora sem mutação formal.**  
+   A S10 exige Ace do DAISY (`docs/EDITOR_HTML_CSS_SPEC.md:1189-1190`). O pacote e o portão só implementam o validador próprio e EPUBCheck (`src/caissa/editor/validacao/__init__.py:3-16`; `benchmarks/editor_portoes.py:690-703`). Se o Ace for deliberadamente reservado ao H24, isso precisa ser registrado como mutação/adiamento em `EDITOR_HTML_CSS_ROADMAP.md §10`; atualmente não há entrada de H10 (`:2293-2303`).
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo ainda não foi executado: faltam IR real do H5, medição de desempenho em máquina livre e execução pelo executor. Isso é pendência declarada, não reprovação adicional.
+- A política de “informa” fora da contagem de falso positivo é defensável, mas deve ficar explícita no contrato do portão: o limpo não tem zero problemas, tem zero `bloqueia`/`avisa`.
+- `LEIAME.md:10` diz que os `ir_id` mudam a cada geração, mas o gerador usa `ULID.from_int` fixo (`gerar_defeitos.py:259-266`). É apenas documentação incorreta.
+- O executor não executa nem verifica o gerador determinístico das fixtures; só verifica os artefatos já presentes (`benchmarks/editor_portoes.py:690-703`).
+
+As decisões sobre `glossário` inexistente, lista de abreviaturas, classes §12.4 e o diagrama divergente como aviso são aceitáveis para H10. A decisão do diagrama, porém, altera a severidade do CB e deve ser registrada em §10 com justificativa e aprovação formal.
+
+## O que especificamente precisa mudar para eu aprovar
+
+1. Corrigir o `page-list`, incluindo `nav`, lacunas e duplicação por número de página.
+2. Tornar o contraste completo para CSS inline e folhas externas; corrigir o vínculo trecho→elemento e documentar/implementar composição do fundo.
+3. Cobrir `srcset` para GIF/APNG e acrescentar fixtures adversariais.
+4. Configurar repetição real do H10 no executor.
+5. Registrar em §10 as mutações de severidade e o adiamento do Ace, ou implementar o oráculo agora.
+6. Rodar o portão completo com os quatro IRs reais e a medição de 260 KB.
+
+A implementação tem uma base sólida e os resultados sintéticos são bons, mas ainda não atende integralmente a definição normativa do H10.
+
+**O que mudou para o ciclo 2** (o relatório, H10, e a M-H10-1 do roadmap §10):
+
+1. A repetição: os dois comandos do portão H10 com `repeticoes=3` no executor (a tabela do
+   `test_portoes.py` confere).
+2. A `page-list`: a do `nav` (a entrada repetida, a que pula, a que aponta para o nada), a mesma
+   página duas vezes pelo número com `id` diferentes, e, com o `nav` do livro no contexto
+   (`Contexto.nav`), o marcador que ela não lista — duas regras novas (`a11y-pagina-sem-alvo`,
+   `a11y-pagina-fora-da-lista`) e os defeitos de cada caso.
+3. O contraste (`validacao/pagina.py`, novo): o CSS inteiro na ordem (as folhas com o `@import`
+   local, os `<style>`, os `style=""`) e o `var()` de qualquer regra pela cascata do `cssselect2`;
+   o trecho volta ao elemento pelo texto na ordem, e o fundo parcial ao elemento pelos caracteres;
+   o fundo é o que o MuPDF pintou, composto na ordem com a opacidade, célula a célula, e a imagem
+   sob o texto é amostrada no pixel; e o que o MuPDF desenharia diferente do livro (o alfa do
+   `rgba()`, o `hsl()`, o papel do `body`, o `a:link` por cima do autor) corrigido antes. A rodada
+   achou um defeito que o ciclo 1 não viu: o teto de 200 páginas A5 deixava o fim de um capítulo
+   de 260 KB com a folha base sem medir — a página medida é alta, e a que não termina é dita
+   (`css-contraste-incompleto`).
+4. O `srcset`, a `<source>`, o WebP/AVIF e o `url()` das folhas na imagem animada, com o GIF
+   lido pela estrutura (um quadro com o laço do NETSCAPE é estático).
+5. O Ace e as decisões: a M-H10-1 registra (a) o diagrama divergente que avisa, (b) o Ace no
+   H24, (c) o limpo que conta o que bloqueia ou avisa, (d) a página do contraste e (e) o
+   `cssselect2` no H10.
+
+E os não bloqueantes: a política do «informa» escrita no portão do roadmap e no arnês; o `LEIAME`
+dos defeitos corrigido (os `ir_id` são fixos); os geradores das fixtures conferidos pelo teste,
+que as regera e compara byte a byte; e o limpo adversarial (`tests/fixtures/editor/limpos/`), que
+achou dois falsos positivos antes do commit (o link do autor e um limpo errado).

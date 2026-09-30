@@ -56,8 +56,16 @@ class Contexto:
     fontes: Mapping[str, str] = field(default_factory=dict)
     """Família → o arquivo da fonte (ou o nome de uma fonte embutida do MuPDF)."""
     medir_contraste: bool = True
+    teto_de_paginas: int = 400
+    """As páginas (altas: `pagina.ALTURA_DA_MEDIDA`) que o contraste mede no máximo; a página
+    que não termina aí é dita (`css-contraste-incompleto`)."""
     idioma: str = "pt-BR"
     """A língua do livro (o conserto do `lang` a usa)."""
+    nav: str | None = None
+    """O documento de navegação do livro (o `nav` do OPF), quando há: a `page-list` dele é a
+    lista das páginas, e o marcador fora dela é acusado no capítulo."""
+    guardado: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    """O que uma regra lê de outro arquivo e guarda para as próximas (os marcadores de página)."""
 
     def texto(self, caminho: str) -> str | None:
         dados = self.arquivos.get(caminho)

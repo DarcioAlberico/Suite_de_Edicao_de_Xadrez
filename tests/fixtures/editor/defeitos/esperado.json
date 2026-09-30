@@ -47,7 +47,56 @@
    ],
    "contexto": {}
   },
+  "Text/a11y-animacao-css.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 6,
+     "coluna": 18
+    },
+    {
+     "codigo": "css-motor-nao-desenha",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
   "Text/a11y-animacao-gif.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-animacao-picture.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-animacao-srcset.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-animacao-webp.xhtml": {
    "regra": "a11y-animacao",
    "problemas": [
     {
@@ -146,6 +195,17 @@
    ],
    "contexto": {}
   },
+  "Text/a11y-pagina-duplicada-lista.xhtml": {
+   "regra": "a11y-pagina-duplicada",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-duplicada",
+     "linha": 12,
+     "coluna": 5
+    }
+   ],
+   "contexto": {}
+  },
   "Text/a11y-pagina-duplicada.xhtml": {
    "regra": "a11y-pagina-duplicada",
    "problemas": [
@@ -157,6 +217,30 @@
    ],
    "contexto": {}
   },
+  "Text/a11y-pagina-fora-da-lista.xhtml": {
+   "regra": "a11y-pagina-fora-da-lista",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-fora-da-lista",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {
+    "nav": "Text/a11y-pagina-sem-alvo.xhtml"
+   }
+  },
+  "Text/a11y-pagina-lacuna-lista.xhtml": {
+   "regra": "a11y-pagina-lacuna",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-lacuna",
+     "linha": 12,
+     "coluna": 5
+    }
+   ],
+   "contexto": {}
+  },
   "Text/a11y-pagina-lacuna.xhtml": {
    "regra": "a11y-pagina-lacuna",
    "problemas": [
@@ -164,6 +248,17 @@
      "codigo": "a11y-pagina-lacuna",
      "linha": 9,
      "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-pagina-sem-alvo.xhtml": {
+   "regra": "a11y-pagina-sem-alvo",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-sem-alvo",
+     "linha": 12,
+     "coluna": 5
     }
    ],
    "contexto": {}
@@ -311,6 +406,105 @@
      "codigo": "contrato-svg-incoerente",
      "linha": 9,
      "coluna": 3
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-fundo.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 8,
+     "coluna": 17
+    },
+    {
+     "codigo": "css-contraste",
+     "linha": 9,
+     "coluna": 1
+    },
+    {
+     "codigo": "css-motor-nao-desenha",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-heranca.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 11,
+     "coluna": 1
+    },
+    {
+     "codigo": "css-contraste",
+     "linha": 15,
+     "coluna": 1
+    },
+    {
+     "codigo": "css-motor-nao-desenha",
+     "linha": 7,
+     "coluna": 5
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-imagem.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 10,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-incompleto.xhtml": {
+   "regra": "css-contraste-incompleto",
+   "problemas": [
+    {
+     "codigo": "css-contraste-incompleto",
+     "linha": 7,
+     "coluna": 1
+    }
+   ],
+   "contexto": {
+    "teto_de_paginas": 1
+   }
+  },
+  "Text/css-contraste-link.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 9,
+     "coluna": 9
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-papel.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-variavel.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 11,
+     "coluna": 1
     }
    ],
    "contexto": {}

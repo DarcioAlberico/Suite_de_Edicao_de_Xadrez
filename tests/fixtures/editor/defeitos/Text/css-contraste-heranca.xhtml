@@ -3,9 +3,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="pt-BR" xml:lang="pt-BR">
 <head>
 <title>Um defeito</title>
+<style>.aviso { --tinta: #808080; }
+p { color: var(--tinta, #000000); }</style>
 </head>
 <body>
-<p><span epub:type="pagebreak" role="doc-pagebreak" id="pg5" aria-label="5"/>Um parágrafo.</p>
-<p><span epub:type="pagebreak" role="doc-pagebreak" id="pg5b" aria-label="5"/>Outro parágrafo.</p>
+<div class="aviso">
+<p>Dentro do aviso.</p>
+</div>
+<p>Fora do aviso.</p>
+<div style="--tinta: #888888">
+<p>No estilo do pai.</p>
+</div>
 </body>
 </html>

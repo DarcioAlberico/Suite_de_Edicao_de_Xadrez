@@ -5,10 +5,14 @@ r"""A validação em camadas, conferida — o portão do passo H10 do Editor HTM
    a linha:coluna, tirados de um marcador no texto pela definição da regra. E toda regra
    registrada (menos as do EPUBCheck, item 3) tem o seu defeito. **100 %.**
 2. **O limpo**: nenhum problema que bloqueia ou avisa nas fixtures do contrato (as 14 linhas da
-   S4 e as 2 combinações) e nos capítulos legíveis do IR real (`LIVRO` p. 31–38, `KEMERI` p. 80,
+   S4 e as 2 combinações), no limpo adversarial (`tests/fixtures/editor/limpos/`: o que está perto
+   de um defeito sem ser um — o contraste no escuro, no realce, no translúcido e sobre a imagem, o
+   link que o autor pinta, a imagem estática em toda fonte, a page-list inteira, com o `nav` do
+   livro no contexto) e nos capítulos legíveis do IR real (`LIVRO` p. 31–38, `KEMERI` p. 80,
    `PEDIDO` p. 50–60, `DEM` p. 20–25, o do H5: `--ir-real`), com as folhas e as imagens deles.
-   As notas (`informa`) são contadas à parte; as dúvidas do OCR do IR real também (são dúvidas
-   de verdade). **0 falso positivo.**
+   **0 falso positivo** quer dizer 0 problema que bloqueia ou avisa: as notas (`informa` — o que
+   o DOCX não leva, o que a prévia não desenha) são contadas à parte e não são falso positivo; as
+   dúvidas do OCR do IR real também (são dúvidas de verdade).
 3. **O EPUBCheck** (`--json`): o EPUB mínimo limpo dá 0 erro (o controle); com um erro injetado
    — a etiqueta errada e a imagem que falta —, toda mensagem de erro volta com o local no
    arquivo injetado. **100 %.**
@@ -30,6 +34,7 @@ from __future__ import annotations
 import argparse
 import collections
 import contextlib
+import itertools
 import json
 import statistics
 import sys
@@ -37,6 +42,7 @@ import tempfile
 import time
 import zipfile
 from collections.abc import Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +52,8 @@ for _caminho in (RAIZ / "src", RAIZ / "benchmarks"):
         sys.path.insert(0, str(_caminho))
 
 DEFEITOS = RAIZ / "tests" / "fixtures" / "editor" / "defeitos"
+LIMPOS = RAIZ / "tests" / "fixtures" / "editor" / "limpos"
+NAV_DOS_LIMPOS = "Text/nav.xhtml"
 CONTRATO = RAIZ / "tests" / "fixtures" / "editor" / "contrato"
 ORCAMENTO_MS = 500.0
 ALVO_BYTES = 260 * 1024
@@ -66,11 +74,13 @@ def _contexto(arquivos: dict[str, bytes], dados: dict[str, Any]) -> Any:
     from caissa.editor.leitura import mapa_de_json
     from caissa.editor.validacao import Contexto
 
+    extras = {chave: dados[chave] for chave in ("nav", "teto_de_paginas") if chave in dados}
     return Contexto(
         arquivos=arquivos,
         glossario=frozenset(dados["glossario"]) if "glossario" in dados else None,
         fontes=dados.get("fontes", {}),
-        mapa=mapa_de_json(json.loads(arquivos[dados["mapa"]])) if "mapa" in dados else None)
+        mapa=mapa_de_json(json.loads(arquivos[dados["mapa"]])) if "mapa" in dados else None,
+        **extras)
 
 
 def _chaves(problemas: list[Any]) -> collections.Counter[tuple[str, int, int]]:
@@ -146,49 +156,58 @@ def _projeto_do_ir(nome: str, documento: Any) -> tuple[dict[str, bytes], Any]:
     return arquivos, escritor.mapa
 
 
+@dataclass
+class _Conta:
+    """O que o limpo acusou: o falso positivo, a nota (não conta) e a dúvida do OCR (à parte)."""
+
+    falsos: list[str] = field(default_factory=list)
+    notas: collections.Counter[str] = field(default_factory=collections.Counter)
+    duvidas: int = 0
+    arquivos: int = 0
+
+    def contar(self, problemas: list[Any]) -> None:
+        self.arquivos += 1
+        for problema in problemas:
+            if problema.codigo == "ocr-duvida-pendente":
+                self.duvidas += 1  # uma dúvida de verdade do OCR do IR real
+            elif problema.severidade in NAO_CONTAM:
+                self.notas[problema.codigo] += 1
+            else:
+                self.falsos.append(str(problema))
+
+
 def limpo(ir_real: Path | None) -> tuple[dict[str, bool], dict[str, Any]]:
     import editor_contrato
     from editor_ida_e_volta import LIVROS_REAIS, carregar_ir_real
 
     from caissa.editor.validacao import Contexto, validar_arquivo, validar_projeto
 
-    falsos: list[str] = []
-    notas: collections.Counter[str] = collections.Counter()
-    duvidas = 0
-    arquivos_validados = 0
+    conta = _Conta()
     contrato = arquivos_da_pasta(CONTRATO) | {
         f"Text/{n}": (CONTRATO / n).read_bytes()
         for n in (*editor_contrato.LINHAS_DO_S4.values(), *editor_contrato.COMBINACOES)}
     for nome in (*editor_contrato.LINHAS_DO_S4.values(), *editor_contrato.COMBINACOES):
-        arquivos_validados += 1
-        for problema in validar_arquivo(f"Text/{nome}", contrato[f"Text/{nome}"].decode("utf-8"),
-                                        Contexto(arquivos=contrato)):
-            if problema.severidade in NAO_CONTAM:
-                notas[problema.codigo] += 1
-            else:
-                falsos.append(str(problema))
+        conta.contar(validar_arquivo(f"Text/{nome}", contrato[f"Text/{nome}"].decode("utf-8"),
+                                     Contexto(arquivos=contrato)))
+    limpos = arquivos_da_pasta(LIMPOS)
+    for problemas in validar_projeto(Contexto(arquivos=limpos, nav=NAV_DOS_LIMPOS)).values():
+        conta.contar(problemas)
     documentos = carregar_ir_real(ir_real) if ir_real is not None else {}
     for nome, documento in documentos.items():
         arquivos, mapa = _projeto_do_ir(nome, documento)
         for problemas in validar_projeto(Contexto(arquivos=arquivos, mapa=mapa)).values():
-            arquivos_validados += 1
-            for problema in problemas:
-                if problema.codigo == "ocr-duvida-pendente":
-                    duvidas += 1
-                elif problema.severidade in NAO_CONTAM:
-                    notas[problema.codigo] += 1
-                else:
-                    falsos.append(str(problema))
+            conta.contar(problemas)
     faltam = [n for n, _, _ in LIVROS_REAIS if n not in documentos]
     exigencias = {
-        f"limpo: {len(falsos)} problema(s) que bloqueiam ou avisam em {arquivos_validados} "
-        f"arquivos ({len(notas)} tipo(s) de nota, {sum(notas.values())} nota(s); "
-        f"{duvidas} dúvida(s) do OCR pendente(s))"
+        f"limpo: {len(conta.falsos)} problema(s) que bloqueiam ou avisam em {conta.arquivos} "
+        f"arquivos ({len(conta.notas)} tipo(s) de nota, {sum(conta.notas.values())} nota(s); "
+        f"{conta.duvidas} dúvida(s) do OCR pendente(s))"
         + (f" -- sem o IR real de {', '.join(faltam)}" if faltam else "")
-        + (f" -- {'; '.join(falsos[:3])}" if falsos else ""): not falsos and not faltam,
+        + (f" -- {'; '.join(conta.falsos[:3])}" if conta.falsos else ""): (
+            not conta.falsos and not faltam),
     }
-    return exigencias, {"falsos_positivos": falsos, "notas": dict(notas), "duvidas": duvidas,
-                        "livros": sorted(documentos)}
+    return exigencias, {"falsos_positivos": conta.falsos, "notas": dict(conta.notas),
+                        "duvidas": conta.duvidas, "livros": sorted(documentos)}
 
 
 # --------------------------------------------------------------------------- #
@@ -308,11 +327,18 @@ def epubcheck() -> tuple[dict[str, bool], dict[str, Any]]:
 
 
 def _texto_de_260kb(ir_real: Path | None) -> tuple[str, dict[str, bytes], str]:
-    """O arquivo de 260 KB: o capítulo repetido até o tamanho.
+    """O arquivo de 260 KB: os blocos do capítulo, na ordem e de novo, até o tamanho.
 
-    O do PEDIDO p. 50–60 (o do H1), ou o do corpus sintético sem o IR real.
+    O do PEDIDO p. 50–60 (o do H1), ou o do corpus sintético sem o IR real. O corpo cresce de
+    bloco em bloco (os filhos do `<body>`, inteiros: o XML continua bem formado) e para no
+    primeiro que passa de 260 KB — e não no dobro do capítulo. Com a folha base do produto
+    ligada (`export/html.BASE_CSS`: o `var()`, os fundos, a cascata), como no capítulo que o
+    editor abre com um tema.
     """
     from editor_ida_e_volta import carregar_ir_real, corpus_sintetico
+
+    from caissa.editor.validacao.xml import Elemento, ler
+    from caissa.export.html import BASE_CSS
 
     documentos = carregar_ir_real(ir_real) if ir_real is not None else {}
     if "pedido" in documentos:
@@ -323,12 +349,23 @@ def _texto_de_260kb(ir_real: Path | None) -> tuple[str, dict[str, bytes], str]:
         origem = "o capítulo legível do corpus sintético (sem o IR real)"
     nome = next(n for n in arquivos if n.startswith("Text/"))
     texto = arquivos[nome].decode("utf-8")
-    inicio, fim = texto.index("<body>") + len("<body>"), texto.rindex("</body>")
-    corpo = texto[inicio:fim]
-    vezes = max(1, -(-ALVO_BYTES // max(len(corpo.encode("utf-8")), 1)))
-    texto = texto[:inicio] + corpo * vezes + texto[fim:]
-    arquivos[nome] = texto.encode("utf-8")
-    return nome, arquivos, origem
+    documento, _ = ler(nome, texto)
+    corpo = next(e for e in documento.elementos() if e.nome == "body")
+    filhos = [f for f in corpo.filhos if isinstance(f, Elemento)]
+    inicios = [documento.deslocamento(f.linha, f.coluna) for f in filhos]
+    fim = texto.rindex("</body>")
+    blocos = [texto[a:b] for a, b in zip(inicios, [*inicios[1:], fim], strict=True)]
+    folha = '<link rel="stylesheet" type="text/css" href="../Styles/base.css"/>\n'
+    cabeca = texto[:inicios[0]].replace("</head>", folha + "</head>", 1)
+    partes, tamanho = [cabeca], len((cabeca + texto[fim:]).encode("utf-8"))
+    for bloco in itertools.cycle(blocos):
+        if tamanho >= ALVO_BYTES:
+            break
+        partes.append(bloco)
+        tamanho += len(bloco.encode("utf-8"))
+    arquivos[nome] = ("".join(partes) + texto[fim:]).encode("utf-8")
+    arquivos["Styles/base.css"] = BASE_CSS.encode("utf-8")
+    return nome, arquivos, origem + ", com a folha base"
 
 
 def desempenho(ir_real: Path | None) -> tuple[dict[str, bool], dict[str, Any]]:

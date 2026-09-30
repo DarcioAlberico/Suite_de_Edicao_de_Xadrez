@@ -272,11 +272,14 @@ as 4 sabotagens) **espera a máquina livre**.
 
 ## H10 — A validação em camadas, com linha e coluna
 
-**Estado:** implementado — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da thread da
-janela), as fixtures de defeito, o arnês e a entrada `PASSOS["H10"]` do executor; os testes
-passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina livre (o tempo).
+**Estado:** implementado e revisto depois do **ciclo 1 do crítico** (REPROVADO, 5 bloqueantes:
+`quality/EDITOR_HTML_CSS_CRITICAS.md`) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
+thread da janela), as fixtures de defeito e o limpo adversarial (as duas de geradores que o teste
+confere byte a byte), o arnês e a entrada `PASSOS["H10"]` do executor (3 execuções de cada
+comando); os testes passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina
+livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), à espera do ciclo 2.
 
-- **As camadas e as regras** — 49 regras, cada uma com código, severidade, local
+- **As camadas e as regras** — 52 regras, cada uma com código, severidade, local
   (`arquivo:linha:coluna`, de 1, pela árvore do `expat`, que conta caracteres), o que fazer e,
   quando seguro, conserto (o `lang` da raiz, o `<abbr title>` da abreviatura):
   - **XML** (`xml.py`): bem formado; e a leitura patológica da R4.3 — o arquivo além de 8 MB, o
@@ -290,45 +293,97 @@ passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina liv
     imagem que falta, o `cb-move` sem `data-fen` (o CB o pula), a classe que o CB confunde e a
     `cb-*` fora do contrato;
   - **xadrez** (`xadrez.py`, do CB): o lance ilegal, a `data-fen` que não é a do lance, o
-    diagrama que não mostra o lance de cima (avisa: o livro pode ter razão), a notação de duas
-    línguas, a figurina fora da fonte ativa;
+    diagrama que não mostra o lance de cima (avisa: o livro pode ter razão — M-H10-1), a notação
+    de duas línguas, a figurina fora da fonte ativa;
   - **CSS** (`css.py`): a sintaxe, a propriedade desconhecida, o que o MuPDF não desenha (a matriz
-    do H1), o que o DOCX não leva (o mapa do H5) e o **contraste AAA 1.4.6 medido na página do
-    MuPDF** (`previa.paginar`, com as variáveis da `:root` resolvidas e o teto de páginas do laço
-    do H1): cada trecho, com a cor calculada, contra o fundo local (o retângulo preenchido embaixo
-    dele), 7:1 no normal e 4,5:1 no grande (o MuPDF conta o px do CSS: grande é ≥ 24 px, ou
-    ≥ 18,66 px em negrito);
+    do H1, e o medido no H10: a imagem de fundo e as cores de função), o que o DOCX não leva (o
+    mapa do H5), o **contraste AAA 1.4.6** e a página do contraste que não termina
+    (`css-contraste-incompleto`);
   - **acessibilidade** (`acessibilidade.py`): o `lang`, os títulos, o `alt` (e o que afirma o não
-    lido, pelo mapa), a `page-list` (duplicado, lacuna), a imagem de texto, a mídia, o
-    interativo, o `meta refresh`, a animação (CSS e GIF/APNG), o `fixed`/`sticky`, o foco
-    apagado, o link sem propósito, a seção sem papel, o símbolo fora do glossário, a abreviatura
-    sem `<abbr>`, o dado da máquina no livro;
+    lido, pelo mapa), as **páginas** (a mesma página duas vezes pelo número, qualquer `id`; o
+    número que pula; na `page-list` do `nav`, a entrada repetida, a que pula e a que aponta para o
+    nada; com o `nav` do livro no contexto, o marcador que ela não lista), a imagem de texto, a
+    mídia, o interativo, o `meta refresh`, a **animação** (o CSS; o GIF de mais de um quadro, pela
+    estrutura dos blocos, o APNG, o WebP e o AVIF animados, em **toda** fonte de imagem — o `src` e
+    o `srcset` da `<img>` e da `<source>`, o `href` da `<image>` do SVG, o `data`, o `poster`, e o
+    `url()` das folhas), o `fixed`/`sticky`, o foco apagado, o link sem propósito, a seção sem
+    papel, o símbolo fora do glossário, a abreviatura sem `<abbr>`, o dado da máquina no livro;
   - **OCR** (`ocr.py`): cada dúvida pendente do `proveniencia.json`, no bloco dela;
   - **EPUBCheck** (`epubcheck.py`, e o `--json` em `export/epubcheck.py`): cada mensagem com o
     local; a que o EPUBCheck dá sem local fica `0:0`, e não finge um `1:1`.
-- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **50/50** com o código e a linha:coluna
-  certos — um arquivo por regra (49) e o de 8 MB que o portão monta —, cada um com o defeito dele e
-  nenhum outro; o local esperado sai de um marcador no texto, pela definição da regra, e não do
-  validador. Toda regra registrada tem o seu.
-- **O limpo:** **0 problema que bloqueia ou avisa** nas 16 fixtures do contrato (as 14 linhas da S4
-  e as 2 combinações); os capítulos legíveis do IR real esperam o `--gerar-ir-real` do H5.
+- **O contraste, medido na página do MuPDF** (`pagina.py` prepara a página; `css.py` mede) — o
+  que o crítico apontou (o `var()` do `<style>` sem resolver, o trecho casado com o primeiro texto
+  igual, o fundo reduzido ao último retângulo) e o que a rodada achou a mais:
+  - **o CSS inteiro:** as folhas ligadas (e o `@import` local), os `<style>` e os `style=""`, na
+    ordem; o `var()` de qualquer regra, herdado, e o do `style=""`, pela cascata do `cssselect2`
+    (a declaração vencedora com `var()` vai resolvida no `style=""` do elemento; toda variável da
+    raiz, uma substituição só);
+  - **o que o MuPDF desenharia diferente do livro, corrigido antes** (medido, PyMuPDF 1.28.2): o
+    alfa do `rgba()` lido de 0 a 255 (o texto a 50 % some, o `rgba(…, 1)` sai com alfa 1/255), o
+    `hsl()` em preto, o `rgb(r g b / a)` errado — toda cor de função vira `#rrggbb[aa]`, que ele
+    desenha certo; o fundo do `html`/`body` que ele não pinta — é o papel da medida; o `a:link`
+    azul dele por cima do `a { color }` do autor — a cor do autor vai no link; o `@media`, que ele
+    ignora — a cascata também;
+  - **a página alta** (a largura da prévia, 14 000 pt): na A5, o capítulo de 260 KB com a folha
+    base paginava em **mais de 400 páginas** (as tabelas com `break-inside: avoid`) e o teto de 200
+    da versão do ciclo 1 **deixava o fim do capítulo sem medir** (um defeito que o crítico não
+    viu); alta, 5 páginas; sem as propriedades de quebra, que não mudam cor e fazem o MuPDF
+    paginar para sempre (`page-break-before` no primeiro elemento, H1); e, se ainda assim a
+    página não termina, `css-contraste-incompleto`, e não a medida pela metade em silêncio;
+  - **o fundo:** os retângulos que o MuPDF pintou sob a faixa do trecho (o miolo da caixa dele,
+    onde a tinta está: a caixa sobe 3,6 pt acima do fundo do bloco), compostos na ordem do
+    desenho com a opacidade, **célula a célula** (o fundo que cobre parte do trecho conta) — sem o
+    traço fino da cor do texto (o sublinhado, o riscado) e sem o fundo do bloco que o MuPDF pinta
+    de novo em cada palavra (composto duas vezes, o branco no translúcido passaria); a
+    **imagem sob o texto** (o MuPDF honra `position` e a entrelinha pequena): os SVG vão por
+    substitutos do mesmo tamanho (326 → 142 ms, as mesmas caixas), e a imagem que um texto cobre
+    é desenhada de verdade, identificada pela ordem, e amostrada sob a faixa com o alfa; o pior
+    fundo decide;
+  - **o elemento:** o trecho da página volta ao texto do corpo, na ordem (o repetido cai no lugar
+    dele; o curto só casa perto, para o que o CSS gera não desalinhar o resto); o fundo que cobre
+    parte do trecho acusa o elemento do texto sobre ele, pelos caracteres; um problema por
+    elemento, e o descendente com a mesma tinta do acusado herda dele.
+- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **65/65** com o código e a linha:coluna
+  certos — um arquivo por regra, e mais um por caso onde o crítico pediu (o contraste: a variável
+  do `<style>` com o texto repetido, a da classe e a do `style=""`, o fundo parcial e o
+  translúcido, o papel do `body`, a imagem, o link, a página que não termina; a animação no
+  `srcset`, na `<source>`, no WebP e no `url()`; a `page-list` sem alvo, com lacuna, repetida, e
+  o marcador fora dela) —, e o de 8 MB que o portão monta; o local esperado sai de um marcador no
+  texto, pela definição da regra. Toda regra registrada tem o seu (52).
+- **O limpo:** **0 problema que bloqueia ou avisa** em 21 arquivos — as 16 fixtures do contrato e
+  o **limpo adversarial** (`tests/fixtures/editor/limpos/`, 5: o branco na caixa escura, o papel
+  escuro do `body` com o link claro do autor, o realce que cobre parte do trecho, o translúcido
+  claro, o alfa quase preto, o sublinhado e o riscado, o texto repetido, a lista, o branco sobre a
+  imagem escura; a imagem estática em toda fonte — o GIF de um quadro com o laço do NETSCAPE; as
+  páginas i, ii, 1, 2, 3 com a `page-list` inteira) —, 3 notas (`informa`) contadas à parte. A
+  rodada achou 2 falsos positivos antes: o link do autor (o `a:link` do MuPDF) e um limpo errado
+  (o texto branco que passava da imagem para o papel é 1:1 de verdade). Os capítulos legíveis do
+  IR real esperam o `--gerar-ir-real` do H5.
 - **O EPUBCheck** (4.2.6, Java 8): o EPUB mínimo limpo dá 0 erro; com a etiqueta errada e com a
   imagem que falta injetadas, **2/2 erros acusados na linha injetada** e **2/2 locais do
   EPUBCheck preservados** — e 1 mensagem que o próprio EPUBCheck dá sem local (o RSC-005 depois do
   erro fatal), contada à parte.
-- **As sabotagens:** `sem_linha` reprova (6/50 defeitos certos) e `regra_muda` reprova (49/50: o
+- **O tempo** (rodada leve, com outra sessão medindo — não é o portão): o arquivo de 260 KB (agora
+  de 260 KB: o de antes dobrava o capítulo e tinha 514 KB), com a folha base do produto ligada,
+  **343 ms** a validação inteira (a mediana de 5), o contraste 302 ms.
+- **As sabotagens:** `sem_linha` reprova (6/65 defeitos certos) e `regra_muda` reprova (64/65: o
   diagrama sem `data-fen` some).
-- **Os testes:** `tests/unit/editor/test_validacao.py` (70: cada defeito, toda regra com o seu, o
-  vocabulário do validador igual ao do MARKUP, o de 8 MB, o limpo do contrato, os consertos, a
-  coluna por caractere, o local do EPUBCheck, o pacote sem Qt, as variáveis e o teto da prévia) e a
-  tabela do executor.
-- **Decisões declaradas:** (1) o limpo conta os problemas que bloqueiam ou avisam; as notas
-  (`informa`: o DOCX não leva, a prévia não desenha) e as dúvidas do OCR do IR real (dúvidas de
-  verdade) são contadas à parte; (2) o símbolo fora do glossário só se confere com um glossário
-  (o H24 o gera), e a abreviatura, pela lista do contrato (`Contexto.abreviaturas`); (3) além dos
-  arquivos que o roadmap nomeia, `contexto.py`, `folha.py` e a camada `epubcheck.py`, e a
-  `previa.paginar`/`resolver_variaveis` que a prévia do H13 usa; (4) o MARKUP ganhou a §12.4
-  (`img.cb-imagem-de-texto`, `section.cb-resumo-simples`); (5) o diagrama que difere do lance de
-  cima avisa (no CB é erro).
+- **Os testes:** `tests/unit/editor/test_validacao.py` (94: cada defeito, toda regra com o seu, o
+  vocabulário do validador igual ao do MARKUP, o de 8 MB, o limpo do contrato e o adversarial, as
+  fixtures dos dois geradores byte a byte, os consertos, a coluna por caractere, o local do
+  EPUBCheck, o pacote sem Qt, as variáveis e o teto da prévia, a imagem animada pela estrutura, o
+  `srcset`, as cores reescritas, o `var()` sem valor, o capítulo além de 200 páginas A5) e a tabela
+  do executor (3 execuções, os instrumentos novos).
+- **Decisões declaradas (M-H10-1):** (a) o diagrama que difere do lance de cima avisa (no CB é
+  erro); (b) o Ace do DAISY fica no H24, onde o roadmap já o põe; (c) o limpo conta os problemas
+  que bloqueiam ou avisam — as notas e as dúvidas do OCR do IR real contam à parte; (d) a página
+  alta do contraste e as correções do MuPDF; (e) o `cssselect2` entra no H10 (BSD, consentido; no
+  `.venv-pack` no próximo pacote). E: o símbolo fora do glossário só se confere com um glossário (o
+  H24 o gera), e a abreviatura, pela lista do contrato (`Contexto.abreviaturas`); além dos
+  arquivos que o roadmap nomeia, `contexto.py`, `folha.py`, `pagina.py` e a camada
+  `epubcheck.py`; o MARKUP ganhou a §12.4 (`img.cb-imagem-de-texto`, `section.cb-resumo-simples`).
+- **Para o H13 (a prévia):** a mesma página A5 do MuPDF passa de 400 páginas num capítulo de
+  260 KB com a folha base (as tabelas com `break-inside: avoid`, que ele tenta encaixar a cada
+  página) — a prévia precisa de outra resposta que o teto.
 - **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H10 --saida benchmarks\reports\editor\h10`
   (a rodada sem o tempo: `& $PY benchmarks\editor_validacao.py --sem-desempenho --saida <pasta>`).

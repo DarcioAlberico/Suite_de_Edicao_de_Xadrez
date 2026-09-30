@@ -1,8 +1,9 @@
 """A validação em camadas (Editor HTML/CSS, H10): cada regra acusa o seu defeito, no lugar certo.
 
 O portão inteiro (o IR real limpo, o EPUBCheck, o tempo) é o `benchmarks/editor_validacao.py`;
-aqui, o que roda sem Java e sem a máquina livre: os defeitos um a um, o limpo do contrato, os
-consertos, as colunas, o local do EPUBCheck e a fronteira sem Qt.
+aqui, o que roda sem Java e sem a máquina livre: os defeitos um a um, o limpo do contrato e o
+adversarial, as fixtures que saem dos geradores byte a byte, os consertos, as colunas, o local do
+EPUBCheck, a fronteira sem Qt, e o que o ciclo 1 do crítico pediu do contraste e das imagens.
 """
 
 from __future__ import annotations
@@ -18,8 +19,11 @@ import pytest
 
 from caissa.editor.leitura import mapa_de_json
 from caissa.editor.previa import paginar, resolver_variaveis
-from caissa.editor.validacao import REGRAS, Contexto, validar_arquivo
+from caissa.editor.validacao import REGRAS, Contexto, validar_arquivo, validar_projeto
 from caissa.editor.validacao import epubcheck as camada_do_epubcheck
+from caissa.editor.validacao.acessibilidade import _candidatos as candidatos_do_srcset
+from caissa.editor.validacao.acessibilidade import animada
+from caissa.editor.validacao.pagina import cores_em_hex, substituir
 from caissa.editor.validacao.xml import LIMITE_DE_BYTES, ler
 from caissa.export.epubcheck import EpubCheckMessage
 
@@ -28,6 +32,7 @@ sys.path.insert(0, str(RAIZ / "benchmarks"))
 import editor_contrato  # noqa: E402
 
 DEFEITOS = RAIZ / "tests" / "fixtures" / "editor" / "defeitos"
+LIMPOS = RAIZ / "tests" / "fixtures" / "editor" / "limpos"
 CONTRATO = RAIZ / "tests" / "fixtures" / "editor" / "contrato"
 ESPERADO = json.loads((DEFEITOS / "esperado.json").read_text(encoding="utf-8"))
 
@@ -45,7 +50,8 @@ def _contexto(dados: dict) -> Contexto:
         arquivos=ARQUIVOS,
         glossario=frozenset(dados["glossario"]) if "glossario" in dados else None,
         fontes=dados.get("fontes", {}),
-        mapa=mapa_de_json(json.loads(ARQUIVOS[dados["mapa"]])) if "mapa" in dados else None)
+        mapa=mapa_de_json(json.loads(ARQUIVOS[dados["mapa"]])) if "mapa" in dados else None,
+        **{chave: dados[chave] for chave in ("nav", "teto_de_paginas") if chave in dados})
 
 
 def _chaves(problemas: list) -> collections.Counter:
@@ -173,3 +179,69 @@ def test_a_paginacao_do_mupdf_tem_teto() -> None:
     assert paginado.laco
     assert paginado.paginas == 8
     assert not paginar("<p>um</p>", "").laco
+
+
+def test_o_limpo_adversarial_nao_acusa_nada_que_bloqueie_ou_avise() -> None:
+    """O que está perto de um defeito sem ser um (o ciclo 1 do crítico): nada bloqueia ou avisa."""
+    arquivos = _arquivos(LIMPOS)
+    resultado = validar_projeto(Contexto(arquivos=arquivos, nav="Text/nav.xhtml"))
+    assert set(resultado) == {n for n in arquivos if n.endswith(".xhtml")}
+    assert [str(p) for problemas in resultado.values() for p in problemas
+            if p.severidade != "informa"] == []
+
+
+@pytest.mark.parametrize("pasta", [DEFEITOS, LIMPOS], ids=["defeitos", "limpos"])
+def test_as_fixtures_sao_do_gerador(pasta: Path, tmp_path: Path) -> None:
+    """Regeradas numa pasta à parte, as fixtures saem iguais às do repositório, byte a byte."""
+    gerador = next(pasta.glob("gerar_*.py"))
+    subprocess.run([sys.executable, str(gerador), str(tmp_path)],  # noqa: S603 - o gerador nosso
+                   check=True, capture_output=True, cwd=RAIZ)
+    geradas = {p.relative_to(tmp_path).as_posix(): p.read_bytes()
+               for p in tmp_path.rglob("*") if p.is_file()}
+    guardadas = {p.relative_to(pasta).as_posix(): p.read_bytes()
+                 for p in pasta.rglob("*") if p.is_file() and p != gerador
+                 and "__pycache__" not in p.parts}
+    assert sorted(geradas) == sorted(guardadas)
+    assert [n for n in geradas if geradas[n] != guardadas[n]] == []
+
+
+def test_a_imagem_animada_pela_estrutura() -> None:
+    """O GIF de um quadro com o laço do NETSCAPE é estático; o APNG, o WebP e o GIF de dois
+    quadros são animados."""
+    assert animada(ARQUIVOS["Images/animada.gif"])
+    assert animada(ARQUIVOS["Images/animada.png"])
+    assert animada(ARQUIVOS["Images/animada.webp"])
+    assert not animada((LIMPOS / "Images" / "estatica.gif").read_bytes())
+    assert not animada(ARQUIVOS["Images/imagem.png"])
+    assert not animada(b"GIF89a")
+
+
+def test_o_srcset_da_cada_endereco() -> None:
+    assert candidatos_do_srcset("a.png 1x, b.gif 2x,c.png") == ["a.png", "b.gif", "c.png"]
+    assert candidatos_do_srcset(" ") == []
+
+
+def test_as_cores_que_o_mupdf_erra_viram_hex() -> None:
+    assert cores_em_hex("rgba(0, 0, 0, 0.5)") == "#00000080"
+    assert cores_em_hex("hsl(0, 0%, 50%)") == "#808080"
+    assert cores_em_hex("rgb(255 0 0 / 50%)") == "#ff000080"
+    assert cores_em_hex("1px solid rgba(255,255,255,1)") == "1px solid #ffffff"
+    assert cores_em_hex("rebeccapurple", nomes=True) == "#663399"
+    assert cores_em_hex("transparent", nomes=True) == "transparent"
+    assert cores_em_hex("lab(50% 40 59)") == "lab(50% 40 59)"
+
+
+def test_o_var_sem_valor_invalida_a_declaracao() -> None:
+    assert substituir("var(--a)", {"--a": "#123"}) == "#123"
+    assert substituir("var(--falta, var(--a))", {"--a": "#123"}) == "#123"
+    assert substituir("var(--falta)", {}) is None
+
+
+def test_o_contraste_mede_o_capitulo_inteiro() -> None:
+    """A página medida é alta: o texto depois de 200 páginas A5 também é medido (o teto velho)."""
+    corpo = "\n".join(f"<p>Linha {n} do capítulo comprido.</p>" for n in range(1, 4001))
+    texto = ('<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR"><head><title>t</title>'
+             f'</head><body>\n{corpo}\n<p style="color: #999999">A última, cinza.</p>\n'
+             "</body></html>")
+    problemas = validar_arquivo("Text/longo.xhtml", texto)
+    assert [(p.codigo, p.local.linha) for p in problemas] == [("css-contraste", 4002)]
