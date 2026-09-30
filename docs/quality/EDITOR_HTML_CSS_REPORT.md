@@ -70,8 +70,9 @@ ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entr
   três camadas — o `LocalContentCanAccessRemoteUrls` desligado barra o endereço de rede antes do
   interceptador; o interceptador barra o arquivo de fora da pasta; e **faltava a guarda de
   navegação**: o `<meta http-equiv="refresh">` levava a prévia para fora do livro (a requisição
-  barrada, mas a página ia embora). O arnês agora recusa no `acceptNavigationRequest` toda
-  navegação para fora da pasta, e o componente do H14 tem de fazer o mesmo.
+  barrada, mas a página ia embora). A R4.1 já pede a navegação recusada; o que faltava era no
+  arnês, que agora a recusa no `acceptNavigationRequest`, e o componente do H14 tem de fazer o
+  mesmo.
   `& $PY benchmarks\editor_motores.py --hostil [--sabotar sem_interceptador|sem_guarda_de_rede] --saida <pasta>`
 - **Os testes:** `tests/unit/editor/test_motores.py` (11: a extração dos casos, a genérica da
   `font-family`, o veredito, os pixels, o laço e o `var()` do MuPDF, o livro hostil).
@@ -254,3 +255,66 @@ as 4 sabotagens) **espera a máquina livre**.
 - **Os testes:** `tests/unit/editor/test_projeto.py` (18), mais as pastas guardadas do pacote e a
   regra de arquitetura (o `editor/` sem toolkit).
 - **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H6 --saida benchmarks\reports\editor\h6`.
+
+## H10 — A validação em camadas, com linha e coluna
+
+**Estado:** implementado — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da thread da
+janela), as fixtures de defeito, o arnês e a entrada `PASSOS["H10"]` do executor; os testes
+passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina livre (o tempo).
+
+- **As camadas e as regras** — 49 regras, cada uma com código, severidade, local
+  (`arquivo:linha:coluna`, de 1, pela árvore do `expat`, que conta caracteres), o que fazer e,
+  quando seguro, conserto (o `lang` da raiz, o `<abbr title>` da abreviatura):
+  - **XML** (`xml.py`): bem formado; e a leitura patológica da R4.3 — o arquivo além de 8 MB, o
+    aninhamento além de 256, o `DOCTYPE` com entidade (a leitura para na declaração: nada se
+    expande, a externa nunca se resolve);
+  - **segurança** (`seguranca.py`, R4.2 e R4.3): o `<script>`, o `on…`, o `javascript:`, o
+    `<iframe>`/`<object>`/`<embed>`, o recurso remoto, o `@import` remoto, o caminho de recurso
+    fora do projeto (acima da raiz, absoluto, `file:`, o link simbólico para fora);
+  - **contrato** (`contrato.py`, absorvido do `validate.py` do CB com a «Origem:»): o diagrama sem
+    `data-fen`, a FEN que não se lê, o `data-stm` incoerente, o `img.cb-svg` de outra posição, a
+    imagem que falta, o `cb-move` sem `data-fen` (o CB o pula), a classe que o CB confunde e a
+    `cb-*` fora do contrato;
+  - **xadrez** (`xadrez.py`, do CB): o lance ilegal, a `data-fen` que não é a do lance, o
+    diagrama que não mostra o lance de cima (avisa: o livro pode ter razão), a notação de duas
+    línguas, a figurina fora da fonte ativa;
+  - **CSS** (`css.py`): a sintaxe, a propriedade desconhecida, o que o MuPDF não desenha (a matriz
+    do H1), o que o DOCX não leva (o mapa do H5) e o **contraste AAA 1.4.6 medido na página do
+    MuPDF** (`previa.paginar`, com as variáveis da `:root` resolvidas e o teto de páginas do laço
+    do H1): cada trecho, com a cor calculada, contra o fundo local (o retângulo preenchido embaixo
+    dele), 7:1 no normal e 4,5:1 no grande (o MuPDF conta o px do CSS: grande é ≥ 24 px, ou
+    ≥ 18,66 px em negrito);
+  - **acessibilidade** (`acessibilidade.py`): o `lang`, os títulos, o `alt` (e o que afirma o não
+    lido, pelo mapa), a `page-list` (duplicado, lacuna), a imagem de texto, a mídia, o
+    interativo, o `meta refresh`, a animação (CSS e GIF/APNG), o `fixed`/`sticky`, o foco
+    apagado, o link sem propósito, a seção sem papel, o símbolo fora do glossário, a abreviatura
+    sem `<abbr>`, o dado da máquina no livro;
+  - **OCR** (`ocr.py`): cada dúvida pendente do `proveniencia.json`, no bloco dela;
+  - **EPUBCheck** (`epubcheck.py`, e o `--json` em `export/epubcheck.py`): cada mensagem com o
+    local; a que o EPUBCheck dá sem local fica `0:0`, e não finge um `1:1`.
+- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **50/50** com o código e a linha:coluna
+  certos — um arquivo por regra (49) e o de 8 MB que o portão monta —, cada um com o defeito dele e
+  nenhum outro; o local esperado sai de um marcador no texto, pela definição da regra, e não do
+  validador. Toda regra registrada tem o seu.
+- **O limpo:** **0 problema que bloqueia ou avisa** nas 16 fixtures do contrato (as 14 linhas da S4
+  e as 2 combinações); os capítulos legíveis do IR real esperam o `--gerar-ir-real` do H5.
+- **O EPUBCheck** (4.2.6, Java 8): o EPUB mínimo limpo dá 0 erro; com a etiqueta errada e com a
+  imagem que falta injetadas, **2/2 erros acusados na linha injetada** e **2/2 locais do
+  EPUBCheck preservados** — e 1 mensagem que o próprio EPUBCheck dá sem local (o RSC-005 depois do
+  erro fatal), contada à parte.
+- **As sabotagens:** `sem_linha` reprova (6/50 defeitos certos) e `regra_muda` reprova (49/50: o
+  diagrama sem `data-fen` some).
+- **Os testes:** `tests/unit/editor/test_validacao.py` (70: cada defeito, toda regra com o seu, o
+  vocabulário do validador igual ao do MARKUP, o de 8 MB, o limpo do contrato, os consertos, a
+  coluna por caractere, o local do EPUBCheck, o pacote sem Qt, as variáveis e o teto da prévia) e a
+  tabela do executor.
+- **Decisões declaradas:** (1) o limpo conta os problemas que bloqueiam ou avisam; as notas
+  (`informa`: o DOCX não leva, a prévia não desenha) e as dúvidas do OCR do IR real (dúvidas de
+  verdade) são contadas à parte; (2) o símbolo fora do glossário só se confere com um glossário
+  (o H24 o gera), e a abreviatura, pela lista do contrato (`Contexto.abreviaturas`); (3) além dos
+  arquivos que o roadmap nomeia, `contexto.py`, `folha.py` e a camada `epubcheck.py`, e a
+  `previa.paginar`/`resolver_variaveis` que a prévia do H13 usa; (4) o MARKUP ganhou a §12.4
+  (`img.cb-imagem-de-texto`, `section.cb-resumo-simples`); (5) o diagrama que difere do lance de
+  cima avisa (no CB é erro).
+- **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H10 --saida benchmarks\reports\editor\h10`
+  (a rodada sem o tempo: `& $PY benchmarks\editor_validacao.py --sem-desempenho --saida <pasta>`).

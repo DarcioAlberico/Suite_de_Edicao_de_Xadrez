@@ -138,6 +138,7 @@ __all__ = [
     "escrever_capitulo",
     "folhas_do_livro",
     "forma_normal",
+    "imagem_do_diagrama",
     "ler_capitulo",
     "texto_plano",
 ]
@@ -477,9 +478,15 @@ class Capitulo:
     (`etiqueta.classe`, na ordem do arquivo): o escritor não o usa; a validação o mostra."""
 
 
-def _imagem_do_diagrama(fen: str, orientacao: str) -> str:
-    """O arquivo da imagem derivada: `dg_<hash>.svg`, pelo conteúdo (o contrato, §6.1)."""
+def imagem_do_diagrama(fen: str, orientacao: str) -> str:
+    """O arquivo da imagem derivada: `dg_<hash>.svg`, pelo conteúdo (o contrato, §6.1).
+
+    O validador (H10) confere o `img.cb-svg` por esta mesma função.
+    """
     return f"dg_{hashlib.sha256(f'{fen}|{orientacao}'.encode()).hexdigest()[:12]}.svg"
+
+
+_imagem_do_diagrama = imagem_do_diagrama
 
 
 def _pagina_da_maquina(no: Any) -> int | None:

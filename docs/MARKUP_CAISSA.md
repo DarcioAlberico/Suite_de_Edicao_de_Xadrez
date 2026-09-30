@@ -469,9 +469,9 @@ imagem no diagrama); o nó sem dono com `id` vai em `capitulo.nos`.
   — com `data-san`, `data-ply`, e `data-uci`, `data-fen-before` e `data-fen-after` quando o IR os
   tem. O CB não o toma por lance: é texto. O nome não começa com `cb-move-` (§10): o `validate.py`
   do CB acha o lance pela expressão `\bcb-move\b` num `span`, que casa também com `cb-move-…`, e
-  pularia a forma literal como um lance sem `data-fen`, anterior ao contrato. O `p.cb-line` que começa uma variante com um lance
-  literal leva `data-variation-start="1"`; a variante de um lance literal parte da posição de antes
-  dele.
+  pularia a forma literal como um lance sem `data-fen`, anterior ao contrato. O `p.cb-line` que
+  começa uma variante com um lance literal leva `data-variation-start="1"`; a variante de um lance
+  literal parte da posição de antes dele.
 - **As anotações do lance:** `data-emphasis`, `data-clock` (com `data-clock-kind` e
   `data-clock-seconds`), `data-eval` (com `data-eval-kind`, `data-eval-value`, `data-eval-depth`),
   `data-arrows`, `data-highlights`.
@@ -484,3 +484,19 @@ imagem no diagrama); o nó sem dono com `id` vai em `capitulo.nos`.
 - **O cabeçalho:** `hidden` quando a partida não o mostra (os dados continuam nele);
   `p.cb-tag[data-name]` para as etiquetas fora do MARKUP; `data-tag-order` quando a ordem do IR não
   é a do MARKUP.
+
+### 12.4 O que a validação conhece (H10)
+
+- **`img.cb-imagem-de-texto`** — a região que a revisão do OCR **manteve como imagem** (a dúvida
+  `mantida_como_imagem`, spec §5.3): imagem de texto (1.4.5 AA, 1.4.9 AAA). O validador a acusa
+  (`a11y-imagem-de-texto`), e o livro com ela não declara conformidade; «Transcrever a região»
+  troca a imagem pelo texto revisado. Fixture:
+  `tests/fixtures/editor/defeitos/Text/a11y-imagem-de-texto.xhtml`.
+- **`section.cb-resumo-simples`** — o «Resumo em linguagem simples» do capítulo (spec §5.6, 3.1.5),
+  escrito pelo usuário; a seção tem papel pela classe (o exportador do H24 põe o `epub:type`). A
+  fixture vem com o bloco, no H24.
+
+O validador conhece o vocabulário do contrato inteiro (`caissa.editor.validacao.contrato.CLASSES`,
+com as famílias `cb-depth-<n>` e `cb-style-<slug>`): a classe `cb-*` fora dele avisa
+(`contrato-classe-desconhecida`), e a que as expressões do CB confundem (§10), também
+(`contrato-classe-confundida`). Uma classe nova entra no contrato e nessa lista juntas.

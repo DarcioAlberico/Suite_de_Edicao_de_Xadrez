@@ -11,7 +11,11 @@ CSS, os SVG e as fontes do projeto, as posições dos elementos, os modos Leitor
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from typing import Any
+
+import tinycss2
 
 #: A página da prévia no protótipo: A5 em pontos.
 LARGURA_PT = 420.0
@@ -44,3 +48,72 @@ def renderizar(texto: str, *, dpi: int = 72) -> dict[str, Any]:
     with pymupdf.open("pdf", saida.getvalue()) as documento:
         png = documento[0].get_pixmap(dpi=dpi).tobytes("png")
     return {"paginas": paginas, "png": png}
+
+
+_VAR = re.compile(r"var\(\s*(--[\w-]+)\s*(?:,\s*((?:[^()]|\([^()]*\))*))?\)")
+
+
+def resolver_variaveis(css: str) -> str:
+    """O CSS com cada `var(--x)` trocado pelo valor da `:root` (o MuPDF não resolve `var()`).
+
+    Medido no H1: sem isto, toda cor, borda e medida do `BASE_CSS` por variável cai no padrão
+    na prévia do MuPDF. Valem as variáveis das regras `:root` e `html` de fora de `@media` (o
+    tema claro; o escuro de `prefers-color-scheme` não entra); o valor de reserva de
+    `var(--x, reserva)` vale quando a variável falta.
+    """
+    variaveis: dict[str, str] = {}
+    for regra in tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True):
+        if regra.type != "qualified-rule" or \
+                tinycss2.serialize(regra.prelude).strip() not in (":root", "html"):
+            continue
+        for declaracao in tinycss2.parse_declaration_list(regra.content, skip_comments=True,
+                                                          skip_whitespace=True):
+            if declaracao.type == "declaration" and declaracao.name.startswith("--"):
+                variaveis[declaracao.name] = tinycss2.serialize(declaracao.value).strip()
+
+    def trocar(casado: re.Match[str]) -> str:
+        return variaveis.get(casado.group(1), (casado.group(2) or "").strip()) or "initial"
+
+    for _ in range(5):  # a variável que usa outra
+        novo = _VAR.sub(trocar, css)
+        if novo == css:
+            break
+        css = novo
+    return css
+
+
+@dataclass
+class Paginas:
+    """O capítulo paginado pelo MuPDF: o PDF em memória e se a paginação bateu no teto."""
+
+    pdf: bytes
+    paginas: int
+    laco: bool
+    """A paginação não terminou no teto (o `page-break-before` no primeiro elemento, H1)."""
+
+
+def paginar(texto: str, css: str = "", *, largura: float = LARGURA_PT,
+            altura: float = ALTURA_PT, maximo: int = MAXIMO_DE_PAGINAS,
+            em: float = 16.0) -> Paginas:
+    """Pagina o XHTML pelo `Story` do MuPDF, com o CSS dado (as variáveis resolvidas).
+
+    O `em` de 16 é o do navegador: o MuPDF conta o px do CSS como a unidade da página.
+    """
+    import io
+
+    import pymupdf
+
+    historia = pymupdf.Story(html=texto, user_css=resolver_variaveis(css), em=em)
+    saida = io.BytesIO()
+    escritor = pymupdf.DocumentWriter(saida)
+    caixa = pymupdf.Rect(36, 36, largura - 36, altura - 36)
+    paginas = 0
+    mais = True
+    while mais and paginas < maximo:
+        dispositivo = escritor.begin_page(pymupdf.Rect(0, 0, largura, altura))
+        mais, _ = historia.place(caixa)
+        historia.draw(dispositivo)
+        escritor.end_page()
+        paginas += 1
+    escritor.close()
+    return Paginas(saida.getvalue(), paginas, bool(mais))

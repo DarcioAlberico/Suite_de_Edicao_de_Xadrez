@@ -199,6 +199,20 @@ def test_a_tabela_do_h5_mede_a_ida_e_a_volta_com_as_sabotagens() -> None:
         assert sabotagem.nome in sabotagem.comando.argv
 
 
+def test_a_tabela_do_h10_valida_os_defeitos_o_limpo_e_o_epubcheck() -> None:
+    passo = portoes.PASSOS["H10"]
+    assert {"benchmarks/editor_validacao.py", "tests/fixtures/editor/defeitos/esperado.json",
+            "src/caissa/editor/validacao/problema.py"} <= set(passo.instrumentos)
+    assert sum(i.startswith(portoes.IR_REAL_DO_H5) for i in passo.instrumentos) == 4
+    assert [c.nome for c in passo.portao] == ["test_validacao", "validacao"]
+    validacao = next(c for c in passo.portao if c.nome == "validacao")
+    assert "--ir-real" in validacao.argv
+    assert "--sem-desempenho" not in validacao.argv, "o portão mede o tempo"
+    assert {s.nome for s in passo.sabotagens} == {"sem_linha", "regra_muda"}
+    for sabotagem in passo.sabotagens:
+        assert sabotagem.nome in sabotagem.comando.argv
+
+
 def test_a_tabela_do_h2_mede_o_prototipo_e_a_sonda_uia() -> None:
     passo = portoes.PASSOS["H2"]
     assert {"benchmarks/editor_codigo.py", "benchmarks/editor_uia.py", "{med}"} <= set(

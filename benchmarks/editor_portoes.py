@@ -684,6 +684,35 @@ PASSOS: dict[str, Passo] = {
                 "--vezes", "1", "--saida", "{saida}")), motivo="REPROVADO: versões: o piso"),
         ),
     ),
+    "H10": Passo(
+        nome="H10",
+        descricao="a validação em camadas, com linha e coluna",
+        instrumentos=(
+            *(f"src/caissa/editor/validacao/{m}.py" for m in (
+                "__init__", "problema", "contexto", "xml", "folha", "seguranca", "contrato",
+                "xadrez", "css", "acessibilidade", "ocr", "epubcheck")),
+            "src/caissa/editor/previa.py",
+            "src/caissa/export/epubcheck.py",
+            "benchmarks/editor_validacao.py",
+            "tests/unit/editor/test_validacao.py",
+            "tests/fixtures/editor/defeitos",
+            "tests/fixtures/editor/defeitos/esperado.json",
+            "tests/fixtures/editor/contrato",
+            # O limpo: o IR real do H5, passado pelo perfil legível.
+            *(f"{IR_REAL_DO_H5}/{livro}.ir.json" for livro in ("livro", "kemeri", "pedido", "dem")),
+            "{principal}/tools/epubcheck-4.2.6/epubcheck.jar",
+        ),
+        portao=(
+            Comando("test_validacao", _pytest("tests/unit/editor/test_validacao.py")),
+            Comando("validacao", ("{py}", "benchmarks/editor_validacao.py", "--ir-real",
+                                  IR_REAL_DO_H5, "--saida", "{saida}")),
+        ),
+        sabotagens=tuple(
+            Sabotagem(nome, Comando(f"validacao_{nome}", (
+                "{py}", "benchmarks/editor_validacao.py", "--sem-desempenho", "--sabotar", nome,
+                "--saida", "{saida}")), motivo="REPROVADO: defeitos")
+            for nome in ("sem_linha", "regra_muda")),
+    ),
 }
 
 

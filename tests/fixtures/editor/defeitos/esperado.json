@@ -1,0 +1,569 @@
+{
+ "leia-me": "Um arquivo por regra do validador (H10). O local esperado sai de um marcador no texto do arquivo (o < do elemento, o nome da declaração, o caractere), pela definição da regra; o portão exige exatamente estes problemas em cada arquivo.",
+ "defeitos": {
+  "Styles/css-mapa-docx.css": {
+   "regra": "css-mapa-docx",
+   "problemas": [
+    {
+     "codigo": "css-mapa-docx",
+     "linha": 1,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-abreviatura.xhtml": {
+   "regra": "a11y-abreviatura",
+   "problemas": [
+    {
+     "codigo": "a11y-abreviatura",
+     "linha": 8,
+     "coluna": 6
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-alt-afirma.xhtml": {
+   "regra": "a11y-alt-afirma",
+   "problemas": [
+    {
+     "codigo": "a11y-alt-afirma",
+     "linha": 9,
+     "coluna": 3
+    }
+   ],
+   "contexto": {
+    "mapa": "Text/a11y-alt-afirma.proveniencia.json"
+   }
+  },
+  "Text/a11y-alt-ausente.xhtml": {
+   "regra": "a11y-alt-ausente",
+   "problemas": [
+    {
+     "codigo": "a11y-alt-ausente",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-animacao-gif.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-animacao.xhtml": {
+   "regra": "a11y-animacao",
+   "problemas": [
+    {
+     "codigo": "a11y-animacao",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-fixo.xhtml": {
+   "regra": "a11y-fixo",
+   "problemas": [
+    {
+     "codigo": "a11y-fixo",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-foco-apagado.xhtml": {
+   "regra": "a11y-foco-apagado",
+   "problemas": [
+    {
+     "codigo": "a11y-foco-apagado",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-imagem-de-texto.xhtml": {
+   "regra": "a11y-imagem-de-texto",
+   "problemas": [
+    {
+     "codigo": "a11y-imagem-de-texto",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-interativo.xhtml": {
+   "regra": "a11y-interativo",
+   "problemas": [
+    {
+     "codigo": "a11y-interativo",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-lang.xhtml": {
+   "regra": "a11y-lang",
+   "problemas": [
+    {
+     "codigo": "a11y-lang",
+     "linha": 3,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-link-proposito.xhtml": {
+   "regra": "a11y-link-proposito",
+   "problemas": [
+    {
+     "codigo": "a11y-link-proposito",
+     "linha": 8,
+     "coluna": 29
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-midia.xhtml": {
+   "regra": "a11y-midia",
+   "problemas": [
+    {
+     "codigo": "a11y-midia",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-pagina-duplicada.xhtml": {
+   "regra": "a11y-pagina-duplicada",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-duplicada",
+     "linha": 9,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-pagina-lacuna.xhtml": {
+   "regra": "a11y-pagina-lacuna",
+   "problemas": [
+    {
+     "codigo": "a11y-pagina-lacuna",
+     "linha": 9,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-proveniencia.xhtml": {
+   "regra": "a11y-proveniencia",
+   "problemas": [
+    {
+     "codigo": "a11y-proveniencia",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-refresh.xhtml": {
+   "regra": "a11y-refresh",
+   "problemas": [
+    {
+     "codigo": "a11y-refresh",
+     "linha": 6,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-regiao-sem-papel.xhtml": {
+   "regra": "a11y-regiao-sem-papel",
+   "problemas": [
+    {
+     "codigo": "a11y-regiao-sem-papel",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/a11y-simbolo-fora-do-glossario.xhtml": {
+   "regra": "a11y-simbolo-fora-do-glossario",
+   "problemas": [
+    {
+     "codigo": "a11y-simbolo-fora-do-glossario",
+     "linha": 8,
+     "coluna": 120
+    }
+   ],
+   "contexto": {
+    "glossario": [
+     "!"
+    ]
+   }
+  },
+  "Text/a11y-titulo-salto.xhtml": {
+   "regra": "a11y-titulo-salto",
+   "problemas": [
+    {
+     "codigo": "a11y-titulo-salto",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-classe-confundida.xhtml": {
+   "regra": "contrato-classe-confundida",
+   "problemas": [
+    {
+     "codigo": "contrato-classe-confundida",
+     "linha": 8,
+     "coluna": 9
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-classe-desconhecida.xhtml": {
+   "regra": "contrato-classe-desconhecida",
+   "problemas": [
+    {
+     "codigo": "contrato-classe-desconhecida",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-diagrama-sem-fen.xhtml": {
+   "regra": "contrato-diagrama-sem-fen",
+   "problemas": [
+    {
+     "codigo": "contrato-diagrama-sem-fen",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-fen-invalida.xhtml": {
+   "regra": "contrato-fen-invalida",
+   "problemas": [
+    {
+     "codigo": "contrato-fen-invalida",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-imagem-ausente.xhtml": {
+   "regra": "contrato-imagem-ausente",
+   "problemas": [
+    {
+     "codigo": "contrato-imagem-ausente",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-lance-sem-fen.xhtml": {
+   "regra": "contrato-lance-sem-fen",
+   "problemas": [
+    {
+     "codigo": "contrato-lance-sem-fen",
+     "linha": 8,
+     "coluna": 14
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-stm-incoerente.xhtml": {
+   "regra": "contrato-stm-incoerente",
+   "problemas": [
+    {
+     "codigo": "contrato-stm-incoerente",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/contrato-svg-incoerente.xhtml": {
+   "regra": "contrato-svg-incoerente",
+   "problemas": [
+    {
+     "codigo": "contrato-svg-incoerente",
+     "linha": 9,
+     "coluna": 3
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-motor-nao-desenha.xhtml": {
+   "regra": "css-motor-nao-desenha",
+   "problemas": [
+    {
+     "codigo": "css-motor-nao-desenha",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-propriedade-desconhecida.xhtml": {
+   "regra": "css-propriedade-desconhecida",
+   "problemas": [
+    {
+     "codigo": "css-propriedade-desconhecida",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-sintaxe.xhtml": {
+   "regra": "css-sintaxe",
+   "problemas": [
+    {
+     "codigo": "css-sintaxe",
+     "linha": 6,
+     "coluna": 18
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/ocr-duvida-pendente.xhtml": {
+   "regra": "ocr-duvida-pendente",
+   "problemas": [
+    {
+     "codigo": "ocr-duvida-pendente",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {
+    "mapa": "Text/ocr-duvida-pendente.proveniencia.json"
+   }
+  },
+  "Text/seg-aninhamento.xhtml": {
+   "regra": "seg-aninhamento",
+   "problemas": [
+    {
+     "codigo": "seg-aninhamento",
+     "linha": 262,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-caminho-fora.xhtml": {
+   "regra": "seg-caminho-fora",
+   "problemas": [
+    {
+     "codigo": "seg-caminho-fora",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-doctype-entidade.xhtml": {
+   "regra": "seg-doctype-entidade",
+   "problemas": [
+    {
+     "codigo": "seg-doctype-entidade",
+     "linha": 3,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-embutido.xhtml": {
+   "regra": "seg-embutido",
+   "problemas": [
+    {
+     "codigo": "seg-embutido",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-entidade-externa.xhtml": {
+   "regra": "seg-entidade-externa",
+   "problemas": [
+    {
+     "codigo": "seg-entidade-externa",
+     "linha": 3,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-evento.xhtml": {
+   "regra": "seg-evento",
+   "problemas": [
+    {
+     "codigo": "seg-evento",
+     "linha": 8,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-import-remoto.xhtml": {
+   "regra": "seg-import-remoto",
+   "problemas": [
+    {
+     "codigo": "seg-import-remoto",
+     "linha": 6,
+     "coluna": 8
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-javascript.xhtml": {
+   "regra": "seg-javascript",
+   "problemas": [
+    {
+     "codigo": "seg-javascript",
+     "linha": 8,
+     "coluna": 9
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-recurso-remoto.xhtml": {
+   "regra": "seg-recurso-remoto",
+   "problemas": [
+    {
+     "codigo": "seg-recurso-remoto",
+     "linha": 8,
+     "coluna": 4
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/seg-script.xhtml": {
+   "regra": "seg-script",
+   "problemas": [
+    {
+     "codigo": "seg-script",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/xadrez-diagrama-diverge.xhtml": {
+   "regra": "xadrez-diagrama-diverge",
+   "problemas": [
+    {
+     "codigo": "xadrez-diagrama-diverge",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/xadrez-fen-divergente.xhtml": {
+   "regra": "xadrez-fen-divergente",
+   "problemas": [
+    {
+     "codigo": "xadrez-fen-divergente",
+     "linha": 8,
+     "coluna": 148
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/xadrez-figurina-fora-da-fonte.xhtml": {
+   "regra": "xadrez-figurina-fora-da-fonte",
+   "problemas": [
+    {
+     "codigo": "xadrez-figurina-fora-da-fonte",
+     "linha": 9,
+     "coluna": 157
+    }
+   ],
+   "contexto": {
+    "fontes": {
+     "Times": "tiro"
+    }
+   }
+  },
+  "Text/xadrez-lance-ilegal.xhtml": {
+   "regra": "xadrez-lance-ilegal",
+   "problemas": [
+    {
+     "codigo": "xadrez-lance-ilegal",
+     "linha": 8,
+     "coluna": 148
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/xadrez-notacao-misturada.xhtml": {
+   "regra": "xadrez-notacao-misturada",
+   "problemas": [
+    {
+     "codigo": "xadrez-notacao-misturada",
+     "linha": 8,
+     "coluna": 150
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/xml-mal-formado.xhtml": {
+   "regra": "xml-mal-formado",
+   "problemas": [
+    {
+     "codigo": "xml-mal-formado",
+     "linha": 8,
+     "coluna": 51
+    }
+   ],
+   "contexto": {}
+  }
+ },
+ "gerados": {
+  "seg-tamanho": {
+   "regra": "seg-tamanho",
+   "problemas": [
+    {
+     "codigo": "seg-tamanho",
+     "linha": 1,
+     "coluna": 1
+    }
+   ],
+   "como": "um XHTML de 8 MB e 1 byte, montado pelo portão"
+  }
+ }
+}
