@@ -120,6 +120,10 @@ _AUDIT_FIELDS: Mapping[str, PropertySupport] = {
     "document.provenance": unsupported(
         "A proveniencia do documento e metadado de auditoria do IR."
     ),
+    "*.html_attributes": unsupported(
+        "Os atributos HTML que o XHTML legivel do editor preservou (style, title, aria-*, "
+        "data-*) so voltam no perfil legivel; este formato nao os escreve."
+    ),
 }
 
 

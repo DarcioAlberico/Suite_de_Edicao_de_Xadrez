@@ -152,9 +152,15 @@ mostra); no IR, nas decisões e no sidecar, base 0; o fólio impresso é uma ter
 | `cb-stipulation` | a estipulação («Mate em 2»), o `stipulation` do IR | extensão |
 | `cb-stm-marker` | o quadradinho de quem joga; cheio para as pretas; `aria-label` diz o lado | MARKUP |
 | `cb-move-context` | onde a posição está na partida («após 24…Txf2»), o `move_context` do IR | extensão |
+| `cb-caption-text` | a legenda livre do diagrama (o `caption` do IR), depois do rótulo, da estipulação e do contexto | extensão |
 
-- **O que é derivado.** A `img.cb-svg` sai da FEN, da orientação e do estilo: o `src` é
-  `../Images/dg_<hash>.svg`, com o hash desse conteúdo, e o arquivo é regenerável. O `alt` é o
+A legenda sai nessa ordem: rótulo, estipulação, contexto, legenda livre, marcador do lado. O
+rótulo «Diagrama N» exato volta como o `number` do IR; outro texto, como o `label`.
+
+- **O que é derivado.** A `img.cb-svg` sai da FEN e da orientação: o `src` é
+  `../Images/dg_<hash>.svg`, com `<hash>` = os 12 primeiros dígitos hexadecimais do SHA-256 de
+  «`<FEN>|<white ou black>`», e o arquivo é regenerável. O perfil legível escreve sempre
+  `data-mode="svg"` (o leitor aceita a falta dele, como o CB escreve). O `alt` é o
   `alt_text` do IR quando a pessoa escreveu um; senão, a descrição da posição tirada da FEN,
   no idioma do livro (`descrever_posicao(fen, lado, idioma, conferida)`, H4), que diz quando a
   posição não foi conferida por uma pessoa. O leitor não lê a posição da imagem: lê o `data-fen`.
@@ -182,10 +188,10 @@ mostra); no IR, nas decisões e no sidecar, base 0; o fólio impresso é uma ter
 
 | classe | elemento | o quê |
 |---|---|---|
-| `cb-game` | `section` | uma partida; `data-eco`, `data-result` |
+| `cb-game` | `section` | uma partida; `data-eco`, `data-result` e, quando a partida não sai da posição inicial, `data-initial-fen` (extensão: a FEN de onde o primeiro lance parte, que o `data-fen` do lance não diz) |
 | `cb-game-header` | `header` | o bloco acima dos lances |
 | `cb-moves` | `div` | do primeiro ao último lance |
-| `cb-result` | `p` | o resultado, na própria linha |
+| `cb-result` | `p` | o resultado, na própria linha; o `data-result` vai quando o resultado é conhecido, e este parágrafo, quando além disso a partida o imprime; `*` não se escreve |
 | `cb-line` | `p` | uma sequência de lances; sempre com `cb-mainline` ou `cb-variation` |
 | `cb-mainline` | | a linha principal (profundidade 0) |
 | `cb-variation` + `cb-depth-N` | | uma variante e a profundidade dela, de 1 para cima |
@@ -193,7 +199,7 @@ mostra); no IR, nas decisões e no sidecar, base 0; o fólio impresso é uma ter
 | `cb-move` | `span` | um lance: `data-uci` e `data-fen` — **a posição depois dele** |
 | `cb-piece` | `span` | a peça do lance; `data-piece` é **sempre a letra inglesa** |
 | `cb-nag` | `span` | o símbolo de avaliação; `data-nag` é o código numérico |
-| `cb-comment` | `p` (ou `span` num `cb-run-in`) | a prosa entre lances |
+| `cb-comment` | `p` (ou `span` num `cb-run-in`) | a prosa entre lances; relida, ela é o comentário do lance **anterior** (antes do primeiro lance, o comentário inicial da partida) |
 | `cb-run-in` | `p` | o parágrafo com a prosa corrida dentro (o comentário vira `span`) |
 
 - **Dentro de `cb-piece`**, o que o livro imprime: a figurina Unicode (o padrão, `♘`), ou a letra
