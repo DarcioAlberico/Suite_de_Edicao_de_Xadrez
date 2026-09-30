@@ -690,7 +690,8 @@ PASSOS: dict[str, Passo] = {
         instrumentos=(
             *(f"src/caissa/editor/validacao/{m}.py" for m in (
                 "__init__", "problema", "contexto", "xml", "folha", "seguranca", "contrato",
-                "xadrez", "css", "pagina", "acessibilidade", "ocr", "epubcheck")),
+                "xadrez", "css", "pagina", "condicoes", "acessibilidade", "ocr",
+                "epubcheck")),
             "src/caissa/editor/previa.py",
             "src/caissa/export/epubcheck.py",
             "benchmarks/editor_validacao.py",

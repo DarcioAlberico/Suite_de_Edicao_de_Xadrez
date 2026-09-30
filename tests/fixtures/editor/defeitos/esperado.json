@@ -410,6 +410,27 @@
    ],
    "contexto": {}
   },
+  "Text/css-contraste-condicoes.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 11,
+     "coluna": 1
+    },
+    {
+     "codigo": "css-contraste",
+     "linha": 12,
+     "coluna": 1
+    },
+    {
+     "codigo": "css-contraste",
+     "linha": 13,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
   "Text/css-contraste-fundo.xhtml": {
    "regra": "css-contraste",
    "problemas": [
@@ -453,6 +474,17 @@
    "contexto": {}
   },
   "Text/css-contraste-imagem.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 10,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
+  "Text/css-contraste-import-camada.xhtml": {
    "regra": "css-contraste",
    "problemas": [
     {

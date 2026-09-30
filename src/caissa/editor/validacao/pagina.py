@@ -27,13 +27,20 @@ na ordem do documento. O que o MuPDF sozinho desenharia diferente do livro — m
   `a { color }` do autor pela especificidade (medido: `a { color: #9ecbff }` sai `#0000ff`); no
   livro, a folha do autor vence a do leitor sempre. A cor que a cascata do autor dá ao link vai
   no `style=""` dele, com `!important`; o link que o autor não pinta fica o azul (o do leitor).
-- **O `@media`** — o MuPDF ignora o bloco inteiro, qualquer mídia; a cascata também. A
-  `@font-face` sai (a fonte não muda a cor; o negrito do trecho vem do MuPDF).
+- **O `@media`, o `@supports` e o `@layer`** — o MuPDF ignora o bloco inteiro dos três (medido);
+  o leitor os aplica. A condição se avalia para o dispositivo de leitura (`condicoes.py`: a tela,
+  o esquema claro, a largura da página medida), e o bloco que casa entra no lugar dele; a regra de
+  camada entra na cascata com a precedência da camada, e, como o MuPDF não a expressaria, a
+  declaração de camada que vence vai no `style=""` do elemento. A `@font-face` sai (a fonte não
+  muda a cor; o negrito do trecho vem do MuPDF).
 - **O `@import`** — todo `@import` local, em qualquer profundidade, entra no lugar dele (a folha
-  importada duas vezes, por dois caminhos, entra duas vezes, como no CSS); o que importa a si
-  mesmo pelo caminho aberto não entra de novo (o laço), e o `@import` depois de uma regra não
-  vale (CSS Cascade §6.1). O `LIMITE_DE_IMPORTS` é uma defesa: passar dele é dito, no `<link>`
-  ou no `<style>` de onde a cadeia veio (`PaginaMedida.incompletas`).
+  importada duas vezes, por dois caminhos, entra duas vezes, como no CSS), com as condições dele
+  (a mídia, o `supports()`, o `layer`); o que importa a si mesmo pelo caminho aberto não entra de
+  novo (o laço). O `@import` só vale antes de toda outra regra — só o `@charset` e a **declaração**
+  `@layer a, b;` podem vir antes (CSS Cascade 5 §2: «ignoring @charset and @layer statement
+  rules»); o bloco `@layer x { }`, até o vazio, fecha a zona. O `LIMITE_DE_IMPORTS` é uma defesa:
+  passar dele é dito, no `<link>` ou no `<style>` de onde a cadeia veio
+  (`PaginaMedida.incompletas`).
 
 Nada disto vai para o livro: é a cópia que o MuPDF desenha para medir.
 """
@@ -49,6 +56,13 @@ from xml.etree import ElementTree
 import tinycss2
 import tinycss2.color4
 
+from caissa.editor.validacao.condicoes import (
+    SEM_CAMADA,
+    Camadas,
+    casa_a_midia,
+    chave_de_camada,
+    suportado,
+)
 from caissa.editor.validacao.contexto import Contexto, resolver
 from caissa.editor.validacao.xml import XHTML, XLINK_HREF, XML_LANG, Documento, Elemento, Trecho
 
@@ -89,8 +103,8 @@ folha hostil, e não um corte de medida: passar dele é dito (`css-contraste-inc
 não se leu não some em silêncio."""
 BRANCO = (1.0, 1.0, 1.0)
 Cor = tuple[float, float, float]
-Chave = tuple[int, int, tuple[int, int, int], int]
-"""A ordem da cascata: `!important`, o `style=""`, a especificidade, a ordem no documento."""
+Chave = tuple[int, int, tuple[float, ...], tuple[int, int, int], int]
+"""A ordem da cascata: `!important`, o `style=""`, a camada, a especificidade, a ordem."""
 
 
 @dataclass
@@ -227,29 +241,53 @@ class _Declaracao:
     nome: str
     valor: str
     importante: bool
+    camada: tuple[float, ...] = SEM_CAMADA
 
 
 @dataclass
 class _Regra:
     prelude: str
     declaracoes: list[_Declaracao]
-    seletores: list[Any] = field(default_factory=list)
+    camada: tuple[float, ...] = SEM_CAMADA
 
 
-def _declaracoes(itens: Iterable[Any]) -> list[_Declaracao]:
+def _declaracoes(itens: Iterable[Any],
+                 camada: tuple[float, ...] = SEM_CAMADA) -> list[_Declaracao]:
     return [_Declaracao(item.name if item.name.startswith("--") else item.lower_name,
-                        tinycss2.serialize(item.value).strip(), bool(item.important))
+                        tinycss2.serialize(item.value).strip(), bool(item.important), camada)
             for item in itens if item.type == "declaration"]
 
 
-def _url_do_import(regra: Any) -> str | None:
-    for no in regra.prelude:
-        if no.type in ("url", "string"):
-            return str(no.value)
-        if no.type == "function" and no.lower_name == "url":
-            texto = [a for a in no.arguments if a.type == "string"]
-            return str(texto[0].value) if texto else None
-    return None
+def _condicoes_do_import(regra: Any) -> tuple[str | None, bool, tuple[str, ...] | None]:
+    """O endereço do `@import`, se as condições dele casam, e a camada (`None`: sem camada).
+
+    `@import url(x) [layer | layer(nome)] [supports(condição)] [lista de mídia];`
+    """
+    from caissa.editor.validacao.css import PROPRIEDADES
+
+    nos = [no for no in regra.prelude if no.type not in ("whitespace", "comment")]
+    if not nos:
+        return None, False, None
+    primeiro, resto = nos[0], nos[1:]
+    url: str | None = None
+    if primeiro.type in ("url", "string"):
+        url = str(primeiro.value)
+    elif primeiro.type == "function" and primeiro.lower_name == "url":
+        texto = [a for a in primeiro.arguments if a.type == "string"]
+        url = str(texto[0].value) if texto else None
+    camada: tuple[str, ...] | None = None
+    if resto and resto[0].type == "ident" and resto[0].lower_value == "layer":
+        camada, resto = (), resto[1:]
+    elif resto and resto[0].type == "function" and resto[0].lower_name == "layer":
+        camada = tuple(p for p in tinycss2.serialize(resto[0].arguments).strip().split(".") if p)
+        resto = resto[1:]
+    casa = True
+    if resto and resto[0].type == "function" and resto[0].lower_name == "supports":
+        casa = suportado(resto[0].arguments, PROPRIEDADES) or suportado(
+            [tinycss2.parse_one_component_value("(" + tinycss2.serialize(resto[0].arguments)
+                                                + ")")], PROPRIEDADES)
+        resto = resto[1:]
+    return url, casa and casa_a_midia(resto), camada
 
 
 @dataclass
@@ -260,43 +298,75 @@ class _Leitura:
     corte: str | None = None
 
 
-def _regras_da_folha(texto: str, arquivo: str, contexto: Contexto, abertos: tuple[str, ...],
-                     leitura: _Leitura) -> list[_Regra]:
-    """As regras de estilo da folha, com cada `@import` local expandido no lugar dele.
+def _regras_do_bloco(nos: Iterable[Any], arquivo: str, contexto: Contexto,
+                     abertos: tuple[str, ...], leitura: _Leitura, camadas: Camadas,
+                     caminho: tuple[str, ...], *, topo: bool) -> list[_Regra]:
+    """As regras de estilo de uma lista de regras (a folha, ou o bloco de um `@media`…).
 
-    `abertos` é o caminho de `@import` aberto até aqui: a folha que já está nele não entra de novo
-    (o laço), e a que está fora dele entra quantas vezes for importada. O `@import` só vale antes
-    das regras (o `@charset` e o `@layer` não contam). O `@media`, a `@font-face`, a `@page` e o
-    resto dos `@` saem: o MuPDF ignora o `@media`, e o resto não muda a cor.
+    O `@import` só vale no topo da folha e antes de toda outra regra (menos o `@charset` e a
+    declaração `@layer a;`); o `@media` e o `@supports` que casam entram no lugar deles; o
+    `@layer` com bloco põe as regras dele na camada. O resto dos `@` sai: não muda a cor.
     """
+    from caissa.editor.validacao.css import PROPRIEDADES
+
     regras: list[_Regra] = []
-    antes_das_regras = True
-    for regra in tinycss2.parse_stylesheet(texto, skip_comments=True, skip_whitespace=True):
+    zona_do_import = topo
+    for regra in nos:
         if regra.type == "qualified-rule":
-            antes_das_regras = False
+            zona_do_import = False
+            chave = camadas.registrar(caminho) if caminho else SEM_CAMADA
             regras.append(_Regra(tinycss2.serialize(regra.prelude).strip(), _declaracoes(
                 tinycss2.parse_declaration_list(regra.content, skip_comments=True,
-                                                skip_whitespace=True))))
+                                                skip_whitespace=True), chave), chave))
             continue
         if regra.type != "at-rule":
             continue
-        if regra.lower_at_keyword != "import":
-            antes_das_regras = antes_das_regras and regra.lower_at_keyword in ("charset", "layer")
+        palavra = regra.lower_at_keyword
+        if palavra == "import":
+            if zona_do_import:
+                regras += _importar(regra, arquivo, contexto, abertos, leitura, camadas, caminho)
             continue
-        url = _url_do_import(regra)
-        caminho = resolver(arquivo, url) if url else None
-        if not antes_das_regras or caminho is None or caminho in abertos:
-            continue  # o @import fora do lugar não vale; o laço não entra de novo
-        importado = contexto.texto(caminho)
-        if importado is None:
-            continue  # a folha que falta: a camada da segurança e a do EPUBCheck a acusam
-        if leitura.lidas >= LIMITE_DE_IMPORTS:
-            leitura.corte = leitura.corte or (f"o @import de {caminho} passa de "
-                                              f"{LIMITE_DE_IMPORTS} folhas")
+        if palavra == "charset" or (palavra == "layer" and regra.content is None):
+            for nome in Camadas.nomes(regra.prelude) if palavra == "layer" else []:
+                camadas.registrar((*caminho, *nome))
             continue
-        leitura.lidas += 1
-        regras += _regras_da_folha(importado, caminho, contexto, (*abertos, caminho), leitura)
+        zona_do_import = False
+        if regra.content is None:
+            continue
+        dentro = tinycss2.parse_rule_list(regra.content, skip_comments=True,
+                                          skip_whitespace=True)
+        if (palavra == "media" and casa_a_midia(regra.prelude)) or (
+                palavra == "supports" and suportado(regra.prelude, PROPRIEDADES)):
+            regras += _regras_do_bloco(dentro, arquivo, contexto, abertos, leitura, camadas,
+                                       caminho, topo=False)
+        elif palavra == "layer":
+            nomes = Camadas.nomes(regra.prelude)
+            nome = nomes[0] if nomes else (camadas.anonima(),)
+            regras += _regras_do_bloco(dentro, arquivo, contexto, abertos, leitura, camadas,
+                                       (*caminho, *nome), topo=False)
     return regras
+
+
+def _importar(regra: Any, arquivo: str, contexto: Contexto, abertos: tuple[str, ...],
+              leitura: _Leitura, camadas: Camadas, caminho: tuple[str, ...]) -> list[_Regra]:
+    """A folha de um `@import` válido, com as condições dele, no lugar dele."""
+    url, casa, camada = _condicoes_do_import(regra)
+    alvo = resolver(arquivo, url) if url else None
+    if not casa or alvo is None or alvo in abertos:
+        return []  # a condição que não casa; o laço não entra de novo
+    importado = contexto.texto(alvo)
+    if importado is None:
+        return []  # a folha que falta: a camada da segurança e a do EPUBCheck a acusam
+    if leitura.lidas >= LIMITE_DE_IMPORTS:
+        leitura.corte = leitura.corte or (f"o @import de {alvo} passa de "
+                                          f"{LIMITE_DE_IMPORTS} folhas")
+        return []
+    leitura.lidas += 1
+    destino = caminho if camada is None else (*caminho, *(camada or (camadas.anonima(),)))
+    return _regras_do_bloco(tinycss2.parse_stylesheet(importado, skip_comments=True,
+                                                      skip_whitespace=True),
+                            alvo, contexto, (*abertos, alvo), leitura, camadas, destino,
+                            topo=True)
 
 
 def _regras_do_documento(documento: Documento,
@@ -304,6 +374,14 @@ def _regras_do_documento(documento: Documento,
     """As folhas ligadas e os `<style>`, na ordem do documento; e a cadeia que não se leu toda."""
     regras: list[_Regra] = []
     incompletas: list[tuple[Elemento, str]] = []
+    camadas = Camadas()  # a ordem das camadas é a do documento, por todas as folhas
+
+    def folha(texto: str, arquivo: str, abertos: tuple[str, ...], leitura: _Leitura) -> None:
+        nonlocal regras
+        regras += _regras_do_bloco(tinycss2.parse_stylesheet(
+            texto, skip_comments=True, skip_whitespace=True), arquivo, contexto, abertos,
+            leitura, camadas, (), topo=True)
+
     for elemento in documento.elementos():
         rel = (elemento.get("rel") or "").lower().split()
         leitura = _Leitura()
@@ -311,10 +389,9 @@ def _regras_do_documento(documento: Documento,
             caminho = resolver(documento.arquivo, elemento.get("href") or "")
             texto = contexto.texto(caminho) if caminho else None
             if caminho and texto is not None:
-                regras += _regras_da_folha(texto, caminho, contexto, (caminho,), leitura)
+                folha(texto, caminho, (caminho,), leitura)
         elif elemento.nome == "style":
-            regras += _regras_da_folha(elemento.texto(), documento.arquivo, contexto, (),
-                                       leitura)
+            folha(elemento.texto(), documento.arquivo, (), leitura)
         if leitura.corte:
             incompletas.append((elemento, leitura.corte))
     return regras, incompletas
@@ -383,10 +460,12 @@ class _Cascata:
         for especificidade, ordem, pseudo, indice in self.casador.match(embrulho):
             if pseudo is not None:
                 continue
-            candidatas += [((int(d.importante), 0, especificidade, ordem), d)
+            candidatas += [((int(d.importante), 0, chave_de_camada(d.camada, d.importante),
+                             especificidade, ordem), d)
                            for d in self.regras[indice].declaracoes]
         elemento = self.elementos[id(embrulho.etree_element)]
-        candidatas += [((int(d.importante), 1, (0, 0, 0), 0), d)
+        candidatas += [((int(d.importante), 1, chave_de_camada(SEM_CAMADA, d.importante),
+                         (0, 0, 0), 0), d)
                        for d in _declaracoes_do_estilo(elemento)]
         for chave, declaracao in candidatas:
             atual = vencedoras.get(declaracao.nome)
@@ -403,7 +482,8 @@ def _vencedoras_do_estilo(elemento: Elemento) -> dict[str, tuple[Chave, _Declara
     """As declarações do `style=""` (sem folha, é a cascata inteira do elemento)."""
     vencedoras: dict[str, tuple[Chave, _Declaracao]] = {}
     for ordem, declaracao in enumerate(_declaracoes_do_estilo(elemento)):
-        chave: Chave = (int(declaracao.importante), 1, (0, 0, 0), ordem)
+        chave: Chave = (int(declaracao.importante), 1,
+                        chave_de_camada(SEM_CAMADA, declaracao.importante), (0, 0, 0), ordem)
         if declaracao.nome not in vencedoras or chave >= vencedoras[declaracao.nome][0]:
             vencedoras[declaracao.nome] = (chave, declaracao)
     return vencedoras
@@ -444,6 +524,8 @@ def _compor(cima: tuple[float, float, float, float] | None, baixo: Cor) -> Cor:
 def _so_da_raiz(regras: list[_Regra], documento: Documento) -> bool:
     """Toda propriedade personalizada vem de uma regra `:root`/`html` (e de nenhum `style=""`)."""
     for regra in regras:
+        if regra.camada != SEM_CAMADA:
+            return False  # a regra de camada pede a cascata de cada elemento
         if regra.prelude not in RAIZ and any(d.nome.startswith("--") for d in regra.declaracoes):
             return False
     return not any("--" in (e.get("style") or "") for e in documento.elementos())
@@ -648,7 +730,11 @@ def _estilo_da_cascata(raiz: Elemento, corpo: Elemento | None, regras: list[_Reg
             estilo.fundo_corpo = _fundo(vencedoras, variaveis)
         sobrepor = _cor_do_link(elemento, vencedoras, variaveis)
         for nome, (_, declaracao) in vencedoras.items():
-            if nome.startswith("--") or nome in QUEBRAS or "var(" not in declaracao.valor:
+            # O MuPDF não vê a regra de camada (a folha dele vai sem ela): a vencedora de camada
+            # vai no style=""; e a com var(), resolvida com as variáveis deste elemento.
+            de_camada = declaracao.camada != SEM_CAMADA
+            if nome.startswith("--") or nome in QUEBRAS or (
+                    "var(" not in declaracao.valor and not de_camada):
                 continue
             valor = substituir(declaracao.valor, variaveis)
             sobrepor[nome] = _valor_invalido(nome) if valor is None else valor
@@ -669,7 +755,7 @@ def preparar(documento: Documento, contexto: Contexto) -> PaginaMedida:
         raiz, corpo, regras)
     css = "\n".join(
         f"{regra.prelude} {{ {_declaracoes_em_texto(regra.declaracoes, estilo.variaveis)} }}"
-        for regra in regras if regra.declaracoes)
+        for regra in regras if regra.declaracoes and regra.camada == SEM_CAMADA)
     escritor = _Escritor(documento, contexto, estilo.estilos)
     texto = escritor.escrever(raiz)
     papel = _compor(estilo.fundo_corpo, _compor(estilo.fundo_html, BRANCO))

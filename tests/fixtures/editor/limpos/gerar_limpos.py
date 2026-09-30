@@ -85,6 +85,25 @@ ARQUIVOS = {
     "Text/importa-ciclo.xhtml": xhtml(
         '<p>O texto das folhas em laço.</p>\n<p class="b">O texto da segunda folha.</p>',
         '<link rel="stylesheet" type="text/css" href="../Styles/ciclo-a.css"/>\n'),
+    # A camada: o p sem camada vence o #destaque de camada, apesar da especificidade (o MuPDF,
+    # que não conhece a camada, pintaria de cinza); o @import depois de um bloco @layer (até o
+    # vazio) não vale; o @media e o @supports que não casam com o leitor não entram.
+    "Text/camadas.xhtml": xhtml(
+        '<p id="destaque">A camada perde para a regra sem camada.</p>\n'
+        '<p class="depois">O @import depois do bloco da camada não vale.</p>\n'
+        '<p class="vazio">Nem depois do bloco vazio.</p>',
+        "<style>@layer base { #destaque { color: #999999; } }\np { color: #111111; }</style>\n"
+        '<style>@layer base { p.depois { color: #111111; } }\n@import url("../Styles/cinza.css");'
+        "</style>\n"
+        '<style>@layer vazio { }\n@import url("../Styles/cinza.css");</style>\n'),
+    "Text/midia.xhtml": xhtml(
+        "<p>A mídia que não casa com o leitor não entra.</p>",
+        "<style>@media print { p { color: #999999; } }\n"
+        "@media (prefers-color-scheme: dark) { p { color: #999999; } }\n"
+        "@media (min-width: 1000px) { p { color: #999999; } }\n"
+        "@media not screen { p { color: #999999; } }\n"
+        "@supports not (display: block) { p { color: #999999; } }\n"
+        "@supports (cor-inventada: sim) { p { color: #999999; } }</style>\n"),
     "Text/paginas.xhtml": xhtml("\n".join(
         f"<p>{marcador(ident, rotulo)}A página {rotulo}.</p>" for ident, rotulo in PAGINAS)),
     "Text/nav.xhtml": xhtml(

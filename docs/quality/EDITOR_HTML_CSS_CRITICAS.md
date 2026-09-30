@@ -1634,3 +1634,86 @@ por `<link>`/`<style>`) é uma defesa contra a folha hostil, e passar dele acusa
 limpo `Text/importa-ciclo.xhtml` (o laço e o `@import` fora do lugar, que pintaria de cinza), e o
 teste `test_o_import_alem_do_limite_de_defesa_e_dito` (o limite baixado a 2: o incompleto no
 `<link>`). A linha da M-H10-1 registra a aprovação do ciclo 2.
+
+## H10 — ciclo 3 (2026-09-30): REPROVADO, 1 bloqueante (o `@import` depois de um `@layer`)
+
+O crítico julgou a resposta ao ciclo 2 (o `5de01cc`), somente leitura, com o portão sem o tempo
+(66/66, o limpo 0 em 25), as sabotagens (6/66 e 65/66) e os 972 testes. O veredito, transcrito
+sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 3  
+FRENTE: Editor HTML/CSS — H10 (implementação e definição do portão)
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| Imports locais são expandidos recursivamente, com ciclo pelo caminho ativo | `src/caissa/editor/validacao/pagina.py:263-299` | Confirmada para imports comuns |
+| O limite defensivo deixa diagnóstico explícito | `pagina.py:293-299`; `css.py:634-669` | Confirmada |
+| O diagnóstico aponta o `<link>`/`<style>` e preserva linha/coluna | `pagina.py:302-320`; `css.py:636-637` | Confirmada |
+| A cadeia profunda alcança a folha 6 | `Styles/importa-1.css:1`; `Styles/importa-6.css:1`; `Text/css-contraste-import.xhtml:6,9` | Confirmada |
+| O esperado registra `css-contraste` na linha correta | `tests/fixtures/editor/defeitos/esperado.json:466-475` | Confirmada |
+| Ciclo e `@import` após regra têm fixture limpa | `limpos/Styles/ciclo-a.css:1-3`; `ciclo-b.css:1-2` | Confirmada |
+| O teste do limite verifica o problema explícito | `tests/unit/editor/test_validacao.py:250-263` | Confirmada |
+| Evidência automatizada | `portao.log:1-3`; `sabotagens.log:1-2`; `testes.log:1-2` | Confirmada; portão operacional ainda pendente |
+
+## Defeitos bloqueantes
+
+1. **`@layer` não vazio permite indevidamente um `@import` posterior.**
+
+   Evidência: `src/caissa/editor/validacao/pagina.py:281-285`.
+
+   Qualquer at-rule `@layer` mantém `antes_das_regras = True`, inclusive:
+
+   ```css
+   @layer base {
+     p { color: #777; }
+   }
+
+   @import "depois.css";
+   ```
+
+   Porém, somente definições vazias de `@layer` são exceção à regra de precedência dos imports; após um `@layer` com conteúdo, o `@import` é inválido. O padrão CSS confirma essa distinção na regra de ordenação de `@import` ([W3C CSS Cascade §2](https://www.w3.org/TR/css-cascade-5/#at-import)).
+
+   O código em `pagina.py:286-298` expande esse import inválido, podendo introduzir contraste falso ou mascarar o CSS efetivamente aplicado. Não há fixture que cubra essa forma.
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo continua pendente: IR real, tempo em máquina livre e execução integral pelo executor. Isso não bloqueia este julgamento, conforme solicitado.
+- O log registra 8 testes pulados por dependências externas (`testes.log:1`); não é falha da implementação H10.
+- A sabotagem continua funcionando: `sem_linha` e `regra_muda` reprovam corretamente.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Corrigir `pagina.py:283-285` para distinguir:
+
+- `@charset` e `@layer nome;` — permitidos antes de `@import`;
+- `@layer nome {}` vazio — permitido;
+- qualquer `@layer` com conteúdo — encerra a zona válida de `@import`.
+
+Adicionar teste/fixture com um `@layer` não vazio seguido de `@import`, comprovando que o import não entra na cascata. Com essa correção, a implementação do bloqueante original do ciclo 2 fica atendida.
+
+**O que mudou para o ciclo 4** (`validacao/pagina.py`, `_regras_do_bloco`, e o módulo novo
+`validacao/condicoes.py`):
+
+1. A zona do `@import` segue o texto da CSS Cascade 5 §2 — «must precede all other valid at-rules
+   and style rules in a style sheet (ignoring @charset and @layer statement rules)»: só o
+   `@charset` e a **declaração** `@layer a, b;` podem vir antes. Num ponto a resposta difere da
+   lista do ciclo 3: o bloco **vazio** `@layer x { }` também fecha a zona, porque é uma regra de
+   bloco, e não uma declaração (o texto só ressalva a declaração). O limpo
+   `tests/fixtures/editor/limpos/Text/camadas.xhtml` tem os dois: o `@import` de `cinza.css` depois
+   de um bloco `@layer` com conteúdo e depois de um vazio — se valesse, pintaria de cinza e
+   reprovaria o limpo; e o defeito `Text/css-contraste-import-camada.xhtml` prova que depois da
+   declaração `@layer base;` o `@import` vale. O `@import` com condições (`layer`, `supports()`, a
+   mídia) as avalia.
+2. A mesma rodada fechou o resto das regras de grupo, que a página do contraste descartava junto
+   com o MuPDF (medido: ele ignora o bloco inteiro do `@media`, do `@supports` e do `@layer`; o
+   leitor os aplica): o `@media` e o `@supports` se avaliam para o dispositivo de leitura (a tela,
+   o esquema claro, em pé, a largura da página medida) e o bloco que casa entra no lugar dele; o
+   `@layer` entra na cascata com a precedência da CSS Cascade 5 §6.4, e a declaração de camada que
+   vence vai no `style=""` do elemento. O defeito `Text/css-contraste-condicoes.xhtml` (a cor só num
+   `@layer`, num `@media screen` e num `@supports`) e os limpos `camadas.xhtml` (a regra sem
+   camada vence o `#destaque` de camada, que o MuPDF sozinho pintaria de cinza) e `midia.xhtml` (o
+   `@media` de impressão, do esquema escuro, da tela larga, o `not screen` e o `@supports` que não
+   vale); os testes da mídia em 18 consultas, do `@supports` em 7 e da precedência das camadas.

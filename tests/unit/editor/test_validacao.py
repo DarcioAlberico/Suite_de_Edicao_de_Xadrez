@@ -261,3 +261,49 @@ def test_o_import_alem_do_limite_de_defesa_e_dito(monkeypatch: pytest.MonkeyPatc
     assert [(p.codigo, p.local.linha, p.local.coluna) for p in problemas] == [
         ("css-contraste-incompleto", link.linha, link.coluna)]
     assert "passa de 2 folhas" in problemas[0].detalhe
+
+
+@pytest.mark.parametrize(("consulta", "casa"), [
+    ("", True), ("screen", True), ("all", True), ("print", False), ("not print", True),
+    ("only screen", True), ("not screen", False), ("screen and (max-width: 600px)", True),
+    ("screen and (min-width: 1000px)", False), ("(width >= 300px)", True),
+    ("(400px <= width <= 700px)", False), ("(prefers-color-scheme: dark)", False),
+    ("(prefers-color-scheme: light)", True), ("(orientation: portrait)", True),
+    ("print, (min-width: 100px)", True), ("(caracteristica-inventada: 1)", False),
+    ("(min-width: 20em)", True), ("(min-width: 30em)", False),
+])
+def test_a_midia_do_leitor(consulta: str, casa: bool) -> None:
+    """O `@media` se avalia para o leitor: a tela, o esquema claro, a largura da página medida."""
+    import tinycss2
+
+    from caissa.editor.validacao.condicoes import casa_a_midia
+
+    assert casa_a_midia(tinycss2.parse_component_value_list(consulta)) is casa
+
+
+@pytest.mark.parametrize(("condicao", "vale"), [
+    ("(display: grid)", True), ("not (display: grid)", False),
+    ("(display: grid) and (color: red)", True), ("(cor-inventada: sim)", False),
+    ("(cor-inventada: sim) or (color: red)", True), ("selector(p > a)", True),
+    ("(--tema: escuro)", True),
+])
+def test_o_supports_do_leitor(condicao: str, vale: bool) -> None:
+    import tinycss2
+
+    from caissa.editor.validacao.condicoes import suportado
+    from caissa.editor.validacao.css import PROPRIEDADES
+
+    assert suportado(tinycss2.parse_component_value_list(condicao), PROPRIEDADES) is vale
+
+
+def test_a_precedencia_das_camadas() -> None:
+    """A regra sem camada vence a de camada; a camada de depois vence; a direta vence a subcamada;
+    na `!important`, ao contrário (CSS Cascade 5 §6.4)."""
+    from caissa.editor.validacao.condicoes import SEM_CAMADA, Camadas, chave_de_camada
+
+    camadas = Camadas()
+    a, c, a_b = (camadas.registrar(("a",)), camadas.registrar(("c",)),
+                 camadas.registrar(("a", "b")))
+    assert SEM_CAMADA > c > a > a_b
+    assert chave_de_camada(a_b, True) > chave_de_camada(a, True) > chave_de_camada(
+        c, True) > chave_de_camada(SEM_CAMADA, True)

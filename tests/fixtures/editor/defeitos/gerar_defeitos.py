@@ -237,6 +237,21 @@ t = xhtml('<p class="do-fundo">A cor vem da sexta folha da cadeia de importaçã
           '<link rel="stylesheet" type="text/css" href="../Styles/importa-1.css"/>\n')
 defeito("css-contraste", t, [("css-contraste", '<p class="do-fundo"', 1)],
         arquivo="Text/css-contraste-import.xhtml")
+# As condições que o MuPDF ignora e o leitor aplica (o ciclo 3 do crítico): a cor só num @layer,
+# num @media screen e num @supports; e o @import depois da declaração @layer (vale).
+t = xhtml('<p class="em-camada">A cor só na camada.</p>\n<p class="na-tela">A cor só na tela.</p>\n'
+          '<p class="suportada">A cor só no supports.</p>',
+          "<style>@layer base { p.em-camada { color: #777777; } }\n"
+          "@media screen { p.na-tela { color: #888888; } }\n"
+          "@supports (color: red) { p.suportada { color: #999999; } }</style>\n")
+defeito("css-contraste", t, [("css-contraste", '<p class="em-camada"', 1),
+                             ("css-contraste", '<p class="na-tela"', 1),
+                             ("css-contraste", '<p class="suportada"', 1)],
+        arquivo="Text/css-contraste-condicoes.xhtml")
+t = xhtml('<p class="cinza">O @import depois da declaração @layer vale.</p>',
+          '<style>@layer base;\n@import url("../Styles/cinza.css");</style>\n')
+defeito("css-contraste", t, [("css-contraste", '<p class="cinza"', 1)],
+        arquivo="Text/css-contraste-import-camada.xhtml")
 # O link que o autor pinta de cinza: o MuPDF sozinho o pintaria do azul dele (e passaria).
 t = xhtml('<p>Veja <a href="#fim">o fim do capítulo</a>.</p>\n<p id="fim">O fim.</p>',
           "<style>a { color: #999999; }</style>\n")
