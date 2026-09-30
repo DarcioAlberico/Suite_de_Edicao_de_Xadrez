@@ -1377,3 +1377,67 @@ A exceção é o lance literal sem `data-fen`: ele remove/relaxa uma exigência 
 4. Depois disso, rodar o portão completo com os quatro IR reais, EPUBCheck e as três repetições.
 
 A leitura atual de N1 é fiel. A leitura operacional de N2–N4, porém, é uma mutação da lista fechada e não pode ser aprovada como mera interpretação.
+
+## H5 — ciclo 2 (2026-09-30): REPROVADO, 1 bloqueante (a governança da M-H5-2); M-H5-1 APROVADA
+
+O crítico julgou a resposta (`adc9df2` e `1b24e25`), somente leitura, com os logs do construtor no
+`1b24e25` (os testes do portão, o instrumento do H3 com as duas sabotagens, a ida nas três
+sementes e as sete sabotagens do H5). Os três bloqueantes do ciclo 1 ficaram resolvidos e a M-H5-1
+aprovada; o bloqueante novo é o registro no `DECISIONS.md` do CB que o §10 do contrato pede ao
+renomear (a M-H5-2). O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 2  
+FRENTE: Editor HTML/CSS — H5 (implementação e definição do portão) e as mutações M-H5-1 e M-H5-2
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| N2 agora corresponde aos campos realmente serializados nas classes `.pN/.rN/.dN` | `src/caissa/export/html.py:2013-2064, 2337-2399, 2587-2602, 3230-3251`; `src/caissa/export/legivel.py:2917-2954` | Confirmada |
+| Estilo direto de diagrama e opções de partida deixaram de ser N2 e passaram ao XHTML | `src/caissa/export/legivel.py:841-847, 1470-1477, 2225-2231, 2571-2578` | Confirmada |
+| A lista N1–N4 continua fechada e foi definida no IR | `docs/EDITOR_HTML_CSS_SPEC.md:1068-1093`; `docs/MARKUP_CAISSA.md:267-289` | Confirmada |
+| N3 preserva dados de nós sem `id` | `src/caissa/export/legivel.py:659-718, 1354-1365`; `src/caissa/editor/leitura.py:128-198, 231-273` | Confirmada |
+| O mapa cobre dúvidas, fólios, revisão, decisões, `nos` e `capitulo` | `src/caissa/editor/leitura.py:128-162`; `tests/unit/editor/test_mapa_sem_id.py:95-132` | Confirmada como esquema; revisão/decisões ficam vazias até H7, corretamente |
+| O mapa é conferido por dono, caminho, tipo e SHA/intervalo | `src/caissa/editor/leitura.py:231-273` | Confirmada |
+| O lance literal não é mais `cb-move` | `src/caissa/export/legivel.py:1309-1311, 1632-1643`; `docs/MARKUP_CAISSA.md:466-472` | Confirmada |
+| O portão detecta falsos encaixes e `cb-move` sem FEN | `benchmarks/editor_contrato.py:145-162`; `benchmarks/editor_ida_e_volta.py:343-367` | Confirmada |
+| As sabotagens novas realmente reprovam | `contrato.log:16-22`; `sabotagens.log:44-50` | Confirmada |
+| A ida sintética passou fora de N1–N4 e a N3 foi guardada | `ida.log:4,11,18` | Confirmada para o corpus sintético |
+
+Os três bloqueantes técnicos do ciclo 1 foram corrigidos:
+
+1. N2–N4 ampliadas sem mutação: resolvido.  
+2. N3 perdendo proveniência: resolvido.  
+3. Lance literal dentro de `cb-move`: resolvido para a saída gerada pelo escritor; a sabotagem é detectada.
+
+## Defeitos bloqueantes
+
+1. **M-H5-2 não cumpre a governança exigida pelo próprio contrato.**
+
+   Evidência: `docs/MARKUP_CAISSA.md:345-350` diz que renomear uma classe exige, entre outras coisas, registro no `DECISIONS.md` do CB. A resposta renomeia `cb-move-context` em `docs/MARKUP_CAISSA.md:14-19` e no roadmap em `docs/EDITOR_HTML_CSS_ROADMAP.md:2292`, mas declara que não fará o registro.
+
+   O fato de a classe nunca ter aparecido no `MARKUP.md` do CB não elimina a exigência escrita: ela existia no contrato Caissa e era efetivamente interpretada pela regex do CB. O argumento é plausível tecnicamente, mas não é uma exceção formalizada.
+
+   O `CB validate` e a sabotagem comprovam a correção técnica, mas não substituem o registro de decisão.
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo ainda está pendente: faltam os quatro IR reais, o corpus de 10 mil nós, as três repetições e o EPUBCheck. Isso aparece em `ida.log:4,11,18` e não bloqueia este julgamento, conforme solicitado.
+- A exclusão das edições à mão da métrica de “o que o CB confunde sem acusar” é aceitável como delimitação: essas entradas são conteúdo autoral, e a #09 é preservada como bruto (`tests/fixtures/editor/editados/09_lance_e_diagrama_na_prosa.xhtml:10`; `esperado.json:12-15`). A validação desse conteúdo pertence ao H10. O roadmap deveria explicitar essa fronteira.
+- A cobertura do gerador para `lang` continua reduzida (`tests/unit/model/generators.py:486-501`), mas a justificativa é aceitável nesta etapa.
+- O inventário de licença do `tinycss2` pode aguardar a construção do pacote.
+
+## O que especificamente precisa mudar para eu aprovar
+
+1. Registrar formalmente a renomeação no `C:\Python-Chess2\Sigil-master\chessbook\DECISIONS.md`, documentando:
+   - a colisão de `cb-move-context` com `_MOVE_OPEN_RE`;
+   - a inexistência de livros/projetos legados;
+   - a migração vazia;
+   - a nova classe `cb-diagram-context`;
+   - a fixture e a sabotagem que comprovam a correção.
+
+2. Deixar explícito no texto do portão H5 que a métrica de confusão silenciosa cobre as fixtures e XHTML gerados pelo perfil legível; entradas editadas manualmente serão validadas pelo H10.
+
+Aprovo **M-H5-1**.  
+A implementação técnica de **M-H5-2** está correta, mas **não aprovo a mutação ainda** por faltar o registro exigido no `DECISIONS.md` do CB.

@@ -16,7 +16,8 @@
 > acha o lance (§10), e o CB a leria como um lance sem `data-fen`. Nenhum livro nem projeto foi
 > escrito com a v1 (o escritor legível nasce no H5, e o exportador o liga no H24), e o
 > `projeto.json` não guarda a versão do contrato: a migração é vazia. A classe é do Caissa, e o
-> `MARKUP.md` do CB nunca a teve: não há o que registrar no `DECISIONS.md` dele.
+> `MARKUP.md` do CB nunca a teve; o registro que o §10 pede está no `DECISIONS.md` do CB, como
+> **D-004** (`..\Sigil-master\chessbook\DECISIONS.md`, commit `bf56a19d3` do Sigil-master).
 
 ---
 

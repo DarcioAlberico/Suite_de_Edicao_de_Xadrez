@@ -104,10 +104,12 @@ ele exporta três livros e espera a máquina livre.
 ## H5 — O perfil legível, os atributos preservados, o CSS como recurso e o mapa de estilo
 
 **Estado:** implementado em três commits (`02a372f`, `17b780b`, `d2f7531`) e na resposta ao
-crítico; o **H5, ciclo 1** do Codex reprovou com 3 bloqueantes, respondidos pela mutação M-H5-1
-(roadmap §10, spec 1.19) e levados ao ciclo 2; os testes e a rodada leve do arnês passam; **o
-portão completo** (o IR real das páginas do portão, o corpus de 10 mil nós, 3 execuções, as 6
-sabotagens e o EPUBCheck) **espera a máquina livre**.
+crítico (`adc9df2`, `1b24e25` e a desta rodada); o **H5, ciclo 1** do Codex reprovou com 3
+bloqueantes, respondidos pelas mutações M-H5-1 (roadmap §10, spec 1.19) e M-H5-2 (o contrato v2);
+o **ciclo 2 aprovou a M-H5-1** e reprovou só a governança da M-H5-2 — o registro no `DECISIONS.md`
+do CB, feito como **D-004** (`bf56a19d3` do Sigil-master) e levado ao ciclo 3; os testes e a
+rodada leve do arnês passam; **o portão completo** (o IR real das páginas do portão, o corpus de 10
+mil nós, 3 execuções, as 7 sabotagens e o EPUBCheck) **espera a máquina livre**.
 
 - **A decisão da ida.** A primeira sondagem da ida (IR → XHTML legível → IR, `semantic_diff`, no
   corpus sintético que sorteia todo campo do IR) deu **3351 diferenças em 2 mil nós**: o perfil

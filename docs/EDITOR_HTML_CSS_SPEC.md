@@ -1,7 +1,7 @@
 # Especificação — Editor HTML/CSS (janela dedicada: código, resultado e PDF original)
 
-> **Data:** 2026-09-30 · **Versão:** 1.19 — **em crítica** (H5, ciclo 2): registra a mutação
->   M-H5-1 do roadmap §10 — a leitura em IR da lista fechada N1–N4, o `proveniencia.json` com o
+> **Data:** 2026-09-30 · **Versão:** 1.19 — **em crítica** (H5, ciclo 3; o ciclo 2 aprovou a
+>   M-H5-1): registra a mutação M-H5-1 do roadmap §10 — a leitura em IR da lista fechada N1–N4, o `proveniencia.json` com o
 >   dado da máquina dos nós sem `id`, o lance que não se joga fora do `cb-move` e o perfil legível
 >   como módulo próprio (§9, «A mutação do H5»).
 > - A 1.18 foi **APROVADA pelo Codex no ciclo 22**, depois de três ciclos reprovados (19, 20 e 21:
@@ -1795,6 +1795,10 @@ a N3 perdia a proveniência dos nós sem `id`; e o lance que não se joga ia num
 - **O contrato v2 (M-H5-2):** a conta do que o CB confunde achou a extensão `cb-move-context`
   do H3 casando com a mesma expressão do `validate.py` do CB; ela passou a `cb-diagram-context`, e
   o MARKUP §10 proíbe o nome que case com as expressões do CB.
+- **O ciclo 2 do crítico** aprovou a M-H5-1 (os três bloqueantes do ciclo 1 resolvidos) e reprovou
+  só a governança da M-H5-2: o MARKUP §10 pede, ao renomear, o registro no `DECISIONS.md` do CB. O
+  registro é o **D-004** do CB; e o texto do portão do H5 diz agora que a conta do que o CB
+  confunde cobre as fixtures e o XHTML que o perfil gera, e as edições à mão, no H10.
 
 ---
 
