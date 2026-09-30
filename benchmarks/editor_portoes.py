@@ -1011,12 +1011,22 @@ def julgar(passo: Passo, saida: Path) -> Veredito:
 
 
 def _git(repositorio: Path, *argumentos: str) -> str:
+    """A saída do `git`, sem o fim de linha.
+
+    O começo fica: no `status --porcelain`, o espaço inicial é a coluna do índice (` M arquivo`),
+    e tirá-lo cortava a primeira letra do caminho.
+    """
     try:
         return subprocess.run(["git", *argumentos], cwd=repositorio,  # noqa: S603, S607
                               capture_output=True,
-                              text=True, encoding="utf-8", check=False).stdout.strip()
+                              text=True, encoding="utf-8", check=False).stdout.rstrip()
     except OSError:
         return ""
+
+
+def fora_do_commit(status: str) -> list[str]:
+    """Os caminhos do `git status --porcelain` (as duas colunas e o espaço vêm antes)."""
+    return sorted(linha[3:] for linha in status.splitlines() if linha[3:])
 
 
 def estado_dos_repositorios() -> dict[str, dict[str, Any]]:
@@ -1034,7 +1044,7 @@ def estado_dos_repositorios() -> dict[str, dict[str, Any]]:
         estado[nome] = {
             "head": _git(repositorio, "rev-parse", "--short=12", "HEAD"),
             "ramo": _git(repositorio, "rev-parse", "--abbrev-ref", "HEAD"),
-            "fora_do_commit": sorted(linha[3:] for linha in sujos.splitlines() if linha[3:]),
+            "fora_do_commit": fora_do_commit(sujos),
         }
     return estado
 

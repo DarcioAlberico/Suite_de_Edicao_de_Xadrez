@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -615,3 +616,27 @@ def test_a_tabela_do_h1_mede_os_motores_a_latencia_e_a_sonda() -> None:
         assert sabotagem.motivo.startswith("REPROVADO: "), sabotagem.nome
         assert sabotagem.nome in sabotagem.comando.argv
     assert "web" in portoes.interpretes()
+
+
+def _git_do_teste(pasta: Path, *argumentos: str) -> None:
+    subprocess.run(["git", "-C", str(pasta), "-c", "user.name=teste",  # noqa: S603, S607
+                    "-c", "user.email=teste@exemplo", *argumentos],
+                   check=True, capture_output=True)
+
+
+def test_o_registro_guarda_o_caminho_inteiro_do_que_esta_fora_do_commit(
+        tmp_path: Path) -> None:
+    # O H3 de 2026-09-24 gravou «enchmarks/editor_portoes.py»: o `strip()` da saída do `git`
+    # tirava o espaço da coluna do índice da primeira linha do `status --porcelain`.
+    assert portoes.fora_do_commit(" M benchmarks/editor_portoes.py\n?? tests/novo.py\n"
+                                  "M  docs/x.md") == [
+        "benchmarks/editor_portoes.py", "docs/x.md", "tests/novo.py"]
+    _git_do_teste(tmp_path, "init", "-q")
+    (tmp_path / "benchmarks").mkdir()
+    arquivo = tmp_path / "benchmarks" / "a.py"
+    arquivo.write_text("x = 1\n", encoding="utf-8")
+    _git_do_teste(tmp_path, "add", ".")
+    _git_do_teste(tmp_path, "commit", "-qm", "c")
+    arquivo.write_text("x = 2\n", encoding="utf-8")
+    status = portoes._git(tmp_path, "status", "--porcelain", "--untracked-files=all")
+    assert portoes.fora_do_commit(status) == ["benchmarks/a.py"]
