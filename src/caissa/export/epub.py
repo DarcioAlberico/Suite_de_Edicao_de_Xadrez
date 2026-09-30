@@ -1132,6 +1132,12 @@ def _nav_xhtml(
 def _nav_list(entries: Sequence[tuple[int, str, str]]) -> str:
     """Build a nested ``<ol>`` for the navigation document.
 
+    One ``<ol>`` at the top and at most one inside each ``<li>`` (EPUB 3 §5.4.2.2): a heading
+    deeper than the open item is its child; any other goes next to the open item whose parent is
+    shallower than it -- so a book that opens on a level-3 heading, or goes from 3 back to 2
+    under a 1, keeps one list per level.  The old stack opened a second list next to the one it
+    had just closed (EPUBCheck RSC-005 on the ``KEMERI`` p. 80 and the ``PEDIDO`` p. 55, H4).
+
     Args:
         entries: ``(level, href, title)`` triples in document order.
 
@@ -1141,20 +1147,19 @@ def _nav_list(entries: Sequence[tuple[int, str, str]]) -> str:
     if not entries:
         return "<ol><li><a href=\"nav.xhtml\">Sum&#225;rio</a></li></ol>"
     out: list[str] = []
-    stack: list[int] = []
+    open_levels: list[int] = []  # the level of the open <li> at each depth
     for level, href, title in entries:
-        while stack and stack[-1] > level:
-            out.append("</li></ol>")
-            stack.pop()
-        if stack and stack[-1] == level:
-            out.append("</li>")
-        else:
+        if not open_levels or level > open_levels[-1]:
             out.append("<ol>")
-            stack.append(level)
+            open_levels.append(level)
+        else:
+            while len(open_levels) > 1 and open_levels[-2] >= level:
+                out.append("</li></ol>")
+                open_levels.pop()
+            out.append("</li>")
+            open_levels[-1] = level
         out.append(f'<li><a href="{escape_attr(href)}">{escape(title or "Sem titulo")}</a>')
-    while stack:
-        out.append("</li></ol>")
-        stack.pop()
+    out.append("</li></ol>" * len(open_levels))
     return "".join(out)
 
 

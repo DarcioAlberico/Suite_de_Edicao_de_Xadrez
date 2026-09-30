@@ -624,8 +624,10 @@ PASSOS: dict[str, Passo] = {
             "tests/unit/export/test_dividas_da_exportacao.py",
             "tests/unit/editor/test_dividas.py",
             "{tronco}/PDF",
-            # Os EPUBs de antes do passo, exportados pelo commit anterior a ele (relatório §H4).
+            # Os EPUBs de antes do passo, exportados pelo commit anterior a ele (relatório §H4);
+            # o do DEM é o que mostra o item 7 (M-H4-1).
             "benchmarks/reports/editor/h4_antes/livro.epub",
+            "benchmarks/reports/editor/h4_antes/dem.epub",
         ),
         portao=(
             Comando("test_dividas", _pytest("tests/unit/export/test_dividas_da_exportacao.py",

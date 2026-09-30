@@ -13,10 +13,12 @@ Três modos:
   "exemplos": ["arquivo:linha", …]}``. Mede também se o alt de cada diagrama reconstrói a posição
   da FEN. Reprova com qualquer contagem > 0. ``--so-sintoma N`` conta um só (a sabotagem de um
   item sobre os EPUBs de antes).
-- ``--gerar --saida <pasta> [--codigo <src>]``: exporta os três EPUBs do portão — ``LIVRO``
-  p. 31–38, ``KEMERI`` p. 80, ``PEDIDO`` p. 55 — pelo ``export_book``, que é o que a CLI
-  ``caissa.export.cli --epub`` chama, num processo com o ``src`` pedido (o desta árvore, ou o de
-  uma árvore destacada no commit de antes do passo), e grava ao lado de cada um o relatório de
+- ``--gerar --saida <pasta> [--codigo <src>]``: exporta os quatro EPUBs do portão —
+  ``LIVRO`` p. 31–38, ``KEMERI`` p. 80, ``PEDIDO`` p. 55 e ``DEM`` p. 24 (o livro cujas figurinas
+  trazem a fonte do PDF, ``SemFig*``: o item 7 só aparece nele, M-H4-1) — pelo ``export_book``,
+  que é o que a CLI
+  ``caissa.export.cli --epub`` chama, num processo com o ``src`` pedido (o desta árvore, ou o de uma
+  árvore destacada no commit de antes do passo), e grava ao lado de cada um o relatório de
   degradação (``<livro>.degradacoes.json``).
 - ``--fixtures --saida <pasta> [--sabotar …]``: as fixtures positivas dos itens 1, 2 e 10,
   montadas **como o produto monta** — o documento do importador real, ``LIVRO`` p. 31–38 (com
@@ -59,6 +61,10 @@ LIVROS_DO_PORTAO: tuple[tuple[str, str, str], ...] = (
     ("livro", "AAGAARD - Practical Chess Defence.pdf", "31-38"),
     ("kemeri", "1937 Kemeri.pdf", "80"),
     ("pedido", "A Matter of Endgame Technique*Jacob Aagaard.pdf", "55"),
+    # M-H4-1: nos três de cima nenhuma figurina traz a fonte do PDF (0 `PieceGlyph` com
+    # `font_family` no IR real), e a sabotagem do item 7 sobre os EPUBs de antes não reprovava;
+    # a p. 24 do DEM tem 58 figurinas `SemFigNormal`/`SemFigBold` (53 acusadas antes do passo).
+    ("dem", "Dvoretsky - Dvoretsky*", "24"),
 )
 
 SINTOMAS: dict[int, tuple[str, str]] = {
@@ -346,7 +352,7 @@ print(resultado.summary())
 
 
 def gerar(saida: Path, codigo: Path) -> list[Path]:
-    """Os três EPUBs do portão pelo `export_book` do `src` pedido, com o relatório ao lado."""
+    """Os EPUBs do portão pelo `export_book` do `src` pedido, com o relatório ao lado."""
     saida.mkdir(parents=True, exist_ok=True)
     gerados = []
     ambiente = {**os.environ, "PYTHONIOENCODING": "utf-8",
@@ -389,8 +395,10 @@ def fixture_rect(importado: Any, pasta: Path) -> list[str]:
     from caissa.export.provenance import read_sidecar, sidecar_path
 
     destino = pasta / "fixture_1.epub"
+    # As páginas do documento pronto: sem elas o `export_book` pede o livro inteiro, vê que o
+    # documento não o cobre (`_covers_exactly`) e reimporta as centenas de páginas.
     resultado = export_book(livro_do_portao(LIVROS_DO_PORTAO[0][1]), destino, "epub",
-                            document=importado)
+                            pages=LIVROS_DO_PORTAO[0][2], document=importado)
     faltas = []
     if resultado.provenance_error:
         faltas.append(f"o sidecar não foi gravado: {resultado.provenance_error}")

@@ -110,6 +110,69 @@ def test_the_navigation_document_has_landmarks(package: Path) -> None:
     assert 'epub:type="bodymatter"' in nav
 
 
+def _nav_tree_problems(markup: str) -> list[str]:
+    """What EPUB 3 forbids in a toc list: not one ``<ol>`` at the top, an ``<li>`` without its
+    ``<a>`` first, or with more than one ``<ol>`` (EPUBCheck RSC-005)."""
+    root = ET.fromstring(f"<nav>{markup}</nav>")
+    problems = []
+    if [child.tag for child in root] != ["ol"]:
+        problems.append(f"top level: {[child.tag for child in root]}")
+    for item in root.iter("li"):
+        tags = [child.tag for child in item]
+        if tags not in (["a"], ["a", "ol"]):
+            problems.append(f"li {item.find('a').text if item.find('a') is not None else '?'}: "
+                            f"{tags}")
+    return problems
+
+
+@pytest.mark.parametrize("levels", [
+    (1, 2, 3),
+    (3, 1),            # the KEMERI p. 80: the page opens on a level-3 heading
+    (1, 3, 2, 3),      # the PEDIDO p. 55: from 3 back to 2 under a 1
+    (1, 2, 3, 1),
+    (2, 1, 2),
+    (1, 1, 1),
+    (4, 3, 2, 1),
+    (1, 3, 1, 3, 2, 1),
+])
+def test_the_toc_keeps_one_list_per_level(levels: tuple[int, ...]) -> None:
+    """Whatever the order of the heading levels, the toc is a list EPUBCheck accepts.
+
+    The H4 gate found it: the stack opened a new ``<ol>`` next to the one it had just closed,
+    two lists at the top (a page that opens on a level-3 heading) or two inside one item.
+    """
+    from caissa.export.epub import _nav_list
+
+    entries = [(level, f"Text/s000.xhtml#h{n}", f"h{n}") for n, level in enumerate(levels)]
+    markup = _nav_list(entries)
+    assert _nav_tree_problems(markup) == [], markup
+    root = ET.fromstring(f"<nav>{markup}</nav>")
+    assert [a.text for a in root.iter("a")] == [title for _, _, title in entries], (
+        "every heading once, in the order of the book")
+
+
+def test_the_toc_nests_a_deeper_heading_under_the_one_before() -> None:
+    from caissa.export.epub import _nav_list
+
+    root = ET.fromstring("<nav>" + _nav_list(
+        [(1, "a.xhtml", "one"), (2, "a.xhtml#b", "one.one"), (1, "a.xhtml#c", "two")]) + "</nav>")
+    top = root.find("ol")
+    assert [li.find("a").text for li in top.findall("li")] == ["one", "two"]
+    assert [a.text for a in top.find("li").find("ol").iter("a")] == ["one.one"]
+
+
+def test_every_order_of_levels_makes_a_valid_toc() -> None:
+    """All sequences of up to six headings with levels 1 to 4."""
+    from itertools import product
+
+    from caissa.export.epub import _nav_list
+
+    for size in range(1, 7):
+        for levels in product((1, 2, 3, 4), repeat=size):
+            markup = _nav_list([(level, "a.xhtml", f"h{n}") for n, level in enumerate(levels)])
+            assert _nav_tree_problems(markup) == [], (levels, markup)
+
+
 def test_the_package_carries_dublin_core_metadata(package: Path) -> None:
     """The OPF names the title, the language and a unique identifier."""
     with zipfile.ZipFile(package) as archive:
