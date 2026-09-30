@@ -6,4 +6,5 @@ validador tem de dar — tirados de um marcador no texto (o `<` do elemento, o n
 declaração, o caractere), pela definição da regra, e não do validador. Os de apoio: as
 imagens (`Images/`), as folhas ligadas (`Styles/cinza.css`, `Styles/fonte.css`) e os mapas
 da proveniência (`Text/*.proveniencia.json`). O `seg-tamanho` (8 MB) o portão monta.
-Regerar: o gerador do H10 (fora do repositório), com o mesmo resultado byte a byte.
+Regerar: `python tests/fixtures/editor/defeitos/gerar_defeitos.py` (o mesmo resultado; os
+`ir_id` dos mapas saem novos a cada vez).
