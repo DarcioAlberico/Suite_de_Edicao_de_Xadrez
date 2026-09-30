@@ -705,3 +705,66 @@ def test_a_double_click_on_a_deciding_button_decides_one_line(app, tmp_path: Pat
     decididas, andou = duplo_clique_nos_botoes(tmp_path / "sabotado")
     assert decididas == 2, "sabotaged: the next line decided by the second click"
     assert andou == 2, "sabotaged: «Próxima» moves two lines"
+
+
+def test_a_double_click_on_a_button_stays_on_it_while_the_card_above_changes(
+        app, tmp_path: Path, monkeypatch):
+    """Construtor, ciclo 10 da fase 5, with the critic's probe `proxima_c9.py`: the deciding buttons
+    and «Anterior»/«Próxima» are in a row below the card of the line, in the same scroll area, and
+    the line a click decides or shows changes the card's height when its reason wraps otherwise --
+    the row moved under the pointer held still, and the second click of a double click fell off the
+    button: on the background, on the table's header, on its scroll bar (3 in 12 in the three
+    skins at 1280x641, Gallagher p. 51).  The tab with the odd lines' reasons long, the scroll area
+    at its end: a double click on «Próxima» from lines 0 to 3, and on «Aceitar leitura» from line
+    0 -- the control under the pointer at the second click is the button, each double click moves
+    one line, and «Aceitar leitura» decides one.  The sabotage: the button not anchored
+    (``PainelDeRotulagem._ancorar_o_botao`` a no-op) -- the second click falls off the button."""
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QPushButton, QScrollArea
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.views.rotulagem import PainelDeRotulagem
+    from caissa.ui.widgets import foco_a_vista
+
+    def duplos_cliques(pasta: Path) -> tuple[list[str], list[int], int]:
+        pasta.mkdir()
+        painel = _rotulagem_com_linhas(app, pasta, desiguais=True)
+        painel.resize(1000, 710)
+        for _vez in range(2):
+            app.processEvents()
+        fora: list[str] = []
+        andou: list[int] = []
+        for texto, partidas in (("Próxima", range(4)), ("Aceitar leitura", range(1))):
+            botao = next(b for b in painel.findChildren(QPushButton) if b.text() == texto)
+            rolagem = next(r for r in painel.findChildren(QScrollArea)
+                           if r.widget() is not None and r.widget().isAncestorOf(botao))
+            barra = rolagem.verticalScrollBar()
+            for partida in partidas:
+                painel.table.selectRow(partida)
+                for _vez in range(3):
+                    app.processEvents()
+                QTest.qWait(foco_a_vista.intervalo_do_duplo_clique() + 250)
+                barra.setValue(barra.maximum())
+                app.processEvents()
+                rolagem.ensureWidgetVisible(botao, 0, 40)
+                app.processEvents()
+                ponto = botao.mapTo(painel, botao.rect().center())
+                assert painel.childAt(ponto) is botao, (texto, partida)
+                antes = painel.table.currentRow()
+                sob_no_segundo, _linha = teclado._duplo_clique(painel, ponto)
+                if sob_no_segundo is not botao:
+                    nome = None if sob_no_segundo is None else teclado._nome_curto(sob_no_segundo)
+                    fora.append(f"{texto} {partida}: {nome}")
+                andou.append(painel.table.currentRow() - antes)
+        decididas = sum(_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount()))
+        painel.close()
+        return fora, andou, decididas
+
+    fora, andou, decididas = duplos_cliques(tmp_path / "com_a_ancora")
+    assert fora == [], fora
+    assert andou == [1, 1, 1, 1, 1], andou
+    assert decididas == 1, "the double click on «Aceitar leitura» decides one line"
+
+    monkeypatch.setattr(PainelDeRotulagem, "_ancorar_o_botao", lambda _self, _botao: None)
+    fora, _andou, _decididas = duplos_cliques(tmp_path / "sabotado")
+    assert fora, "sabotaged: the second click falls off the button"

@@ -641,6 +641,12 @@ class PainelDeRotulagem(QWidget):
         # O segundo clique de um duplo clique num botão que decide e anda não decide a linha
         # seguinte, que ninguém viu (crítico da fase 5, ciclo 9: 2 linhas em 8 de 12).
         self._um_clique_por_vez = um_clique_por_vez(self, *decidem, *paginador)
+        # E o botão apertado fica sob o ponteiro até o mouse sossegar: a linha que ele decide ou
+        # mostra muda a altura do cartão acima desta fileira, e o segundo clique de um duplo clique
+        # caía fora dele -- no fundo, no cabeçalho ou na barra da tabela (construtor, ciclo 10 da
+        # fase 5, com a sonda `proxima_c9.py` do crítico: 3 em 12 nas três peles).
+        for da_fileira in (*decidem, *paginador):
+            da_fileira.pressed.connect(lambda b=da_fileira: self._ancorar_o_botao(b))
         dir_.addLayout(botoes)
         # PgUp, PgDn, Home e End andam pelas linhas com o foco na tabela, e não viram a página do
         # livro (`TabelaDeLinhas`; crítico da fase 5, ciclo 6: o PgDn esvaziava a tabela)
@@ -1111,6 +1117,16 @@ class PainelDeRotulagem(QWidget):
                 # clique do duplo clique caía na linha vizinha (ciclo 9 da fase 5).
                 ancorar(self._rolagem_do_cartao, self.table)
             self._select_line(region, line, from_table=True, focar=not pelas_setas(self.table))
+
+    def _ancorar_o_botao(self, botao: QPushButton) -> None:
+        """O botão que o mouse aperta fica no mesmo lugar da vista até o mouse sossegar (`ancorar`).
+
+        O `pressed` vem antes da ação, que vem no soltar: a âncora guarda onde o botão estava antes
+        de o cartão mudar de altura. O Espaço também emite o `pressed`, mas sem um botão do mouse
+        apertado não há ponteiro a respeitar.
+        """
+        if no_meio_do_clique():
+            ancorar(self._rolagem_do_cartao, botao)
 
     def _select_first_pending(self) -> None:
         pairs = self._visible_lines()
