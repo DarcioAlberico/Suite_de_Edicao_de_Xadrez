@@ -853,7 +853,16 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > linha tirava, o duplo clique num botão que decide e anda, a roda engolida com a folga posta, a roda
 > desfeita pela espera do seguidor, o foco inicial de um diálogo, duas frases velhas do §0.3. O que
 > mudou para eles está em `OCR_UI_REPORT_C2_FASE5.md` §0.12.
-> **Ciclo 10:** ⟨pendente⟩.
+> **Ciclo 10: APROVADO**, nenhum bloqueante novo — os não bloqueantes 1 a 4 e 6 do ciclo 9 resolvidos
+> (a folga mantida no clique noutra linha, o duplo clique num botão que decide valendo por um, a
+> roda com a folga e a roda na rolagem da área durante a espera, as frases), e os achados do
+> construtor conferidos (o duplo clique entregue como a plataforma, o botão da fileira ancorado).
+> Quatro não bloqueantes: o piso se perde quando o cartão muda de texto sem mudar de altura (o Qt
+> devolve a altura mínima posta dentro da ativação do arranjo a 0 na ativação seguinte); a roda
+> noutra rolagem dentro da área não encerra a espera; três frases do relatório afirmam mais do que
+> o código faz; um teste da suíte depende da pasta `models/`, fora do git. O ciclo 11, que os toma,
+> está em andamento.
+> **Ciclo 11:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -2540,3 +2549,173 @@ ajustadas); o 2 (os botões que decidem e andam — «Aceitar leitura», «Grava
 «Próxima», nas duas abas — não tomam o segundo clique de um duplo clique como outra decisão); o 3 (tirar a folga sem trocar
 a posição que a ação da barra vai aplicar); o 4 (a roda, a barra e as teclas da rolagem encerram a espera do seguidor, como
 soltam a âncora); o 6 (as duas frases).
+
+## Crítico Claude — ciclo 10 (APROVADO)
+
+VEREDITO: APROVADO
+CICLO: 10
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Árvores minhas: suíte `C:\Python-Chess2\_critico_f5\suite_c10` no `0956c84` (o `src` é o do `ac2ff04`; o `0956c84` só
+toca documentos e evidência) e tronco `C:\Python-Chess2\_critico_f5\tronco` no `646c84f`; para comparar, `suite_c9` no
+`34a020e` e `tronco_c9` no `0ed4f8a`, e as minhas saídas do ciclo 9 em `c9\`. Scripts e saídas deste ciclo em
+`C:\Python-Chess2\_critico_f5\c10\`. O `labeling/` do usuário copiado para as minhas árvores antes da primeira janela
+(1.512 arquivos; `project.json` de 2026-09-15 com o hash `60A374AE…` no começo e no fim, `c10\estado_inicio.txt` e
+`c10\estado_fim.txt`, e 1.512 antes e depois da fila do portão, `c10\portao\resumo.out`); para a suíte inteira, os
+arquivos do topo de `benchmarks/reports/ui`, os de `blind3` e os três `proofsheet*.pdf` copiados do checkout. `git status`
+de `src`/`tests` vazio nas minhas árvores do começo ao fim (`[0]` nos `runs.log`). Importador, janela e testes sem
+`CAISSA_FIGURINE_TESSDATA`.
+
+**Uma correção de método que muda a leitura de parte das minhas medidas.** As primeiras filas do ciclo (05:55–07:00)
+rodaram sem a pasta `models/` na minha árvore — no ciclo 8 eu a copiei (sem `work/`), e as saídas idênticas mostram que no
+9 também. Sem ela o produto não acha o modelo de figurinas (`ocr_service._figurine_directory`,
+`src/caissa/ingest/pdf/ocr_service.py:1316`, procura `caissa_*.traineddata` em `models_root()` =
+`<árvore>/models/tessdata`, `src/caissa/ocr/training/books.py:63`), e a Gallagher p. 51 sai lida de outro jeito (o cartão
+alto nas linhas 3–6, e não nas 3, 8, 13 e 14; «e5» → «eS»). Na primeira versão deste texto eu atribuía a diferença ao
+ambiente; era a minha árvore. Às 07:05 copiei a `models/` do usuário sem `work/` (166 MB) e refiz o que depende da leitura
+(`c10\commodelos_c10.sh`, `c10\portao_pares2_c10.sh`): as teclas de lista, o clique na linha e o segundo clique na Clássica
+a 1280×641 ficaram **iguais às do ciclo 9 linha a linha** (`diff` vazio contra `c9\ganhos\`), o duplo clique igual ao
+`c9\folga\duplo_classica_1280x641.out`, e o piso reprova do mesmo jeito com a leitura do usuário (abaixo). As medidas sem a
+pasta continuam valendo como outro estado do produto (uma máquina sem o modelo de figurinas); cada linha abaixo diz com qual
+leitura foi medida quando isso importa.
+
+Memória: `c10\monitor_mem.ps1` → `c10\memoria.log` (limite de 5 h; parado pelo `c10\PARAR_MONITOR` às 07:13; 1.436
+amostras): mínimo de **4.488 MB** livres às 06:40:24, durante a suíte inteira; no máximo três corridas minhas com OCR ao
+mesmo tempo (06:07–06:10 e 06:15–06:23). As duas corridas curtas da fila `espera2` (07:17–07:18, uma janela por vez) vieram
+depois de o monitor parar, com 12.369 MB livres às 07:13 (`c10\estado_fim.txt`). Processos: a minha `portao_mais_pares.py` não
+tinha a guarda do `__main__` — o processo de trabalho do produto (spawn) a importava e rodava o portão de novo dentro do
+filho (o erro «before the current process has finished its bootstrapping phase» duas vezes em cada log), e por isso a
+corrida parava na saída; refiz com a `portao_mais_pares_sai.py`, com a guarda, e o resultado se repetiu. Encerrei seis
+filhos `spawn` órfãos meus (06:15–06:25: três das corridas da variante que eu parei à mão, e três que o pool do produto
+recriou quando a minha `saida_limpa.sair` matou o filho, «O processo de trabalho morreu …; criando outro», nas corridas da
+`clique_parcial.py`) e a corrida quebrada das 07:08 com a árvore dela; nenhum Python meu no fim. As 50 pastas `critico_*`
+criadas nesta sessão, removidas (as 369 de antes das 05:55 ficaram: algumas são das 05:17 de hoje, antes de mim). As minhas
+árvores, removidas com `git worktree remove`, sem `--force` (e as refeitas para a `espera2`, também). Os checkouts do
+usuário no fim como no começo (`c10\estado_fim.txt`): a suíte no `0956c84` (`main`) com os mesmos arquivos de outras
+sessões (`packaging/*`, `docs/EDITOR_HTML_CSS_*`, `docs/quality/EDITOR_HTML_CSS_CRITICAS.md`, `uv.lock`), o tronco no
+`646c84f` (`religa-as-decisoes-orfas`) com o mesmo teste não rastreado; a `_editor_h0` de outra sessão andou de `991e008`
+para `2b800e3`.
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| O que mudou | `git show` dos seis commits → `c10\diffs\*.diff`, `*_stat.txt` | sim | suíte `d491f5b` (`foco_a_vista.py`, `um_clique.py` novo, `rotulagem.py`, `revisao_de_texto.py`, `teclado.py`, testes), `aeb6ae0` (`teclado._segundo_clique`, `um_clique.py`, `test_um_clique.py`), `ac2ff04` (`rotulagem._ancorar_o_botao`, teste), `0956c84` (relatório, `sol.json`, JSON dos portões); tronco `5adc130` (`qt/foco_a_vista.py`, teste), `646c84f` (testes). Nada nos arquivos fora do escopo |
+| A premissa do item 7 (o duplo clique da plataforma) | `c10\entrega_c10.py` → `c10\entrega\entrega_offscreen.out` | sim | Qt 6.11 offscreen. `QTest.mouseDClick` pelo `QWindow`: o botão recebe P* R* D* R* e clica duas vezes (`pressed, clicked` ×2); a imitação do commit dá P* R* D R* e os mesmos sinais; a minha entrega do ciclo 9 dava um pressionar a mais (P* R* P* D R*, três `pressed`). Com `um_clique_por_vez`, um clique em todas as entregas. Lista e tabela: os mesmos sinais (`linha 2, doubleClicked 2, activated 2`) e os mesmos focos em todas. O Windows de verdade não foi medido |
+| As minhas sondas do ciclo 9 com a entrega da plataforma | `c10\copia.py` (o 2º clique → `entrega.segundo_clique`) → `c10\unidade\folga_unidade_codigo_c9_entrega_plataforma.out` | sim | no código do `34a020e`, com a entrega da plataforma: B → o 2º clique na linha 4 e o duplo clique a ninguém; C → na 5. O não bloqueante 1 do ciclo 9 não vinha da minha entrega |
+| NB1 do c9, a folga, na janela do teste | `c10\folga_unidade_c9.py` → `c10\unidade\folga_unidade.out`, `folga_unidade_entrega_c9.out` | sim | B → `[3]` (a margem 49 → 9, a lista parada em y=95: a folga encolhe primeiro), C → `[4]`, D → `[3]`, com as duas entregas |
+| NB1 do c9, a folga, no produto | `c10\folga_c9.py` → `c10\folga\{classica,foco}_1280x1600.out`; com `models/`: `c10\commodelos\folga_classica_1280x1600.out` | sim | Gallagher p. 51, a barra no começo: clique na 2 (folga 16, tabela em y=450), 150 ms, duplo clique na 3 → o 2º na 3, a tabela parada em 450; na 1 → 1; margem 0 no fim. No `34a020e` o 2º caía na 4 (`c9\folga2\`) |
+| O piso, no produto | `c10\folga_c9.py … --crescer` → `c10\folga\{classica,foco}_1280x2400_crescer.out` (sem `models/`), `c10\commodelos\folga_{classica,foco}_1280x2400_crescer.out` (com) | **não** | novo não bloqueante 1 |
+| O piso, pelo portão do construtor com mais pares | `c10\portao_mais_pares_sai.py` (só muda `PARES_DO_DUPLO_CLIQUE`, `teclado.py:1102`) → `c10\portao_pares2_c10.sh` → `c10\portao_pares2\resumo_duplos.out` | **não** | com `models/`, a 1280×2400 na Clássica: **14 pares REPROVOU** — 68 duplos cliques (56 em pares), 2 fora: «par 13→14 → no segundo 13», no topo e no fim; **3 pares (os do commit) PASSOU** — 24 (12). Sem `models/`: 10 pares REPROVOU (52, 40; «par 3→4 → no segundo 3»), igual à corrida sem a guarda (`c10\portao_pares\resumo_duplos.out`, que também dava Foco 2400 REPROVOU e Clássica 1700 PASSOU) |
+| O mecanismo do piso | `c10\piso_unidade_c10.py [--texto]`, `piso_debug_c10.py`, `piso_qt_c10.py`, `piso_layout_c10.py` → `c10\unidade\piso_*.out` | sim (o defeito) | a janela do teste do construtor (lista com `stretch` 1): cartões que só mudam de altura, B fica (piso 716, duplo clique na 4); cartões que mudam também de texto, B: a lista 55 → 95, o 2º clique na linha 1, o duplo clique a ninguém, a 1 escolhida. Qt 6.11: a altura mínima posta dentro da ativação do arranjo volta a 0 na ativação seguinte; posta fora, fica (900 → 900) |
+| NB2 do c9, Rotulagem | `c10\proxima_c9.py` → `c10\ganhos\proxima_{classica,foco,fita}.out`, `aceitar_classica.out` (1280×641, a rolagem no fim, 6 partidas × 2 pontos; sem `models/`) | sim | «Próxima»: o 2º clique no botão em **12 de 12** nas três peles, uma linha por duplo clique (no c9: duas em 9 de 12); «Aceitar leitura»: 12 de 12 no botão, nenhuma segunda decisão (no c9: duas em 8 de 12) |
+| NB2 do c9, Revisão de texto | `c10\rdt_duplo_aceitar_c9.py` (`timeout 300`, exit 124: ela para na saída, como no c9) → `c10\ganhos\rdt_aceitar_classica.out` | sim | Kemeri 1280×641: o duplo clique em «Aceitar leitura» decidiu **1 em 4 de 4** (no c9: 2 em 4 de 4) |
+| NB2 atacado nos botões da fileira | `c10\botoes_c10.py` → `c10\botoes\classica_1280x641.out` | sim | Espaço duas vezes em «Próxima»: uma linha (o 2º Espaço vai à verdade, para onde o painel leva o foco); em «Aceitar leitura»: uma decisão; Enter em «Aceitar leitura» focado: nada (o `QPushButton` fora de diálogo só aciona com o Espaço; não vem deste ciclo); duplo clique em «Anterior» 3 → 2, «Rejeitar» 1, «Desfazer decisão» 1, «Gravar edição» 1; quatro cliques a 150 ms (simples, duplo, simples, duplo): duas linhas / duas decisões (dito no §0.3); o 2º clique no botão vizinho: o vão é 6 px e a distância do duplo clique 5 — 9 px entre os cliques, o 2º é um clique simples e só a linha 2 muda (aceita); o botão e, 150 ms depois, a tabela: a linha clicada; a roda entre os cliques: o 2º cai na tabela |
+| Item 8, a âncora do botão | `c10\botoes\classica_1280x641.out`, `classica_1280x1600_comeco.out`, `{classica,foco}_1280x2400_comeco.out` (`duplo_proxima_n`) | sim | duplo clique em «Próxima» das linhas 0–5 (641, a barra no fim: 362 → 378 quando o cartão cresce) e 0–7 (1600 e 2400, a barra no começo: folga 16 na 6→7, piso 955/940 na 2→3): o 2º clique em «Próxima» em todas; margem e altura mínima 0 no fim. Os cliques rápidos a 1280×2400 a partir da linha 2: o 4º cai no fundo — o piso 955 → 0 na 3→4, o não bloqueante 1 —, nada acionado (`botoes\{classica,foco}_1280x2400_rapidos.out`) |
+| NB3 do c9, a roda com a folga | `c10\roda_folga_unidade_c9.py` → `c10\unidade\roda_folga_unidade{,_codigo_c9}.out`; produto: `c10\folga\{classica,foco}_1280x1600.out` (`roda`, `rodacima`) | sim | janela do teste: sem folga a roda leva a barra de 0 a 60; com a folga de 40, de 0 a 20 (40 + 20 = o passo); no `34a020e`, de 0 a 0. Produto 1280×1600: 0 → 44 e a tabela 450 → 390 (60). A roda para cima no começo com a folga: a tabela sobe 16 (450 → 434) contra a roda — o que o sossego faria meio segundo depois |
+| NB4 do c9, a roda na rolagem da área | `c10\ataques_espera_c9.py` → `c10\espera\{classica,foco}_1280x641.out`, `classica_1280x641_codigo_c9.out`; `c10\roda_espera_unidade_c10.py` → `c10\unidade\roda_espera_{suite,tronco}.out` | sim | Clássica: a roda 473 → 429, e no sossego 429 com a verdade fora (o código do c9 hoje: 314, a verdade à vista); Foco 487 → 443; 2 s depois ainda esperando; o Tab: «Figurina rei (Alt+K)» inteira; o clique na imagem da página: nada anda; a primeira tecla mostra e entra; a volta de outra janela mostra a verdade (429 → 314, desenho do c9). Os dois seguidores iguais na unidade |
+| NB4 do c9, a roda noutra rolagem dentro da área | `c10\ataques_espera_c10b.py` (a barra, o foco e a verdade **depois** do sossego — a cópia de antes dava a barra logo depois da roda) → `c10\espera2_c10.sh` → `c10\espera2\{classica,foco}_1280x641.out` | **não** | novo não bloqueante 2 |
+| NB5 do c9 | `c10\dialogo_inicial_c9.py` → `c10\unidade\dialogo_inicial_{suite,tronco}.out` | dito | igual ao ciclo 9; o §0.3 o diz |
+| NB6 do c9 | `git show 0956c84:docs/quality/OCR_UI_REPORT_C2_FASE5.md`, linhas 406–414 | sim | as duas frases velhas sumiram: o anotador guarda o soltar (`soltou_em`), o filtro da espera fica na aplicação até o sossego |
+| O portão no commit, refeito | `c10\portao_c10.sh` → `c10\portao\resumo.out`, `resumo_duplos.out`, `runs.log` (sem `models/`) | sim | Kemeri 1280×641 PASSOU nas três peles (Clássica 34 duplos cliques / 18 em pares, Fita 28/14, Foco 34/18, 0 fora); Gallagher p. 51 PASSOU a 1280×641 (Clássica 10/6, Foco 10/6, Fita 4/2), a 1280×1700 (Clássica 21/12) e a 1280×2400 (Clássica 24/12). Reprovam: `folga` (Clássica e Foco 1280×1700, Fita 1280×1800: «par 0→1 → 2»), `piso` (Clássica e Fita 1280×2400, 6 fora), `ancora` (Foco), `soltar` (Kemeri Clássica: os 2ºs cliques no cartão, na verdade e em «Aceitar leitura», que agora não decide nada), `clique` (Fita), `guarda` (Foco); o mínimo sem livro PASSOU e `linha` REPROVOU |
+| Tab e Shift+Tab | `c10\portao\tecla_ida_volta.out` | sim | nos 17 JSON a ida e a volta alcançam o mesmo número: Rotulagem Clássica 59/59 nas 7 passadas — o 58 do construtor não se repetiu —, Foco 63/63, Fita 83/83 (82/82 em duas) |
+| Os ganhos dos ciclos 7 a 9 | `c10\ganhos_c10.sh` → `c10\ganhos\compara_c9_c10.out` (sem `models/`); com: `c10\commodelos\*.out` contra `c9\ganhos\` (`diff`) | sim | sem a pasta, iguais ao c9 o tabuleiro, o rádio, os cliques meio à vista, a volta da tecla, o foco fora e a rolagem morta (com o access violation conhecido); o clique na linha e o segundo clique diferem só na altura do cartão da linha 4 (a leitura). Com a pasta: teclas de lista, clique na linha e segundo clique iguais ao c9 linha a linha; o duplo clique (a entrega da plataforma) nas linhas 1–4, cada um na linha clicada, nada aceito, a verdade inteira e o «Q» nela |
+| A página lida numa região só | `c10\bloqueante1_c10.sh` → `c10\bloqueante1\{pagina_inteira_gal53,log_antigo,tipos_karpov2}.out` (sem `models/`) | sim | Gallagher p. 54: um item «page» (1.377 car.; 1.379 no c9, com a pasta); o Enter aceita, «Aceitar leitura» aceita, «Manter como imagem» e a edição gravam; a importação seguinte aplica 1 e não deixa item. O log antigo: aplicadas 1, depois 2. Karpov 2 pp. 101–115: 39 itens, 13 «page» (`rapidocr`, `tesseract`), 0 recusados |
+| `sol.json` | `c10\conf_sol_c10.py` → `c10\conf_sol_c10.out` | sim | `commit` `ac2ff04`, `dirty_code` `[]`, `sol_config` `{}`; 738 itens iguais aos do `34a020e` em todo campo comparado; os mesmos portões (CER limpo, acurácia de lances e lances inventados vermelhos) |
+| A transcrição do ciclo 9 | `c10\transcricao_c9.py` → `c10\transcricao_c9.out` | sim | 135 de 135 linhas do veredito na seção (linha 2392) |
+| Testes tocados | `c10\testes_tocados_c10.sh` → `c10\testes\{suite,tronco}_testes_tocados.out` | sim | suíte 165 passaram (9 arquivos, entre eles `test_foco_a_vista`, `test_um_clique`, `test_rotulagem_view`, `test_revisao_de_texto_view`, `test_teclado_tecla`); tronco 111 + 27 subtestes (4 arquivos) |
+| Tronco inteiro | `c10\testes_inteiros_c10.sh` → `c10\testes\trunk_full_c10.out` | sim | 4.871 passaram, 16 pulados, 8 xfail, 1 reprovou: `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore` (o pacote instalado aponta para o checkout do usuário, não para a minha árvore; como nos ciclos anteriores) |
+| Suíte inteira | mesma fila → `c10\testes\suite_full_c10.out`; `c10\diag\nunn_*.out` | sim, com ressalva | 4.128 passaram, 16 pulados, 1 reprovou (sem `test_packaging.py` e `test_roundtrip_corpus.py`): `test_corpus.py::test_nunn_ocr_layer_keeps_the_paragraphs_whole` («lDe4» onde pede «Ne4»). Causa: a minha árvore sem `models/` — com `caissa_eng.traineddata`, `eng.traineddata`, `configs` e `tessconfigs` do usuário nela, passa (`nunn_C_modelo_de_figurinas.out`); sem cifra (`nunn_A`), com a cifra acumulada do usuário (`nunn_B`) ou com os pesos dos glifos no meu tronco, reprova. Falha igual no código do c9 hoje (`c10\testes\nunn_codigo_c9.out`). Não refiz a suíte inteira com a pasta |
+| O tronco que a suíte importa | `c10\diag\glifo_suite_c10.out` | observação | na minha árvore, o leitor de glifos chama `ensure_cvoff_on_path` (`src/caissa/vision/classify/cvoff.py:67`), que põe `C:\Python-Chess2\ChessVisionOFF_Puro\src` na frente do `sys.path`: o `chess_diagram_ocr` importado depois vem do checkout do usuário, e não do `PYTHONPATH`. Neste ciclo é o mesmo commit (`646c84f`, só um teste não rastreado); medir outro tronco de outra árvore pede `CAISSA_CVOFF_ROOT` |
+
+### Os não bloqueantes do ciclo 9
+
+1. **Resolvido para a folga; o piso que veio com ele não se sustenta.** A âncora que segura de novo mantém a folga, e
+   ela encolhe primeiro quando o controle desce: no produto a 1280×1600 (Clássica e Foco, com e sem `models/`), o duplo
+   clique na 3 depois de um clique na 2 fica na 3, com a tabela parada em y=450 (no `34a020e`, na 4); na janela do teste,
+   B → `[3]` e C → `[4]` (no `34a020e`, com a mesma entrega, a 4 e a 5). O piso, porém, se perde quando o cartão da linha
+   nova tem a mesma altura e outro texto — novo não bloqueante 1.
+2. **Resolvido.** «Próxima» e «Aceitar leitura» com o 2º clique no botão em 12 de 12 e uma linha ou uma decisão por duplo
+   clique nas três peles (no c9: duas em 9 de 12 e em 8 de 12); na Revisão de texto, 1 decisão em 4 de 4 (no c9, 2); os
+   outros botões que decidem e andam, o Espaço, o vizinho, o botão seguido da tabela e a âncora do botão (item 8), sem
+   nada decidido a mais nem clique fora. Os cliques rápidos no mesmo botão contam pela metade — dito no §0.3.
+3. **Resolvido.** A roda com a folga anda o passo inteiro: 0 → 20 com a folga de 40 na janela do teste, 0 → 44 e a tabela
+   −60 px no produto (no `34a020e`, 0 → 0).
+4. **Resolvido para a roda na rolagem da área; não para a roda noutra rolagem dentro dela** — a tabela da Rotulagem, o
+   visor da página: novo não bloqueante 2. Na rolagem da área a roda fica (473 → 429 no sossego; no código do c9, 314), a
+   verdade espera a primeira tecla, o Tab e o clique noutro lugar se comportam, e os dois seguidores são iguais.
+5. Dito, como pedi que ficasse; igual ao ciclo 9.
+6. **Resolvido** (§0.3, linhas 406–414).
+
+### Defeitos bloqueantes (novos)
+
+Nenhum.
+
+### Defeitos não bloqueantes
+
+1. **O piso da âncora se perde quando o cartão muda de texto sem mudar de altura, e o segundo clique de um duplo clique
+   cai na linha de cima.** `_devolver` chama `_pisar` (`src/caissa/ui/widgets/foco_a_vista.py:352`, a
+   `setMinimumHeight` da linha 360) de dentro do `Move` do controle ancorado, isto é, **durante a ativação do arranjo**; o
+   Qt 6.11 devolve a altura mínima a 0 na ativação seguinte (`c10\unidade\piso_qt.out`: posta dentro da ativação, 0 depois
+   da seguinte; posta fora, 900 → 900; `piso_debug.out`: 716 → 0 entre a troca do cartão e o `Move`, sem chamada nenhuma do
+   Python). O cartão da Rotulagem muda de texto a cada linha, e essa troca provoca a ativação: com o conteúdo inteiro na
+   vista, a barra perde o alcance, vai a 0, e a tabela desce o que o cartão cresceu sob o ponteiro parado. No produto,
+   Gallagher p. 51 a 1280×2400, **com a leitura do usuário** (`models/` copiada): clique na linha 3 (piso 955 na Clássica,
+   940 na Foco; a barra 16), 150 ms, duplo clique na 8 (o cartão da mesma altura): no 1º clique o piso vai a 0 e a tabela
+   de y=434 a 450, e **o 2º clique cai na linha 7** (`c10\commodelos\folga_{classica,foco}_1280x2400_crescer.out`,
+   `dois_duplo_igual`); sem a pasta, a 3 e depois a 4 → o 2º na 3 (`c10\folga\…_crescer.out`). **O portão do próprio
+   construtor o acha com mais pares**: 14 pares a 1280×2400 na Clássica, com a leitura do usuário, REPROVOU — «par 13→14 →
+   no segundo 13», no topo e no fim; com os 3 do commit PASSOU (`c10\portao_pares2\resumo_duplos.out`). Nos botões, os
+   cliques rápidos a 1280×2400 a partir da linha 2 perdem o 4º clique no fundo (nada acionado). Na janela do teste do
+   construtor, só com cartões que mudam de texto: B, o 2º clique na linha 1 e o duplo clique a ninguém
+   (`c10\unidade\piso_unidade_texto.out`; com cartões que só mudam de altura, fica — `piso_unidade.out`). É o não
+   bloqueante 1 do ciclo 9 noutra configuração, com o mesmo dano — o cartão e a verdade passam a ser os da linha vizinha,
+   nada é aceito, quem digita sem olhar grava na linha errada — e mais raro: pede o conteúdo inteiro na vista (a 1280 de
+   largura, ~2.400 px de altura com esta página, ou uma página curta) e um clique numa linha seguido, dentro do intervalo
+   do duplo clique, do duplo clique noutra de cartão da mesma altura. Os testes não o veem (o cartão deles só muda de
+   altura), nem o portão (os 3 primeiros pares não chegam a duas linhas vizinhas de cartão alto).
+2. **A roda sobre outra rolagem dentro da área, durante a espera, não encerra a espera: meio segundo depois do clique a
+   área rola para mostrar a verdade.** `_a_pessoa_rolou` só ouve o `actionTriggered` das duas barras da área
+   (`foco_a_vista.py:481`; o tronco igual, `qt/foco_a_vista.py:231`); a roda na tabela rola a barra da própria tabela, e a
+   do visor não passa pelas barras da área. A 1280×641, a rolagem no fim, sem `models/` (`c10\espera2\*.out`): clique numa
+   linha, a roda na tabela 100 ms depois (a tabela rola 0 → 3) e, no sossego, a área vai de **489 a 314** na Clássica e de
+   **503 a 314** na Foco — a tabela desce 175–189 px sob o ponteiro de quem a está rolando —, a verdade inteira; com a roda
+   no visor, 473 → 298 e 487 → 298. O foco fica na verdade (a tabela é `StrongFocus` e o visor `ClickFocus`: a roda não
+   lhes dá o foco). É o não bloqueante 4 do ciclo 9 com a roda noutro lugar da mesma área: nada decidido, a vista salta
+   depois do gesto. Não medi uma janela do tronco com uma rolagem dentro da área.
+3. **Três frases do relatório afirmam mais do que o código faz.** (a) §0.3, linhas 369–370: com o conteúdo inteiro na
+   vista, «o cartão que cresce ganha um piso …: a tabela fica» — não com outro clique numa linha de cartão da mesma
+   altura antes do sossego (o não bloqueante 1). (b) §0.12 item 4: «meio segundo depois do clique a vista não volta mais
+   para a verdade» — volta com a roda na tabela ou no visor (o não bloqueante 2). (c) §0.12 item 8 (linhas 1759–1763): a minha
+   `proxima_c9.py` «no `34a020e` dele não chegava a pôr o botão sob o ponto (… nas 12 tentativas; a razão não foi
+   achada)» — era a minha primeira versão, que eu corrigi no ciclo 9 (`ensureWidgetVisible`); as corridas válidas
+   (`c9\botoes\`, citadas no meu veredito do ciclo 9, linha 52) davam o 2º clique fora do botão em 3 de 12 com «Próxima» e
+   4 de 12 com «Aceitar leitura» no `34a020e`. A premissa do item 8 continua de pé; a frase não.
+4. **Um teste da suíte depende de um arquivo fora do git sem dizer** (de antes deste ciclo).
+   `test_nunn_ocr_layer_keeps_the_paragraphs_whole` só passa com o modelo de figurinas em `<árvore>/models/tessdata`
+   (`caissa_eng.traineddata`, no `.gitignore`): numa árvore limpa reprova («lDe4»), com a pasta passa
+   (`c10\diag\nunn_{A,B,C}_*.out`). Os vizinhos dele se pulam quando falta o que usam («as listas do tronco não estão
+   nesta máquina»); este reprova, e o «4.136 passaram» do relatório vale para a máquina com a pasta.
+
+### O que falta
+
+- O Windows de verdade: tudo aqui é offscreen — a entrega do duplo clique pelo `QWindow` (item 7), o intervalo de 500 ms
+  do Windows de fábrica (400 no offscreen), dois cliques de verdade a 400–500 ms no mesmo botão (o `um_clique_por_vez`
+  engole só o `MouseButtonDblClick` que a plataforma gera dentro do intervalo; fora dele contam dois — pela construção, não
+  medido).
+- Refeito com a pasta `models/` só o que depende da leitura na linha (teclas de lista, clique na linha, segundo clique,
+  duplo clique, folga, piso, o portão com pares a 1280×2400). As filas da espera, dos botões, de «Próxima»/«Aceitar» e da
+  Revisão de texto, os 17 JSON do portão e a página lida numa região só rodaram sem a pasta (a outra leitura, cartões altos
+  nas linhas 3–6); a entrega e as janelas de unidade não dependem dela. A suíte inteira não foi refeita com a pasta.
+- A suíte inteira rodou sem `test_packaging.py` e `test_roundtrip_corpus.py`, como no ciclo 9; EPUBCheck pulado (sem Java).
+- O «58 de 59» do construtor na volta da Clássica não se repetiu em 7 passadas minhas (59/59); não sei o que o produz.
+- As árvores `_f5c4_tronco` e `_f5c6_head` do construtor continuam lá (não são minhas).
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+Não se aplica: APROVADO. Para o próximo ciclo, sem condicionar a aprovação: o piso precisa sobreviver à ativação seguinte
+(posto fora dela, ou reposto enquanto a âncora segura), com um teste em que o cartão muda de **texto** com a mesma altura e o
+conteúdo cabe na vista, e um portão que escolha os pares pelas alturas dos cartões (ou por todos os vizinhos) e não pelos
+três primeiros; a roda sobre qualquer rolagem dentro da área, durante a espera, contada como a da pessoa (nos dois
+seguidores); as três frases do relatório; e o teste da Nunn pulado sem o modelo de figurinas, ou o relatório dizendo que a
+contagem pede a pasta `models/`.
