@@ -371,12 +371,17 @@ def test_a_double_click_on_a_line_accepts_nothing(app, tmp_path: Path, monkeypat
     whose point the old scroll brings «Aceitar leitura» under is found with the sabotage on, and
     double-clicked: the second click lands on the table again, no line is accepted, the table
     stays on the clicked line, and once the mouse is calm the truth is whole.  The sabotage: the
-    scroll right after the release (the double-click interval at 0) -- the line accepted."""
+    scroll right after the release (the double-click interval at 0) -- the line accepted.  The
+    deciding buttons' own defence (``um_clique_por_vez``: the second click of a double click that
+    falls on «Aceitar leitura» decides nothing, cycle 10) is off here: this test measures the wait
+    for the calm alone."""
     from PyQt6.QtWidgets import QPushButton
 
     from caissa.ui.audit import teclado
+    from caissa.ui.views import rotulagem as vista_da_rotulagem
     from caissa.ui.widgets import foco_a_vista
 
+    monkeypatch.setattr(vista_da_rotulagem, "um_clique_por_vez", lambda _dono, *_botoes: None)
     painel = _rotulagem_com_linhas(app, tmp_path)
     painel.resize(1000, 710)
     for _vez in range(2):
@@ -427,12 +432,15 @@ def test_a_double_click_on_a_line_stays_on_it_while_the_card_above_grows(
     reasons long, the table on line 0: a double click on an odd line whole in sight -- the card
     grows, the line under the pointer at the second click is still the one clicked, the table stays
     on it, and no line is accepted.  The sabotage: the Rotulagem without the anchor
-    (``rotulagem.ancorar`` a no-op) -- the second click falls on another line."""
+    (``rotulagem.ancorar`` a no-op) -- the second click falls on another line.  The deciding
+    buttons' own defence (``um_clique_por_vez``, cycle 10) is off here: the table that slides puts
+    the buttons above it under the pointer, and this test measures the anchor alone."""
     from PyQt6.QtWidgets import QScrollArea
 
     from caissa.ui.audit import teclado
     from caissa.ui.views import rotulagem as vista_da_rotulagem
 
+    monkeypatch.setattr(vista_da_rotulagem, "um_clique_por_vez", lambda _dono, *_botoes: None)
     painel = _rotulagem_com_linhas(app, tmp_path, desiguais=True)
     painel.resize(1000, 710)
     for _vez in range(2):
@@ -651,3 +659,49 @@ def test_the_queue_button_scores_the_book_in_a_thread_and_opens_the_best_page(ap
     for d in painel.findChildren(DialogoDaFila):
         d.close()
     painel.close()
+
+
+def test_a_double_click_on_a_deciding_button_decides_one_line(app, tmp_path: Path, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 2): «Aceitar leitura» decides the current line and
+    moves to the next; the second click of a double click, still on the button, decided the next
+    line a fraction of a second after it appeared -- a reading accepted that nobody saw (2 lines in
+    8 of 12 at 1280x641), and «Próxima» moved two lines.  The tab with twelve lines of the same
+    card: a double click through the ``QWindow`` on «Aceitar leitura» (the second click delivered
+    as Qt delivers it) decides one line, and on «Próxima» moves one line.  The sabotage: the buttons
+    without the filter (``um_clique_por_vez`` a no-op) -- two lines decided, two lines moved."""
+    from PyQt6.QtWidgets import QPushButton, QScrollArea
+
+    from caissa.ui.audit import teclado
+    from caissa.ui.views import rotulagem as vista_da_rotulagem
+
+    def duplo_clique_nos_botoes(pasta: Path) -> tuple[int, int]:
+        pasta.mkdir()
+        painel = _rotulagem_com_linhas(app, pasta)
+        painel.resize(1000, 710)
+        for _vez in range(2):
+            app.processEvents()
+
+        def duplo_clique(texto: str) -> None:
+            botao = next(b for b in painel.findChildren(QPushButton) if b.text() == texto)
+            for rolagem in painel.findChildren(QScrollArea):
+                if rolagem.widget() is not None and rolagem.widget().isAncestorOf(botao):
+                    rolagem.ensureWidgetVisible(botao)
+            app.processEvents()
+            teclado._duplo_clique(painel, botao.mapTo(painel, botao.rect().center()))
+
+        duplo_clique("Aceitar leitura")
+        decididas = sum(_linha_da_pagina(painel, k).done for k in range(painel.table.rowCount()))
+        antes = painel.table.currentRow()
+        duplo_clique("Próxima")
+        andou = painel.table.currentRow() - antes
+        painel.close()
+        return decididas, andou
+
+    decididas, andou = duplo_clique_nos_botoes(tmp_path / "com_o_filtro")
+    assert decididas == 1, "the double click on «Aceitar leitura» decides one line"
+    assert andou == 1, "the double click on «Próxima» moves one line"
+
+    monkeypatch.setattr(vista_da_rotulagem, "um_clique_por_vez", lambda _dono, *_botoes: None)
+    decididas, andou = duplo_clique_nos_botoes(tmp_path / "sabotado")
+    assert decididas == 2, "sabotaged: the next line decided by the second click"
+    assert andou == 2, "sabotaged: «Próxima» moves two lines"

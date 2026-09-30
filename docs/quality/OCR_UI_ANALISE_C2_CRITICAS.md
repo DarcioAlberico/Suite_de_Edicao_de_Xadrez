@@ -845,7 +845,15 @@ Nada no código. A fase está aprovada porque os cinco bloqueantes foram fechado
 > logo depois do soltar mexia o conteúdo debaixo do ponteiro antes do segundo clique de um duplo
 > clique — na Rotulagem, a linha 4 aceita por ninguém. O que mudou está em
 > `OCR_UI_REPORT_C2_FASE5.md` §0.11.
-> **Ciclo 9:** ⟨pendente⟩.
+> **Ciclo 9: APROVADO**, nenhum bloqueante novo — os dois do ciclo 8 resolvidos: a decisão sobre a
+> página que o OCR leu numa região só grava, conta e chega ao livro (0 itens com leitura recusados na
+> Karpov 2, na Gallagher, na Nunn e no Kemeri), e o segundo clique de um duplo clique numa linha da
+> Rotulagem cai onde o primeiro caiu, sem aceitar nada (35 duplos cliques com o relógio de uma pessoa,
+> as sabotagens `soltar` e `ancora` reprovando). Seis não bloqueantes: a folga que o clique noutra
+> linha tirava, o duplo clique num botão que decide e anda, a roda engolida com a folga posta, a roda
+> desfeita pela espera do seguidor, o foco inicial de um diálogo, duas frases velhas do §0.3. O que
+> mudou para eles está em `OCR_UI_REPORT_C2_FASE5.md` §0.12.
+> **Ciclo 10:** ⟨pendente⟩.
 
 ## Crítico Claude — ciclo 1 (REPROVADO, 3 bloqueantes)
 
@@ -2380,3 +2388,155 @@ duplo clique (bloqueante novo 2).
    verdade da linha clicada à vista depois; com a sabotagem (a rolagem logo depois do soltar), a linha aceita. Sem perder o
    que este ciclo ganhou (a verdade inteira depois do clique, o texto nela, e7, «Pretas», os cliques meio à vista, o
    teclado inteiro).
+
+## Crítico Claude — ciclo 9 (APROVADO)
+
+VEREDITO: APROVADO
+CICLO: 9
+FRENTE: OCR/UI ciclo 2, fase 5
+
+Árvores minhas: suíte `C:\Python-Chess2\_critico_f5\suite_c9` no `34a020e` (o `src` é o do `d186ba3`) e tronco
+`C:\Python-Chess2\_critico_f5\tronco` no `0ed4f8a`; para comparar com o ciclo 8, `suite_c8` no `a6e02e1` e `tronco_c8` no
+`967be8d` (e as saídas do ciclo 8 em `c8\tecla\`). O `labeling/` do usuário copiado para a minha árvore antes da primeira
+janela (1.512 arquivos, `project.json` de 2026-09-15 com o mesmo hash antes e depois de cada fila e no fim,
+`c9\estado_final_arvores.out`); para a suíte inteira, os 118 arquivos do topo de `benchmarks/reports/ui` e, depois, os de
+`benchmarks/reports/blind3` e os três `proofsheet*.pdf` copiados do checkout. `git status` de `src`/`tests` vazio nas minhas
+árvores do começo ao fim (`[0]` nos `runs.log`). Scripts e saídas em `C:\Python-Chess2\_critico_f5\c9\`. Importador, janela e
+testes sem `CAISSA_FIGURINE_TESSDATA`; os scripts de fila com barras normais.
+
+A sessão parou por um erro da API às 23:47 de 2026-09-24, logo depois da suíte inteira, e foi retomada em 2026-09-30 às
+01:21 com os repositórios e as minhas árvores como estavam. O meu monitor de memória (`c9\monitor_mem.ps1`) não tinha outro
+fim que o arquivo de parada e ficou vivo seis dias — o coordenador o parou (`c9\memoria.log`, 8,9 MB); na retomada usei um
+com limite de 3 h (`c9\monitor_mem2.ps1` → `c9\memoria2.log`, mínimo de **5.715 MB** livres). Na primeira parte a memória
+virtual livre caiu a **1.048 MB** às 23:01:25 e ficou abaixo de 2 GB de 23:01:08 a 23:01:29 (`c9\memoria.log`): três
+corridas minhas com OCR ao mesmo tempo, uma delas a importação da Karpov 2 com o pool de processos — acima do que o briefing
+pede; erro meu. As três foram refeitas uma por vez, com mais de 5 GB livres (`c9\refaz_c9.sh` → `c9\refaz\`): **iguais**
+linha a linha (as contagens da Karpov 2; o duplo clique com a sabotagem `ancora` na Foco; os ataques na Clássica).
+Encerrei três filhos `multiprocessing.spawn` órfãos das minhas sondas do clique meio à vista (criados às 23:22:01, 23:22:11
+e 23:22:22 de 09-24, os pais mortos) e as duas corridas da `rdt_duplo_aceitar_c9.py` que pararam na saída depois de
+imprimir o `FIM` (um fio só, no `os._exit`); os três filhos de 22:16 de 09-24 e o de 09-23 não são meus e ficaram.
+No fim (2026-09-30 01:58) removi as minhas quatro árvores com `git worktree remove` e as minhas pastas temporárias
+(`critico_*c9*`); os checkouts do usuário continuam no `34a020e` (suíte, `main`) e no `0ed4f8a` (tronco,
+`religa-as-decisoes-orfas`), e o `labeling/project.json` do usuário tem o mesmo hash e a mesma data de 2026-09-15, 1.512
+arquivos (`c9\estado_inicio.txt`, `c9\estado_fim.txt`). **Atenção:** entre 01:33:50 e 01:37:56 de hoje outra sessão
+modificou, sem commit, nos checkouts do usuário, `src/caissa/ui/audit/teclado.py`, `src/caissa/ui/widgets/foco_a_vista.py`,
+`tests/unit/ui/test_foco_a_vista.py` e `tests/unit/ui/test_teclado_tecla.py` (suíte; +490/−47 com os de `packaging/`) e
+`src/chess_diagram_ocr/qt/foco_a_vista.py` e `tests/test_qt_foco_a_vista.py` (tronco; +60/−3). Não fui eu, não os toquei, e
+nada deste veredito os mediu: toda sonda, portão e teste rodou nas minhas árvores limpas no `34a020e`/`0ed4f8a` (as
+saídas dizem de onde veio o `caissa`); este veredito vale para esses dois commits.
+
+### Conferências feitas
+
+| passo | comando/arquivo:linha | confere? | nota |
+|---|---|---|---|
+| Os commits | `git show` → `c9\diffs\{suite_b0d59a4,suite_5f3c581,suite_d186ba3,suite_34a020e,tronco_0ed4f8a}.diff` | sim | lidos inteiros; do `34a020e`, o relatório (§0, §0.2, §0.3, §0.10, §0.11), o roadmap, o HANDOFF, o `sol.md` e a fila `fila_ciclo9_d186ba3.log` |
+| A transcrição do meu ciclo 8 | `c9\transcricao_c8.py` → `c9\transcricao_c8.out` | sim | 125 de 125 linhas não vazias, a partir da linha 2238 de `OCR_UI_ANALISE_C2_CRITICAS.md` (os títulos rebaixados a `###`) |
+| O `sol.json` publicado | `c9\conf_sol_c9.py` → `c9\conf_sol_c9.out` | sim | `commit=d186ba3`, `dirty_code` []; os 738 itens iguais aos do `a6e02e1` em todo campo que não é tempo; os mesmos portões (os três vermelhos de antes) |
+| Bloqueante 1 do ciclo 8: a Gallagher p. 54 lida numa região só, pela janela | `c9\bloqueante1_c9.sh` → `c9\bloqueante1\pagina_inteira_gal53.out` | sim | um item `page`, `review`, 1.379 car.; o Enter na verdade, «Aceitar leitura», «Manter como imagem» e a leitura corrigida com o Enter: «1 decidida(s), 0 pendente(s) de 1», a decisão no arquivo (`accept` 1379, `keep_image`, `edit` 1389); a importação seguinte com o arquivo: aplicadas 1, nenhum item de revisão |
+| O log antigo com a edição da p. 54 | mesma fila → `c9\bloqueante1\log_antigo.out` | sim | a fila retomada: «5 pendente(s) de 6», o `page` decidido; a importação aplica 1; depois do aceite de um título da p. 52 o arquivo guarda `[('edit', 53, True), ('accept', 51, False)]`, e a importação seguinte aplica 2 |
+| Os tipos da fila numa importação de verdade | `c9\tipos_da_fila_c9.py` (pela `refusal` da fila) → `c9\bloqueante1\tipos_{karpov2,gallagher}.out`; refeita a Karpov 2 e somadas a Nunn e o Kemeri → `c9\refaz\tipos_{karpov2,nunn,kemeri}.out` | sim | Karpov 2 pp. 101–115: 39 itens, 13 `page` (`rapidocr`, `tesseract`), **0 de 39** com leitura recusados (igual na corrida refeita); Gallagher pp. 41–60: 129 itens, 6 `page` (`tesseract`), **0 de 129**; Nunn *Minor Piece* pp. 61–75: 94 itens, 5 `page` (`pdf_text_layer`), **0 de 94**; Kemeri pp. 1–20: 143 itens, **0 de 143**; `unread_page` 0 nas quatro |
+| A página que o OCR não leu (o `MemoryError`) | mesma fila → `c9\bloqueante1\{enter_memoryerror,fila_antiga_memoryerror,abstida_gal53}.out` | sim | o Enter, «Aceitar leitura», espaço + Enter, texto + Enter: «Recusado: o OCR não leu esta página…», 1 pendente de 1, nenhum arquivo; o log antigo com o aceite vazio: «1 pendente(s) de 1», com o OCR de volta aplicadas 0 e as 8 regiões pendentes; aceitar/editar/manter recusados pela fila, `decisions()` [] |
+| A borda do `unread_page` | `c9\regiao_vazia_c9.py` (a fila com um item `page` de texto vazio) → `c9\regiao_vazia_c9.out` | sim | a região da página lida **vazia com motor** (`tesseract`): aceitar recusado («não há leitura para aceitar»), editar e manter aceitos; a edição conta, vai ao arquivo, volta no `load` e passa no `carry_over`; sem motor: as três recusadas, nada conta. Lido no código: todo motor põe o nome no resultado vazio (`empty_result(self.name, …)`), a fusão e o árbitro levam o do resultado, e o item leva o da região — uma região do OCR não sai sem motor |
+| **Bloqueante 2 do ciclo 8: o duplo clique numa linha, com o relógio de uma pessoa** | `c9\duplo_clique_c9.py` (o 1º clique pelo `QWindow`, 100 ms, o 2º com o `MouseButtonDblClick` ao controle sob o ponteiro, o sossego, a letra «Q») → `c9\duplo_c9.sh` → `c9\duplo\*.out`; com a letra conferida → `c9\folga_c9.sh` → `c9\folga\duplo_*.out` | sim | Gallagher p. 51, rolagem no fim: Clássica e Foco a 1280×641 linhas 1–4, Fita 3–4; a 300 ms entre os cliques; Clássica 1920×1040 (linhas 0–4 no fim, 0 no meio), Foco 1600×900 (0–4), Foco 2560×1440 (0–1 no começo): **35 duplos cliques, todos na linha clicada, nenhuma linha aceita**, a verdade inteira depois do sossego (549×60; 552 na Fita) e o «Q» nela. Sabotado `soltar`: o 2º clique na verdade, no cartão, na fileira e em «Aceitar leitura» — a linha 4 vai à 5 e **a 4 é aceita**; sabotado `ancora`: o 2º clique da linha 3 cai sobre a linha 2 (Clássica e Foco; a Foco refeita igual) |
+| O portão do teclado com o duplo clique, e as sabotagens | `c9\portao_c9.sh` → `c9\portao\*.json`; `c9\resumo_portao.py` → `c9\portao\resumo.out`; `c9\resumo_duplos.py` → `c9\portao\resumo_duplos.out` | sim | Kemeri p. 6 a 1280×641: **PASSOU** nas três peles (16/14/16 duplos cliques — Rotulagem 4/2/4 no fim, Revisão de texto 12 no topo e no fim —, 0 fora do lugar); Gallagher `--pagina 51`: PASSOU nas três (4/4/2); `ancora` REPROVOU na Gallagher (Clássica e Fita: linha 3 → 2) e PASSOU no Kemeri (Clássica), como o construtor diz; `soltar` REPROVOU (Gallagher Clássica e Foco, 4 de 4 fora; Kemeri Fita, 2 de 2); `clique` (Foco, 5 áreas) e `guarda` (Clássica: a verdade 0×0 e 295×33) REPROVARAM; `minimo` sem livro PASSOU e `--sabotar linha` REPROVOU (os dois JSON gravam `34a020e`/`0ed4f8a` sem nada fora do commit; o `runs.log` diz as duas árvores limpas no começo e no fim); o `labeling/` igual antes e depois |
+| O que os ciclos 7 e 8 ganharam | `c9\ganhos_c9.sh` → `c9\ganhos\*.out`; `c9\compara_c8_c9.py` (linha a linha contra `c8\tecla\`, sem ruído) → `c9\ganhos\compara_c8_c9.out` | sim | **iguais** ao ciclo 8: o tabuleiro (e7 só seleciona, +0 px), o rádio («Pretas»/«Brancas» marcam, +0), os cliques meio à vista (três peles), a tecla com o controle inteiro (Foco/Clássica/Fita a 1280×641 e Fita a 1246×629), o foco fora, as teclas de lista, a rolagem morta (com o mesmo «access violation» do `os._exit` que o §0.3 já diz); diferentes, e como o desenho novo manda: o clique na linha (a verdade 0×0 logo depois do soltar, o «XYZ» nela) e o segundo clique das sondas do ciclo 8 (na mesma linha, nada aceito) |
+| A espera do sossego, atacada | `c9\ataques_espera_c9.py` → `c9\ataques_c9.sh` → `c9\ataques\*.out` (a Clássica refeita: `c9\refaz\ataques_classica_1280x641_fim.out`, igual); casos `enter`, `dialogo2` → `c9\ganhos\ataques2_{classica,foco}.out`; `enter_tabela` → `c9\refaz\enter_tabela_classica.out` | sim, com uma ressalva | a 1280×641, rolagem no fim, Clássica e Foco: outro clique noutra linha antes do sossego vale onde foi dado (linha 3 → 1); a letra 30 ms depois mostra a verdade antes de entrar nela; a janela que perde e ganha a ativação: a verdade depois do sossego; a página trocada e a janela 120 px mais estreita no meio: sem erro, sem folga; o diálogo modal no meio: com a janela reativada (o offscreen não a reativa sozinho — o foco fica `None`, como nos ciclos 7 e 8), a verdade depois do sossego; o Enter 60 ms depois do clique vai à verdade que o clique focou e aceita a linha clicada (4 → «aceita», a 5 escolhida) — como no ciclo 8, em que o clique também focava a verdade; o Enter na tabela 100 ms depois de um clique na linha atual: a verdade inteira na hora e a letra seguinte nela. A ressalva: a roda (não bloqueante 4) |
+| A âncora e a folga, atacadas | `c9\folga_c9.py` (a 1280 px de largura, janelas altas: a tabela à vista com a barra no começo) → `c9\folga2_c9.sh` → `c9\folga2\*.out` (e, pela mesma linha de comando, `classica_1280x{1000,1250,1400,1600}.out`, `foco_1280x1440.out`); a janela do teste do construtor copiada → `c9\folga_unidade_c9.py` → `c9\folga3\folga_unidade.out` (e `folga_unidade_saida_normal.out`, a mesma saída, saída normal com código 0), `c9\roda_folga_unidade_c9.py` → `c9\folga3\roda_folga_unidade.out` | **não** | a folga aparece (16 px na Clássica e na Foco a 1280×1600) e sai no sossego sem sobrar (a margem 0 no fim de toda corrida); o duplo clique na mesma linha, a letra, a janela mais estreita e a página trocada com a folga posta: no lugar. Mas o clique noutra linha com a folga posta a tira debaixo do ponteiro (não bloqueante 1), e a roda com a folga posta é engolida (não bloqueante 3). A 1280×1000–1400 e na Fita a 1600 nenhuma linha fica inteira com a barra no começo: não medido lá |
+| O mesmo problema noutro controle: os botões abaixo do cartão | `c9\proxima_c9.py` (o botão posto à vista, o duplo clique como uma pessoa) → `c9\botoes_c9.sh` → `c9\botoes\{proxima_*,aceitar_classica,proxima_classica_codigo_c8}.out` e `aceitar_classica_codigo_c8.out`; a Revisão de texto → `c9\rdt_duplo_aceitar_c9.py` → `c9\rdt_c9.sh` → `c9\botoes\rdt_aceitar_classica{,_codigo_c8}.out` | sim, com uma ressalva | «Próxima» e «Aceitar leitura» ficam abaixo do cartão, sem âncora: quando o cartão muda de altura o 2º clique sai do botão (com «Próxima», 3 de 12 em cada pele; com «Aceitar leitura», 4 de 12 na Clássica: no vazio, no cabeçalho ou na barra da tabela — nada acionado). No ciclo 8 a rolagem depois do soltar tirava o botão de baixo do ponteiro sempre (12 de 12 na Clássica, com os dois botões: na verdade, no cartão, na fileira das figurinas). A ressalva: não bloqueante 2 |
+| A volta da janela e o foco inicial de um diálogo | `c9\razao_ataques.py` (com a medida depois do intervalo) → `c9\ganhos\razao_{suite,tronco}.out`; `c9\dialogo_inicial_c9.py` → `c9\ganhos\dialogo_inicial_{suite,tronco}.out`; a sonda do construtor `scratchpad\c8\sonda_ativacao.py` → `c9\ativacao\sonda_ativacao_c9.out` | sim | o Alt+Tab: o campo fora da vista 0×0 logo e depois da fila, **264×22** (rolagem 237) passado o intervalo, nos dois seguidores; o diálogo com o foco inicial fora da vista: 0×0 aos 80 ms, inteiro aos 500 ms, e a letra aos 80 ms o mostra antes de entrar (não bloqueante 5); a sonda do construtor: com a ativação antes do pressionar (a ordem do Windows), «Aceitar» clicado e a rolagem parada em 242, como no ciclo 8 |
+| Os testes tocados | `c9\testes_tocados_c9.sh` → `c9\testes\suite_testes_tocados.out`, `c9\testes\tronco_testes_tocados.out` | sim | suíte (`test_foco_a_vista`, `test_rotulagem_view`, `test_revisao_de_texto_view`, `test_teclado_tecla`, `test_review`, `test_importer`, `test_tabela_de_linhas`, `test_table_rows`): **152 passed** em 54 s (133 no ciclo 8: +7 +2 +1 +2 +4 +3); tronco (`test_qt_foco_a_vista`, `test_qt_painel_de_estudo`, `test_qt_dialogos`, `test_qt_texto`): **110 passed**, 27 subtests (107 no ciclo 8: +3) |
+| As suítes inteiras | `c9\testes_inteiros_c9.sh` → `c9\testes\trunk_full_c9.out`, `c9\testes\suite_full_c9.out`; os 4 erros refeitos → `c9\testes\suite_proofsheet_c9.out` (só o `blind3` copiado) e `c9\testes\suite_proofsheet_c9b.out` (e os três `proofsheet*.pdf`) | sim, salvo o ambiente | tronco: **4.870 passed**, 16 skipped, 8 xfailed, **1 failed** em 374 s — `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore` (o pacote instalado aponta para o checkout do usuário, não para a minha árvore; a mesma dos ciclos 6 a 8). Suíte: **4.112 passed**, 16 skipped, **4 errors** em 975 s — os 4 no `setup` da fixture `word_band` de `tests/unit/typeset/test_proofsheet.py`, que abre artefatos ignorados pelo git (`benchmarks/reports/blind3/*.png`, `benchmarks/reports/proofsheet{,_rios,_run}.pdf`) que a minha árvore não tinha (a fixture não pula quando faltam, e eu tinha criado `benchmarks/reports/` para o `ui`): copiados do checkout, **4 passed** em 4 s. Os 16 pulados: 6 de GPU, 7 de EPUBCheck/Java (não instalados na minha árvore), o rapidocr instalado, as listas do tronco, o Brotli. Sem `test_packaging.py` e `test_roundtrip_corpus.py`, como no ciclo 8 |
+| O relatório, o roadmap e o HANDOFF | leitura do §0.3 (linhas 339–368 e 404–421 do relatório no `34a020e`), do §0.11, das duas linhas novas do roadmap e da do HANDOFF | sim, com duas ressalvas | o §0.3, o §0.10 e o HANDOFF dizem agora o `unread_page` (o que eu pedi no ciclo 8); a espera do sossego, a volta da janela e a folga ditas no §0.3. As ressalvas: «o segundo clique de um duplo clique cai onde o primeiro caiu — também quando o cartão … muda de altura (a âncora)» (§0.11, roadmap, HANDOFF) e «a tabela fica sob o ponteiro até o mouse sossegar … nada salta» (§0.3) não valem para o clique noutra linha com a folga posta (não bloqueante 1); e o §0.3 (linhas 362–368) ainda diz que o anotador da razão do foco «só olha o `FocusIn`» — desde este ciclo ele guarda também o soltar — e que o filtro da espera «fica só entre o pressionar e o soltar» — o do seguidor fica até o sossego |
+
+### Os bloqueantes do ciclo 8
+
+1. **Resolvido — uma decisão sobre a página que o OCR leu numa região só vale.** A Gallagher p. 54, lida pelo OCR de
+   produção numa região `page` (1.379 car., em revisão): o Enter, «Aceitar leitura», «Manter como imagem» e a leitura
+   corrigida com o Enter gravam, contam («1 decidida(s), 0 pendente(s) de 1») e chegam à importação seguinte (aplicadas 1,
+   nenhum item de revisão); a edição que uma janela de antes gravou fica no arquivo e é aplicada (aplicadas 2 com o aceite
+   novo). Nas importações de verdade, nenhum item com leitura recusado: 0 de 39 na Karpov 2, 0 de 129 na Gallagher, 0 de 94
+   na Nunn, 0 de 143 no Kemeri (13, 6, 5 e 0 deles `page`). A página que o OCR não leu continua recusada pelos quatro
+   caminhos, e o log antigo com o aceite vazio dela não a esconde. O `unread_page` é a regra certa: a região lida vazia, com
+   motor, aceita a edição e o «manter como imagem» e recusa só o aceite (`c9\regiao_vazia_c9.out`).
+2. **Resolvido — o segundo clique de um duplo clique numa linha da Rotulagem cai onde o primeiro caiu, e nada é aceito.**
+   Com o relógio de uma pessoa (100 e 300 ms entre os cliques, o duplo clique entregue como o Qt o entrega), na Gallagher
+   p. 51: Clássica, Foco e Fita a 1280×641 com a rolagem no fim, Clássica a 1920×1040, Foco a 1600×900 e a 2560×1440 — 35
+   duplos cliques, todos na linha clicada, nenhuma linha aceita, a verdade da linha inteira depois do sossego e a letra nela.
+   A sabotagem `soltar` devolve o defeito do ciclo 8 (a linha 4 aceita por ninguém) e a `ancora` o que o construtor achou
+   (a linha 3 → 2); o portão faz o duplo clique linha após linha e reprova com as duas. O que os ciclos 7 e 8 ganharam
+   continua igual linha a linha. O preço — a verdade aparece meio segundo depois do clique, ou na primeira tecla — está dito
+   no §0.3.
+
+### Defeitos bloqueantes (novos)
+
+Nenhum.
+
+### Defeitos não bloqueantes
+
+1. **Com a folga posta, o clique noutra linha a tira debaixo do ponteiro, e o segundo clique de um duplo clique cai na
+   linha vizinha** (`ancorar` chama `_Ancora.segurar`, que chama `soltar()` primeiro: a folga sai e a barra sobe **no
+   pressionar**). Com a rolagem no começo, o cartão que encolhe vira folga — como desenhado —; um clique noutra linha antes
+   do sossego ancora de novo e a tabela sobe 16 px sob o ponteiro parado. Na janela (Gallagher p. 51,
+   `c9\folga2\classica_1280x1600{,_b}.out` e `c9\folga2\foco_1280x1600.out`):
+   Clássica 1280×1600 — clique na linha 2 (folga 16, a tabela em y=450), 150 ms, duplo clique na linha 3: o 1º clique
+   escolhe a 3 e a tabela vai a y=434; o 2º cai na **linha 4**, e a linha escolhida é a 4; o duplo clique na linha 1 depois
+   do clique na 2 acaba na **2**; Foco 1280×1600, o mesmo (o duplo clique na 3 depois da 4 → 4). Na janela do teste do
+   construtor (`_janela_do_cartao`, a barra no começo; `c9\folga3\folga_unidade.out`): o duplo clique na linha 3 depois de
+   um clique na 2 entrega o duplo clique à **linha 4**; na linha 4 depois da 2, a escolhida acaba na **6** e o duplo clique
+   não chega a ninguém; com a barra no fim, e o duplo clique sozinho do teste, no lugar. Nada é aceito — a Rotulagem só leva
+   o foco à verdade no duplo clique —, mas o cartão e a verdade passam a ser os da linha vizinha: quem digita sem olhar
+   grava o texto na linha errada. Pede a tabela à vista com a barra no começo (a 1280 px de largura, janelas de ~1.600 px de
+   altura, ou uma página cujo conteúdo cabe) e dois cliques em linhas diferentes dentro do intervalo do duplo clique (500 ms
+   no Windows) — raro; o portão não vê (clica cada linha depois do sossego, e a 1280×641 a tabela só aparece no fim da
+   rolagem), e o teste da folga só faz o duplo clique na mesma linha. O §0.11, o roadmap e o HANDOFF afirmam o duplo clique
+   no lugar «também quando o cartão muda de altura», e o §0.3 que «nada salta» antes do sossego.
+2. **O duplo clique num botão de decisão decide a linha seguinte sem que ninguém a veja.** «Aceitar leitura» decide a
+   linha atual e passa à próxima; o 2º clique de um duplo clique, se ainda cai no botão, decide a próxima 150 ms depois de
+   ela aparecer. Na Revisão de texto as ações ficam fora da rolagem do cartão, nada as mexe, e o duplo clique decide **2
+   itens em 4 de 4**, no código do ciclo 8 e no do 9 igualmente (`c9\botoes\rdt_aceitar_classica{,_codigo_c8}.out`) — é do
+   produto, de antes. Na Rotulagem a rolagem do ciclo 8 tirava o botão de baixo do ponteiro e o duplo clique decidia **uma**
+   linha em 12 de 12 — o 2º clique nunca caía no botão (`aceitar_classica_codigo_c8.out`); no ciclo 9 o botão só sai de
+   baixo do ponteiro quando o cartão muda de altura, e o duplo clique decide **duas em 8 de 12** (`aceitar_classica.out`:
+   `[0, 1]`, `[2]` depois da 0 já feita, …), e «Próxima» anda duas linhas em 9 de 12 em cada uma das três peles
+   (`proxima_{classica,foco,fita}.out`; no ciclo 8, na Clássica, 0 de 12). Não é o
+   defeito do ciclo 8 — o gesto aqui é o duplo clique no próprio botão de aceitar, que a pessoa pediu —, mas o dano é o
+   mesmo, uma leitura aceita que ninguém viu, e o conserto do ciclo 9 o estendeu à Rotulagem.
+3. **A roda com a folga posta é engolida.** O `actionTriggered` da roda solta a âncora, e o `soltar` chama
+   `setValue(value − folga)` **dentro** do `triggerAction`: a posição que a roda ia aplicar é trocada pela de agora. Na
+   janela do teste do construtor (`c9\folga3\roda_folga_unidade.out`), com a barra no começo: sem folga a roda leva a barra
+   de 0 a 60; com a folga, de 0 a 0 (a folga sai, a roda não anda); na Rotulagem a 1280×1600, Clássica e Foco: 0 → 0. O
+   docstring da âncora e o teste dela dizem «o que a pessoa rola não é desfeito» — o teste mede com a barra no fim, sem
+   folga. Um passo da roda perdido; o seguinte anda.
+4. **A roda durante a espera não encerra a espera: meio segundo depois do clique a vista volta à verdade.** A 1280×641,
+   rolagem no fim, um clique numa linha e a roda 100 ms depois: a roda leva a barra de 473 a 413, e no sossego o seguidor a
+   põe em 298 para mostrar a verdade (Foco: 487 → 427 → 298; `c9\ataques\{classica,foco}_1280x641_fim.out`, a Clássica
+   refeita igual). No ciclo 8 a verdade vinha logo, e a roda andava a partir dela; agora a roda da pessoa é desfeita pelo
+   seguidor. A roda, a barra e as teclas da rolagem soltam a âncora, mas não encerram a espera do seguidor.
+5. **O foco inicial de um diálogo com rolagem, fora da vista, só aparece depois do intervalo do duplo clique.** A ativação
+   da janela nova dá o foco com `ActiveWindowFocusReason`, e desde este ciclo esse foco espera o intervalo inteiro (o §0.3
+   diz isso da janela que **volta**): o campo 0×0 aos 80 ms e inteiro aos 500 ms, nos dois seguidores; a primeira tecla o
+   mostra antes de entrar (`c9\ganhos\dialogo_inicial_{suite,tronco}.out`). Não achei diálogo do produto com o foco inicial
+   fora da vista; fica dito.
+6. **Duas frases velhas no §0.3** (linhas 362–368): o anotador da razão do foco «só olha o `FocusIn`» — ele guarda também o
+   soltar (`soltou_em`) — e «o filtro da espera do soltar fica só entre o pressionar e o soltar» — o do seguidor fica na
+   aplicação até o sossego.
+
+### O que falta
+
+- A plataforma real: a ordem da ativação e do pressionar no Windows, o intervalo de 500 ms, e o diálogo modal que fecha (o
+  offscreen não reativa a janela de baixo; reativei à mão) — o construtor diz o mesmo no §0.3. Não rodei janela na tela do
+  usuário.
+- Um teste e uma passada do portão com a tabela à vista e a barra no começo (a folga), com dois cliques em linhas
+  diferentes dentro do intervalo — o que acharia o não bloqueante 1; e um que faça o duplo clique nos botões de decisão.
+- Os 7 testes do EPUBCheck pulados na minha árvore (sem Java/EPUBCheck instalados nela) e os dois arquivos que deixei fora
+  da suíte inteira (`test_packaging.py`, `test_roundtrip_corpus.py`), como no ciclo 8; nada deles foi tocado neste ciclo.
+
+### O que especificamente precisa mudar para eu aprovar (se REPROVADO)
+
+Não se aplica. Para o construtor decidir, na ordem em que eu os tomaria: o não bloqueante 1 (a âncora que segura de novo o
+mesmo controle mantém a folga e só refaz a posição guardada, ou tira a folga só no sossego — e um teste com o clique numa
+linha e o duplo clique noutra dentro do intervalo, a barra no começo; e as frases do §0.11, do roadmap, do HANDOFF e do §0.3
+ajustadas); o 2 (os botões que decidem e andam — «Aceitar leitura», «Gravar edição», «Rejeitar», «Manter como imagem»,
+«Próxima», nas duas abas — não tomam o segundo clique de um duplo clique como outra decisão); o 3 (tirar a folga sem trocar
+a posição que a ação da barra vai aplicar); o 4 (a roda, a barra e as teclas da rolagem encerram a espera do seguidor, como
+soltam a âncora); o 6 (as duas frases).

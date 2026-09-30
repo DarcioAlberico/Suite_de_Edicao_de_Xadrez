@@ -118,6 +118,7 @@ from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, ancorar, no_meio_do_clique
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
+from caissa.ui.widgets.um_clique import um_clique_por_vez
 
 __all__ = [
     "TITULO",
@@ -618,6 +619,7 @@ class PainelDeRotulagem(QWidget):
         self.cartao.alternativa_pedida.connect(lambda i: self._use_alternative(index=i))
         dir_.addWidget(self.cartao)
         botoes = QHBoxLayout()
+        decidem: list[QPushButton] = []
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(LineStatus.ACCEPTED)),
             ("Gravar edição", lambda: self.decide(LineStatus.EDITED)),
@@ -627,6 +629,7 @@ class PainelDeRotulagem(QWidget):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, a=acao: a())
             botoes.addWidget(b)
+            decidem.append(b)
         botoes.addStretch(1)
         paginador = []
         for texto, delta in (("Anterior", -1), ("Próxima", 1)):
@@ -635,6 +638,9 @@ class PainelDeRotulagem(QWidget):
             botoes.addWidget(b)
             paginador.append(b)
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
+        # O segundo clique de um duplo clique num botão que decide e anda não decide a linha
+        # seguinte, que ninguém viu (crítico da fase 5, ciclo 9: 2 linhas em 8 de 12).
+        self._um_clique_por_vez = um_clique_por_vez(self, *decidem, *paginador)
         dir_.addLayout(botoes)
         # PgUp, PgDn, Home e End andam pelas linhas com o foco na tabela, e não viram a página do
         # livro (`TabelaDeLinhas`; crítico da fase 5, ciclo 6: o PgDn esvaziava a tabela)

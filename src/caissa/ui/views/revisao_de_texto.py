@@ -62,6 +62,7 @@ from caissa.ui.widgets.fileira_fluida import FileiraFluida
 from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, focaveis
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
+from caissa.ui.widgets.um_clique import um_clique_por_vez
 
 __all__ = [
     "TITULO",
@@ -341,6 +342,9 @@ class PainelDeRevisaoDeTexto(QWidget):
             botoes.adicionar(b)
             paginador.append(b)
         pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
+        # O segundo clique de um duplo clique num botão que decide e anda não decide o item
+        # seguinte, que ninguém viu (crítico da fase 5, ciclo 9: 2 itens em 4 de 4).
+        self._um_clique_por_vez = um_clique_por_vez(self, *self.acoes.values(), *paginador)
         dir_.addStretch(1)
         rolagem.setWidget(direita)
         coluna.addWidget(rolagem, 1)

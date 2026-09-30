@@ -785,9 +785,10 @@ def test_the_focus_the_program_moves_on_the_release_waits_for_the_calm_too(app, 
 def _janela_do_cartao(app):
     """A window 220 px tall: a scroll area with a card at the top whose height follows the line
     chosen in the list below it -- 40 px on the even lines, 80 on the odd ones, as the Rotulagem's
-    card grows when the reason of the line wraps -- and a list of sixteen lines.  The line chosen by
-    a click anchors the list first (``foco_a_vista.ancorar``, looked up in the module, so that the
-    sabotage can take it away), as the Rotulagem's table does."""
+    card grows when the reason of the line wraps -- and a list of sixteen lines, all of them in it,
+    that takes the room the view has to spare (stretch 1, as the Rotulagem's table).  The line
+    chosen by a click anchors the list first (``foco_a_vista.ancorar``, looked up in the module, so
+    that the sabotage can take it away), as the Rotulagem's table does."""
     from PyQt6.QtWidgets import QLabel, QListWidget, QScrollArea, QVBoxLayout, QWidget
 
     from caissa.ui.widgets import foco_a_vista
@@ -803,8 +804,8 @@ def _janela_do_cartao(app):
     coluna.addWidget(cartao)
     lista = QListWidget(conteudo)
     lista.addItems([f"linha {k}" for k in range(16)])
-    lista.setFixedHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
-    coluna.addWidget(lista)
+    lista.setMinimumHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
+    coluna.addWidget(lista, 1)
     rolagem.setWidget(conteudo)
     fora.addWidget(rolagem, 1)
     segue = foco_a_vista.RolagemSegueOFoco(rolagem)
@@ -1014,6 +1015,218 @@ def test_the_anchor_is_one_per_scroll_area_and_outlives_its_release(app, monkeyp
     janela, _rolagem, ancoras = tres_duplos_cliques()
     assert len(ancoras) == 3, "sabotaged: an anchor made on every click"
     janela.close()
+
+
+def _segurar_do_ciclo_9(self, controle, vigiados) -> None:
+    """The anchor's ``segurar`` of cycle 9: it let go first -- the margin came off on the press of
+    the new click."""
+    self.soltar()
+    self._controle = controle
+    self._vigiados = vigiados
+    self._y = self._onde(controle)
+    for vigiado in vigiados:
+        vigiado.installEventFilter(self)
+    self._vigia.start()
+
+
+def test_a_click_on_another_line_before_the_calm_keeps_the_margin(app, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 1): with the bar at its start the card that shrank
+    became a margin at the top; a click on another line before the calm anchored again, the margin
+    came off on the press, the list rose under the pointer held still, and the second click of the
+    double click fell on the next line -- the card and the truth of the neighbour.  Here: the list
+    on line 1 (the card at 80), a click on line 2 (the card shrinks: a margin of 40), 150 ms, and a
+    double click on line 3 (the card grows again): the line under the pointer at the second click
+    is 3, which gets the double click and stays chosen.  The sabotage: the ``segurar`` of cycle 9,
+    which let go first -- the second click falls on line 4."""
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    def clique_e_duplo_clique() -> tuple[int, list[int], int]:
+        janela, rolagem, cartao, lista, _segue = _janela_do_cartao(app)
+        alca = janela.windowHandle()
+        duplos: list[int] = []
+        lista.doubleClicked.connect(lambda indice: duplos.append(indice.row()))
+        lista.setCurrentRow(1)
+        for _vez in range(3):
+            app.processEvents()
+        rolagem.verticalScrollBar().setValue(0)
+        app.processEvents()
+        assert cartao.height() == 80
+        centro_da = lambda linha: lista.viewport().mapTo(  # noqa: E731 - geometry of now
+            janela, lista.visualItemRect(lista.item(linha)).center())
+        _clique(app, alca, centro_da(2))
+        assert rolagem.widget().layout().contentsMargins().top() >= 40, "the margin of the shrink"
+        QTest.qWait(150)  # the second click comes before the calm
+        ponto = centro_da(3)
+        _clique(app, alca, ponto)
+        QTest.qWait(80)  # the time between the two clicks of a double click
+        no_segundo = _linha_sob(janela, lista, ponto)
+        _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+        _sossegar(app)
+        escolhida = lista.currentRow()
+        janela.close()
+        return no_segundo, duplos, escolhida
+
+    no_segundo, duplos, escolhida = clique_e_duplo_clique()
+    assert no_segundo == 3, "the list stayed under the pointer"
+    assert duplos == [3], "the line clicked twice gets the double click"
+    assert escolhida == 3
+
+    monkeypatch.setattr(foco_a_vista._Ancora, "segurar", _segurar_do_ciclo_9)
+    no_segundo, duplos, escolhida = clique_e_duplo_clique()
+    assert no_segundo != 3, "sabotaged: the margin came off on the press, the list rose"
+    assert escolhida != 3, "sabotaged: the neighbour chosen"
+
+
+def _soltar_do_ciclo_9(self, *, dentro_da_acao: bool = False) -> None:
+    """The anchor's ``soltar`` of cycle 9: the margin came off the value of now, also inside the
+    action of the bar."""
+    del dentro_da_acao
+    if self._controle is None:
+        return
+    self._controle = None
+    self._vigia.stop()
+    self._largar_os_vigiados()
+    if self._folga:
+        folga = self._folga
+        self._folgar(-folga)
+        self._barra.setValue(self._barra.value() - folga)
+
+
+def test_the_wheel_with_the_margin_set_is_not_swallowed(app, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 2): the wheel lets the anchor go, and the release
+    took the margin off with ``setValue`` inside ``triggerAction`` -- the position the wheel was
+    about to apply was replaced by the one of now: with the margin set, the bar went from 0 to 0.
+    Here: with the margin of the shrink set (the bar at its start), a page down of the bar moves
+    the bar, and the content goes up by the margin and by what the bar moved.  The sabotage: the
+    ``soltar`` of cycle 9 -- the bar stays at 0."""
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtWidgets import QAbstractSlider
+
+    from caissa.ui.widgets import foco_a_vista
+
+    def pagina_abaixo_com_a_folga() -> tuple[int, int, int]:
+        janela, rolagem, _cartao, lista, _segue = _janela_do_cartao(app)
+        alca = janela.windowHandle()
+        barra = rolagem.verticalScrollBar()
+        lista.setCurrentRow(1)
+        for _vez in range(3):
+            app.processEvents()
+        barra.setValue(0)
+        app.processEvents()
+        ponto = lista.viewport().mapTo(janela, lista.visualItemRect(lista.item(2)).center())
+        _clique(app, alca, ponto)
+        folga = rolagem.widget().layout().contentsMargins().top()
+        onde = lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y()
+        barra.triggerAction(QAbstractSlider.SliderAction.SliderPageStepAdd)
+        for _vez in range(3):
+            app.processEvents()
+        andou = barra.value()
+        subiu = onde - lista.mapTo(rolagem.viewport(), QPoint(0, 0)).y()
+        _sossegar(app)
+        janela.close()
+        return folga, andou, subiu
+
+    folga, andou, subiu = pagina_abaixo_com_a_folga()
+    assert folga >= 40, "the margin of the shrink was set"
+    assert andou > 0, "the bar moved"
+    assert subiu == 40 + andou, "the content went up by the margin and by what the bar moved"
+
+    monkeypatch.setattr(foco_a_vista._Ancora, "soltar", _soltar_do_ciclo_9)
+    _folga, andou, _subiu = pagina_abaixo_com_a_folga()
+    assert andou == 0, "sabotaged: the page down swallowed"
+
+
+def test_the_wheel_during_the_wait_stays_and_the_first_key_shows_the_box(app, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 3): a click on a line sends the focus to the box
+    below the fold, which waits for the calm; the wheel 100 ms after the click took the bar away,
+    and at the calm the follower brought it back to the box -- the person's wheel undone.  Here:
+    after the click, a step down of the bar (the wheel's action); at the calm the bar is where the
+    person left it, and the box, not shown; the first key shows it, and the letter goes into it.
+    The sabotage: the follower deaf to the person's scroll -- at the calm the bar goes to the
+    box."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QAbstractSlider
+
+    from caissa.ui.widgets import foco_a_vista
+
+    def roda_na_espera() -> tuple[int, int, bool, bool]:
+        janela, rolagem, linhas, caixa, botao = _janela_da_lista(app)
+        alca = janela.windowHandle()
+        barra = rolagem.verticalScrollBar()
+        caixa.setPlainText("")
+        ponto = _na_linha(app, janela, rolagem, linhas, botao)
+        _clique(app, alca, ponto)
+        assert app.focusWidget() is caixa
+        barra.triggerAction(QAbstractSlider.SliderAction.SliderSingleStepAdd)
+        app.processEvents()
+        rolou = barra.value()
+        _sossegar(app)
+        depois = barra.value()
+        escondida = not _inteiro(rolagem, caixa)
+        QTest.keyClick(caixa, Qt.Key.Key_X)
+        app.processEvents()
+        mostrada = _inteiro(rolagem, caixa) and caixa.toPlainText() == "x"
+        janela.close()
+        return rolou, depois, escondida, mostrada
+
+    rolou, depois, escondida, mostrada = roda_na_espera()
+    assert rolou > 0
+    assert depois == rolou, "at the calm the bar is where the person left it"
+    assert escondida, "the box is not brought back"
+    assert mostrada, "the first key shows the box, and the letter goes into it"
+
+    monkeypatch.setattr(foco_a_vista.RolagemSegueOFoco, "_a_pessoa_rolou",
+                        lambda _self, _acao: None)
+    rolou, depois, _escondida, _mostrada = roda_na_espera()
+    assert depois != rolou, "sabotaged: at the calm the follower takes the bar to the box"
+
+
+def test_when_the_content_fits_the_card_that_grows_gets_a_floor_until_the_calm(app, monkeypatch):
+    """A window where the whole content fits the view: the bar has nowhere to go, and the card that
+    grows above the list took the list down under the pointer -- the second click of a double click
+    fell on the line above.  The anchor gives the content a floor (a minimum height that lends the
+    bar the reach it lacks), and takes it away at the calm.  The sabotage: no floor -- the second
+    click falls off the line."""
+    from PyQt6.QtTest import QTest
+
+    from caissa.ui.widgets import foco_a_vista
+
+    def duplo_clique_na_janela_alta() -> tuple[int, int, int, int]:
+        janela, rolagem, cartao, lista, _segue = _janela_do_cartao(app)
+        janela.resize(360, 700)
+        for _vez in range(3):
+            app.processEvents()
+        alca = janela.windowHandle()
+        barra = rolagem.verticalScrollBar()
+        lista.setCurrentRow(0)
+        for _vez in range(3):
+            app.processEvents()
+        assert barra.maximum() == 0, "the whole content fits the view"
+        assert cartao.height() == 40
+        ponto = lista.viewport().mapTo(janela, lista.visualItemRect(lista.item(1)).center())
+        _clique(app, alca, ponto)
+        QTest.qWait(80)  # the time between the two clicks of a double click
+        no_segundo = _linha_sob(janela, lista, ponto)
+        _segundo_clique_de_um_duplo(app, janela, alca, ponto)
+        piso = rolagem.widget().minimumHeight()
+        _sossegar(app)
+        depois = rolagem.widget().minimumHeight()
+        escolhida = lista.currentRow()
+        janela.close()
+        return no_segundo, escolhida, piso, depois
+
+    no_segundo, escolhida, piso, depois = duplo_clique_na_janela_alta()
+    assert no_segundo == 1, "the list stayed under the pointer"
+    assert escolhida == 1
+    assert piso > 0, "held by a floor"
+    assert depois == 0, "the floor taken away at the calm"
+
+    monkeypatch.setattr(foco_a_vista._Ancora, "_pisar", lambda _self, _valor: None)
+    no_segundo, _escolhida, _piso, _depois = duplo_clique_na_janela_alta()
+    assert no_segundo != 1, "sabotaged: the list went down under the pointer"
 
 
 def _montar_e_destruir(app) -> None:

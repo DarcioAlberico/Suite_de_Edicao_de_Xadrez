@@ -50,7 +50,10 @@ para longe daquele controle, rolar até ele ali tirava de baixo do ponteiro o co
 intervalo do duplo clique inteiro (:func:`voltou_com_a_janela`): o clique que reativou a janela
 chega dentro dele, e o foco da volta só aparece se o clique não o levou a outro controle; sem
 clique (o Alt+Tab, o diálogo que fechou), aparece passado o intervalo, ou na primeira tecla. O Tab
-e o Shift+Tab rolam na hora (:func:`veio_do_teclado`).
+e o Shift+Tab rolam na hora (:func:`veio_do_teclado`). E a roda, a barra ou as teclas da rolagem
+durante a espera ficam: o foco que espera não é mais mostrado quando o mouse sossega (a vista
+voltaria para ele meio segundo depois, desfazendo a roda: crítico da fase 5, ciclo 9), só na
+primeira tecla.
 
 **O que está sob o ponteiro também não desliza.** Na Rotulagem a tabela «Linhas da página» fica na
 mesma rolagem, abaixo do cartão da linha, e o motivo do cartão quebra em uma ou duas linhas
@@ -59,9 +62,11 @@ linha 3 da Gallagher p. 51 fazia o cartão crescer 16 px, a tabela descia, e o s
 duplo clique caía na linha 2 (achado pelo construtor no ciclo 9, `c9/sonda_tabela_desliza.py`).
 :func:`ancorar` mantém o controle clicado no mesmo lugar da vista até o mouse sossegar, compensando
 na rolagem cada mudança de altura acima dele -- e, com a rolagem no começo, o que encolhe acima
-dele com uma folga no alto do conteúdo, até soltar; a roda ou a barra que a pessoa mexe no meio
-soltam a âncora, e o seguidor a solta antes de mostrar um controle. O gêmeo deste arquivo no tronco
-é `chess_diagram_ocr.qt.foco_a_vista`, sem a âncora.
+dele com uma folga no alto do conteúdo, e, com o conteúdo que cabe na vista, o que cresce com um
+piso (uma altura mínima), até soltar; outro clique antes do sossego troca o controle sem tirar a
+folga (crítico da fase 5, ciclo 9); a roda ou a barra que a pessoa mexe no meio soltam a âncora --
+a folga sai da posição que a roda vai aplicar --, e o seguidor a solta antes de mostrar um
+controle. O gêmeo deste arquivo no tronco é `chess_diagram_ocr.qt.foco_a_vista`, sem a âncora.
 """
 
 from __future__ import annotations
@@ -252,10 +257,13 @@ class _Ancora(QObject):
     que o controle andou na vista, e ele volta aonde estava. O conteúdo mesmo não é vigiado: ele se
     move com a rolagem. Quando o que está acima encolhe mais do que a barra pode subir (ela está no
     começo), a diferença vira uma folga no alto do conteúdo, que a âncora tira ao soltar, subindo a
-    barra outro tanto quando pode. Ela solta quando o mouse sossega (uma vigia pergunta a
-    :func:`mouse_sossegado`), quando a pessoa rola -- a roda, a barra, as teclas da rolagem
-    (`actionTriggered`): o que ela rola não é desfeito -- e quando o seguidor mostra um controle
-    (:func:`mostrar`).
+    barra outro tanto quando pode; quando o controle desce, a folga posta antes encolhe primeiro, e
+    quando a barra não tem para onde descer (o conteúdo cabe na vista), o conteúdo ganha um piso --
+    uma altura mínima que dá à barra o alcance que falta --, tirado ao soltar. Ela solta quando o
+    mouse sossega (uma vigia pergunta a :func:`mouse_sossegado`), quando a pessoa rola -- a roda, a
+    barra, as teclas da rolagem (`actionTriggered`): o que ela rola não é desfeito, e a folga sai da
+    posição que a ação vai aplicar -- e quando o seguidor mostra um controle (:func:`mostrar`).
+    Outro clique antes do sossego troca o controle sem tirar a folga.
 
     **Os sinais ligados uma vez, e nunca desligados.** A primeira versão (o `5f3c581`) fazia uma
     âncora por clique e desligava os sinais da barra ao soltar: o PyQt apaga o intermediário de um
@@ -274,6 +282,7 @@ class _Ancora(QObject):
         self._vigiados: list[QWidget] = []
         self._devolvendo = False
         self._folga = 0
+        self._piso: int | None = None  # a altura mínima do conteúdo antes do piso
         self._y = 0
         barra.rangeChanged.connect(self._devolver)
         barra.actionTriggered.connect(self._a_pessoa_rolou)
@@ -286,8 +295,15 @@ class _Ancora(QObject):
         return self._controle
 
     def segurar(self, controle: QWidget, vigiados: list[QWidget]) -> None:
-        """Segura ``controle`` onde ele está na vista (``vigiados``: ele e os que o contêm)."""
-        self.soltar()
+        """Segura ``controle`` onde ele está na vista (``vigiados``: ele e os que o contêm).
+
+        Se ela já segura um controle -- outro clique antes do sossego --, troca de controle **sem
+        tirar a folga**: tirá-la subia o conteúdo debaixo do ponteiro no pressionar do clique novo,
+        e o segundo clique de um duplo clique caía na linha vizinha (crítico da fase 5, ciclo 9: com
+        a barra no começo, o duplo clique na linha 3 depois de um clique na 2 escolhia a 4). A
+        folga sai quando a âncora se solta.
+        """
+        self._largar_os_vigiados()
         self._controle = controle
         self._vigiados = vigiados
         self._y = self._onde(controle)
@@ -314,17 +330,34 @@ class _Ancora(QObject):
         self._devolvendo = True
         try:
             diferenca = self._onde(controle) - self._y
+            if diferenca > 0 and self._folga:
+                # desceu: a folga posta antes encolhe primeiro, e só depois a barra anda
+                self._folgar(-min(self._folga, diferenca))
+                diferenca = self._onde(controle) - self._y
+            if diferenca > 0:
+                # e a barra precisa de alcance para descer: com o conteúdo que cabe na vista ele não
+                # cresce sozinho, e com a barra no fim ele ainda não cresceu -- um piso, antes de
+                # ela andar (o alcance novo chega na hora)
+                self._pisar(self._barra.value() + diferenca)
             if diferenca:
                 self._barra.setValue(self._barra.value() + diferenca)
-            # o que a barra não devolveu: acima, só uma folga no alto do conteúdo (a barra está no
-            # começo); abaixo, a folga posta antes encolhe -- ou o alcance novo da barra devolve
+            # o que a barra não devolveu acima vira uma folga no alto do conteúdo (a barra está no
+            # começo); abaixo, o alcance que o piso não deu na hora chega depois (`rangeChanged`)
             resto = self._onde(controle) - self._y
             if resto < 0:
                 self._folgar(-resto)
-            elif resto > 0 and self._folga:
-                self._folgar(-min(self._folga, resto))
         finally:
             self._devolvendo = False
+
+    def _pisar(self, valor: int) -> None:
+        """Dá à barra o alcance até ``valor``: a altura mínima do conteúdo, se ela não tem."""
+        conteudo = self._rolagem.widget()
+        vista = self._rolagem.viewport()
+        if conteudo is None or vista is None or self._barra.maximum() >= valor:
+            return
+        if self._piso is None:
+            self._piso = conteudo.minimumHeight()
+        conteudo.setMinimumHeight(max(conteudo.minimumHeight(), vista.height() + valor))
 
     def _folgar(self, quanto: int) -> None:
         """Acrescenta ``quanto`` px à folga no alto do conteúdo (tira, se negativo), e já arruma."""
@@ -339,26 +372,44 @@ class _Ancora(QObject):
         arranjo.activate()
 
     def _a_pessoa_rolou(self, _acao: int) -> None:
-        self.soltar()
+        # Dentro da ação da barra (`triggerAction`): a posição que a ação vai aplicar já está
+        # posta, e o `setValue` daqui a trocaria pela de agora -- a roda seria engolida (crítico da
+        # fase 5, ciclo 9). A folga sai dessa posição.
+        self.soltar(dentro_da_acao=True)
 
     def _talvez_soltar(self) -> None:
         if mouse_sossegado():
             self.soltar()
 
-    def soltar(self) -> None:
-        """Solta o controle: ele volta a ir com o conteúdo, e a folga sai."""
-        if self._controle is None:
-            return
-        self._controle = None
-        self._vigia.stop()
+    def _largar_os_vigiados(self) -> None:
         for vigiado in self._vigiados:
             if not sip.isdeleted(vigiado):
                 vigiado.removeEventFilter(self)
         self._vigiados = []
+
+    def soltar(self, *, dentro_da_acao: bool = False) -> None:
+        """Solta o controle: ele volta a ir com o conteúdo, e a folga sai.
+
+        A barra sobe o que a folga descia, e nada salta quando pode; ``dentro_da_acao`` é o soltar
+        da ação da barra (a roda): a folga sai da posição que a ação vai aplicar.
+        """
+        if self._controle is None:
+            return
+        self._controle = None
+        self._vigia.stop()
+        self._largar_os_vigiados()
         if self._folga and not sip.isdeleted(self._rolagem) and not sip.isdeleted(self._barra):
             folga = self._folga
             self._folgar(-folga)
-            self._barra.setValue(self._barra.value() - folga)
+            if dentro_da_acao:
+                self._barra.setSliderPosition(self._barra.sliderPosition() - folga)
+            else:
+                self._barra.setValue(self._barra.value() - folga)
+        if self._piso is not None and not sip.isdeleted(self._rolagem):
+            conteudo = self._rolagem.widget()
+            if conteudo is not None:
+                conteudo.setMinimumHeight(self._piso)
+            self._piso = None
 
 
 #: A âncora de cada rolagem, pelo endereço dela: o objeto Python da âncora vive enquanto a rolagem
@@ -420,10 +471,14 @@ class RolagemSegueOFoco(QObject):
         self._ligado = True
         self._pendente: QWidget | None = None
         self._esperando = False
+        self._so_na_tecla = False
         self._sossego = QTimer(self)
         self._sossego.setSingleShot(True)
         self._sossego.setTimerType(Qt.TimerType.PreciseTimer)
         self._sossego.timeout.connect(self._sossegou)
+        for barra in (rolagem.verticalScrollBar(), rolagem.horizontalScrollBar()):
+            if barra is not None:
+                barra.actionTriggered.connect(self._a_pessoa_rolou)
         aplicacao = QApplication.instance()
         if isinstance(aplicacao, QApplication):
             _razao_do_foco()
@@ -454,6 +509,7 @@ class RolagemSegueOFoco(QObject):
         mostra antes de chegar a ele. O filtro fica na aplicação só durante a espera.
         """
         self._pendente = controle
+        self._so_na_tecla = False
         aplicacao = QApplication.instance()
         if not self._esperando and aplicacao is not None:
             aplicacao.installEventFilter(self)
@@ -463,12 +519,24 @@ class RolagemSegueOFoco(QObject):
         else:
             self._sossego.start(intervalo_do_duplo_clique())
 
+    def _a_pessoa_rolou(self, _acao: int) -> None:
+        """A roda, a barra ou as teclas da rolagem durante a espera: o que a pessoa rola fica.
+
+        O foco que espera deixa de ser mostrado quando o mouse sossega -- a vista voltaria para ele
+        meio segundo depois do clique, desfazendo a roda (crítico da fase 5, ciclo 9: a 1280×641, a
+        roda levava a barra de 473 a 413, e o sossego a punha em 298) --, e passa a esperar só a
+        primeira tecla: o que se digita continua à vista.
+        """
+        if self._esperando:
+            self._so_na_tecla = True
+            self._sossego.stop()
+
     def eventFilter(self, objeto: QObject | None, evento: QEvent | None) -> bool:  # noqa: N802 - Qt
         if self._esperando and evento is not None:
             tipo = evento.type()
             if tipo in (QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick):
                 self._sossego.stop()
-            elif tipo == QEvent.Type.MouseButtonRelease:
+            elif tipo == QEvent.Type.MouseButtonRelease and not self._so_na_tecla:
                 self._sossego.start(intervalo_do_duplo_clique())
             elif (tipo == QEvent.Type.KeyPress
                   and evento.key() not in _MODIFICADORES):  # type: ignore[attr-defined]
@@ -476,12 +544,13 @@ class RolagemSegueOFoco(QObject):
         return super().eventFilter(objeto, evento)
 
     def _sossegou(self) -> None:
-        if not no_meio_do_clique():
+        if not no_meio_do_clique() and not self._so_na_tecla:
             self._mostrar_o_pendente()
 
     def _parar_de_esperar(self) -> QWidget | None:
         """Tira o filtro e o relógio, e devolve o controle que esperava."""
         self._sossego.stop()
+        self._so_na_tecla = False
         aplicacao = QApplication.instance()
         if self._esperando and aplicacao is not None:
             aplicacao.removeEventFilter(self)

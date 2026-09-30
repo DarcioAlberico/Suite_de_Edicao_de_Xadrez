@@ -649,3 +649,27 @@ def test_decisions_taken_before_survive_a_fresh_import_result(app, pdf, tmp_path
     partial.canceled = True
     assert not painel.receber_importacao(SimpleNamespace(report=partial), pdf=pdf)
     painel.close()
+
+
+def test_a_double_click_on_a_deciding_button_decides_one_item(app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 2): the actions are outside the card's scroll area
+    and nothing moves them, so the second click of a double click on «Manter como imagem» fell on
+    the button again and decided the next item a fraction of a second after it appeared -- 2 items
+    in 4 of 4, in the code of cycle 8 and of 9.  A double click through the ``QWindow`` (the second
+    click delivered as Qt delivers it) decides one item.  The sabotage: the buttons without the
+    filter (``um_clique_por_vez`` a no-op) -- two items decided."""
+    from caissa.ui.audit import teclado
+    from caissa.ui.views import revisao_de_texto
+
+    def duplo_clique_em_manter(pasta: Path) -> int:
+        painel = _panel(app, pdf, pasta)
+        botao = painel.acoes["Manter como imagem"]
+        teclado._duplo_clique(painel, botao.mapTo(painel, botao.rect().center()))
+        decididos = len(painel.queue.log)
+        painel.close()
+        return decididos
+
+    assert duplo_clique_em_manter(tmp_path / "com_o_filtro") == 1, "one item decided"
+    monkeypatch.setattr(revisao_de_texto, "um_clique_por_vez", lambda _dono, *_botoes: None)
+    assert duplo_clique_em_manter(tmp_path / "sabotado") == 2, (
+        "sabotaged: the next item decided too")

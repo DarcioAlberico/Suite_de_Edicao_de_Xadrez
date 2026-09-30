@@ -404,8 +404,8 @@ def _janela_do_cartao_e_da_lista(app):
     pilha.addWidget(cartao)
     lista = QListWidget(conteudo)
     lista.addItems([f"linha {k}" for k in range(16)])
-    lista.setFixedHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
-    pilha.addWidget(lista)
+    lista.setMinimumHeight(lista.sizeHintForRow(0) * 16 + 2 * lista.frameWidth())
+    pilha.addWidget(lista, 1)
     rolagem.setWidget(conteudo)
     coluna.addWidget(rolagem)
     RolagemSegueOFoco(rolagem)
@@ -452,4 +452,64 @@ def test_the_gate_double_clicks_line_after_line_and_finds_the_line_that_slid(app
     deslizou = [d for d in fora if d["sob_o_ponteiro"] == d["sob_o_ponteiro_no_segundo"]]
     assert deslizou, ("sabotaged: the same list under the pointer, another line", fora)
     assert all(d["linha_no_segundo"] != d["linha"] for d in deslizou), deslizou
+    janela.close()
+
+
+def test_the_gate_clicks_a_line_and_double_clicks_the_next_before_the_calm(app, monkeypatch):
+    """Crítico da fase 5, ciclo 9 (não bloqueante 1): with the bar at its start the card that shrank
+    became a margin at the top, and a click on another line before the calm took it off on the
+    press -- the list rose under the pointer, and the second click of the double click fell on the
+    line below.  The gate did not see it: it double-clicked each line after the calm.  Now, at each
+    end, it clicks a line and double-clicks its neighbour 150 ms later (both ways): with the anchor
+    every second click lands on the line clicked twice; the sabotage ``folga`` (the ``segurar`` of
+    cycle 9, which let go first) fails with the same list under the pointer and another line."""
+    import importlib
+
+    from caissa.ui.audit import teclado
+
+    foco_a_vista = importlib.import_module("caissa.ui.widgets.foco_a_vista")
+    monkeypatch.setattr(foco_a_vista._Ancora, "segurar", foco_a_vista._Ancora.segurar)
+    janela, _lista = _janela_do_cartao_e_da_lista(app)
+    duplos = teclado._duplos_cliques(janela, janela)
+    pares = [d for d in duplos if d.get("clique_antes") is not None]
+    assert pares, duplos
+    assert all(d["no_lugar"] and d["linha_no_segundo"] == d["linha"] for d in pares), pares
+    assert not teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "folga")
+    teclado._sabotar(janela)
+    duplos = teclado._duplos_cliques(janela, janela)
+    fora = [d for d in teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+            if d.get("clique_antes") is not None]
+    assert fora, ("sabotaged: a second click off the line clicked twice", duplos)
+    assert all(d["linha_no_segundo"] != d["linha"] for d in fora), fora
+    janela.close()
+
+
+def test_the_gate_double_clicks_when_the_content_fits_the_view(app, monkeypatch):
+    """A window where the whole content fits the view: the bar has nowhere to go, and the card that
+    grew above the list took it down under the pointer.  The anchor lends the bar the reach it
+    lacks (a floor), and the gate's double clicks land on the line clicked; the sabotage ``piso``
+    (the anchor without the floor) fails with another line under the pointer."""
+    import importlib
+
+    from caissa.ui.audit import teclado
+
+    foco_a_vista = importlib.import_module("caissa.ui.widgets.foco_a_vista")
+    monkeypatch.setattr(foco_a_vista._Ancora, "_pisar", foco_a_vista._Ancora._pisar)
+    janela, _lista = _janela_do_cartao_e_da_lista(app)
+    janela.resize(360, 700)
+    for _vez in range(3):
+        app.processEvents()
+    duplos = teclado._duplos_cliques(janela, janela)
+    medidos = [d for d in duplos if d["linha"] is not None]
+    assert medidos, duplos
+    assert all(d["no_lugar"] and d["linha_no_segundo"] == d["linha"] for d in medidos), medidos
+
+    monkeypatch.setitem(teclado._PASSADA, "sabotagem", "piso")
+    teclado._sabotar(janela)
+    duplos = teclado._duplos_cliques(janela, janela)
+    fora = teclado.Aba(nome="Janela", duplos_cliques=duplos).duplos_fora_do_lugar()
+    assert fora, ("sabotaged: a second click off the line", duplos)
+    assert any(d.get("linha_no_segundo") != d["linha"] for d in fora), fora
     janela.close()
