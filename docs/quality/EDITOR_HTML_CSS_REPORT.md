@@ -107,7 +107,8 @@ ele exporta três livros e espera a máquina livre.
 crítico (`adc9df2`, `1b24e25` e a desta rodada); o **H5, ciclo 1** do Codex reprovou com 3
 bloqueantes, respondidos pelas mutações M-H5-1 (roadmap §10, spec 1.19) e M-H5-2 (o contrato v2);
 o **ciclo 2 aprovou a M-H5-1** e reprovou só a governança da M-H5-2 — o registro no `DECISIONS.md`
-do CB, feito como **D-004** (`bf56a19d3` do Sigil-master) e levado ao ciclo 3; os testes e a
+do CB, feito como **D-004** (`bf56a19d3` do Sigil-master); **o ciclo 3 APROVOU** (a M-H5-2
+aprovada, a M-H5-1 mantida, nenhum bloqueante); os testes e a
 rodada leve do arnês passam; **o portão completo** (o IR real das páginas do portão, o corpus de 10
 mil nós, 3 execuções, as 7 sabotagens e o EPUBCheck) **espera a máquina livre**.
 

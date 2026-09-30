@@ -1441,3 +1441,43 @@ Os três bloqueantes técnicos do ciclo 1 foram corrigidos:
 
 Aprovo **M-H5-1**.  
 A implementação técnica de **M-H5-2** está correta, mas **não aprovo a mutação ainda** por faltar o registro exigido no `DECISIONS.md` do CB.
+
+## H5 — ciclo 3 (2026-09-30): APROVADO (M-H5-1 e M-H5-2)
+
+O crítico julgou só o bloqueante do ciclo 2 e o não bloqueante do texto do portão: o D-004 do CB
+(`bf56a19d3` do Sigil-master), o cabeçalho do contrato v2, o portão do H5 no roadmap, a spec e o
+relatório (o `80432f0`), somente leitura. O veredito, transcrito sem edição:
+
+VEREDITO: APROVADO  
+CICLO: 3  
+FRENTE: Editor HTML/CSS — H5 (implementação e definição do portão) e as mutações M-H5-1 e M-H5-2
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| D-004 registra a colisão com `_MOVE_OPEN_RE`, a ausência de legado, a migração vazia e a nova classe | `Sigil-master\chessbook\DECISIONS.md:32`, `:42`, `:48`, `:51`; `Sigil-master\src\Resource_Files\python3lib\sigil_chess\validate.py:62` | Confirmada |
+| D-004 traz fixture anterior, fixture corrigida e sabotagem que demonstram a correção | `DECISIONS.md:60`; `tests\fixtures\editor\contrato_negativas\negativa_classe_confundida.xhtml:12`; `tests\fixtures\editor\contrato\diagrama.xhtml:20`; `benchmarks\editor_contrato.py:23`, `:570` | Confirmada |
+| D-004 segue a forma das decisões do CB e cobre os passos de registro | `DECISIONS.md:34`, `:38`, `:45`, `:52`, `:60`, `:67` | Confirmada |
+| O contrato do CB não muda; a evidência e as atualizações ficam no Caissa | `DECISIONS.md:52-55`; commit `bf56a19d3` altera somente `chessbook/DECISIONS.md` | Confirmada |
+| O cabeçalho do MARKUP aponta D-004 e o commit | `docs/MARKUP_CAISSA.md:14`, `:20` | Confirmada |
+| O portão H5 inclui fixtures, XHTML gerado, exclui edições manuais e remete-as ao H10 | `docs/EDITOR_HTML_CSS_ROADMAP.md:978`, `:983`, `:986`, `:996` | Confirmada |
+| M-H5-1 está registrada como aprovada e M-H5-2 como corrigida pelo D-004 | `EDITOR_HTML_CSS_ROADMAP.md:2299`, `:2300` | Confirmada |
+| Spec 1.19 e relatório refletem o ciclo 3, D-004 e o escopo do portão | `EDITOR_HTML_CSS_SPEC.md:3`, `:1795`, `:1798`; `EDITOR_HTML_CSS_REPORT.md:106`, `:109`, `:110` | Confirmada |
+| O veredito do ciclo 2 permanece transcrito e sem alteração | `EDITOR_HTML_CSS_CRITICAS.md:1381`, `:1426` | Confirmada |
+
+## Defeitos bloqueantes
+
+Nenhum.
+
+A D-004 satisfaz o bloqueante anterior: documenta a decisão, preserva o contrato do CB e deixa explícito por que os itens de fixture, teste e documentação são atendidos no repositório do Caissa.
+
+## Defeitos não bloqueantes
+
+O portão operacional completo do H5 continua pendente — IR real, corpus de 10 mil nós, três repetições e EPUBCheck —, mas isso está expressamente fora deste julgamento.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Nada.
+
+Aprovo explicitamente a mutação **M-H5-2**. A **M-H5-1** permanece aprovada.
