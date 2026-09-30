@@ -29,6 +29,11 @@ na ordem do documento. O que o MuPDF sozinho desenharia diferente do livro — m
   no `style=""` dele, com `!important`; o link que o autor não pinta fica o azul (o do leitor).
 - **O `@media`** — o MuPDF ignora o bloco inteiro, qualquer mídia; a cascata também. A
   `@font-face` sai (a fonte não muda a cor; o negrito do trecho vem do MuPDF).
+- **O `@import`** — todo `@import` local, em qualquer profundidade, entra no lugar dele (a folha
+  importada duas vezes, por dois caminhos, entra duas vezes, como no CSS); o que importa a si
+  mesmo pelo caminho aberto não entra de novo (o laço), e o `@import` depois de uma regra não
+  vale (CSS Cascade §6.1). O `LIMITE_DE_IMPORTS` é uma defesa: passar dele é dito, no `<link>`
+  ou no `<style>` de onde a cadeia veio (`PaginaMedida.incompletas`).
 
 Nada disto vai para o livro: é a cópia que o MuPDF desenha para medir.
 """
@@ -78,7 +83,10 @@ _VAR = re.compile(r"var\(\s*(--[\w-]+)\s*(?:,\s*((?:[^()]|\([^()]*\))*))?\)")
 _RAIZ_DO_SVG = re.compile(r"<svg\b[^>]*>", re.IGNORECASE)
 _ATRIBUTO_DO_TAMANHO = re.compile(
     r"\s(width|height|viewBox|preserveAspectRatio)\s*=\s*(\"[^\"]*\"|'[^']*')")
-_IMPORT_PROFUNDIDADE = 4
+LIMITE_DE_IMPORTS = 256
+"""As folhas que o `@import` traz por `<link>` ou `<style>`, no máximo — uma defesa contra a
+folha hostil, e não um corte de medida: passar dele é dito (`css-contraste-incompleto`), e o que
+não se leu não some em silêncio."""
 BRANCO = (1.0, 1.0, 1.0)
 Cor = tuple[float, float, float]
 Chave = tuple[int, int, tuple[int, int, int], int]
@@ -100,6 +108,8 @@ class PaginaMedida:
     imagens: list[str | None] = field(default_factory=list)
     """Cada imagem que o MuPDF desenha, na ordem: o caminho da `<img>`, ou `None` no `<svg>` do
     texto (que vai como é)."""
+    incompletas: list[tuple[Elemento, str]] = field(default_factory=list)
+    """O `<link>` ou o `<style>` cuja cadeia de `@import` não se leu inteira, e o que faltou."""
 
     def arquivo(self, *, reais: bool = False) -> Any:
         """O `pymupdf.Archive` das imagens (os substitutos, ou as de verdade), ou `None`."""
@@ -242,44 +252,72 @@ def _url_do_import(regra: Any) -> str | None:
     return None
 
 
-def _regras_da_folha(texto: str, arquivo: str, contexto: Contexto,
-                     vistos: set[str], profundidade: int = 0) -> list[_Regra]:
-    """As regras de estilo da folha, com o `@import` local expandido no lugar dele.
+@dataclass
+class _Leitura:
+    """A leitura das folhas de um `<link>` ou `<style>`: quantas o `@import` trouxe, e o corte."""
 
-    O `@media`, a `@font-face`, a `@page` e o resto dos `@` saem: o MuPDF ignora o `@media` e o
-    resto não muda a cor.
+    lidas: int = 0
+    corte: str | None = None
+
+
+def _regras_da_folha(texto: str, arquivo: str, contexto: Contexto, abertos: tuple[str, ...],
+                     leitura: _Leitura) -> list[_Regra]:
+    """As regras de estilo da folha, com cada `@import` local expandido no lugar dele.
+
+    `abertos` é o caminho de `@import` aberto até aqui: a folha que já está nele não entra de novo
+    (o laço), e a que está fora dele entra quantas vezes for importada. O `@import` só vale antes
+    das regras (o `@charset` e o `@layer` não contam). O `@media`, a `@font-face`, a `@page` e o
+    resto dos `@` saem: o MuPDF ignora o `@media`, e o resto não muda a cor.
     """
     regras: list[_Regra] = []
+    antes_das_regras = True
     for regra in tinycss2.parse_stylesheet(texto, skip_comments=True, skip_whitespace=True):
         if regra.type == "qualified-rule":
+            antes_das_regras = False
             regras.append(_Regra(tinycss2.serialize(regra.prelude).strip(), _declaracoes(
                 tinycss2.parse_declaration_list(regra.content, skip_comments=True,
                                                 skip_whitespace=True))))
-        elif regra.type == "at-rule" and regra.lower_at_keyword == "import" and \
-                profundidade < _IMPORT_PROFUNDIDADE:
-            url = _url_do_import(regra)
-            caminho = resolver(arquivo, url) if url else None
-            importado = contexto.texto(caminho) if caminho and caminho not in vistos else None
-            if caminho and importado is not None:
-                vistos.add(caminho)
-                regras += _regras_da_folha(importado, caminho, contexto, vistos,
-                                           profundidade + 1)
+            continue
+        if regra.type != "at-rule":
+            continue
+        if regra.lower_at_keyword != "import":
+            antes_das_regras = antes_das_regras and regra.lower_at_keyword in ("charset", "layer")
+            continue
+        url = _url_do_import(regra)
+        caminho = resolver(arquivo, url) if url else None
+        if not antes_das_regras or caminho is None or caminho in abertos:
+            continue  # o @import fora do lugar não vale; o laço não entra de novo
+        importado = contexto.texto(caminho)
+        if importado is None:
+            continue  # a folha que falta: a camada da segurança e a do EPUBCheck a acusam
+        if leitura.lidas >= LIMITE_DE_IMPORTS:
+            leitura.corte = leitura.corte or (f"o @import de {caminho} passa de "
+                                              f"{LIMITE_DE_IMPORTS} folhas")
+            continue
+        leitura.lidas += 1
+        regras += _regras_da_folha(importado, caminho, contexto, (*abertos, caminho), leitura)
     return regras
 
 
-def _regras_do_documento(documento: Documento, contexto: Contexto) -> list[_Regra]:
-    """As folhas ligadas e os `<style>`, na ordem do documento."""
+def _regras_do_documento(documento: Documento,
+                         contexto: Contexto) -> tuple[list[_Regra], list[tuple[Elemento, str]]]:
+    """As folhas ligadas e os `<style>`, na ordem do documento; e a cadeia que não se leu toda."""
     regras: list[_Regra] = []
+    incompletas: list[tuple[Elemento, str]] = []
     for elemento in documento.elementos():
         rel = (elemento.get("rel") or "").lower().split()
+        leitura = _Leitura()
         if elemento.nome == "link" and "stylesheet" in rel and "alternate" not in rel:
             caminho = resolver(documento.arquivo, elemento.get("href") or "")
             texto = contexto.texto(caminho) if caminho else None
             if caminho and texto is not None:
-                regras += _regras_da_folha(texto, caminho, contexto, {caminho})
+                regras += _regras_da_folha(texto, caminho, contexto, (caminho,), leitura)
         elif elemento.nome == "style":
-            regras += _regras_da_folha(elemento.texto(), documento.arquivo, contexto, set())
-    return regras
+            regras += _regras_da_folha(elemento.texto(), documento.arquivo, contexto, (),
+                                       leitura)
+        if leitura.corte:
+            incompletas.append((elemento, leitura.corte))
+    return regras, incompletas
 
 
 def _declaracoes_do_estilo(elemento: Elemento) -> list[_Declaracao]:
@@ -625,7 +663,7 @@ def preparar(documento: Documento, contexto: Contexto) -> PaginaMedida:
     raiz = documento.raiz
     if raiz is None:
         return PaginaMedida("", "", BRANCO, [])
-    regras = _regras_do_documento(documento, contexto)
+    regras, incompletas = _regras_do_documento(documento, contexto)
     corpo = next((f for f in raiz.filhos if isinstance(f, Elemento) and f.nome == "body"), None)
     estilo = (_estilo_da_raiz if _so_da_raiz(regras, documento) else _estilo_da_cascata)(
         raiz, corpo, regras)
@@ -636,4 +674,4 @@ def preparar(documento: Documento, contexto: Contexto) -> PaginaMedida:
     texto = escritor.escrever(raiz)
     papel = _compor(estilo.fundo_corpo, _compor(estilo.fundo_html, BRANCO))
     return PaginaMedida(texto, css, papel, escritor.trechos, escritor.substitutos,
-                        escritor.reais, escritor.imagens)
+                        escritor.reais, escritor.imagens, incompletas)

@@ -463,6 +463,17 @@
    ],
    "contexto": {}
   },
+  "Text/css-contraste-import.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 9,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
   "Text/css-contraste-incompleto.xhtml": {
    "regra": "css-contraste-incompleto",
    "problemas": [

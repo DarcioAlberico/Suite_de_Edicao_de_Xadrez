@@ -81,6 +81,10 @@ ARQUIVOS = {
         '<img src="../Images/clara.png" alt="Outra imagem clara"/>\n</picture>\n'
         '<p class="fundo">Um fundo de imagem estática.</p>',
         "<style>p.fundo { background-image: url(../Images/estatica.gif); }</style>\n"),
+    # O @import em laço (a importa a b, que importa a a) e o que vem depois de uma regra (não vale).
+    "Text/importa-ciclo.xhtml": xhtml(
+        '<p>O texto das folhas em laço.</p>\n<p class="b">O texto da segunda folha.</p>',
+        '<link rel="stylesheet" type="text/css" href="../Styles/ciclo-a.css"/>\n'),
     "Text/paginas.xhtml": xhtml("\n".join(
         f"<p>{marcador(ident, rotulo)}A página {rotulo}.</p>" for ident, rotulo in PAGINAS)),
     "Text/nav.xhtml": xhtml(
@@ -89,9 +93,17 @@ ARQUIVOS = {
         + "".join(f'<li><a href="paginas.xhtml#{ident}">{rotulo}</a></li>\n' for ident, rotulo in PAGINAS)
         + "</ol>\n</nav>"),
 }
-for sub in ("Text", "Images"):
+FOLHAS = {
+    # a importa b; b importa a (o laço, que não entra de novo); o @import depois da regra não vale
+    # (se valesse, o cinza reprovaria o contraste).
+    "Styles/ciclo-a.css": '@import url("ciclo-b.css");\np { color: #111111; }\n'
+                          '@import url("cinza.css");\n',
+    "Styles/ciclo-b.css": '@import url("ciclo-a.css");\np.b { color: #222222; }\n',
+    "Styles/cinza.css": "p { color: #999999; }\n",
+}
+for sub in ("Text", "Images", "Styles"):
     (PASTA / sub).mkdir(parents=True, exist_ok=True)
-for nome, texto in ARQUIVOS.items():
+for nome, texto in (ARQUIVOS | FOLHAS).items():
     (PASTA / nome).write_text(texto, encoding="utf-8", newline="\n")
 (PASTA / "Images" / "estatica.gif").write_bytes(gif_estatico())
 (PASTA / "Images" / "clara.png").write_bytes(png(8, 8, (230, 230, 230)))

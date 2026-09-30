@@ -185,7 +185,7 @@ def test_o_limpo_adversarial_nao_acusa_nada_que_bloqueie_ou_avise() -> None:
     """O que está perto de um defeito sem ser um (o ciclo 1 do crítico): nada bloqueia ou avisa."""
     arquivos = _arquivos(LIMPOS)
     resultado = validar_projeto(Contexto(arquivos=arquivos, nav="Text/nav.xhtml"))
-    assert set(resultado) == {n for n in arquivos if n.endswith(".xhtml")}
+    assert set(resultado) == {n for n in arquivos if n.endswith((".xhtml", ".css"))}
     assert [str(p) for problemas in resultado.values() for p in problemas
             if p.severidade != "informa"] == []
 
@@ -245,3 +245,19 @@ def test_o_contraste_mede_o_capitulo_inteiro() -> None:
              "</body></html>")
     problemas = validar_arquivo("Text/longo.xhtml", texto)
     assert [(p.codigo, p.local.linha) for p in problemas] == [("css-contraste", 4002)]
+
+
+def test_o_import_alem_do_limite_de_defesa_e_dito(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A cadeia de @import que passa do limite de defesa não some em silêncio (o ciclo 2)."""
+    from caissa.editor.validacao import pagina
+
+    nome = "Text/css-contraste-import.xhtml"
+    texto = ARQUIVOS[nome].decode("utf-8")
+    assert [p.codigo for p in validar_arquivo(nome, texto, Contexto(arquivos=ARQUIVOS))] == [
+        "css-contraste"], "a cor da sexta folha é medida"
+    monkeypatch.setattr(pagina, "LIMITE_DE_IMPORTS", 2)
+    problemas = validar_arquivo(nome, texto, Contexto(arquivos=ARQUIVOS))
+    link = next(e for e in ler(nome, texto)[0].elementos() if e.nome == "link")
+    assert [(p.codigo, p.local.linha, p.local.coluna) for p in problemas] == [
+        ("css-contraste-incompleto", link.linha, link.coluna)]
+    assert "passa de 2 folhas" in problemas[0].detalhe

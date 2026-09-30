@@ -632,8 +632,11 @@ def contraste(documento: Documento, contexto: Contexto) -> list[Problema]:
     from caissa.editor.validacao.pagina import ALTURA_DA_MEDIDA, preparar
 
     pagina = preparar(documento, contexto)
+    # A folha que o @import não trouxe inteira (o limite de defesa) é dita no <link>/<style>.
+    cortes = [Problema(INCOMPLETO, documento.local(elemento), motivo)
+              for elemento, motivo in pagina.incompletas]
     if not pagina.trechos:
-        return []
+        return cortes
     mostrava = pymupdf.TOOLS.mupdf_display_errors()
     pymupdf.TOOLS.mupdf_display_errors(False)  # o que o MuPDF diria do CSS a camada já diz
     medidos: list[_Medido] = []
@@ -663,7 +666,7 @@ def contraste(documento: Documento, contexto: Contexto) -> list[Problema]:
                     falha.deslocamento = _deslocamento(pdf[medido.pagina], medido, falha.x)
     finally:
         pymupdf.TOOLS.mupdf_display_errors(mostrava)
-    return _acusar(documento, pagina.trechos, medidos, falhas, medida.laco)
+    return cortes + _acusar(documento, pagina.trechos, medidos, falhas, medida.laco)
 
 
 def _medir(pdf: Any, pagina: Any, medidos: list[_Medido],

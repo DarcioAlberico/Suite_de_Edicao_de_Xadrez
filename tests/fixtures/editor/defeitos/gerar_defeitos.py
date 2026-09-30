@@ -232,6 +232,11 @@ defeito("css-contraste", t, [("css-contraste", '<span style="background', 1),
 t = xhtml("<p>Cinza no papel escuro.</p>",
           "<style>body { background-color: #000000; color: #555555; }</style>\n")
 defeito("css-contraste", t, [("css-contraste", "<p>Cinza", 1)], arquivo="Text/css-contraste-papel.xhtml")
+# A cor só na sexta folha de uma cadeia de @import (o ciclo 2 do crítico): toda folha entra.
+t = xhtml('<p class="do-fundo">A cor vem da sexta folha da cadeia de importação.</p>',
+          '<link rel="stylesheet" type="text/css" href="../Styles/importa-1.css"/>\n')
+defeito("css-contraste", t, [("css-contraste", '<p class="do-fundo"', 1)],
+        arquivo="Text/css-contraste-import.xhtml")
 # O link que o autor pinta de cinza: o MuPDF sozinho o pintaria do azul dele (e passaria).
 t = xhtml('<p>Veja <a href="#fim">o fim do capítulo</a>.</p>\n<p id="fim">O fim.</p>',
           "<style>a { color: #999999; }</style>\n")
@@ -338,6 +343,12 @@ for nome, dados in FIXTURES.items():
                                             newline="\n")
 (PASTA / "Styles" / "fonte.css").write_text(".cb-piece { font-family: Times, serif; }\n",
                                             encoding="utf-8", newline="\n")
+for nivel in range(1, 6):  # a cadeia: importa-1 → importa-2 → … → importa-6
+    (PASTA / "Styles" / f"importa-{nivel}.css").write_text(
+        f'@import url("importa-{nivel + 1}.css");\np {{ margin: 0 0 {nivel}px 0; }}\n',
+        encoding="utf-8", newline="\n")
+(PASTA / "Styles" / "importa-6.css").write_text("p.do-fundo { color: #777777; }\n",
+                                                encoding="utf-8", newline="\n")
 (PASTA / "Images" / "imagem.png").write_bytes(png(4, 4, (40, 120, 200)))
 (PASTA / "Images" / "texto.png").write_bytes(png(4, 4, (30, 30, 30)))
 (PASTA / "Images" / "animada.gif").write_bytes(gif_animado())
@@ -388,7 +399,8 @@ esperado = {
     "(`Text/<código>-<caso>.xhtml`); `esperado.json` diz o código e a linha:coluna que o\n"
     "validador tem de dar — tirados de um marcador no texto (o `<` do elemento, o nome da\n"
     "declaração, o caractere), pela definição da regra, e não do validador. Os de apoio: as\n"
-    "imagens (`Images/`), as folhas ligadas (`Styles/cinza.css`, `Styles/fonte.css`), os mapas\n"
+    "imagens (`Images/`), as folhas ligadas (`Styles/cinza.css`, `Styles/fonte.css`, e a\n"
+    "cadeia de `@import` `Styles/importa-1.css` … `importa-6.css`, a cor só na última), os mapas\n"
     "da proveniência (`Text/*.proveniencia.json`) e os marcadores de página que as page-list\n"
     "apontam (`Text/apoio-paginas.xhtml`). O `seg-tamanho` (8 MB) o portão monta.\n"
     "Regerar: `python tests/fixtures/editor/defeitos/gerar_defeitos.py` — o mesmo resultado, byte\n"

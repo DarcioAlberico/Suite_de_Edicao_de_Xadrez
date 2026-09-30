@@ -1572,3 +1572,65 @@ E os não bloqueantes: a política do «informa» escrita no portão do roadmap 
 dos defeitos corrigido (os `ir_id` são fixos); os geradores das fixtures conferidos pelo teste,
 que as regera e compara byte a byte; e o limpo adversarial (`tests/fixtures/editor/limpos/`), que
 achou dois falsos positivos antes do commit (o link do autor e um limpo errado).
+
+## H10 — ciclo 2 (2026-09-30): REPROVADO, 1 bloqueante; M-H10-1 APROVADA
+
+O crítico julgou a resposta ao ciclo 1 (o `01ee00f`), somente leitura, com o portão rodado sem o
+tempo (`h10_c2/portao.log`: 65/65 defeitos, o limpo 0 em 21 arquivos, o EPUBCheck 2/2), as
+sabotagens (6/65 e 64/65) e os 970 testes. O veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 2  
+FRENTE: Editor HTML/CSS — H10 (implementação e definição do portão) e a mutação M-H10-1
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| Os comandos do H10 rodam três vezes | `benchmarks/editor_portoes.py:709-715`; `tests/unit/editor/test_portoes.py:202-216` | Confirmada |
+| A `page-list` valida duplicação, lacuna, alvo inexistente e marcador fora da lista | `src/caissa/editor/validacao/acessibilidade.py:201-326` | Confirmada para os casos pedidos |
+| A cascata considera folhas, `@import`, `<style>`, `style=""` e `var()` | `src/caissa/editor/validacao/pagina.py:245-281,298-361,591-639` | Parcial: há o bloqueante abaixo |
+| A medição usa página alta, fundos compostos e rasterização sobre imagens | `src/caissa/editor/validacao/css.py:387-534,621-666` | Confirmada |
+| Página que não termina é acusada | `src/caissa/editor/validacao/css.py:736-740` | Confirmada |
+| Imagens animadas são verificadas nas fontes solicitadas | `src/caissa/editor/validacao/acessibilidade.py:392-492,569-585` | Confirmada |
+| O diagrama divergente virou aviso | `src/caissa/editor/validacao/xadrez.py:35-40,139-157` | Confirmada |
+| Testes unitários | `h10_c2\testes.log:2` | 970 passaram; 8 foram pulados por falta de PyQt6 |
+| Defeitos e sabotagens | `h10_c2\portao.log:1-4`; `h10_c2\sabotagens.log:1-4` | Confirmados; o limpo ainda depende dos IR reais |
+
+## Defeitos bloqueantes
+
+1. **O contraste ainda não cobre “qualquer CSS do projeto”.**
+
+   Em `src/caissa/editor/validacao/pagina.py:81`, a expansão de `@import` é limitada por `_IMPORT_PROFUNDIDADE = 4`; em `:258-266`, imports além desse limite são simplesmente ignorados, sem diagnóstico.
+
+   Uma cadeia válida com cinco imports aninhados — seis folhas contando a inicial — pode colocar a cor de um texto apenas na sexta folha. Essa regra não entra em `pagina.css`, o contraste não é medido e o H10 pode passar silenciosamente. Isso viola S10, que exige qualquer CSS do projeto e CSS com `@import` local.
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo continua pendente por falta dos quatro IR reais, tempo em máquina livre e execução integral pelo executor. Conforme solicitado, isso não bloqueia este julgamento.
+- A linha da M-H10-1 ainda termina com “aguarda o ciclo 2”; depois deste veredito, deve registrar formalmente a aprovação.
+- Não há fixture adversarial para uma cadeia profunda de `@import`.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Remover o limite silencioso de quatro níveis. A expansão deve seguir todos os imports locais, usando detecção de ciclo pelo caminho atualmente ativo. Se houver algum limite defensivo, excedê-lo deve produzir um problema explícito de medição incompleta, nunca descartar CSS silenciosamente.
+
+Adicionar uma fixture com importação profunda, com o contraste defeituoso apenas na folha mais profunda, e o teste esperado correspondente.
+
+## M-H10-1
+
+Aprovo a M-H10-1.
+
+A mutação tem justificativa suficiente: o número observado no ciclo 1, as cláusulas S10/§5.6, a razão para mover o Ace ao H24, a regra de `informa`, o caso do diagrama divergente e os dados da nova medição de contraste estão registrados em `docs/EDITOR_HTML_CSS_ROADMAP.md:2311`. Isso aprova a decisão de escopo, mas não corrige o bloqueante técnico da expansão incompleta de `@import`.
+
+**O que mudou para o ciclo 3:** a expansão do `@import` (`validacao/pagina.py`,
+`_regras_da_folha`) segue todo `@import` local, em qualquer profundidade, com o laço detectado
+pelo caminho aberto (a folha importada por dois caminhos entra duas vezes, como no CSS) e o
+`@import` depois de uma regra sem valer (CSS Cascade §6.1); o `LIMITE_DE_IMPORTS` (256 folhas
+por `<link>`/`<style>`) é uma defesa contra a folha hostil, e passar dele acusa
+`css-contraste-incompleto` no `<link>`/`<style>` de onde a cadeia veio
+(`PaginaMedida.incompletas`), nunca descarta em silêncio. As fixtures: o defeito
+`Text/css-contraste-import.xhtml` (a cor só na sexta folha da cadeia `Styles/importa-1…6.css`), o
+limpo `Text/importa-ciclo.xhtml` (o laço e o `@import` fora do lugar, que pintaria de cinza), e o
+teste `test_o_import_alem_do_limite_de_defesa_e_dito` (o limite baixado a 2: o incompleto no
+`<link>`). A linha da M-H10-1 registra a aprovação do ciclo 2.

@@ -272,12 +272,12 @@ as 4 sabotagens) **espera a máquina livre**.
 
 ## H10 — A validação em camadas, com linha e coluna
 
-**Estado:** implementado e revisto depois do **ciclo 1 do crítico** (REPROVADO, 5 bloqueantes:
-`quality/EDITOR_HTML_CSS_CRITICAS.md`) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
+**Estado:** implementado e revisto depois dos **ciclos 1 e 2 do crítico** (REPROVADOS, 5
+bloqueantes e 1: `quality/EDITOR_HTML_CSS_CRITICAS.md`; a **M-H10-1 aprovada no ciclo 2**) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
 thread da janela), as fixtures de defeito e o limpo adversarial (as duas de geradores que o teste
 confere byte a byte), o arnês e a entrada `PASSOS["H10"]` do executor (3 execuções de cada
 comando); os testes passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina
-livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), à espera do ciclo 2.
+livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), aprovada.
 
 - **As camadas e as regras** — 52 regras, cada uma com código, severidade, local
   (`arquivo:linha:coluna`, de 1, pela árvore do `expat`, que conta caracteres), o que fazer e,
@@ -314,8 +314,11 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), à 
 - **O contraste, medido na página do MuPDF** (`pagina.py` prepara a página; `css.py` mede) — o
   que o crítico apontou (o `var()` do `<style>` sem resolver, o trecho casado com o primeiro texto
   igual, o fundo reduzido ao último retângulo) e o que a rodada achou a mais:
-  - **o CSS inteiro:** as folhas ligadas (e o `@import` local), os `<style>` e os `style=""`, na
-    ordem; o `var()` de qualquer regra, herdado, e o do `style=""`, pela cascata do `cssselect2`
+  - **o CSS inteiro:** as folhas ligadas, os `<style>` e os `style=""`, na ordem, e **todo**
+    `@import` local, em qualquer profundidade (o do ciclo 1 parava em 4 níveis, em silêncio —
+    o bloqueante do ciclo 2): o laço pelo caminho aberto não entra de novo, a folha importada
+    por dois caminhos entra duas vezes, o `@import` depois de uma regra não vale, e o limite de
+    defesa (256 folhas por `<link>`/`<style>`) é dito no `<link>` (`css-contraste-incompleto`); o `var()` de qualquer regra, herdado, e o do `style=""`, pela cascata do `cssselect2`
     (a declaração vencedora com `var()` vai resolvida no `style=""` do elemento; toda variável da
     raiz, uma substituição só);
   - **o que o MuPDF desenharia diferente do livro, corrigido antes** (medido, PyMuPDF 1.28.2): o
@@ -343,19 +346,21 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), à 
     dele; o curto só casa perto, para o que o CSS gera não desalinhar o resto); o fundo que cobre
     parte do trecho acusa o elemento do texto sobre ele, pelos caracteres; um problema por
     elemento, e o descendente com a mesma tinta do acusado herda dele.
-- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **65/65** com o código e a linha:coluna
+- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **66/66** com o código e a linha:coluna
   certos — um arquivo por regra, e mais um por caso onde o crítico pediu (o contraste: a variável
   do `<style>` com o texto repetido, a da classe e a do `style=""`, o fundo parcial e o
-  translúcido, o papel do `body`, a imagem, o link, a página que não termina; a animação no
+  translúcido, o papel do `body`, a imagem, o link, a cor só na sexta folha de uma cadeia de
+  `@import`, a página que não termina; a animação no
   `srcset`, na `<source>`, no WebP e no `url()`; a `page-list` sem alvo, com lacuna, repetida, e
   o marcador fora dela) —, e o de 8 MB que o portão monta; o local esperado sai de um marcador no
   texto, pela definição da regra. Toda regra registrada tem o seu (52).
-- **O limpo:** **0 problema que bloqueia ou avisa** em 21 arquivos — as 16 fixtures do contrato e
-  o **limpo adversarial** (`tests/fixtures/editor/limpos/`, 5: o branco na caixa escura, o papel
+- **O limpo:** **0 problema que bloqueia ou avisa** em 25 arquivos — as 16 fixtures do contrato e
+  o **limpo adversarial** (`tests/fixtures/editor/limpos/`, 9 — com o `@import` em laço e o que
+  vem depois de uma regra, que se valesse pintaria o texto de cinza: o branco na caixa escura, o papel
   escuro do `body` com o link claro do autor, o realce que cobre parte do trecho, o translúcido
   claro, o alfa quase preto, o sublinhado e o riscado, o texto repetido, a lista, o branco sobre a
   imagem escura; a imagem estática em toda fonte — o GIF de um quadro com o laço do NETSCAPE; as
-  páginas i, ii, 1, 2, 3 com a `page-list` inteira) —, 3 notas (`informa`) contadas à parte. A
+  páginas i, ii, 1, 2, 3 com a `page-list` inteira) —, 8 notas (`informa`) contadas à parte. A
   rodada achou 2 falsos positivos antes: o link do autor (o `a:link` do MuPDF) e um limpo errado
   (o texto branco que passava da imagem para o papel é 1:1 de verdade). Os capítulos legíveis do
   IR real esperam o `--gerar-ir-real` do H5.
@@ -366,9 +371,10 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), à 
 - **O tempo** (rodada leve, com outra sessão medindo — não é o portão): o arquivo de 260 KB (agora
   de 260 KB: o de antes dobrava o capítulo e tinha 514 KB), com a folha base do produto ligada,
   **343 ms** a validação inteira (a mediana de 5), o contraste 302 ms.
-- **As sabotagens:** `sem_linha` reprova (6/65 defeitos certos) e `regra_muda` reprova (64/65: o
+- **As sabotagens:** `sem_linha` reprova (6/66 defeitos certos) e `regra_muda` reprova (65/66: o
   diagrama sem `data-fen` some).
-- **Os testes:** `tests/unit/editor/test_validacao.py` (94: cada defeito, toda regra com o seu, o
+- **Os testes:** `tests/unit/editor/test_validacao.py` (95, com o limite de defesa do `@import`
+  dito no `<link>`: cada defeito, toda regra com o seu, o
   vocabulário do validador igual ao do MARKUP, o de 8 MB, o limpo do contrato e o adversarial, as
   fixtures dos dois geradores byte a byte, os consertos, a coluna por caractere, o local do
   EPUBCheck, o pacote sem Qt, as variáveis e o teto da prévia, a imagem animada pela estrutura, o
