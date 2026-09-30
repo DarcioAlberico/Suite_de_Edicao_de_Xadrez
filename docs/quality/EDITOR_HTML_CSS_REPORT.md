@@ -87,6 +87,20 @@ ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entr
     (1,1 MB) e sem os arquivos de desenvolvimento (0,3 MB) — dentro, **se** a sonda congelada
     provar que ele desenha (mais as DLL do Qt base que o WebEngine usa e o pacote não leva).
   `& $PY benchmarks\editor_motores.py --tamanhos --saida <pasta>` (`tamanhos.json`)
+- **A sonda congelada e a instalação atômica (tarefas 3b e 3d):** `packaging/sonda_webengine.py` e
+  `packaging/sonda_webengine.spec` — o pacote com o PyQt6 do `Caissa.exe` (QtCore, QtGui,
+  QtWidgets) e sem nada do WebEngine; o componente em `runtime\webengine\`, ligado pelo
+  `PyQt6.__path__`, o `os.add_dll_directory`, o `PATH` e as três variáveis do QtWebEngine; a sonda
+  desenha a fixture num PNG e grava as DLL carregadas, as dela e as do `QtWebEngineProcess`, e sem
+  o componente cai no MuPDF. **O componente que se instala** — as rodas aparadas, mais o Qt base
+  que o WebEngine importa e o pacote não leva (10 DLL pelo PE, 16,4 MB: o Qt Quick, o QML, o
+  WebChannel, o Positioning, o OpenGL, o PrintSupport; e os módulos QtNetwork, QtPrintSupport e
+  QtWebChannel) — tem **42 arquivos, 240,0 MB**: dentro dos 300 MB. A instalação copia para
+  `runtime\webengine.parcial\` e só no fim renomeia; a que cai no meio (`--abortar-apos N`) apaga
+  a parcial. Testes: `tests/unit/test_sonda_webengine.py` (5, com rodas de mentira: o corte, a
+  instalação atômica, a queda, a remoção, a ligação num processo à parte). **Pendentes:** a
+  construção pelo PyInstaller e a rodada nesta máquina (a máquina livre) e a **máquina limpa**
+  (o Windows Sandbox ou uma VM sem Python, do usuário).
 
 ## H2 — O editor de código nativo aguenta, com tudo ligado?
 
