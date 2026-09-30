@@ -156,7 +156,12 @@ def corpus_sintetico(nos: int, semente: int) -> Any:
 def ida(documento: Any, nome: str, pasta: Path) -> dict[str, Any]:
     """IR → XHTML legível → IR, com o mapa pelo JSON; as diferenças fora da forma normal."""
     from caissa.core.model import Document, semantic_diff
-    from caissa.editor.leitura import mapa_de_json, mapa_para_json, nomes_de_estilo
+    from caissa.editor.leitura import (
+        conferir_mapa,
+        mapa_de_json,
+        mapa_para_json,
+        nomes_de_estilo,
+    )
     from caissa.export.legivel import Capitulo, escrever_capitulo, forma_normal, ler_capitulo
 
     capitulo = Capitulo(blocos=documento.body, titulo=nome, folhas=("../Styles/livro.css",),
@@ -175,13 +180,16 @@ def ida(documento: Any, nome: str, pasta: Path) -> dict[str, Any]:
     for arquivo, svg in escritor.imagens.items():
         if svg:
             (imagens / arquivo).write_text(svg, encoding="utf-8", newline="\n")
+    mapa_lido = mapa_de_json(json.loads(json.dumps(mapa)))
     try:
-        relido = ler_capitulo(texto, mapa=mapa_de_json(json.loads(json.dumps(mapa))),
-                              estilos=nomes_de_estilo(documento))
+        relido = ler_capitulo(texto, mapa=mapa_lido, estilos=nomes_de_estilo(documento))
     except (ValueError, KeyError) as falha:
         return {"erro": f"o leitor não leu o que o escritor escreveu: {falha}",
                 "diferencas": None}
     normal, contagem = forma_normal(documento.body)
+    # A N3 sem perda: cada dado da máquina que sai do IR está no mapa, e acha o lugar dele.
+    n3 = sum(n for chave, n in contagem.items() if chave.startswith("N3:"))
+    problemas_do_mapa = conferir_mapa(relido, mapa_lido)
     relatorio = semantic_diff(Document(metadata=documento.metadata, body=normal),
                               Document(metadata=documento.metadata, body=relido.blocos),
                               ignore_ids=True)
@@ -189,6 +197,9 @@ def ida(documento: Any, nome: str, pasta: Path) -> dict[str, Any]:
     for chave, n in contagem.items():
         por_classe[chave.split(":")[0]] += n
     return {"nos": relatorio.left_node_count, "diferencas": len(relatorio.entries),
+            "n3": n3, "n3_guardada": mapa_lido.registros(),
+            "mapa_fora_do_lugar": len(problemas_do_mapa),
+            "mapa_problemas": problemas_do_mapa[:10],
             "exemplos": [f"{e.kind} {e.node_type}.{e.field or ''} em {e.path}: "
                          f"{(e.before or '')[:120]} -> {(e.after or '')[:120]}"
                          for e in relatorio.entries[:10]],
@@ -490,12 +501,17 @@ def portao(saida: Path, *, ir_real: Path | None, nos: int, semente: int,
     registro["ida"] = idas
     faltam = [n for n, _, _ in LIVROS_REAIS if n not in documentos]
     total = sum(r["diferencas"] or 0 for r in idas.values())
-    falhas = [n for n, r in idas.items() if r.get("erro") or r["diferencas"]]
+    falhas = [n for n, r in idas.items() if r.get("erro") or r["diferencas"]
+              or r.get("mapa_problemas") or r.get("n3") != r.get("n3_guardada")]
     contas = Counter()
     for r in idas.values():
         contas.update(r.get("normalizacoes", {}))
+    guardadas = sum(r.get("n3_guardada") or 0 for r in idas.values())
+    fora_do_lugar = sum(r.get("mapa_fora_do_lugar") or 0 for r in idas.values())
     exigencias[f"ida: {total} diferença(s) fora de N1–N4 em {len(idas)} documento(s) "
-               f"(N1–N4 contadas: {dict(sorted(contas.items()))})"
+               f"(N1–N4 contadas: {dict(sorted(contas.items()))}; N3 guardada no mapa: "
+               f"{guardadas} registro(s), "
+               + (f"{fora_do_lugar} fora do lugar)" if fora_do_lugar else "todos no lugar)")
                + (f" -- sem o IR real de {', '.join(faltam)}" if faltam else "")
                + (f" -- {'; '.join(falhas)}" if falhas else "")] = not falhas and not faltam
 

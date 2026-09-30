@@ -258,26 +258,28 @@ Zobrist).
 Qualquer outra diferença na ida e volta reprova o portão do H5.
 
 **Como o IR as lê** — a forma normal, `caissa.export.legivel.forma_normal`, que o portão da ida
-compara com `ler(escrever(ir))` pelo `semantic_diff`, cada normalização contada por nó e campo:
+compara com `ler(escrever(ir))` pelo `semantic_diff`, cada normalização contada por nó e campo. É
+a leitura da S4 da spec 1.19 (a mutação M-H5-1 do roadmap §10):
 - **N1** — `font_family` e `font_size` das `RunProps` do nó cuja proveniência (a dele ou a do
   bloco de cima) é `ocr`.
-- **N2** — a formatação direta que o perfil de máquina escreve nas classes geradas: as
+- **N2** — exatamente o que o perfil de máquina só escreve pelas classes geradas: as
   `ParagraphProps` além do `style`; as `RunProps` além do `style` e da `language` (inteiras no
-  `run_props` do título e do código, no `MathInline` e nas opções da partida); o alinhamento, as
-  bordas, o recuo e o fundo da célula; as bordas, o recuo e o fundo do destaque; as bordas, o recuo
-  das células e as colunas da tabela; o traço da linha horizontal; o tamanho da imagem e o
-  deslocamento da imagem no texto; o `DiagramStyle` além do nome (o tema decide).
-- **N3** — a proveniência que não tem `id` para voltar (o nó de dentro do parágrafo, o lance, a
-  linha e a célula da tabela, o item da lista, o bloco sem página nem âncora), e o reconhecimento,
-  a origem da imagem e a conferência do diagrama sem `id`; o `Span` que só carrega proveniência
-  sai, e o conteúdo dele fica no lugar.
+  `run_props` do título e do código e no `MathInline`); o alinhamento, as bordas, o recuo e o
+  fundo da célula; as bordas, o recuo e o fundo do destaque; as bordas, o recuo das células e as
+  colunas da tabela; o traço da linha horizontal; o tamanho da imagem e o deslocamento da imagem
+  no texto.
+- **N3** — o `Span` que só carrega proveniência sai, e o conteúdo dele fica no lugar: o trecho vai
+  às `duvidas` do `proveniencia.json`. O dado da máquina de todo nó sem `id` próprio (o texto, o
+  lance, a linha e a célula da tabela, o item da lista, o bloco sem página nem âncora, o diagrama
+  sem `id`) sai do IR relido e fica no `proveniencia.json` com o lugar dele — o `id` do bloco
+  dono, o caminho e, dentro do parágrafo, o intervalo e o SHA-256 do texto. Nada se perde: o
+  `conferir_mapa` prova que todo registro acha o lugar dele, e há um registro por normalização.
 - **N4** — a árvore XML: o `Text` vazio sai; o texto solto se junta ao vizinho solto e separa os
   espaços especiais em nós; o `Span` com atributos e só texto dentro é o `Text` com as props e os
   atributos dele; os `html_attributes` na ordem do `canon`; o bruto `xhtml` na serialização do
   leitor.
 
-Essa leitura foi fixada no H5 e vai ao crítico com o portão (roadmap §10): a lista continua
-fechada, e o que ela não cobre o XHTML diz (§12).
+A lista continua fechada; o que ela não cobre, o XHTML diz (§12).
 
 ## 9. A política de CSS (spec S3b)
 
@@ -392,10 +394,12 @@ vão em JSON, pela serialização do próprio IR; as medidas, como no perfil de 
 máquina.
 
 **O `id` e o `proveniencia.json`.** Todo bloco com `id` tem um registro no mapa: o `ir_id`, de onde
-o `id` veio (`pagina` — o gerado, `p55-3`; `ancora`; `html`, o do arquivo; `nota`) e a
-proveniência inteira; o do diagrama, também a origem da imagem, o reconhecimento e a conferência
-humana. O bloco ganha `id` em qualquer profundidade quando tem âncora, `id` próprio ou página de
-origem (a da proveniência, ou a da imagem no diagrama).
+o `id` veio (`pagina` — o gerado, `p55-3`; `ancora`; `html`, o do arquivo; `nota`), o fólio, a
+proveniência inteira, as dúvidas (os `Span` só de proveniência do conteúdo dele), a revisão e os
+nós de dentro dele sem `id` (`nos`, cada um com o lugar); o do diagrama, também a origem da imagem,
+o reconhecimento, a conferência humana e as decisões. O bloco ganha `id` em qualquer
+profundidade quando tem âncora, `id` próprio ou página de origem (a da proveniência, ou a da
+imagem no diagrama); o nó sem dono com `id` vai em `capitulo.nos`.
 
 ### 12.1 Blocos
 
@@ -433,22 +437,24 @@ origem (a da proveniência, ou a da imagem no diagrama).
 | `IndexEntry` | `data-sort-key`, `data-see-also`, `data-primary` |
 | `RawInline` de outro formato | `span.cb-raw[data-format]`, com o texto escapado |
 | `PieceGlyph` | `data-font-family` |
-| `Move` | `span.cb-move[data-san]`, com `data-fen-before`, `data-uci` (quando o IR o tem), `data-fen` (derivado, quando o lance se joga), `data-ply` (quando a posição não diz), o `span.cb-movenum` dentro quando o número aparece, `data-number-text`, os `span.cb-nag` dentro, e `data-render`/`data-language`/`data-figurine-set` quando a peça impressa não diz |
+| `Move` | `span.cb-move[data-san]`, com `data-fen-before`, `data-uci` (quando o IR o tem), `data-fen` (derivado), `data-ply` (quando a posição não diz), o `span.cb-movenum` dentro quando o número aparece, `data-number-text`, os `span.cb-nag` dentro, e `data-render`/`data-language`/`data-figurine-set` quando a peça impressa não diz; o lance que não se joga da posição dele vai num `span.cb-move-literal`, sem `data-fen` |
 
 ### 12.3 O xadrez
 
 - **Diagrama.** `data-number` quando o rótulo é outro texto (o «Diagrama N» diz o número); o
   rótulo escrito que parece o automático leva `data-literal="1"`; `data-marks`; a classe
-  `cb-style-<slug>` do nome do estilo; a solução é uma `section.cb-game.cb-solution` dentro da
+  `cb-style-<slug>` do nome do estilo, e o resto do estilo direto do diagrama em `data-style`
+  (JSON do `DiagramStyle` sem o nome); a solução é uma `section.cb-game.cb-solution` dentro da
   figura, depois da legenda.
 - **A forma do contrato** (o lance que o tabuleiro joga): `data-uci` só quando o IR tem o uci, e o
   `data-fen`; quando o IR diz outra coisa que o tabuleiro, `data-san`, `data-fen-before`,
   `data-fen-after` e `data-ply`. O leitor acha o lance pela FEN quando não há `data-uci`.
-- **A forma literal** (o lance que não se joga dali, e o resto da linha dele): `data-san`,
-  `data-ply`, e `data-uci`, `data-fen-before` e `data-fen-after` quando o IR os tem — **sem
-  `data-fen`**, e o CB o lê como anterior ao contrato. O `p.cb-line` que começa uma variante com um
-  lance literal leva `data-variation-start="1"`; a variante de um lance literal parte da posição de
-  antes dele.
+- **A forma literal** (o lance que não se joga dali, e o resto da linha dele): um
+  **`span.cb-move-literal`** — e não um `cb-move`, que no CB sempre carrega `data-uci` e `data-fen`
+  — com `data-san`, `data-ply`, e `data-uci`, `data-fen-before` e `data-fen-after` quando o IR os
+  tem. O CB não o toma por lance: é texto. O `p.cb-line` que começa uma variante com um lance
+  literal leva `data-variation-start="1"`; a variante de um lance literal parte da posição de antes
+  dele.
 - **As anotações do lance:** `data-emphasis`, `data-clock` (com `data-clock-kind` e
   `data-clock-seconds`), `data-eval` (com `data-eval-kind`, `data-eval-value`, `data-eval-depth`),
   `data-arrows`, `data-highlights`.
@@ -456,7 +462,8 @@ origem (a da proveniência, ou a da imagem no diagrama).
 - **A seção:** `data-initial-fen` sempre que o IR a tem; `data-variant`; `data-show-result="0"`
   (resultado desconhecido que a partida não imprime); `data-result-empty`; `data-variation-style`;
   `data-max-variation-depth`; `data-render`, `data-language` e `data-figurine-set` quando as peças
-  impressas não dizem; o título num `p.cb-game-title`.
+  impressas não dizem; `data-move-props`, `data-comment-props` e `data-variation-props` (JSON das
+  `RunProps` das opções da partida); o título num `p.cb-game-title`.
 - **O cabeçalho:** `hidden` quando a partida não o mostra (os dados continuam nele);
   `p.cb-tag[data-name]` para as etiquetas fora do MARKUP; `data-tag-order` quando a ordem do IR não
   é a do MARKUP.

@@ -1,8 +1,11 @@
 # Especificação — Editor HTML/CSS (janela dedicada: código, resultado e PDF original)
 
-> **Data:** 2026-09-24 · **Versão:** 1.18 — **APROVADA pelo Codex no ciclo 22**, depois de três
->   ciclos reprovados (19, 20 e 21: 2, 1 e 1 bloqueantes, todos no portão do H0). A 1.17 tinha
->   sido aprovada no ciclo 18.
+> **Data:** 2026-09-30 · **Versão:** 1.19 — **em crítica** (H5, ciclo 2): registra a mutação
+>   M-H5-1 do roadmap §10 — a leitura em IR da lista fechada N1–N4, o `proveniencia.json` com o
+>   dado da máquina dos nós sem `id`, o lance que não se joga fora do `cb-move` e o perfil legível
+>   como módulo próprio (§9, «A mutação do H5»).
+> - A 1.18 foi **APROVADA pelo Codex no ciclo 22**, depois de três ciclos reprovados (19, 20 e 21:
+>   2, 1 e 1 bloqueantes, todos no portão do H0). A 1.17 tinha sido aprovada no ciclo 18.
 > - A 1.10 tinha sido aprovada no ciclo 11, depois de dez ciclos reprovados (12, 8, 9, 4, 7, 4, 4, 3,
 >   3 e 2 bloqueantes).
 > - A 1.11 registrou as **respostas do usuário ao Q1 e ao Q7** (2026-09-24).
@@ -975,13 +978,16 @@ editor/<slug>/                        (slug do nome do PDF; a chave real é o SH
   OEBPS/Images/dg_<hash>.svg          (derivados da FEN + estilo; regeneráveis)
   OEBPS/Images/capa.<ext>             (capa, quando houver)
   OEBPS/Fonts/…                       (só com licença no registro)
-  proveniencia.json {"formato": 2,
-                     "blocos": {"p55-3": {"ir_id", "folio", "proveniencia": <Provenance inteiro, serializado pelo IR>,
-                                "duvidas": [{"ini", "fim", "proveniencia": <Provenance do Span>, "alternativas"}],
-                                "revisao": {"estado", "decisoes": [<Decided | AuditEntry | ReviewItem inteiros>]}}},
-                     "diagramas": {"p55-d1": {"ir_id", "fonte": <DiagramSource inteiro>,
+  proveniencia.json {"formato": 2, "folios": {"55": "54"},
+                     "blocos": {"p55-3": {"ir_id", "origem", "folio", "proveniencia": <Provenance inteiro, serializado pelo IR>,
+                                "duvidas": [{"ini", "fim", "proveniencia": <Provenance do Span>, "alternativas", "texto_sha"}],
+                                "revisao": {"estado", "decisoes": [<Decided | AuditEntry | ReviewItem inteiros>]},
+                                "nos": [<o dado da máquina de um nó sem id: "caminho", "tipo", "proveniencia";
+                                         no de dentro do parágrafo, "campo", "ini", "fim", "texto_sha", "duvida">]}},
+                     "diagramas": {"p55-d1": {"ir_id", "origem", "folio", "proveniencia", "duvidas", "fonte": <DiagramSource inteiro>,
                                    "reconhecimento": <RecognitionResult inteiro, com FenCandidate[] e SquareRepair[]>,
-                                   "decisoes": [<DiagramDecision inteiro>]}}}          (esquema completo: R2.4)
+                                   "conferido", "decisoes": [<DiagramDecision inteiro>], "nos": [...]}},
+                     "capitulo": {"nos": [...]}}          (esquema completo: R2.4; os "nos": 1.19, a N3 sem perda)
   gerado/<n>/…                        (a última geração de cada página: a base da fusão, H25)
   diario/                             (gravação automática)
   versoes/<carimbo>/                  (uma por gravação; LRU de 200 MB; as 20 últimas sempre guardadas)
@@ -1001,8 +1007,8 @@ editor/<slug>/                        (slug do nome do PDF; a chave real é o SH
 
 | interface | hoje | depois |
 |---|---|---|
-| `XhtmlBuilder` | perfil de máquina (§2.3) | `perfil: Literal["maquina","legivel"]`. O **legível** escreve o contrato (S4): sem `data-ir` por corrida e sem classes `.pN/.rN/.dN`; estilo nomeado vira classe; `RunProps` só como marcação semântica ou classe; `lang` de `RunProps.language`; `id` `p<pág>-<n>` nos blocos com proveniência; marcadores de página; `html_attributes` do nó escritos de volta |
-| leitor | `read_html_text` (XML estrito; `data-ir`) | + `ler_legivel(texto, contexto)`: contrato → IR; elemento desconhecido → `RawPassthrough`/`RawInline` `xhtml`; atributo desconhecido (`style`, `title`, `aria-*`, `data-*` fora do contrato, classes além da de estilo) → `html_attributes`; `id` → ULID pelo `proveniencia.json` (sem ele, ULID novo); o legado `data-ir` continua lido |
+| `XhtmlBuilder` | perfil de máquina (§2.3) | continua o perfil de máquina. **O legível é o módulo S `export/legivel.py`** (`EscritorLegivel`, `escrever_capitulo`; decisão da 1.19: o construtor de máquina escreve uma corrida por nó com `data-ir`, e o legível, o contrato — não partilham a forma, e um `perfil=` só os juntaria de nome; o H24 liga o exportador ao legível). Ele escreve o contrato (S4): sem `data-ir` por corrida e sem classes `.pN/.rN/.dN`; estilo nomeado vira classe; `RunProps` só como marcação semântica ou classe; `lang` de `RunProps.language`; `id` `p<pág>-<n>` nos blocos com proveniência; marcadores de página; `html_attributes` do nó escritos de volta; o que o HTML e o contrato não dizem, nos `data-*` do §12 do MARKUP |
+| leitor | `read_html_text` (XML estrito; `data-ir`) | + `ler_legivel(texto, mapa, estilos)` (S `editor/leitura.py`, sobre o `ler_capitulo` do `export/legivel.py`): contrato → IR; elemento desconhecido → `RawPassthrough`/`RawInline` `xhtml`; atributo desconhecido (`style`, `title`, `aria-*`, `data-*` fora do contrato, classes além da de estilo) → `html_attributes`; o elemento do contrato com o que o IR não guarda → bruto inteiro, registrado (`Capitulo.brutos`); `id` → ULID pelo `proveniencia.json` (sem ele, ULID novo); o legado `data-ir` continua lido |
 | IR | sem lugar para atributo HTML | `IRNode.html_attributes: tuple[tuple[str, str], ...] = ()`; esquema v2 com migração v1→v2 trivial (padrão vazio é omitido na serialização) |
 | geração | `export_book` reimporta ou reaproveita (`book.py:477-540`) | `editor.geracao.gerar(projeto, paginas, *, should_cancel, progress)`: a fusão do produto (Q1 = C: `import_pdf` com as alavancas que o H0b ligar) → IR por página → divisão em arquivos pela regra do EPUB → perfil legível → `proveniencia.json` → SVG em cache. Página `EDITADA`/`REVISADA` nunca é tocada |
 | dúvidas por trecho | só o agregado do bloco | o importador embrulha os trechos `REVIEW`/`ABSTAINED` num `Span` com `provenance` (sem migração); o perfil legível não escreve esse `Span` e grava o intervalo (N3) |
@@ -1059,12 +1065,32 @@ editor/<slug>/                        (slug do nome do PDF; a chave real é o SH
 | `RawPassthrough`/`RawInline` | o elemento como está | — |
 | qualquer nó com `html_attributes` | os atributos de volta, na ordem do `canon` | — |
 
-**Normalizações declaradas** — a lista **fechada** do R2.2(a), medida no H5:
+**Normalizações declaradas** — a lista **fechada** do R2.2(a), medida no H5. Continuam quatro;
+a 1.19 (mutação M-H5-1) escreve o que cada uma é **no IR**, que é onde a ida as mede
+(`caissa.export.legivel.forma_normal`, contadas por nó e campo):
 - **N1.** `RunProps` de família e corpo vindas do PDF digitalizado não viram marcação; o tema
-  decide. Contadas por arquivo.
-- **N2.** Classes geradas `.pN/.rN/.dN` não existem no perfil legível.
-- **N3.** `Span` só de proveniência vira intervalo em `proveniencia.json`.
-- **N4.** Espaço insignificante e ordem de atributos (`canon`).
+  decide. Contadas por arquivo. No IR: `font_family` e `font_size` das `RunProps` do nó cuja
+  proveniência (a dele ou a do bloco de cima) é `ocr`.
+- **N2.** Classes geradas `.pN/.rN/.dN` não existem no perfil legível. No IR: exatamente os campos
+  que o perfil de máquina (S `export/html.py`) só escreve por essas classes — as `ParagraphProps`
+  além do `style`; as `RunProps` além do `style` e da `language` (inteiras no `run_props` do
+  título e do código e no `MathInline`); o alinhamento, as bordas, o recuo e o fundo da célula; as
+  bordas, o recuo e o fundo do destaque; as bordas, o recuo das células e as colunas da tabela; o
+  traço da linha horizontal; o tamanho da imagem e o deslocamento da imagem no texto. Todo o resto
+  o XHTML diz (o §12 do MARKUP), inclusive o estilo direto do diagrama e as `RunProps` das opções
+  da partida, que o perfil de máquina nem escreve.
+- **N3.** `Span` só de proveniência vira intervalo em `proveniencia.json` (as `duvidas` do
+  bloco). O dado da máquina de todo nó que não tem `id` próprio — o texto, o lance, a linha e a
+  célula da tabela, o item da lista, o bloco sem página nem âncora, o diagrama sem `id` — também
+  não vira marcação (R2.4): fica no `proveniencia.json` com o lugar dele (o `id` do bloco dono, o
+  caminho e, dentro do parágrafo, o intervalo e o SHA-256 do texto), e não volta ao IR relido.
+  **Nada se perde:** o `conferir_mapa` (S `editor/leitura.py`) prova que todo registro acha o
+  lugar dele, e o portão exige que o número de registros seja o de normalizações N3.
+- **N4.** Espaço insignificante e ordem de atributos (`canon`). No IR, a forma que a árvore XML
+  consegue dizer: sem `Text` vazio; o texto solto junta-se ao vizinho solto e separa os espaços
+  especiais em nós; o `Span` com atributos e só texto dentro é o `Text` com as props e os
+  atributos dele; os `html_attributes` na ordem do `canon`; o bruto `xhtml` na serialização do
+  leitor.
 
 **S5 — Editor de código (S `ui/widgets/editor_de_codigo.py`; regra em S `editor/`)**
 
@@ -1740,6 +1766,29 @@ H0.
 validada (número finito, faixa, intervalo coerente), a auditoria segue independente da
 publicação, e as respostas do usuário (Q0, Q3, Q5) e as ADR-0010…0014 ficaram registradas. Resta,
 não bloqueante, rodar o H0 completo e registrar os artefatos dele.
+
+**A mutação do H5 (versão 1.19, M-H5-1 do roadmap §10).** A primeira sondagem da ida (IR → XHTML
+legível → IR no corpus sintético, que sorteia todo campo do IR) deu **3351 diferenças em 2 mil
+nós**: o perfil legível só dizia o que as fixtures do H3 pediam. O construtor fez o XHTML dizer
+todo campo (o §12 do MARKUP) e escreveu a leitura em IR de N1–N4. O **H5, ciclo 1** do crítico
+reprovou com 3 bloqueantes: a leitura de N2–N4 é uma ampliação da lista, e precisa desta mutação;
+a N3 perdia a proveniência dos nós sem `id`; e o lance que não se joga ia num `cb-move` sem
+`data-fen`, afrouxando o contrato do CB. A 1.19 responde:
+- **N1–N4 continuam quatro**, com a leitura em IR escrita na S4. A N2 é **só** o que o perfil de
+  máquina escreve pelas classes geradas: o estilo direto do diagrama e as `RunProps` das opções
+  da partida, que a primeira leitura punha nela, passaram a ir no XHTML (`data-style`,
+  `data-move-props`, `data-comment-props`, `data-variation-props`).
+- **A N3 sem perda:** o dado da máquina de todo nó sem `id` vai ao `proveniencia.json` com o
+  lugar dele (S2), e o portão prova que todo registro acha o lugar e que os registros são as N3.
+  O `proveniencia.json` ganhou o fólio, as dúvidas, a revisão e as decisões da S2 (a revisão e
+  as decisões vazias até o H7), e os `nos`.
+- **O lance que não se joga** vai num `span.cb-move-literal` (classe nova do MARKUP §12): o
+  `cb-move` continua o do CB, sempre com `data-uci` e `data-fen` (o `data-uci` só quando o IR tem
+  o uci, o que o crítico aceitou).
+- **O perfil legível é um módulo próprio** (S3), e não um `perfil=` do `XhtmlBuilder`; o
+  `cssselect2` passa ao H19, quando o inspetor de CSS o usar (nenhum código o importa no H5).
+- A sondagem: **0 diferença** fora de N1–N4 em três sementes de 2 mil nós (7, 11, 13), com o mapa
+  passando pelo JSON e a N3 guardada inteira (117, 132 e 122 registros, todos no lugar).
 
 ---
 

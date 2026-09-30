@@ -1289,3 +1289,91 @@ A auditoria ainda toma os IoUs publicados como medição do instrumento, e os va
 ## O que especificamente precisa mudar para eu aprovar
 
 - Nada bloqueante nos documentos, no código conferido ou nos testes. Executar o H0 completo quando a máquina estiver livre e registrar seus artefatos.
+
+## H5 — ciclo 1 (2026-09-30): REPROVADO, 3 bloqueantes
+
+O crítico julgou a implementação e a definição do portão do H5 (os commits `02a372f`, `17b780b` e
+`d2f7531`), somente leitura, com os logs do construtor (os testes, o instrumento do H3, a sonda da
+ida em três sementes e o arnês leve com as sabotagens). Os bloqueantes: a leitura de N2–N4 do §8
+do MARKUP é uma ampliação da lista fechada, e precisa da mutação do roadmap §10; a N3 perdia a
+proveniência dos nós sem `id`; e o lance que não se joga ia num `cb-move` sem `data-fen`. O
+veredito, transcrito sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 1  
+FRENTE: Editor HTML/CSS — H5 (implementação e definição do portão)
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em | Resultado |
+|---|---|---|
+| A spec exige diferença zero fora da lista fechada N1–N4 | `docs/EDITOR_HTML_CSS_SPEC.md:1062-1067` | Confirmada |
+| O portão H5 exige ida, volta, CSS, mapa, CB validate e EPUBCheck | `docs/EDITOR_HTML_CSS_ROADMAP.md:975-987` | Confirmada |
+| Os testes unitários do H5 passaram | `...\h5_c1\testes.log:1-5` | Confirmada: 189 passaram |
+| Fixtures do contrato passaram no CB validate | `...\h5_c1\contrato.log:1-5` | Confirmada: 0 erros |
+| Ida sintética passou nas três sondagens | `...\h5_c1\sonda.log:1-9` | Confirmada para 2.000 nós; não substitui o portão completo |
+| Volta, CSS, mapa e sabotagens funcionaram no arnês leve | `...\h5_c1\arnes_leve.log:1-42` | Confirmada somente para 400 nós, sem IR real e sem EPUBCheck |
+| O mapa implementa S2 formato 2 completo | `docs/EDITOR_HTML_CSS_SPEC.md:978-984`; `src/caissa/editor/leitura.py:84-105` | **Não confirmada** |
+| A conferência cobre perdas silenciosas | `src/caissa/export/legivel.py:1553-1571,1635-1642,2088-2095` | Parcialmente confirmada |
+| A leitura de N1–N4 é fiel à lista fechada | `docs/EDITOR_HTML_CSS_SPEC.md:1062-1067`; `docs/MARKUP_CAISSA.md:260-280` | **Não confirmada; há ampliação** |
+| O perfil implementa a interface prevista pelo S3 | `docs/EDITOR_HTML_CSS_SPEC.md:1000-1008`; `src/caissa/export/legivel.py:571-596` | Parcial: existe escritor separado, não `XhtmlBuilder(perfil=)` |
+
+## Defeitos bloqueantes
+
+1. **N2–N4 foram ampliadas sem a mutação exigida pelo roadmap.**
+
+   Evidência: a spec define N2 apenas como ausência das classes `.pN/.rN/.dN`, N3 como o `Span` de proveniência indo para `proveniencia.json`, e N4 como espaço insignificante/ordem de atributos (`docs/EDITOR_HTML_CSS_SPEC.md:1062-1067`).
+
+   A nova leitura inclui em N2 propriedades que o perfil de máquina nem escreve, como opções de `GameScore`, além de vários campos de formatação; em N3 inclui dados de diagrama sem `id`; em N4 inclui transformação de `Span` em `Text`, serialização de bruto e fusão de textos (`docs/MARKUP_CAISSA.md:260-280`, `src/caissa/export/legivel.py:2655-2668`).
+
+   Isso é uma ampliação material da lista fechada. O protocolo do roadmap exige registro da motivação, comando, cláusula afetada e aprovação do construtor e do crítico (`docs/EDITOR_HTML_CSS_ROADMAP.md:2283-2296`). Não existe entrada H5 correspondente.
+
+   **Como falha:** o zero da sonda foi obtido depois de declarar essas perdas como N2–N4; portanto, não prova o portão original.
+
+2. **N3 ainda perde proveniência em vez de preservá-la no mapa/sidecar.**
+
+   Evidência: o escritor remove o `Span` apenas com proveniência (`src/caissa/export/legivel.py:1039-1042`), e `forma_normal` remove proveniência de nós sem chave (`src/caissa/export/legivel.py:2771-2784`). Não há armazenamento das dúvidas ou registros correspondentes.
+
+   S2 exige, entre outros, `folio`, `duvidas`, `revisao` para blocos e `decisoes` para diagramas (`docs/EDITOR_HTML_CSS_SPEC.md:978-984`, `:502-520`). O mapa atual escreve somente `ir_id`, `origem`, proveniência, fonte, reconhecimento e `conferido` (`src/caissa/editor/leitura.py:84-105`).
+
+   **Como falha:** proveniência de texto, lance, célula, linha ou item pode desaparecer silenciosamente. O teste do mapa verifica apenas poucos campos (`tests/unit/editor/test_leitura.py:49-68`) e não valida o esquema S2 completo.
+
+3. **A forma literal de `cb-move` sem `data-fen` quebra o contrato CB atual.**
+
+   O CB define `cb-move` com `data-uci` e `data-fen`, e afirma que todo lance carrega a FEN posterior (`..\Sigil-master\chessbook\MARKUP.md:77-84`; `..\Sigil-master\src\Resource_Files\python3lib\sigil_chess\core\game.py:14-16`).
+
+   O perfil Caissa omite `data-fen` para o lance literal (`docs/MARKUP_CAISSA.md:447-451`, `src/caissa/export/legivel.py:1447-1458`). O `validate.py` simplesmente ignora lances sem FEN (`..\Sigil-master\src\Resource_Files\python3lib\sigil_chess\validate.py:237-240`).
+
+   **Como falha:** “0 erros do CB” não valida essa extensão; significa que o validador pulou o caso como marcação legada. Isso é relaxamento semântico do contrato congelado, não simples adição de `data-*`.
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo continua pendente: o log leve declara ausência dos quatro IR reais e pula EPUBCheck (`...\h5_c1\arnes_normal\ida_e_volta.json:83-92`). Isso não bloqueia este julgamento, conforme solicitado, mas impede declarar H5 operacionalmente concluído.
+- O escritor legível está em `legivel.py`, não como `XhtmlBuilder(perfil="legivel")`, divergindo de S3/H5 (`docs/EDITOR_HTML_CSS_SPEC.md:1000-1008`, `docs/EDITOR_HTML_CSS_ROADMAP.md:937-943`). Deve haver adaptador ou decisão arquitetural antes da integração posterior.
+- `tinycss2` está declarado, mas `cssselect2` não (`pyproject.toml:68-75`), embora ambos apareçam no escopo do H5. É aceitável se o roadmap for ajustado ou a dependência for postergada explicitamente.
+- O gerador remove atributos `lang` quando já existe `RunProps.language` (`tests/unit/model/generators.py:486-501`). A justificativa é plausível, mas reduz a cobertura do corpus; fica em tensão com o anti-padrão 9 (`docs/EDITOR_HTML_CSS_ROADMAP.md:2310-2311`).
+- O inventário de licença do `tinycss2` ainda não está produzido; pode aguardar a construção do pacote, como declarado.
+
+## Extensões do §12
+
+São legítimas como adições, com linha no contrato, fixtures e validação CB:
+
+- `data-uci` condicional;
+- `data-variation-start`;
+- `hidden`;
+- `data-literal`;
+- `cb-solution`, desde que tratado como extensão documentada.
+
+A exceção é o lance literal sem `data-fen`: ele remove/relaxa uma exigência existente do CB. Para aprovação, deve-se:
+
+1. manter a forma compatível com o CB; ou
+2. registrar formalmente uma extensão no contrato CB, atualizar leitor/validador e registrar a decisão correspondente no repositório CB.
+
+## O que especificamente precisa mudar para eu aprovar
+
+1. Registrar a mutação H5 no §10 do roadmap, com os 3.351 casos iniciais, comando/log, cláusulas afetadas e aprovação explícita do construtor e do crítico. Se a mudança alterar D1–D5, reabrir a versão da spec.
+2. Implementar o armazenamento completo da proveniência N3 e o esquema S2 exigido, incluindo dúvidas, revisão, decisões e fixtures de proveniência sem `id`.
+3. Resolver o lance literal sem `data-fen` frente ao contrato CB; a validação atual não é suficiente porque apenas ignora o caso.
+4. Depois disso, rodar o portão completo com os quatro IR reais, EPUBCheck e as três repetições.
+
+A leitura atual de N1 é fiel. A leitura operacional de N2–N4, porém, é uma mutação da lista fechada e não pode ser aprovada como mera interpretação.

@@ -5,7 +5,7 @@
 > (`& $PY benchmarks\editor_portoes.py --passo <Hn> --saida benchmarks\reports\editor\<hn>`), que
 > grava o `portao.json` com o HEAD dos dois repositórios; as saídas ficam em
 > `benchmarks/reports/editor/` (fora do git). Construtor: Claude (sessão «Implementações
-> pendentes»), 2026-09-24.
+> pendentes»), 2026-09-24 a 2026-09-30.
 
 ---
 
@@ -47,12 +47,14 @@ de desempenho (`editor_codigo.py`, 3×) espera a máquina livre (ele mede bloque
 
 **Estado:** o contrato escrito (`docs/MARKUP_CAISSA.md`), as fixtures e o instrumento prontos.
 
-- **Cobertura:** as 14 linhas da S4 com fixture (100 %), mais 2 combinações e a legada; o §11 do
-  contrato nomeia as mesmas.
+- **Cobertura:** as 14 linhas da S4 com fixture (100 %), mais 2 combinações, as 3 fixtures das
+  extensões do H5 (§12 do contrato, pelo escritor legível: `--regerar-extensoes`) e a legada; o
+  §11 do contrato nomeia as mesmas.
 - **`CB validate`** (`..\Sigil-master\src\Resource_Files\python3lib\sigil_chess\validate.py`, com o
-  `python-chess` 1.11.2 do `.venv`): **0 erro, 0 aviso em 16 fixtures** (as 14 e as 2
-  combinações). Ele acusa uma FEN de lance adulterada, um diagrama que não mostra a posição do
-  lance acima dele e a negativa sem `data-fen` (a sabotagem `sem_fen`).
+  `python-chess` 1.11.2 do `.venv`): **0 erro, 0 aviso em 19 fixtures** (as 14, as 2 combinações
+  e as 3 extensões; em 2026-09-30, no `d2f7531`). Ele acusa uma FEN de lance adulterada, um
+  diagrama que não mostra a posição do lance acima dele e a negativa sem `data-fen` (a sabotagem
+  `sem_fen`).
   `& $PY benchmarks\editor_contrato.py --saida <pasta>`
 - **A legada:** `legado_xhtml_builder.xhtml`, saída do exportador HTML de hoje (perfil de máquina,
   `embed_ir=False`), lida pelo `read_html_text` com o título, o parágrafo, o diagrama e a partida.
@@ -73,3 +75,105 @@ de desempenho (`editor_codigo.py`, 3×) espera a máquina livre (ele mede bloque
 
   `$env:PYTHONPATH='src'; & $PY tests\fixtures\editor\sidecar\gerar_esperado.py` (regrava as três;
   o hash tem de sair igual).
+- **Achado para o H24:** o escritor v1 do sidecar de hoje grava `\r\n` no Windows (o
+  `v1_de_hoje.jsonl` tem CRLF, e o `.gitattributes` o guarda com `-text` para o hash não mudar);
+  o escritor v2 tem de gravar `\n` explícito, como o Apêndice C manda.
+
+## H4 — As dívidas da exportação que o editor poria na tela
+
+**Estado:** os itens 3–9 da spec §2.7 corrigidos no produto e o contador pronto e testado
+(`8a40016`); **o portão (os três EPUBs de antes e de depois, com o EPUBCheck) ainda não rodou**:
+ele exporta três livros e espera a máquina livre.
+
+- **Os testes:** `tests/unit/export/test_dividas_da_exportacao.py` (13) e
+  `tests/unit/editor/test_dividas.py` (4).
+  `& $PY -m pytest tests/unit/export/test_dividas_da_exportacao.py tests/unit/editor/test_dividas.py -q -p no:cacheprovider`
+- **O instrumento** (`benchmarks/editor_dividas.py`) conta os dez sintomas no livro exportado,
+  sem olhar o código; os EPUBs de antes saem de uma árvore destacada no commit anterior ao passo
+  (`a6414f3`):
+  `& $PY benchmarks\editor_dividas.py --gerar --codigo C:\Python-Chess2\_h4_antes\src --saida benchmarks\reports\editor\h4_antes`
+- **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H4 --saida benchmarks\reports\editor\h4`.
+- **Achado fora do passo:** `tests/unit/ingest/test_corpus.py::test_nunn_ocr_layer_keeps_the_paragraphs_whole`
+  falha também no `9eb401c`, anterior ao programa; não é deste roadmap.
+
+## H5 — O perfil legível, os atributos preservados, o CSS como recurso e o mapa de estilo
+
+**Estado:** implementado em três commits (`02a372f`, `17b780b`, `d2f7531`) e na resposta ao
+crítico; o **H5, ciclo 1** do Codex reprovou com 3 bloqueantes, respondidos pela mutação M-H5-1
+(roadmap §10, spec 1.19) e levados ao ciclo 2; os testes e a rodada leve do arnês passam; **o
+portão completo** (o IR real das páginas do portão, o corpus de 10 mil nós, 3 execuções, as 6
+sabotagens e o EPUBCheck) **espera a máquina livre**.
+
+- **A decisão da ida.** A primeira sondagem da ida (IR → XHTML legível → IR, `semantic_diff`, no
+  corpus sintético que sorteia todo campo do IR) deu **3351 diferenças em 2 mil nós**: o perfil
+  só escrevia o que as fixtures do H3 pediam. Todo campo passou a ir por um de quatro caminhos: o
+  HTML; o contrato `cb-*` com as extensões `data-*` (o §12 do contrato); o mapa da proveniência
+  (o `proveniencia.json`, formato 2); ou N1–N4, que `caissa.export.legivel.forma_normal` aplica ao
+  IR, contadas por nó e campo. A leitura em IR de N1–N4 é a mutação M-H5-1 (a S4 da spec 1.19 e o
+  §8 do contrato); a lista continua quatro.
+- **O ciclo 1 do crítico** (2026-09-30, REPROVADO, 3 bloqueantes; transcrito em
+  `EDITOR_HTML_CSS_CRITICAS.md`) e a resposta:
+  1. a leitura de N2–N4 ampliava a lista fechada sem a mutação → a M-H5-1 no roadmap §10 e a spec
+     1.19 (S2, S3, S4, §9). A N2 encolheu para exatamente o que o perfil de máquina só escreve
+     pelas classes geradas: o estilo direto do diagrama (`data-style`) e as `RunProps` das opções
+     da partida (`data-move-props`, `data-comment-props`, `data-variation-props`) passaram a ir no
+     XHTML;
+  2. a N3 perdia a proveniência dos nós sem `id` → o dado da máquina de todo nó sem `id` vai ao
+     `proveniencia.json` com o lugar dele (o `id` do bloco dono, o caminho e, dentro do
+     parágrafo, o intervalo e o SHA-256 do texto); o `conferir_mapa` prova que todo registro acha
+     o lugar, e o portão exige registros = N3. O JSON ganhou o fólio, as dúvidas, a revisão e as
+     decisões da S2 (vazias até o H7);
+  3. o lance que não se joga ia num `cb-move` sem `data-fen` → vai num `span.cb-move-literal`, e o
+     `cb-move` fica o do CB.
+- **A ida no arnês** (a sonda do ciclo 1 virou a exigência da ida do próprio portão): 0 diferença
+  em três sementes de 2 mil nós, com o mapa passando pelo JSON — semente 7: N1 14, N2 1349, N3
+  117, N4 3; semente 11: 9, 1416, 132, 2; semente 13: 8, 1215, 122, 2 — e a N3 guardada no mapa é
+  117, 132 e 122 registros, todos no lugar.
+  `& $PY benchmarks\editor_ida_e_volta.py --semente 7 --nos 2000 --sem-epubcheck --saida <pasta>`
+- **A conferência do leitor** (R2.3): cada elemento lido é reescrito e comparado pelo `canon`
+  (sem os `id` de página, com o derivado do §6.1 recalculado); o que não volta igual fica bruto
+  inteiro, e o `Capitulo.brutos` o registra. Sem o registro a volta escondia o defeito do
+  escritor (as sabotagens `perde_fen` e `perde_classe` passavam por ela); com ele, o portão exige
+  nenhum bruto nas fixtures e nos arquivos da ida, e só os do `esperado.json` nas 20 edições à
+  mão (3: o itálico num comentário de partida, o `title` na imagem de um diagrama, o lance
+  digitado sem o `cb-piece`).
+- **O que a sondagem, a conferência e as edições acharam e ficou corrigido:** o MathML escrito
+  pela pessoa virava o texto do `latex`; a fórmula de dentro do parágrafo lida como bloco numa
+  célula; o link dentro de link conferido fora do contexto; o lance na prosa sem posição ganhava
+  `data-ply="0"`; o `canon` colapsava o espaço sem quebra e os finos (agora só o espaço do XML);
+  o bruto com `svg:`/`m:` saía sem o prefixo declarado; o `data-uci` era inventado para o lance
+  do PDF (o importador deixa `uci=None`).
+- **A rodada leve do arnês** (`--nos 2000`, sementes 7, 11 e 13, sem o IR real e sem EPUBCheck,
+  na resposta ao ciclo 1): volta **40/40** arquivos (19 fixtures, 1 da ida, 20 edições) com 0
+  bruto fora do esperado; CSS byte a byte **49/49** folhas; mapa de estilo **24/24** positivas e
+  **24/24** negativas; CB **0 erro** em 39 arquivos. Cada sabotagem (semente 7) reprova na linha
+  declarada: `perde_fen` (ida, 49 diferenças; volta, 6 brutos fora do esperado), `perde_classe`
+  (ida, 647; volta, 7 brutos), `perde_atributo` (ida, 116; volta, 26/40), `nula` (ida, 2012, e os
+  162 registros do mapa fora do lugar; volta, 1/40), `engole_desconhecido` (volta, 24/40) e
+  `css_silencioso` (mapa, 0/24 negativas).
+  `& $PY benchmarks\editor_ida_e_volta.py --nos 2000 --semente 7 --sem-epubcheck [--sabotar <nome>] --saida <pasta>`
+- **Os testes:** `test_legivel.py` (27), `test_legivel_ida.py` (16), `test_legivel_conferencia.py`
+  (28), `test_leitura.py` (5), `test_mapa_sem_id.py` (4), `test_mapa_de_estilo.py` (52),
+  `test_paginas.py` (6), `test_esquema_v2.py` (7) e a tabela do executor.
+- **Desvios declarados** (os dois primeiros, agora na M-H5-1): o perfil legível mora em
+  `src/caissa/export/legivel.py`, e não num `XhtmlBuilder(perfil=)` (o escritor de máquina e o
+  legível não partilham a forma; o H24 liga o exportador ao legível); o `cssselect2` passa ao H19,
+  quando o inspetor de CSS o usar — nenhum código o importa; o `tinycss2` entrou no `pyproject`
+  e no `.venv-pack`, e o inventário de licenças sai na próxima construção do pacote
+  (`packaging/coletar_licencas.py` lê o pacote construído); o gerador do corpus sintético deixou de pôr o `lang` preservado ao lado da língua
+  modelada num `Text` (o leitor nunca monta os dois); o arquivo com o nome derivado da imagem do
+  diagrama desatualizado não fecha a volta por construção (o escritor refaz o derivado), e a
+  edição #08 usa o nome novo, como o comando do diagrama (H22) fará.
+- **O portão:** pendente —
+  `& $PY benchmarks\editor_ida_e_volta.py --gerar-ir-real benchmarks\reports\editor\h5_ir_real` e
+  `& $PY benchmarks\editor_portoes.py --passo H5 --saida benchmarks\reports\editor\h5`.
+
+## H6 — O projeto em disco
+
+**Estado:** implementado (`f9f0d4f`): o projeto, o diário, as versões, a trava, a gravação
+atômica, o registro de livros e as migrações, sem Qt; **o portão** (3 execuções da recuperação e
+as 4 sabotagens) **espera a máquina livre**.
+
+- **Os testes:** `tests/unit/editor/test_projeto.py` (18), mais as pastas guardadas do pacote e a
+  regra de arquitetura (o `editor/` sem toolkit).
+- **O portão:** pendente — `& $PY benchmarks\editor_portoes.py --passo H6 --saida benchmarks\reports\editor\h6`.

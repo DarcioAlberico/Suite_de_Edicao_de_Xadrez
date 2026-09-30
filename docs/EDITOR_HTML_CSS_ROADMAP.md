@@ -935,12 +935,14 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 - **Governa:** spec D1, D2, R2.2, R2.3, S3, S3b, S4. **Q3 respondida em 2026-09-24:** sim, o contrato
   `cb-*`.
 - **Arquivos:**
-  - S `export/html.py` (`XhtmlBuilder(perfil=)`, `ler_legivel`), S `export/profiles.py`;
+  - S `export/legivel.py` (o perfil legível: `EscritorLegivel`, `ler_capitulo`, `forma_normal`
+    — a 1.19 o fez módulo próprio no lugar de um `XhtmlBuilder(perfil=)`, M-H5-1), S
+    `export/profiles.py`;
   - S `core/model/base.py` (`IRNode.html_attributes`), `core/model/migrations.py` (v1→v2),
     `core/model/serialize.py`;
   - S `editor/leitura.py`, `editor/paginas.py` (R2.7);
-  - S `editor/css/mapa_de_estilo.py` (sem Qt; `tinycss2`), `pyproject.toml`/`.venv-pack` (`tinycss2`,
-    `cssselect2`, BSD);
+  - S `editor/css/mapa_de_estilo.py` (sem Qt; `tinycss2`), `pyproject.toml`/`.venv-pack`
+    (`tinycss2`, BSD; o `cssselect2` passa ao H19, quando o inspetor o usar — M-H5-1);
   - testes;
   - `benchmarks/editor_ida_e_volta.py`;
   - `tests/unit/ui/test_arquitetura.py` (S `editor/` sem toolkit).
@@ -2285,6 +2287,8 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 | data | passo | mutação | por quê | quem |
 |---|---|---|---|---|
 | 2026-09-24 | H0 | **«figurinas certas» aceita a ausência declarada** quando a verdade do estrato não tem lance com figurina; a mesma regra para lances certos e inventados sem lance na verdade; nunca para o CER ou a ordem (spec §9, 1.18; R1.2). A declaração é estruturada (métrica, denominador, valor 0, motivo) e o `editor_portoes.py` **conta o denominador no estrato inteiro do manifesto dele**, depois de auditar a publicação (a lista pelo hash, as regiões, os estratos, o `casada` pelos IoUs, o mínimo); as sabotagens `na_falso_*` e os testes adversariais provam que a declaração falsa e a publicação adulterada reprovam | a verdade nativa do manifesto (`dev` + `calib`, hash `f019591babf2941e`) tem **0 lances com figurina em 198**, em 38 regiões — contado pelo `move_tokens` de `ocr/metrics.py` sobre as regiões `pdf-native` (`benchmarks/editor_portoes.py`, `auditar_publicacao`; o relatório do H0 traz o comando). Com a regra da 1.17 o H0 reprovaria «métrica ausente» por construção | construtor: Claude (sessão «Implementações pendentes»); crítico: o ciclo 19 do Codex confirmou o 0/198 e a necessidade, e reprovou a primeira redação (ausência sem recontagem); o ciclo 20 reprovou a segunda (recontagem sobre as casadas que a publicação marcava); o ciclo 21 deu esse bloqueante por resolvido e reprovou a terceira (métrica de texto ou `NaN` passava por publicada); **aprovada pelo ciclo 22 do Codex em 2026-09-24** (`quality/EDITOR_HTML_CSS_CRITICAS.md`) |
+
+| 2026-09-30 | H5 | **M-H5-1 — a leitura em IR da lista fechada N1–N4** (a S4 da 1.19 a escreve; a lista continua quatro): N2 = exatamente os campos que o perfil de máquina só escreve pelas classes geradas `.pN/.rN/.dN` (o estilo direto do diagrama e as `RunProps` das opções da partida vão no XHTML); N3 = o `Span` só de proveniência vira intervalo, **e o dado da máquina de todo nó sem `id` fica no `proveniencia.json` com o lugar dele**, sem perda (o portão exige registros = N3 e todo registro no lugar, pelo `conferir_mapa`); N4 = a forma normal da árvore XML (sem `Text` vazio nem vizinho solto, os espaços especiais como nós, o `Span` com atributos e só texto como o `Text`, os atributos na ordem do `canon`, o bruto na serialização do leitor). Junto: o lance que não se joga vai num `span.cb-move-literal`, e o `cb-move` fica o do CB; o perfil legível é o módulo `export/legivel.py`; o `cssselect2` passa ao H19 | a primeira sondagem da ida no corpus sintético deu **3351 diferenças em 2 mil nós** (o perfil dizia só o que as fixtures do H3 pediam); com o XHTML dizendo todo campo (MARKUP §12) e a leitura escrita, **0** em três sementes de 2 mil nós (7, 11, 13; a N3 guardada: 117, 132 e 122 registros, todos no lugar) — a ida do portão no corpus sintético, `& $PY benchmarks\editor_ida_e_volta.py --semente 7 --nos 2000 --sem-epubcheck --saida <pasta>` (sem o IR real a exigência da ida reprova por ele faltar; o número de diferenças é o do corpus). Cláusulas: spec S2, S3, S4 (N1–N4), D1 (o critério da reversão fica o mesmo: a lista continua fechada) | construtor: Claude (sessão «Implementações pendentes»); crítico: o **H5, ciclo 1** do Codex (2026-09-30) reprovou a primeira redação com 3 bloqueantes — a leitura de N2–N4 sem esta linha, a N3 que perdia a proveniência dos nós sem `id`, e o `cb-move` sem `data-fen`; a aprovação fica registrada aqui quando o veredito do ciclo 2 sair |
 
 **Protocolo:**
 - Um passo que o portão prova impossível **não** baixa a régua em silêncio: ele muta, com linha

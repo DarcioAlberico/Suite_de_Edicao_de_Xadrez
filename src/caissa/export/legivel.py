@@ -129,13 +129,17 @@ from caissa.core.model.inline import SpaceKind
 
 __all__ = [
     "Capitulo",
+    "Duvida",
     "EscritorLegivel",
     "MapaDaProveniencia",
+    "RegistroDoMapa",
+    "RegistroSemId",
     "canon",
     "escrever_capitulo",
     "folhas_do_livro",
     "forma_normal",
     "ler_capitulo",
+    "texto_plano",
 ]
 
 XHTML = "http://www.w3.org/1999/xhtml"
@@ -179,6 +183,10 @@ _COM_ID: tuple[type, ...] = (
 _DIGITALIZADO = frozenset({SourceKind.OCR})
 
 _ROTULO_AUTOMATICO = "Diagrama {}"
+
+CLASSE_LITERAL = "cb-move-literal"
+"""O lance que não se joga dali (§12.3): sem `data-fen`, e por isso fora do `cb-move` do CB, que
+sempre carrega a posição depois do lance."""
 
 
 # --------------------------------------------------------------------------- #
@@ -370,6 +378,43 @@ def _sim(valor: bool) -> str | None:
 
 
 @dataclass(frozen=True)
+class Duvida:
+    """Um trecho do texto do bloco com a proveniência do `Span` que o marcava (a N3; spec S2)."""
+
+    ini: int
+    fim: int
+    proveniencia: Any
+    alternativas: tuple[str, ...] = ()
+    """As outras leituras do trecho; o IR não as guarda, e a revisão (H7) as traz."""
+    texto_sha: str | None = None
+    """O SHA-256 do texto do bloco, para a conferência saber que o trecho ainda é o mesmo."""
+
+
+@dataclass(frozen=True)
+class RegistroSemId:
+    """O dado da máquina de um nó que não tem `id` próprio, com o lugar dele.
+
+    O lugar é o `id` do bloco dono (o ancestral mais próximo com `id`; ``""`` é o capítulo), o
+    ``caminho`` estrutural a partir dele — pares (campo, índice), o índice ``-1`` para o campo de
+    um nó só — e, no nó de dentro do parágrafo, o ``campo`` do texto, o intervalo ``[ini, fim)``
+    nos caracteres dele e o SHA-256 do texto do campo, que a conferência usa para saber que o
+    trecho ainda é o mesmo. ``duvida`` marca o `Span` que só carregava proveniência (a N3).
+    """
+
+    caminho: tuple[tuple[str, int], ...]
+    tipo: str
+    proveniencia: Any = None
+    campo: str | None = None
+    ini: int | None = None
+    fim: int | None = None
+    texto_sha: str | None = None
+    duvida: bool = False
+    fonte: DiagramSource | None = None
+    reconhecimento: RecognitionResult | None = None
+    conferido: bool = False
+
+
+@dataclass(frozen=True)
 class RegistroDoMapa:
     """O que o mapa guarda de um nó com `id`: a identidade e o dado da máquina (R2.4).
 
@@ -384,6 +429,8 @@ class RegistroDoMapa:
     fonte: DiagramSource | None = None
     reconhecimento: RecognitionResult | None = None
     conferido: bool = False
+    duvidas: tuple[Duvida, ...] = ()
+    """Os `Span` que só carregavam proveniência no conteúdo do próprio bloco (a N3)."""
 
     @classmethod
     def do_no(cls, no: Any, origem: str) -> RegistroDoMapa:
@@ -406,6 +453,13 @@ class MapaDaProveniencia:
     nos: dict[str, RegistroDoMapa] = field(default_factory=dict)
     folios: dict[int, str] = field(default_factory=dict)
     """O fólio impresso, pela página do PDF em base 1."""
+    sem_id: dict[str, list[RegistroSemId]] = field(default_factory=dict)
+    """O dado da máquina dos nós sem `id`, pelo `id` do bloco dono (``""`` é o capítulo)."""
+
+    def registros(self) -> int:
+        """Quantos dados da máquina sem `id` o mapa guarda (as dúvidas dos blocos inclusive)."""
+        return (sum(len(r) for r in self.sem_id.values())
+                + sum(len(r.duvidas) for r in self.nos.values()))
 
 
 @dataclass
@@ -581,6 +635,8 @@ class EscritorLegivel:
         self._pagina: int | None = None
         self._ordem: dict[tuple[int, str], int] = {}
         self._no_link = False
+        self._ids: dict[int, str] = {}
+        """O `id` que cada nó ganhou, pela identidade do objeto (o mapa do nó sem `id`)."""
 
     # -- o arquivo --------------------------------------------------------
 
@@ -593,7 +649,74 @@ class EscritorLegivel:
         linhas += [f'<link rel="stylesheet" type="text/css" href={quoteattr(folha)}/>'
                    for folha in capitulo.folhas]
         linhas += ["</head>", "<body>", self.blocos(capitulo.blocos), "</body>", "</html>", ""]
+        self.guardar_maquina(capitulo.blocos)
         return "\n".join(linha for linha in linhas if linha != "")+"\n"
+
+    # -- o dado da máquina sem id (a N3 sem perda) -------------------------
+
+    def guardar_maquina(self, blocos: Sequence[Any]) -> None:
+        """Guarda no mapa o dado da máquina de todo nó que não ganhou `id` (spec R2.4, S2).
+
+        O XHTML não leva proveniência, reconhecimento nem origem de imagem; o nó com `id` volta
+        com eles pelo mapa, e o nó sem `id` — o texto, o lance, a linha e a célula da tabela, o
+        item da lista, o bloco sem página nem âncora, o diagrama sem `id` — fica aqui, com o
+        lugar dele, e o `conferir_mapa` do `caissa.editor.leitura` prova que o lugar existe no IR
+        relido.
+        """
+        for indice, bloco in enumerate(blocos):
+            self._percorrer(bloco, "", (("body", indice),))
+
+    def _percorrer(self, no: Any, dono: str, caminho: tuple[tuple[str, int], ...]) -> None:
+        proprio = self._ids.get(id(no))
+        if proprio is not None:
+            dono, caminho = proprio, ()
+        elif not isinstance(no, INLINES):
+            registro = _registro_da_maquina(no, caminho)
+            if registro is not None:
+                self.mapa.sem_id.setdefault(dono, []).append(registro)
+        for campo in fields(no):
+            valor = getattr(no, campo.name)
+            if isinstance(valor, IRNode):
+                self._percorrer(valor, dono, (*caminho, (campo.name, -1)))
+            elif isinstance(valor, tuple) and valor and all(isinstance(x, IRNode) for x in valor):
+                if all(isinstance(x, INLINES) for x in valor):
+                    self._trechos(valor, dono, caminho, campo.name)
+                else:
+                    for indice, filho in enumerate(valor):
+                        self._percorrer(filho, dono, (*caminho, (campo.name, indice)))
+
+    def _trechos(self, inlines: Sequence[Any], dono: str, caminho: tuple[tuple[str, int], ...],
+                 campo: str) -> None:
+        """Os nós de dentro do parágrafo com proveniência, pelo intervalo no texto do campo."""
+        texto = "".join(texto_plano(x) for x in inlines)
+        sha = hashlib.sha256(texto.encode("utf-8")).hexdigest()
+        posicao = 0
+
+        def visitar(no: Any) -> None:
+            nonlocal posicao
+            ini = posicao
+            filhos = getattr(no, "content", None) if isinstance(no, _ENVOLTORIOS) else None
+            if filhos:
+                for filho in filhos:
+                    visitar(filho)
+            else:
+                posicao += len(texto_plano(no))
+            if no.provenance is None:
+                return
+            duvida = isinstance(no, Span) and _span_so_de_proveniencia(no)
+            registro_do_dono = self.mapa.nos.get(dono)
+            if duvida and not caminho and campo == "content" and registro_do_dono is not None:
+                self.mapa.nos[dono] = replace(registro_do_dono, duvidas=(
+                    *registro_do_dono.duvidas, Duvida(ini=ini, fim=posicao,
+                                                      proveniencia=no.provenance,
+                                                      texto_sha=sha)))
+                return
+            self.mapa.sem_id.setdefault(dono, []).append(RegistroSemId(
+                caminho=caminho, tipo=tag_of(no), proveniencia=no.provenance, campo=campo,
+                ini=ini, fim=posicao, texto_sha=sha, duvida=duvida))
+
+        for no in inlines:
+            visitar(no)
 
     # -- os blocos --------------------------------------------------------
 
@@ -642,6 +765,7 @@ class EscritorLegivel:
                 pagina, self._ordem[chave])
             origem = "pagina"
         self.mapa.nos[ident] = RegistroDoMapa.do_no(no, origem)
+        self._ids[id(no)] = ident
         return ident
 
     def _abrir(self, etiqueta: str, no: Any, *, classes: Sequence[str] = (),
@@ -716,7 +840,9 @@ class EscritorLegivel:
                      ("data-orientation", orientacao),
                      ("data-number", str(no.number)
                       if no.number is not None and no.label is not None else None),
-                     ("data-marks", _marcas(no.marks))]
+                     ("data-marks", _marcas(no.marks)),
+                     ("data-style", _json(replace(no.style, name=None))
+                      if replace(no.style, name=None) != DiagramStyle() else None)]
         legenda = []
         if no.label is not None:
             literal = ' data-literal="1"' if _ROTULO_NUMERADO.match(no.label) else ""
@@ -1178,8 +1304,63 @@ class EscritorLegivel:
         atributos += _atributos_da_notacao(
             (no.render, no.language, no.figurine_set),
             _notacao_das_pecas(pecas, self.idioma, padrao))
-        return self._com_props("span", no, numero + corpo + nags, classes=("cb-move",),
+        literal = not any(nome == "data-fen" for nome, _ in atributos)
+        return self._com_props("span", no, numero + corpo + nags,
+                               classes=(CLASSE_LITERAL if literal else "cb-move",),
                                atributos=atributos)
+
+
+_ENVOLTORIOS = (Emphasis, Strong, Underline, Strike, SmallCaps, Superscript, Subscript, Span,
+                Link)
+"""Os nós de dentro do parágrafo que contêm outros: o texto deles é o dos filhos."""
+
+
+def texto_plano(no: Any) -> str:  # noqa: PLR0911 - um retorno por tipo de nó
+    """O texto de um nó de dentro do parágrafo, para o intervalo do mapa.
+
+    A mesma regra na ida e na conferência, sempre sobre o IR.
+    """
+    if isinstance(no, Text):
+        return no.content
+    if isinstance(no, _ENVOLTORIOS):
+        return "".join(texto_plano(x) for x in no.content)
+    if isinstance(no, NonBreakingSpace):
+        return "\u00a0"
+    if isinstance(no, Tab):
+        return "\t"
+    if isinstance(no, Space):
+        return ESPACOS.get(no.kind, " ")
+    if isinstance(no, LineBreak):
+        return "\n"
+    if isinstance(no, NoteRef):
+        return no.marker or ""
+    if isinstance(no, NagSymbol):
+        return _nag(no.nag)
+    if isinstance(no, Move):
+        return no.san
+    if isinstance(no, MathInline):
+        return no.latex
+    if isinstance(no, RawInline):
+        return no.text
+    if isinstance(no, PieceGlyph):
+        from caissa.export.text import figurine_char
+
+        return figurine_char(_LETRA_DO_PECA.get(no.piece, "N"), no.figurine_set)
+    return ""
+
+
+def _registro_da_maquina(no: Any, caminho: tuple[tuple[str, int], ...]) -> RegistroSemId | None:
+    """O dado da máquina de um nó estrutural sem `id`, ou ``None`` quando ele não tem nenhum."""
+    maquina_do_diagrama = isinstance(no, Diagram) and (
+        no.recognition != RecognitionResult() or no.source != DiagramSource()
+        or no.verified_by_human)
+    if getattr(no, "provenance", None) is None and not maquina_do_diagrama:
+        return None
+    if isinstance(no, Diagram):
+        return RegistroSemId(caminho=caminho, tipo=tag_of(no), proveniencia=no.provenance,
+                             fonte=no.source, reconhecimento=no.recognition,
+                             conferido=no.verified_by_human)
+    return RegistroSemId(caminho=caminho, tipo=tag_of(no), proveniencia=no.provenance)
 
 
 def _meio_lance_da_fen(fen: str) -> int | None:
@@ -1288,6 +1469,10 @@ class _EscritorDePartida:
                           if render.variation_style is not VariationStyle.INLINE else None))
         atributos.append(("data-max-variation-depth", str(render.max_variation_depth)
                           if render.max_variation_depth is not None else None))
+        for nome, props in (("data-move-props", render.move_props),
+                            ("data-comment-props", render.comment_props),
+                            ("data-variation-props", render.variation_props)):
+            atributos.append((nome, _json(props) if props != RunProps() else None))
         padrao = (GameRenderOptions().render, GameRenderOptions().language,
                   GameRenderOptions().figurine_set)
         atributos += _atributos_da_notacao(
@@ -1452,7 +1637,8 @@ class _EscritorDePartida:
                          ("data-fen-after", no.position_after or None),
                          ("data-ply", str(no.ply)), *self._anotacoes(no)]
             fichas.append(self.escritor._envolver("span", no, _texto(no.san),
-                                                  classes=("cb-move",), atributos=atributos))
+                                                  classes=(CLASSE_LITERAL,),
+                                                  atributos=atributos))
             fichas += [f'<span class="cb-nag" data-nag="{n}">{_texto(_nag(n))}</span>'
                        for n in no.nags]
             return fichas, None, True
@@ -2034,11 +2220,13 @@ class _Leitor:
             number=numero, label=rotulo, stipulation=estipulacao, move_context=contexto,
             caption=legenda_livre, marks=_marcas_de(elemento.get("data-marks")),
             side_to_move_indicator="cb-stm-marker" in partes, alt_text=alt,
-            style=DiagramStyle(name=estilo) if estilo else DiagramStyle(),
+            style=replace(_json_de(elemento.get("data-style"), DiagramStyle) or DiagramStyle(),
+                          name=estilo),
             solution=_LeitorDePartida(self).partida(solucao) if solucao is not None else None,
             html_attributes=_preservados(
                 elemento, conhecidos=(*usados, "data-fen", "data-stm", "data-mode",
-                                      "data-orientation", "data-number", "data-marks"),
+                                      "data-orientation", "data-number", "data-marks",
+                                      "data-style"),
                 classes_conhecidas=("cb-diagram", *conhecidas)), **kw)
 
     # -- dentro do parágrafo --------------------------------------------
@@ -2109,7 +2297,8 @@ class _Leitor:
             return self._diagrama_no_texto(elemento)
         if nome == "span" and "cb-index-mark" in classes:
             return self._indice(elemento)
-        if nome == "span" and "cb-move" in classes and elemento.get("data-san") is not None:
+        if nome == "span" and elemento.get("data-san") is not None and (
+                "cb-move" in classes or CLASSE_LITERAL in classes):
             return self._lance(elemento)
         if nome == "span" and "cb-nag" in classes and (elemento.get("data-nag") or "").isdigit():
             props, estilos, lingua = self._props_de_corrida(elemento)
@@ -2257,7 +2446,7 @@ class _Leitor:
                             "data-san", "data-uci", "data-fen", "data-fen-before", "data-ply",
                             "data-number-text", "data-render", "data-language",
                             "data-figurine-set", *lingua),
-                        classes_conhecidas=("cb-move", *estilos)))
+                        classes_conhecidas=("cb-move", CLASSE_LITERAL, *estilos)))
 
 
 def _descricao(elemento: ET.Element) -> str:
@@ -2376,11 +2565,15 @@ class _LeitorDePartida:
             show_result=(impresso is not None) if conhecido
             else secao.get("data-show-result") != "0",
             show_headers=cabecalho is None or cabecalho.get("hidden") is None,
-            max_variation_depth=int(profundidade) if profundidade is not None else None)
+            max_variation_depth=int(profundidade) if profundidade is not None else None,
+            move_props=_json_de(secao.get("data-move-props"), RunProps) or RunProps(),
+            comment_props=_json_de(secao.get("data-comment-props"), RunProps) or RunProps(),
+            variation_props=_json_de(secao.get("data-variation-props"), RunProps) or RunProps())
         conhecidos = ("data-eco", "data-result", "data-result-empty", "data-initial-fen",
                       "data-variant", "data-show-result", "data-variation-style",
                       "data-max-variation-depth", "data-render", "data-language",
-                      "data-figurine-set")
+                      "data-figurine-set", "data-move-props", "data-comment-props",
+                      "data-variation-props")
         return GameScore(
             headers=replace(cabecalhos, result=resultado),
             initial_fen=inicial, initial_comment=comentario_inicial, children=filhos,
@@ -2491,10 +2684,10 @@ class _LeitorDePartida:
                 if "cb-nag" in classe and ultimo is not None:
                     ultimo["nags"].append(int(filho.get("data-nag") or 0))
                     continue
-                if "cb-move" not in classe:
+                if "cb-move" not in classe and CLASSE_LITERAL not in classe:
                     continue
                 peca = next((p for p in filho if "cb-piece" in _classes(p)), None)
-                if filho.get("data-fen"):
+                if "cb-move" in classe and filho.get("data-fen"):
                     if peca is not None:
                         pecas.append((peca.get("data-piece") or "N", "".join(peca.itertext())))
                     registro = self._colocar(filho.get("data-uci"), filho.get("data-fen") or "",
@@ -2543,7 +2736,7 @@ class _LeitorDePartida:
             "data-san", "data-uci", "data-fen", "data-fen-before", "data-fen-after", "data-ply",
             "data-emphasis", "data-clock", "data-clock-kind", "data-clock-seconds", "data-eval",
             "data-eval-kind", "data-eval-value", "data-eval-depth", "data-arrows",
-            "data-highlights"), classes_conhecidas=("cb-move",))
+            "data-highlights"), classes_conhecidas=("cb-move", CLASSE_LITERAL))
 
     @staticmethod
     def _colocar(uci: str | None, fen: str, profundidade: int,
@@ -2719,7 +2912,7 @@ class _FormaNormal:
                         saida.append(pedaco)
         return saida
 
-    def _n1_n2(self, no: Any, herdada: Any) -> Any:  # noqa: PLR0912 - um ramo por família da N2
+    def _n1_n2(self, no: Any, herdada: Any) -> Any:
         mudancas: dict[str, Any] = {}
         props = getattr(no, "props", None)
         if isinstance(props, ParagraphProps) and props != ParagraphProps(style=props.style):
@@ -2756,31 +2949,22 @@ class _FormaNormal:
         if isinstance(no, Table) and no.columns:
             mudancas["columns"] = ()
             self.conta("N2", no, "columns")
-        if isinstance(no, Diagram) and no.style != DiagramStyle(name=no.style.name):
-            mudancas["style"] = DiagramStyle(name=no.style.name)
-            self.conta("N2", no, "style")
-        if isinstance(no, GameScore):
-            render = no.render
-            limpo = replace(render, move_props=RunProps(), comment_props=RunProps(),
-                            variation_props=RunProps())
-            if limpo != render:
-                mudancas["render"] = limpo
-                self.conta("N2", no, "render")
         return replace(no, **mudancas) if mudancas else no
 
     def _n3(self, no: Any) -> Any:
+        """O dado da máquina do nó sem `id` sai do IR e fica no mapa (um registro por nó)."""
         if _chaveado(no):
             return no
         mudancas: dict[str, Any] = {}
         if getattr(no, "provenance", None) is not None:
             mudancas["provenance"] = None
-            self.conta("N3", no, "provenance")
         if isinstance(no, Diagram):
             padrao = Diagram(fen="")
             for campo in ("recognition", "source", "verified_by_human"):
                 if getattr(no, campo) != getattr(padrao, campo):
                     mudancas[campo] = getattr(padrao, campo)
-                    self.conta("N3", no, campo)
+        if mudancas:
+            self.conta("N3", no)
         return replace(no, **mudancas) if mudancas else no
 
     def _n4(self, no: Any) -> Any:
@@ -2802,10 +2986,7 @@ class _FormaNormal:
                 no.content and all(_texto_nu(x) or isinstance(x, NonBreakingSpace | Tab | Space)
                                    for x in no.content):
             self.conta("N4", no, "texto")
-            conteudo = "".join(x.content if isinstance(x, Text) else
-                               "\u00a0" if isinstance(x, NonBreakingSpace) else
-                               "\t" if isinstance(x, Tab) else ESPACOS.get(x.kind, " ")
-                               for x in no.content)
+            conteudo = "".join(texto_plano(x) for x in no.content)
             return Text(id=no.id, content=conteudo, props=no.props,
                         html_attributes=no.html_attributes)
         return no
