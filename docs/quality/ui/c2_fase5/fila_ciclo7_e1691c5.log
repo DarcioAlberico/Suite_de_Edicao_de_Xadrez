@@ -1,0 +1,96 @@
+inicio 12:09:09 suite=e1691c5 src=[0] tronco=01e4147 [0] labeling=2026-09-15 05:49:26.192952500 -0300
+### sem_livro 12:09:10
+exit 0 sem_livro 12:09:37
+### livro 12:09:37
+exit 0 livro 12:10:01
+### sabotagem_aperto 12:10:01
+exit 1 sabotagem_aperto 12:10:21
+### sabotagem_rodape 12:10:21
+exit 1 sabotagem_rodape 12:10:49
+### sabotagem_corte 12:10:49
+exit 1 sabotagem_corte 12:11:39
+### sabotagem_mensagem 12:11:39
+exit 1 sabotagem_mensagem 12:12:59
+### sabotagem_reserva 12:12:59
+exit 1 sabotagem_reserva 12:14:07
+### sabotagem_linha 12:14:07
+exit 1 sabotagem_linha 12:15:23
+### teclado foco 1280x800 12:15:23
+exit 1 teclado foco 1280x800 12:15:23
+### teclado foco 1248x640 12:15:23
+exit 1 teclado foco 1248x640 12:15:24
+### teclado foco 1280x641 12:15:24
+exit 1 teclado foco 1280x641 12:15:24
+### teclado classica 1280x800 12:15:24
+exit 1 teclado classica 1280x800 12:15:24
+### teclado classica 1248x640 12:15:24
+exit 1 teclado classica 1248x640 12:15:24
+### teclado classica 1280x641 12:15:24
+exit 1 teclado classica 1280x641 12:15:24
+### teclado fita 1280x800 12:15:24
+exit 1 teclado fita 1280x800 12:15:24
+### teclado fita 1248x640 12:15:24
+exit 1 teclado fita 1248x640 12:15:24
+### teclado fita 1280x641 12:15:25
+exit 1 teclado fita 1280x641 12:15:25
+JANELADONE 12:15:25
+### teclado sabotagem foco foco 1280x641 12:15:25
+exit 1 teclado sabotagem foco foco 12:15:25
+### teclado sabotagem tabela foco 1280x641 12:15:25
+exit 1 teclado sabotagem tabela foco 12:15:25
+### teclado sabotagem clique foco 1280x641 12:15:25
+exit 1 teclado sabotagem clique foco 12:15:25
+### teclado sabotagem foco classica 1280x641 12:15:25
+exit 1 teclado sabotagem foco classica 12:15:25
+### teclado sabotagem tabela classica 1280x641 12:15:25
+exit 1 teclado sabotagem tabela classica 12:15:25
+### teclado sabotagem clique classica 1280x641 12:15:25
+exit 1 teclado sabotagem clique classica 12:15:25
+### teclado sabotagem foco fita 1280x641 12:15:25
+exit 1 teclado sabotagem foco fita 12:15:25
+### teclado sabotagem tabela fita 1280x641 12:15:25
+exit 1 teclado sabotagem tabela fita 12:15:25
+### teclado sabotagem clique fita 1280x641 12:15:25
+exit 1 teclado sabotagem clique fita 12:15:25
+fim 12:15:25 suite=e1691c5 src=[0] tronco=01e4147 [0] labeling=2026-09-15 05:49:26.192952500 -0300
+SABOTAGENSDONE
+TECLADO inicio 12:34:42 suite=e1691c5 src=[0] tronco=01e4147 [0] labeling=2026-09-15 05:49:26.192952500 -0300
+### teclado foco 1280x800 12:34:42
+exit 0 teclado foco 1280x800 12:35:19
+### teclado foco 1248x640 12:35:19
+exit 0 teclado foco 1248x640 12:35:53
+### teclado foco 1280x641 12:35:54
+exit 0 teclado foco 1280x641 12:36:37
+### teclado classica 1280x800 12:36:37
+exit 0 teclado classica 1280x800 12:37:33
+### teclado classica 1248x640 12:37:33
+exit 0 teclado classica 1248x640 12:38:15
+### teclado classica 1280x641 12:38:15
+exit 0 teclado classica 1280x641 12:38:51
+### teclado fita 1280x800 12:38:51
+exit 0 teclado fita 1280x800 12:39:27
+### teclado fita 1248x640 12:39:27
+exit 0 teclado fita 1248x640 12:40:03
+### teclado fita 1280x641 12:40:03
+exit 0 teclado fita 1280x641 12:40:35
+TECLADODONE 12:40:35
+### teclado sabotagem foco foco 1280x641 12:40:35
+exit 1 teclado sabotagem foco foco 12:41:12
+### teclado sabotagem tabela foco 1280x641 12:41:12
+exit 1 teclado sabotagem tabela foco 12:41:50
+### teclado sabotagem clique foco 1280x641 12:41:50
+exit 1 teclado sabotagem clique foco 12:42:25
+### teclado sabotagem foco classica 1280x641 12:42:25
+exit 1 teclado sabotagem foco classica 12:42:59
+### teclado sabotagem tabela classica 1280x641 12:42:59
+exit 1 teclado sabotagem tabela classica 12:43:39
+### teclado sabotagem clique classica 1280x641 12:43:39
+exit 1 teclado sabotagem clique classica 12:44:18
+### teclado sabotagem foco fita 1280x641 12:44:18
+exit 1 teclado sabotagem foco fita 12:45:01
+### teclado sabotagem tabela fita 1280x641 12:45:01
+exit 1 teclado sabotagem tabela fita 12:45:39
+### teclado sabotagem clique fita 1280x641 12:45:39
+exit 1 teclado sabotagem clique fita 12:46:17
+TECLADO fim 12:46:17 suite=e1691c5 src=[0] tronco=01e4147 [0] labeling=2026-09-15 05:49:26.192952500 -0300
+TECLADOSABOTAGENSDONE

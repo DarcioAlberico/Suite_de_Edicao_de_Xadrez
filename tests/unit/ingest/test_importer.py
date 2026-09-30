@@ -712,7 +712,7 @@ def test_an_accept_of_the_page_nobody_read_accepts_nothing_on_the_next_import(
     (item,) = queue.items
     assert item.kind == "page"
     assert item.text == ""
-    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
+    assert queue.refusal(item.key, Action.ACCEPT).startswith("o OCR não leu esta página")
     queue.decide(item.key, Action.ACCEPT)
     written = review.ReviewDecisions(entries=(
         review.Decided(item.page_index, item.rect, Action.ACCEPT, reviewer="ana"),))
@@ -736,6 +736,83 @@ def test_an_accept_of_the_page_nobody_read_accepts_nothing_on_the_next_import(
     (region,) = provider.last.regions
     assert region.verified
     assert "aceita pelo revisor" in region.decision.reasons_pt
+
+
+class _PageRegionOcr(_ServiceLikeOcr):
+    """A page the OCR reads with no division of the layout: one region of kind PAGE over the whole
+    page, with the reading, for review -- the Gallagher p. 54 of the critic (fase 5, ciclo 8)."""
+
+    def __call__(self, _page, frame, _verdict):
+        from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+        from caissa.ocr.decision import Decision, RegionDecision
+        from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+        box = BBox(0.0, 0.0, frame.width * 300.0 / 72.0, frame.height * 300.0 / 72.0)
+        words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                      for w in ("1", "e4", "e5", "2", "e4", "e5"))
+        result = OcrResult(engine="tesseract", lang="eng", lines=(
+            OcrLine(words=words, box=box, kind=RegionKind.PAGE),))
+        self.last = PageRecognition(page_index=frame.index, dpi=300.0, regions=[RegionRecognition(
+            reading_order=0, kind=RegionKind.PAGE, box_px=box, result=result,
+            decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                    ("sequência de lances repetida: suspeita de invenção",)),
+            engine="tesseract", variant="base", score=0.6)],
+            portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+        return self.last.to_page_text(frame)
+
+
+@pytest.mark.parametrize("action", ["accept", "edit", "keep_image"])
+def test_a_decision_on_a_page_the_ocr_read_in_one_region_reaches_the_book(
+        pdf_file, monkeypatch, action):
+    """Crítico da fase 5, ciclo 8: the page the OCR read with no division of the layout is one
+    region of kind PAGE, and its review item is of kind «page» with the reading and the engine; the
+    rule of cycle 8 refused the three decisions on it (the page pending for ever).  Through the
+    importer: the item of the page read, the decision taken on the queue, and the next import
+    applies it -- the accept verified, the edit's text in the book, the page kept as an image.
+    The sabotage: the rule of cycle 8 -- refused, and the next import leaves the page in review."""
+    from caissa.ocr import review
+    from caissa.ocr.decision import Decision
+    from caissa.ocr.review import Action, ReviewQueue
+
+    acao = Action(action)
+    texto = "1 e4 e5 2 Nf3 Nc6" if acao is Action.EDIT else None
+    spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
+    path = pdf_file([spec])
+    first = import_pdf(path, PdfImportOptions(ocr=_PageRegionOcr(), detect_diagrams=False))
+    queue = ReviewQueue.from_import(first.report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind == "page"
+    assert item.text.strip()
+    assert item.engine
+    assert queue.refusal(item.key, acao) == ""
+    queue.decide(item.key, acao, text=texto)
+    provider = _PageRegionOcr()
+    again = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=queue.decisions()))
+    assert again.report.counters["review_decisions_applied"] == 1
+    if acao is Action.KEEP_IMAGE:  # listed as abstained by the reviewer, as any region kept so
+        (restante,) = again.report.review_items
+        assert "mantida como imagem pelo revisor" in restante.reasons
+    else:
+        assert again.report.review_items == []
+    (region,) = provider.last.regions
+    assert region.verified
+    esperada = Decision.ABSTAINED if acao is Action.KEEP_IMAGE else Decision.ACCEPTED
+    assert region.decision.decision is esperada
+    if acao is Action.EDIT:
+        (paragrafo,) = [b for b in again.document.body if isinstance(b, Paragraph)]
+        assert plain_text(paragrafo.content) == texto
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotada = ReviewQueue.from_import(first.report, document="livro", reviewer="ana")
+    (item,) = sabotada.items
+    assert sabotada.refusal(item.key, acao).startswith("o OCR não leu esta página")
+    sabotada.decide(item.key, acao, text=texto)
+    provider = _PageRegionOcr()
+    sabotaged = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=sabotada.decisions()))
+    assert sabotaged.report.counters["review_decisions_applied"] == 0
+    assert [i.kind for i in sabotaged.report.review_items] == ["page"]
 
 
 def test_review_decisions_settle_the_region_on_import(pdf_file):

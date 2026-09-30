@@ -115,7 +115,7 @@ from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVE
 from caissa.ui.views.exportacao import ExportadorDeLivro
 from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas, pixmap_de
 from caissa.ui.widgets.fileira_fluida import FileiraFluida
-from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco
+from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, ancorar, no_meio_do_clique
 from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
 from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
 
@@ -664,6 +664,7 @@ class PainelDeRotulagem(QWidget):
         # `teclado` gate with the real key put the focus on «Leitura do motor» with 0 px on screen
         # at 1280x641 -- the scroll area only follows the focus that moves inside it).
         self._segue_o_foco = RolagemSegueOFoco(rolagem)
+        self._rolagem_do_cartao = rolagem
 
         # C18: a linha de estado pedia 2.868 px de largura mínima (o texto inteiro).
         self.status = RotuloQueEncolhe("", self)
@@ -1098,6 +1099,11 @@ class PainelDeRotulagem(QWidget):
             return
         line = next((c for c in region.lines if c.index == line_index), None)
         if line is not None and (self.current is None or line is not self.current[1]):
+            if no_meio_do_clique():
+                # O cartão acima da tabela muda de altura com a linha (o motivo quebra em uma ou
+                # duas linhas): sem a âncora, a tabela deslizava sob o ponteiro parado, e o segundo
+                # clique do duplo clique caía na linha vizinha (ciclo 9 da fase 5).
+                ancorar(self._rolagem_do_cartao, self.table)
             self._select_line(region, line, from_table=True, focar=not pelas_setas(self.table))
 
     def _select_first_pending(self) -> None:

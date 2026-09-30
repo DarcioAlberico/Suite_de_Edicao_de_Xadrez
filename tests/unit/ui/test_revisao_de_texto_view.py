@@ -340,10 +340,11 @@ def test_decisions_move_on_save_themselves_and_reach_the_importers_file(app, pdf
 def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, monkeypatch):
     """Crítico da fase 5, ciclo 6: the page item of an OCR that raised (no reading, the whole
     page's rectangle) comes first in the queue with the focus on its empty truth, and the Enter
-    recorded an accept that the next import applied to the whole page.  The Enter is refused with
-    the phrase and nothing is recorded; writing the page's text, or keeping it as a picture, is
-    what the reviewer can do.  The sabotage: the accept of nothing goes through and reaches the
-    importer's file."""
+    recorded an accept that the next import applied to the whole page.  Ciclo 7: the refusal told
+    the reviewer to write the text or keep the page as a picture, which the next import applies to
+    no region of a page of several.  The Enter, the edit and «Manter como imagem» are refused with
+    the phrase -- the page stays in the queue until the OCR reads it -- and nothing is recorded.
+    The sabotage: the decision that decides nothing goes through and reaches the importer's file."""
     from caissa.ocr import review
     from caissa.ocr.review import ReviewDecisions
 
@@ -358,15 +359,19 @@ def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, mon
     assert painel.cartao.texto_da_verdade() == ""
     painel._on_enter()
     app.processEvents()
-    assert "Recusado: não há leitura para aceitar" in painel.status.text()
+    assert "Recusado: o OCR não leu esta página" in painel.status.text()
     assert painel.queue.log == [], "nothing recorded"
     assert not painel.decide(Action.ACCEPT)
     painel.cartao.verdade.setPlainText("1.e4 e5")
     painel._on_enter()
     app.processEvents()
-    assert [e.action for e in painel.queue.log] == [Action.EDIT]
+    assert "Recusado: o OCR não leu esta página" in painel.status.text()
+    assert not painel.decide(Action.KEEP_IMAGE)
+    assert painel.queue.log == [], "nothing recorded: the edit and the image are refused too"
+    assert [i.key for i in painel.queue.pending()] == [painel.current.key]
     painel.close()
 
+    monkeypatch.setattr(review, "sem_efeito", lambda _item, _action: False)
     monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
     sabotado = _panel(app, pdf, tmp_path / "s", report=report)
     sabotado._on_enter()
@@ -375,6 +380,104 @@ def test_the_enter_on_a_page_nobody_read_accepts_nothing(app, pdf, tmp_path, mon
     saved = ReviewDecisions.load(tmp_path / "s" / "proj" / "revisao" / "Livro X.json")
     assert [d.action for d in saved.entries] == [Action.ACCEPT], "the importer's file has it"
     sabotado.close()
+
+
+def test_the_enter_on_a_page_the_ocr_read_in_one_region_accepts_it(app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 8: a page the OCR read with no division of the layout is one region
+    of kind PAGE, and the rule of cycle 8 refused every decision on it with «o OCR não leu esta
+    página» -- the Gallagher p. 54, read, 1.379 characters, pending for ever.  The item has the
+    reading and the engine: the Enter on the truth accepts it, and the decision reaches the
+    importer's file.  The sabotage: the rule of cycle 8 (every item of kind «page» unread) --
+    refused, nothing recorded."""
+    from caissa.ocr import review
+    from caissa.ocr.review import ReviewDecisions
+
+    pagina = SimpleNamespace(
+        page_index=0, rect=(0.0, 0.0, 612.0, 792.0), kind="page", decision="review",
+        reasons=("sequência de lances repetida: suspeita de invenção",), text="1 e4 e5 2 e4 e5",
+        engine="tesseract", score=0.6, alternatives=())
+    report = SimpleNamespace(review_items=[pagina], ocr_traces={}, pages=[1, 2, 3])
+    painel = _panel(app, pdf, tmp_path, report=report)
+    assert painel.current.kind == "page"
+    assert painel.cartao.texto_da_verdade() == "1 e4 e5 2 e4 e5"
+    painel._on_enter()
+    app.processEvents()
+    assert "Recusado" not in painel.status.text()
+    assert [e.action for e in painel.queue.log] == [Action.ACCEPT]
+    assert painel.queue.pending() == []
+    saved = ReviewDecisions.load(tmp_path / "proj" / "revisao" / "Livro X.json")
+    assert [d.action for d in saved.entries] == [Action.ACCEPT], "the importer's file has it"
+    painel.close()
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotado = _panel(app, pdf, tmp_path / "s", report=report)
+    sabotado._on_enter()
+    app.processEvents()
+    assert "Recusado: o OCR não leu esta página" in sabotado.status.text()
+    assert sabotado.queue.log == [], "sabotaged: nothing recorded"
+    sabotado.close()
+
+
+def _clique_numa_linha(app, janela, tabela, verdade, *, no_fim: bool):
+    """A rolagem da janela num extremo, um clique pelo ``QWindow`` numa linha inteira à vista e
+    diferente da atual (o instrumento do portão), e o texto digitado depois: a linha clicada, a
+    verdade à vista (px) e se ela está inteira na rolagem que segue o foco, e o texto dela."""
+    from PyQt6.QtTest import QTest
+    from PyQt6.QtWidgets import QScrollArea
+
+    from caissa.ui.audit import teclado
+
+    for rolagem in janela.findChildren(QScrollArea):
+        barra = rolagem.verticalScrollBar()
+        barra.setValue(barra.maximum() if no_fim else barra.minimum())
+    app.processEvents()
+    achada = teclado._linha_inteira_a_vista(tabela, tabela.currentRow())
+    assert achada is not None, "a line whole in sight to click"
+    linha, ponto = achada
+    antes = verdade.visibleRegion().boundingRect().intersected(verdade.rect())
+    if app.focusWidget() is not None:
+        app.focusWidget().clearFocus()
+        app.processEvents()
+    teclado._clique_com_acao(janela, tabela.viewport().mapTo(janela, ponto))
+    foco = app.focusWidget()
+    QTest.keyClicks(foco, "XYZ")
+    app.processEvents()
+    vista = verdade.visibleRegion().boundingRect().intersected(verdade.rect())
+    rolagem = teclado._rolagem_que_segue(verdade)
+    inteira = rolagem is not None and teclado._inteiro_na_rolagem(rolagem, verdade)
+    return {"linha": linha, "linha_depois": tabela.currentRow(), "foco": foco,
+            "antes_px": [antes.width(), antes.height()],
+            "depois_px": [vista.width(), vista.height()],
+            "inteira": inteira, "digitado": "XYZ" in verdade.toPlainText()}
+
+
+def test_a_click_on_a_line_shows_the_truth_after_the_release_and_the_typing_goes_there(
+        app, pdf, tmp_path, monkeypatch):
+    """Crítico da fase 5, ciclo 7 (the same in the Rotulagem): the table «Dúvidas do livro» changes
+    the line on the *press*, and the panel sends the focus to «Verdade da linha» in the card right
+    there; the guard of cycle 7 left it out of sight (0 px at 1280x641 in the Foco and the Fita, 5
+    of 60 px in the Clássica), and what was typed went into it.  The tab short enough that the truth
+    is below the fold of the card: a click through the ``QWindow`` on a line whole in sight
+    changes the line, and after the release the truth is whole in sight, with the typing in it.
+    The sabotage: the guard of cycle 7 -- the truth stays at 0 px."""
+    from caissa.ui.audit import teclado
+    from caissa.ui.widgets import foco_a_vista
+
+    painel = _panel(app, pdf, tmp_path)
+    painel.resize(1000, 300)
+    for _vez in range(2):
+        app.processEvents()
+    feito = _clique_numa_linha(app, painel, painel.table, painel.cartao.verdade, no_fim=False)
+    assert feito["antes_px"] == [0, 0], ("the truth starts out of sight", feito)
+    assert feito["linha_depois"] == feito["linha"], feito
+    assert feito["foco"] is painel.cartao.verdade, feito
+    assert feito["inteira"], ("the truth whole in sight after the release", feito)
+    assert feito["digitado"], feito
+    monkeypatch.setattr(foco_a_vista, "veio_do_mouse", teclado._guarda_do_ciclo_7)
+    feito = _clique_numa_linha(app, painel, painel.table, painel.cartao.verdade, no_fim=False)
+    assert feito["foco"] is painel.cartao.verdade, feito
+    assert feito["depois_px"] == [0, 0], ("sabotaged: the truth stays out of sight", feito)
+    painel.close()
 
 
 def test_a_correction_on_a_blind_page_is_refused_with_the_phrase(app, pdf, tmp_path):

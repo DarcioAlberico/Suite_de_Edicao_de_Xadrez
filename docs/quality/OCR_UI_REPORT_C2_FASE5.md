@@ -57,18 +57,49 @@
 > teclado, que gravava `null` nas linhas da Rotulagem, §0.8 item 2), e no seguinte (a fila de A/B
 > medida no `7f839f0`, o `sol.json` publicado no `99ad8d7`, os portões no commit, e este relatório
 > fechado).
+>
+> **Ciclo 7 do crítico** (§0.9). O ciclo 6 reprovou com três bloqueantes (o B13 intercalando listas
+> cujas colunas têm formas diferentes — um índice de números de quatro algarismos, uma coluna só de
+> nomes, a classificação em duas metades —, **aceitas**; o seguidor de foco rolando no clique do
+> mouse, entre o pressionar e o soltar — um lance que ninguém jogou no Estudo, um rádio que não
+> marca —; e o item de página sem leitura, aceito com o Enter, virando a aceitação verificada da
+> leitura seguinte); os consertos estão no tronco `01e4147` e na suíte `437ce76` (o B13 e a
+> transcrição do ciclo 6), `80d9ddf` (o aceite de nada) e `e1691c5` (o clique, o portão que clica,
+> as teclas de lista), e no seguinte (a fila de A/B e o `sol.json` medidos no `e1691c5`, os portões
+> no commit, as sondas do crítico no commit, e este relatório fechado).
+>
+> **Ciclo 8 do crítico** (§0.10). O ciclo 7 reprovou com um bloqueante (a guarda do mouse do
+> seguidor de foco calava também o foco que o painel manda a outro controle no pressionar: o clique
+> numa linha das tabelas da Rotulagem e da Revisão de texto deixava a «Verdade da linha» fora da
+> vista, e o que se digitava ia para lá); os consertos estão no tronco `c2fd00c`, `d706653` e
+> `967be8d` e na suíte `71d223b` (o seguidor, o portão que clica deixando a ação rodar, a fila de
+> revisão, a transcrição do ciclo 7), `97da447` (a rolagem destruída com o foco dentro) e `dc04dce`
+> (a razão do foco em vez do ponteiro, e o foco que a janela devolve ao voltar — achados pelo
+> construtor —, e a sabotagem `ponteiro`), e no seguinte (o `sol.json` publicado no `dc04dce`, os
+> portões e as sondas do crítico no commit, e este relatório fechado).
+>
+> **Ciclo 9 do crítico** (§0.11). O ciclo 8 reprovou com dois bloqueantes (a fila recusava toda
+> decisão sobre um item «page», também o da página que o OCR leu numa região só; e a rolagem que
+> mostrava o foco do painel logo depois do soltar mexia o conteúdo debaixo do ponteiro antes do
+> segundo clique de um duplo clique — na Rotulagem, uma linha aceita por ninguém); os consertos
+> estão no tronco `0ed4f8a` e na suíte `b0d59a4` (a página sem leitura, o mouse sossegado, o duplo
+> clique do portão, a transcrição do ciclo 8), `5f3c581` e `d186ba3` (a âncora da tabela da
+> Rotulagem, que deslizava sob o ponteiro quando o cartão acima dela mudava de altura — achado do
+> construtor —, uma por rolagem; e o duplo clique do portão linha após linha), e no seguinte (o
+> `sol.json` publicado no `d186ba3`, os portões e as sondas do crítico no commit, e este relatório
+> fechado).
 
 ## §0 — Em uma tela (o que o usuário passa a ter)
 
 | antes | depois | portão | passo |
 |---|---|---|---|
-| uma tabela a 150 DPI e a lista de lances de duas colunas saíam **por coluna** — todos os nomes, depois todos os lugares; todos os lances das brancas, depois os das pretas —, com 100 % dos caracteres certos e CER 0,47–0,68 | os blocos do Tesseract lado a lado cujas linhas casam são lidos **por linha**, dentro da coluna da página — através da calha da página (achada com prosa de um lado, em faixas de largura comparável ou, de duas calhas, a vizinha da prosa; desde o ciclo 4 do crítico, entre uma partida e o texto; e, desde o ciclo 5, entre duas listas da mesma forma — nome e páginas, jogador e adversários, em ordem ou não, curtas ou longas) só uma lista de lances passa —, e nunca juntando texto corrido (prosa por comprimento, por palavras, notas de variantes ou, desde o ciclo 3 do crítico, linhas que continuam a frase, poucas palavras que tenham), duas numerações de lance, uma partida e uma coluna de nomes, uma linha da altura de duas (a coluna que o Tesseract lê como uma linha só), nem dois blocos com uma palavra de fora entre eles | `bench_sol`: `scan_degraded_150` CER **0,0224 → 0,0094** — o portão absoluto de 150 DPI do Sol, vermelho desde a fase 1, **verde**; `table:2/4/7` 0,465/0,640/0,676 → 0,0035/0,0036/0; nativos do Dvoretsky 0,590/0,381/0,347 → 0,051/0/0; `two-column` idêntico; 7 itens mudam, nenhum para pior (a regra final dá os 747 itens da primeira); páginas reais: a Gallagher de colunas estreitas, que a primeira regra levava de 0,2732 a **0,7042** pelo importador, vai a **0,2028**, e as pp. 51–53 ficam idênticas; o índice da Karpov 2 p. 268, que a regra do ciclo 2 intercalava (0,76), sai idêntico ao desligado; as notas comuns ao lado da partida, que a regra do ciclo 3 juntava e o importador **aceitava** (0,0052 → 0,6440), saem idênticas ao desligado; os índices reais que o crítico achou intercalados (ciclo 4) — a Flores pp. 460–464 pelo importador 0,6708/0,7224/0,0230/0,7117/0,4949 → **0,0438/0,0853/0,0230/0,0202/0,0364**, a Nunn p. 288 digitalizada 0,3212 → **0,0193**, três colunas compostas idênticas ao desligado —, as páginas que o crítico compôs no ciclo 5 para quebrar a regra de então — os jogadores pela classificação, que saíam **aceitos** intercalados (0,0000 → 0,6577), a última página de um índice com cinco verbetes (0,6634 → 0,3196 aceito) e uma partida ao lado da classificação (0,2218 → 0,7564) — no commit, pelo importador, **0,0000** (igual ao desligado) e **0,0048** aceito, e pelo serviço **0,1418** — as cinco páginas de partida × tabela no desligado ou abaixo dele, e a franja do texto corrido, **0 de 41** páginas em risco embaralhadas (o ciclo 4, 23); 280 páginas reais varridas (a Gallagher inteira e as páginas finais de nove livros): a leitura desligada igual à do ciclo 4 em 279, a ligada mudando em 6, as seis para melhor; a Estrin inteira (88, em alemão), 25 da Gunderam e 22 da Kmoch com as duas leituras iguais às do ciclo 4, e os índices reais do crítico (29 páginas) com 2 mudanças para melhor e 2 iguais (a Nunn p. 288, pelo serviço, sai com a leitura do RapidOCR, ligada e desligada: §0.3); ciclo 6: 1.622 leituras que passaram pelo B13 nas medidas do ciclo 5 (as sondas, as varreduras, o corpus), reordenadas de novo, mudam em 8 — as páginas compostas pelo crítico, a Stefaniu p. 245 (o colofão) e uma leitura não escolhida da Flores p. 462 (para melhor) —, e as 66 páginas das varreduras em que o B13 muda o desligado julgadas uma a uma (§0.8 item 3(a)); sabotagem `table_rows=false` → os números da fase 4 | B13 |
+| uma tabela a 150 DPI e a lista de lances de duas colunas saíam **por coluna** — todos os nomes, depois todos os lugares; todos os lances das brancas, depois os das pretas —, com 100 % dos caracteres certos e CER 0,47–0,68 | os blocos do Tesseract lado a lado cujas linhas casam são lidos **por linha**, dentro da coluna da página — através da calha da página (achada com prosa de um lado, em faixas de largura comparável ou, de duas calhas, a vizinha da prosa; desde o ciclo 4 do crítico, entre uma partida e o texto; e, desde o ciclo 5, entre duas listas da mesma forma — nome e páginas, jogador e adversários, em ordem ou não, curtas ou longas —, e, desde o ciclo 7, entre quaisquer duas colunas de uma página só de listas, qualquer que seja a forma de cada) só uma lista de lances passa —, e nunca juntando texto corrido (prosa por comprimento, por palavras, notas de variantes ou, desde o ciclo 3 do crítico, linhas que continuam a frase, poucas palavras que tenham), duas numerações de lance, uma partida e uma coluna de nomes (ou, desde o ciclo 7, de números ou pontos que não numeram os lances), uma linha da altura de duas (a coluna que o Tesseract lê como uma linha só), nem dois blocos com uma palavra de fora entre eles | `bench_sol`: `scan_degraded_150` CER **0,0224 → 0,0094** — o portão absoluto de 150 DPI do Sol, vermelho desde a fase 1, **verde**; `table:2/4/7` 0,465/0,640/0,676 → 0,0035/0,0036/0; nativos do Dvoretsky 0,590/0,381/0,347 → 0,051/0/0; `two-column` idêntico; 7 itens mudam, nenhum para pior (a regra final dá os 747 itens da primeira); páginas reais: a Gallagher de colunas estreitas, que a primeira regra levava de 0,2732 a **0,7042** pelo importador, vai a **0,2028**, e as pp. 51–53 ficam idênticas; o índice da Karpov 2 p. 268, que a regra do ciclo 2 intercalava (0,76), sai idêntico ao desligado; as notas comuns ao lado da partida, que a regra do ciclo 3 juntava e o importador **aceitava** (0,0052 → 0,6440), saem idênticas ao desligado; os índices reais que o crítico achou intercalados (ciclo 4) — a Flores pp. 460–464 pelo importador 0,6708/0,7224/0,0230/0,7117/0,4949 → **0,0438/0,0853/0,0230/0,0202/0,0364**, a Nunn p. 288 digitalizada 0,3212 → **0,0193**, três colunas compostas idênticas ao desligado —, as páginas que o crítico compôs no ciclo 5 para quebrar a regra de então — os jogadores pela classificação, que saíam **aceitos** intercalados (0,0000 → 0,6577), a última página de um índice com cinco verbetes (0,6634 → 0,3196 aceito) e uma partida ao lado da classificação (0,2218 → 0,7564) — no commit, pelo importador, **0,0000** (igual ao desligado) e **0,0048** aceito, e pelo serviço **0,1418** — as cinco páginas de partida × tabela no desligado ou abaixo dele, e a franja do texto corrido, **0 de 41** páginas em risco embaralhadas (o ciclo 4, 23); 280 páginas reais varridas (a Gallagher inteira e as páginas finais de nove livros): a leitura desligada igual à do ciclo 4 em 279, a ligada mudando em 6, as seis para melhor; a Estrin inteira (88, em alemão), 25 da Gunderam e 22 da Kmoch com as duas leituras iguais às do ciclo 4, e os índices reais do crítico (29 páginas) com 2 mudanças para melhor e 2 iguais (a Nunn p. 288, pelo serviço, sai com a leitura do RapidOCR, ligada e desligada: §0.3); ciclo 6: 1.622 leituras que passaram pelo B13 nas medidas do ciclo 5 (as sondas, as varreduras, o corpus), reordenadas de novo, mudam em 8 — as páginas compostas pelo crítico, a Stefaniu p. 245 (o colofão) e uma leitura não escolhida da Flores p. 462 (para melhor) —, e as 66 páginas das varreduras em que o B13 muda o desligado julgadas uma a uma (§0.8 item 3(a)); ciclo 7: as páginas que o crítico compôs no ciclo 6 — um índice de números de quatro algarismos e uma coluna só de nomes entre duas de verbetes, que saíam **aceitos** intercalados (0,4916 e 0,7747) —, pelo importador, **iguais ao desligado** (0,0026 e 0,0032), e a classificação em duas metades 0,7053 → **0,2526** (desligada 0,3316); 1.688 leituras guardadas antes do B13 e reordenadas pela regra nova: 14 mudam, as 9 com verdade para melhor, nenhuma do corpus; tudo o que o crítico mandou manter idêntico às corridas dele, região a região (§0.9 item 1); sabotagem `table_rows=false` → os números da fase 4 | B13 |
 | a leitura que perdia o fim de toda linha, ou linhas inteiras, saía **aceita** (a foto `synth:Dvoretsky…:201:21` aceita a 0,872 com CER 0,786), e as variantes que a leriam não rodavam | a fração das letras da região sob as palavras lidas (`ocr/coverage.py`): abaixo de 0,90 as variantes rodam mesmo com o original aceito, a leitura incompleta não ancora, e nunca sai `ACCEPTED`; a moldura escura do scanner não cega a medida, e a região que ela não julga é dita no rastro | aceitos com CER > 0,10 **30 → 7** (nenhum estrato sobe, nenhum entra): 18 lidos inteiros pela variante, 5 para a revisão; `photo` CER **0,0983 → 0,0207**; 27 itens mudam, nenhum para pior; população real pelo importador — 429 regiões de três livros do construtor e 95 de oito livros do crítico — sem sinalizar leitura boa; a Kmoch com moldura, de 0 letras a 1.058; piso ajustado só na `calib`, o desempate dito; sabotagem `ink_coverage=false` → os 30 | B14 |
 | o fax a 0,0382 pelo instrumento honesto da fase 4 | absorvido pelo B14, sem rota própria | `fax_dither` **0,0382 → 0,0249** (≤ 0,0312) | B15 |
 | o nível 0, o leiaute por página e o índice de busca liam a camada de texto com as ligaduras (`ﬁ`: 19 nas pp. 6–10 do Polgar) | as bandeiras do PyMuPDF sem `TEXT_PRESERVE_LIGATURES` nos três leitores — a caixa por caractere dividida junto | 19 → **0** nos três; `½ ² №` ficam; sabotagem (bandeiras antigas) → a ligadura volta | A14 |
 | a decisão do `.pt` (§10.2) comparava modelos num gate fixo — duas escalas de confiança | a curva risco × cobertura do campo para 15 checkpoints, e o máximo de exatos exportados com ≤ 0/1/2 errados | a produção reproduz o `field_exact` publicado (103 exportados, 102 exatos) e, com zero errados, exporta **74** (portão 0,998) — o «≤ k errados» calculado em todo valor distinto de confiança; sabotagem (rótulos embaralhados sobre as mesmas linhas) → AURC pior em todo modelo e a ordem dos modelos a tau +0,31 | C17 |
-| com as áreas visitadas e um livro, a janela pedia **1538×659** lógicos — a barra de anotação somava 810 px e uma frase do rodapé pedia 1.246 | rodapé elidido (a frase inteira na dica) com até 320 px garantidos à mensagem (~57 caracteres) e os dispositivos e a ocupação inteiros até 240 px, barra do campo fluida, os modos da aba Livro e o cartão da Revisão de texto em rolagem **com barra quando precisa**, e as fileiras de botões que descem de linha (Revisão de texto, cartão, Rotulagem, navegação da Galeria) | `caissa.ui.audit.minimo`: Clássica 1248×606, Foco **1248×640**, Fita 1246×629 ≤ 1250×640, com e sem livro, **e à vista** no mínimo e a 1366×728 — nenhum controle fora da vista sem barra, nenhum espremido, as **quatro zonas** do rodapé à vista com a linha cheia, para o nome mais longo e um comum (mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, para os dois nomes, medidas na linha do arnês, no mínimo): PASSOU; as cinco sabotagens (rodapé em `QLabel` → 3318 px; rolagens sem barra; mensagem sem piso → 0 px; o botão das mensagens com o piso de 1 px → 1/82 px; a reserva do ciclo 2 → dispositivos e ocupação com 0 px) REPROVARAM, e a sexta, `linha` (o produto reescrevendo o rodapé sem parar), também — ela achou que a medida se dizia «na linha do arnês» sem a linha ter assentado; o teclado com a **tecla** (ciclo 5 do crítico: a cadeia do foco não bastava; ciclo 6: nem a tabela vazia, nem as rolagens já descidas): na Revisão de texto e na Rotulagem — esta com uma página de linhas — o Tab anda da tabela à última ação e de volta, as setas andam pelas linhas com o foco na tabela, e toda rolagem que o Tab alcança de fora, na suíte e no tronco, mostra inteiro o controle que recebe o foco; o portão aperta a tecla nos dois sentidos em toda área, cada sentido com as rolagens no topo, a Rotulagem com uma página reconhecida e o diálogo de bases com 40 bases — no commit, PASSOU nas sete áreas menos o Texto (a «Folha transcrita», de outra sessão) e nos quinze diálogos, nas três peles e três tamanhos, com a Rotulagem medida com 47 linhas na tabela; as sabotagens `foco` e `tabela` REPROVAM; as ações da Revisão de texto à vista a 1280×641 | C18 |
-| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais, e sem as seis brechas que o crítico construiu nos ciclos 1 e 2; as oito do ciclo 3 escapam: a varredura julga cada literal pela posição dele, não segue o dado — §A15), a afirmação do arnês num processo novo (e o import quebrado dito como quebrado), os quatro relatórios de campo remedidos no commit | suíte: **4.072 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida (ciclo 6, `99ad8d7`); tronco numa árvore limpa do `6e68315`: 4.798 passaram e o único reprovado é o do ambiente, por construção da árvore efêmera; `ImpressaoDaMedicaoTests` **sem `--deselect`**; `AccentTests` verde | A15 |
+| com as áreas visitadas e um livro, a janela pedia **1538×659** lógicos — a barra de anotação somava 810 px e uma frase do rodapé pedia 1.246 | rodapé elidido (a frase inteira na dica) com até 320 px garantidos à mensagem (~57 caracteres) e os dispositivos e a ocupação inteiros até 240 px, barra do campo fluida, os modos da aba Livro e o cartão da Revisão de texto em rolagem **com barra quando precisa**, e as fileiras de botões que descem de linha (Revisão de texto, cartão, Rotulagem, navegação da Galeria) | `caissa.ui.audit.minimo`: Clássica 1248×606, Foco **1248×640**, Fita 1246×629 ≤ 1250×640, com e sem livro, **e à vista** no mínimo e a 1366×728 — nenhum controle fora da vista sem barra, nenhum espremido, as **quatro zonas** do rodapé à vista com a linha cheia, para o nome mais longo e um comum (mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, para os dois nomes, medidas na linha do arnês, no mínimo): PASSOU; as cinco sabotagens (rodapé em `QLabel` → 3318 px; rolagens sem barra; mensagem sem piso → 0 px; o botão das mensagens com o piso de 1 px → 1/82 px; a reserva do ciclo 2 → dispositivos e ocupação com 0 px) REPROVARAM, e a sexta, `linha` (o produto reescrevendo o rodapé sem parar), também — ela achou que a medida se dizia «na linha do arnês» sem a linha ter assentado; o teclado com a **tecla** (ciclo 5 do crítico: a cadeia do foco não bastava; ciclo 6: nem a tabela vazia, nem as rolagens já descidas): na Revisão de texto e na Rotulagem — esta com uma página de linhas — o Tab anda da tabela à última ação e de volta, as setas andam pelas linhas com o foco na tabela, e toda rolagem que o Tab alcança de fora, na suíte e no tronco, mostra inteiro o controle que recebe o foco; o portão aperta a tecla nos dois sentidos em toda área, cada sentido com as rolagens no topo, a Rotulagem com uma página reconhecida e o diálogo de bases com 40 bases — e, desde o ciclo 7, **clica**: o seguidor não rola no foco que o mouse dá, e o clique em cada controle meio à vista das rolagens que seguem o foco vale onde foi dado (o lance que ninguém jogou no Estudo e o rádio que não marcava, do ciclo 6, não voltam); no commit, PASSOU nas oito áreas — o Texto também, desde o `aa22702` da outra sessão — e nos quinze diálogos, nas três peles e três tamanhos, com a Rotulagem medida com 47 linhas na tabela e todo clique no lugar; as sabotagens `foco`, `tabela` e `clique` REPROVAM; as teclas de lista andam pelas linhas das duas tabelas sem virar a página do livro; e, desde o ciclo 8, o clique que deixa a ação rodar: o foco que o painel move no pressionar (a linha da tabela manda o foco à «Verdade da linha») aparece inteiro depois do soltar — o foco do clique é o que chega com a razão do mouse, e não o do controle «sob o ponteiro», marca que fica velha —, e o portão o confere nas vistas de itens de cada área, com as sabotagens `guarda` e `ponteiro` reprovando; e, desde o ciclo 9, o duplo clique: esse foco aparece quando o mouse sossega (o intervalo do duplo clique depois do último soltar) ou na primeira tecla, o segundo clique cai onde o primeiro caiu — também quando o cartão acima da tabela da Rotulagem muda de altura com a linha (a âncora) —, e o portão faz o duplo clique linha após linha em cada vista de itens, com as sabotagens `soltar` e `ancora` reprovando (a `ancora` na Gallagher p. 51); as ações da Revisão de texto à vista a 1280×641 | C18 |
+| três invariantes com exceção em todo relatório: `AccentTests` vermelho, `ImpressaoDaMedicaoTests` com `--deselect`, `test_arquitetura` à parte | acentos por posição (nenhuma palavra permitida a mais, e sem as seis brechas que o crítico construiu nos ciclos 1 e 2; as oito do ciclo 3 escapam: a varredura julga cada literal pela posição dele, não segue o dado — §A15), a afirmação do arnês num processo novo (e o import quebrado dito como quebrado), os quatro relatórios de campo remedidos no commit | suíte: **4.123 passaram, 0 reprovaram** com o `test_arquitetura` na mesma corrida (ciclo 9, `d186ba3`); tronco numa árvore limpa do `0ed4f8a`: 4.870 passaram e o único reprovado é o do ambiente, por construção da árvore efêmera; `ImpressaoDaMedicaoTests` **sem `--deselect`**; `AccentTests` verde | A15 |
 
 ### 0.1 O que a medição mudou no desenho (as armadilhas, cada uma medida)
 
@@ -129,6 +160,14 @@
   uma pele morta segura o `stdout` que herdou: uma fila que lia o portão por `| grep` ficou minutos
   parada esperando um fim de arquivo que não vinha — as corridas passaram a gravar direto em
   arquivo.
+- **Duas pastas de saída vazias sumiram no meio de uma fila** (ciclo 7). A fila dos portões criou as
+  pastas `minimo/`, `teclado/` e `teclado_sabotagem/` no começo; às 12:13, durante as sabotagens da
+  janela, as duas ainda vazias sumiram (a `minimo/`, com arquivos, ficou), e as dezoito corridas do
+  teclado não abriram o log — saíram em um segundo, com o código 1 do redirecionamento, e a fila
+  dizia «exit 1» como se o portão tivesse reprovado. Nenhum código do portão apaga essas pastas
+  (os dois `rmtree` do teclado são das pastas temporárias dele); quem as apagou não foi achado. A
+  fila do teclado foi refeita com a pasta criada logo antes de cada corrida, com um arquivo dentro
+  (`scratchpad/c7/teclado_c7.sh`), e as dezoito corridas rodaram (§0.9 item 2).
 - **A linha cheia do rodapé não pode depender do instante** (ciclo 2). O portão estendido achou o
   botão «Mensagens» com 27 de 82 px com o livro aberto porque, naquele instante, a importação do
   Kemeri ainda corria e punha a ocupação e a barra na linha. Uma medida que depende de a importação
@@ -140,23 +179,27 @@
 
 | invariante / portão | resultado | comando |
 |---|---|---|
-| fila final de A/B do `bench_sol` no código final (6 estratos, 747 itens, quatro corridas em sequência, cada uma com o `SOL_CONFIG` dos **dois** interruptores; commit de base `f9ca678` + a árvore da fase) | `f5_on` (os dois ligados), `f5_b13_off`, `f5_b14_off`, `f5_before` (os dois desligados): o `f5_before` reproduz o `sol.json` da fase 4 **item a item** (diferença pareada 0 em todos os estratos e leiautes, os mesmos 30 aceitos errados, os mesmos portões) — os dois interruptores explicam toda a diferença, e o A14 não toca o corpus; 11–13 min por corrida. **Ciclo 2:** a fila refeita no código final (`scratchpad/bench_f5c2.sh`: `f5c2_on`, `f5c2_b13_off`, `f5c2_b14_off`, mesmo comando e os mesmos interruptores) dá os 747 itens **idênticos** aos da primeira, corrida a corrida (`f5c2_on` = `f5_on`, `f5c2_b13_off` = `f5_b13_off`, `f5c2_b14_off` = `f5_b14_off`, em CER e decisão): a regra nova do B13 e a moldura do B14 não mudam nenhum item do corpus — o que mudam está nas páginas reais. Evidência versionada: `docs/quality/sol/f5_ab.json` (por item, o CER, a decisão e o `answered` de cada corrida -- a média de cada estrato se refaz dos itens --; o resumo, os portões, o commit e o código não commitado de cada uma). **Ciclo 3:** a fila refeita no commit do código do ciclo 3 (`3ff1830`, `dirty_code` vazio; `scratchpad/bench_f5c3.sh`, as três corridas em paralelo) dá os 747 itens idênticos aos dos ciclos 1 e 2, em CER, decisão e todo campo numérico por item (o texto, os JSON só o guardam dos itens com CER acima de 0,05). **Ciclo 4:** a fila refeita no commit do código do ciclo 4 (`7736617`, `dirty_code` vazio; `scratchpad/c4/bench_f5c4.sh`, as três corridas em paralelo, com a máquina quieta) dá os 747 itens idênticos aos dos ciclos 1, 2 e 3 em todo campo por item que não é tempo — e, nos 70 itens de que o JSON guarda o texto, no texto (`c4/cmp_ab_c4.py`); o B13 muda os mesmos 7 itens e o B14 os mesmos 27, nenhum para pior; aceitos errados 7; `f5_ab.json` com as onze corridas. **Ciclo 5:** a fila refeita no commit do código do ciclo 5 (`b6978ec`, `dirty_code` vazio; `scratchpad/c5/bench_f5c5.sh`, as três corridas em paralelo, com os portões da janela ao lado) dá os 747 itens idênticos aos do ciclo 4 em todo campo por item que não é tempo, salvo um: o `real:Dvoretsky…:17:401:52` do `native`, cuja confiança relatada vai de 0,56 a 0,4884 — a do B13 desligado: o B13 movia as linhas dessa lista antes de ela ser pontuada, e a concordância agora é medida na ordem do motor; o CER (0,05128) e a decisão (revisão) não mudam. O B13 muda os mesmos 7 itens e o B14 os mesmos 27, nenhum para pior; aceitos errados 7; o 150 DPI em 0,0094; `f5_ab.json` com as catorze corridas (`c5/cmp_ab_c5.py`). **Ciclo 6:** no `2c81e36` (`f5c6_*`) e no `7f839f0` (`f5c7_*`), as três corridas com os 747 itens idênticos aos do ciclo 5 em todo campo por item que não é tempo — as regras novas do B13 não mudam item nenhum do corpus, como as leituras guardadas antes do B13 diziam antes das corridas (0 das 1.048) —; aceitos errados 7; o 150 DPI em 0,0094; `f5_ab.json` com as vinte corridas e as médias por estrato refeitas dos itens (`c6/cmp_ab_c6.py`, `c6/cmp_ab_c7.py`, `c6/f5_ab_evidencia.py`) | `scratchpad/bench_f5c.sh` (`CAISSA_FIGURINE_TESSDATA=models\tessdata`, `SOL_CONFIG='{"table_rows": …, "ink_coverage": …}' .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither,photo --label <corrida>`); comparação `scratchpad/cmp_f5.py` |
+| fila final de A/B do `bench_sol` no código final (6 estratos, 747 itens, quatro corridas em sequência, cada uma com o `SOL_CONFIG` dos **dois** interruptores; commit de base `f9ca678` + a árvore da fase) | `f5_on` (os dois ligados), `f5_b13_off`, `f5_b14_off`, `f5_before` (os dois desligados): o `f5_before` reproduz o `sol.json` da fase 4 **item a item** (diferença pareada 0 em todos os estratos e leiautes, os mesmos 30 aceitos errados, os mesmos portões) — os dois interruptores explicam toda a diferença, e o A14 não toca o corpus; 11–13 min por corrida. **Ciclo 2:** a fila refeita no código final (`scratchpad/bench_f5c2.sh`: `f5c2_on`, `f5c2_b13_off`, `f5c2_b14_off`, mesmo comando e os mesmos interruptores) dá os 747 itens **idênticos** aos da primeira, corrida a corrida (`f5c2_on` = `f5_on`, `f5c2_b13_off` = `f5_b13_off`, `f5c2_b14_off` = `f5_b14_off`, em CER e decisão): a regra nova do B13 e a moldura do B14 não mudam nenhum item do corpus — o que mudam está nas páginas reais. Evidência versionada: `docs/quality/sol/f5_ab.json` (por item, o CER, a decisão e o `answered` de cada corrida -- a média de cada estrato se refaz dos itens --; o resumo, os portões, o commit e o código não commitado de cada uma). **Ciclo 3:** a fila refeita no commit do código do ciclo 3 (`3ff1830`, `dirty_code` vazio; `scratchpad/bench_f5c3.sh`, as três corridas em paralelo) dá os 747 itens idênticos aos dos ciclos 1 e 2, em CER, decisão e todo campo numérico por item (o texto, os JSON só o guardam dos itens com CER acima de 0,05). **Ciclo 4:** a fila refeita no commit do código do ciclo 4 (`7736617`, `dirty_code` vazio; `scratchpad/c4/bench_f5c4.sh`, as três corridas em paralelo, com a máquina quieta) dá os 747 itens idênticos aos dos ciclos 1, 2 e 3 em todo campo por item que não é tempo — e, nos 70 itens de que o JSON guarda o texto, no texto (`c4/cmp_ab_c4.py`); o B13 muda os mesmos 7 itens e o B14 os mesmos 27, nenhum para pior; aceitos errados 7; `f5_ab.json` com as onze corridas. **Ciclo 5:** a fila refeita no commit do código do ciclo 5 (`b6978ec`, `dirty_code` vazio; `scratchpad/c5/bench_f5c5.sh`, as três corridas em paralelo, com os portões da janela ao lado) dá os 747 itens idênticos aos do ciclo 4 em todo campo por item que não é tempo, salvo um: o `real:Dvoretsky…:17:401:52` do `native`, cuja confiança relatada vai de 0,56 a 0,4884 — a do B13 desligado: o B13 movia as linhas dessa lista antes de ela ser pontuada, e a concordância agora é medida na ordem do motor; o CER (0,05128) e a decisão (revisão) não mudam. O B13 muda os mesmos 7 itens e o B14 os mesmos 27, nenhum para pior; aceitos errados 7; o 150 DPI em 0,0094; `f5_ab.json` com as catorze corridas (`c5/cmp_ab_c5.py`). **Ciclo 6:** no `2c81e36` (`f5c6_*`) e no `7f839f0` (`f5c7_*`), as três corridas com os 747 itens idênticos aos do ciclo 5 em todo campo por item que não é tempo — as regras novas do B13 não mudam item nenhum do corpus, como as leituras guardadas antes do B13 diziam antes das corridas (0 das 1.048) —; aceitos errados 7; o 150 DPI em 0,0094; `f5_ab.json` com as vinte corridas e as médias por estrato refeitas dos itens (`c6/cmp_ab_c6.py`, `c6/cmp_ab_c7.py`, `c6/f5_ab_evidencia.py`). **Ciclo 7:** no `e1691c5` (`f5c8_*`, `scratchpad/c7/bench_c7.sh`, as três corridas em paralelo, `dirty_code` vazio), os 747 itens idênticos aos do ciclo 6 em todo campo por item que não é tempo, nas três (`c7/cmp_ab_c8.py` → `c7/cmp_ab_c8.out`) — a página de listas, os valores ao lado da partida e a partida de números cortados não mudam item nenhum do corpus, como as leituras guardadas antes do B13 diziam antes das corridas (0 das 1.048) —; aceitos errados 7; o 150 DPI em 0,0094; `f5_ab.json` com as vinte e três corridas (`c7/f5_ab_evidencia.py`) | `scratchpad/bench_f5c.sh` (`CAISSA_FIGURINE_TESSDATA=models\tessdata`, `SOL_CONFIG='{"table_rows": …, "ink_coverage": …}' .venv\Scripts\python.exe benchmarks\bench_sol.py --system sol --strata scan_clean_300,scan_degraded_150,native,shadow_curl_bleed,fax_dither,photo --label <corrida>`); comparação `scratchpad/cmp_f5.py` |
 | portões do Sol em `f5_on` | silenciosas **0**, controles **0/9**, ordem **1,0000**, ambiente reproduz; CER 150 DPI **0,0094 ≤ 0,020 ✓** (vermelho desde a fase 1); CER limpo 0,0113, lances 0,9164, inventados 157 — vermelhos (§0.3) | o próprio `bench_sol` |
 | B13 em página real (ciclo 3: a regra final, com as varreduras do crítico) | **280 páginas** (a Gallagher inteira, 176, e as páginas finais de nove livros raster, 104): 43 mudam (ciclo 2: 46), e a leitura ligada é a do ciclo 2 em 275 -- as pp. 267, 268, 270 e 271 da Karpov 2 (índice) passam a idênticas ao desligado, e a Levenfis p. 302 (sumário) melhora — CER 0,1221 → 0,0738 contra a transcrição do crítico —, com 3 dos 6 títulos junto da sua página e as páginas dos outros três depois da última entrada; a Karpov 2 p. 268 pelo importador, idêntica ao desligado | `scratchpad/c3/varre.sh` (`…\_critico_f5\c2\b13_varredura.py`, quatro filas), `cmp_varre.py` |
+| B13 em página real (ciclo 7: a página de listas; as páginas do ciclo 6 do crítico e tudo o que ele mandou manter, no commit) | as 1.688 leituras guardadas antes do B13 (as 1.622 do ciclo 6 e as páginas do ciclo 6 do crítico), reordenadas pela regra do `9eb401c` e pela nova: **14 mudam** — as 9 com verdade para melhor (a classificação em duas metades 0,7053 → 0,2526, o índice de quatro algarismos 0,4916 → 0,0026 e a coluna só de nomes 0,7747 → 0,0032 nos dois caminhos, a partida ao lado dos ratings 0,6193 → 0,0284 e a alemã 0,7594 → 0,2481 pelo serviço, a de figurinas 0,7283 → 0,2441 pelo importador) e 5 leituras que o árbitro não escolhe —; nenhum dos 1.048 itens do corpus. No `e1691c5`, pelo importador (três execuções iguais byte a byte): o índice **0,0026** e a coluna **0,0032** aceitos, iguais ao desligado, a classificação **0,2526** aceita (desligada 0,3316); o que o crítico mandou manter — o `indices_ataque.pdf` do ciclo 5, o `tres.pdf`, o `indices_raster.pdf`, a Flores pp. 460–464, as notas inglesas, o `construido.pdf`, a Karpov 2 p. 268, a Gallagher pp. 50–53 — e os ataques dele que não eram para mudar (os emparceiramentos, a tabela de matches, a partida alemã e a de números, os índices a 150 DPI, onde três das cinco leituras não escolhidas estão) **idênticos às corridas dele no `9eb401c`**, região a região, ligado e desligado; pelo serviço, as 17 páginas de ataque iguais às dele menos as quatro que tinham de mudar (a partida ao lado dos ratings de volta ao desligado, 0,0170; a alemã 0,2481, abaixo do desligado), as cinco de partida × tabela, as tabelas em ordem, as dos ciclos 2 e 3 dele, as notas de risco e a franja iguais às do ciclo 6 — §0.9 | `scratchpad/c7/cache_c7.sh` → `c7/cache/`, `compara_regras.py` → `compara_c7d.out`; `c7/sondas_a.sh`, `sondas_b.sh`, `sondas_c.sh` → `c7/sondas/`, `cmp_sondas.py` → `cmp_sondas.out` |
 | B13 em página real (ciclo 6: as leituras do ciclo 5 reordenadas pela regra nova, as sondas do crítico no commit) | as 1.622 leituras que passaram pelo B13 nas medidas do ciclo 5, guardadas antes dele e reordenadas: pela regra do `2c81e36`, **8 mudam** (as duas páginas do crítico, 0,3148 e 0,6577 → 0,0000 no nível do B13; três das cinco de partida × tabela; a tabela em ordem, lida por linhas; o colofão da Stefaniu p. 245; uma leitura não escolhida da Flores p. 462), e pela do `7f839f0` **mais 26** (a P\|Tn 0,3376 → 0,2707; a Gallagher p. 175 de volta à ordem do livro; 18 de ruído de diagrama; seis leituras não escolhidas, cujas páginas saem pelo serviço iguais nos dois commits, menos a Reinfeld p. 319, melhor); nenhum dos 747 itens do corpus, nenhuma página que o crítico mandou manter. As sondas dele no `7f839f0`: pelo importador idênticas às do ciclo 5 dele, região a região, menos as duas que tinham de mudar (o `indices_ataque.pdf` p. 4 0,3196 → **0,0048** e p. 8 0,6577 → **0,0000**, igual ao desligado); pelo serviço, as cinco de partida × tabela no desligado ou abaixo e a franja em **0 de 41**. As páginas das varreduras que o B13 muda contra o desligado: 66 no `2c81e36` (41 de ruído, 5 neutras, 19 melhores, 1 pior), **59** no `7f839f0` (35, 5, 19, **nenhuma pior**) — §0.8 | `scratchpad/c6/cache_todos.sh`, `cache_corpus.py` (as leituras antes do B13), `b13_formas.py`, `todas_leituras.py` → `cmp_rows_final_caches.out`, `todas_leituras.out`; `c6/sondas_c6.sh` → `c6/sondas/`; `c6/varre_c6/`; `c6/muda_b13.py` → `b13_muda.out` |
-| B13 em página real (ciclo 5: o código final, as sondas e as varreduras do crítico) | as sondas do crítico com o código final (`c5/sondas3.sh`; importador sem `CAISSA_FIGURINE_TESSDATA`): a Flores pp. 460–464 0,6708/0,7224/0,0230/0,7117/0,4949 → 0,0438/0,0853/0,0230/0,0202/0,0364, a Yusupov 4 p. 206 0,0465 = desligado, a Nunn p. 288 0,3212 → 0,0193, a p. 289 0,0174, a Aagaard *Matter* pp. 892/893 0,0958/0,0769, o `tres.pdf` idêntico ao desligado nas quatro páginas; o que o crítico mandou manter igual ao ciclo 4 — o `construido.pdf`, a Karpov 2 p. 268 (JSON igual), a Gallagher p. 50 em 0,2028, as tabelas do ciclo 2 (aberturas 0,0113), as páginas estreitas, a lista tabulada e a de avaliações separadas; a franja do texto corrido 0 de 41 páginas embaralhadas (o ciclo 4, 24); as três notas inglesas pelo importador idênticas ao desligado. As varreduras: as 280 páginas do crítico (a Gallagher inteira e as páginas finais de nove livros) com a leitura **desligada** igual à do ciclo 4 em 279 — a 280ª, a Stean p. 165, é a que a máquina sem memória degradou no ciclo 4, e voltou (item 3(d)) —; a ligada muda em **6**, as seis para melhor contra a ordem do livro: a Flores pp. 460–464 (o índice: linhas que juntam dois verbetes 7/17/31/2/7 no ciclo 4, 0/0/0/0/1 agora, e os nomes subindo em ordem — 3 descidas em 69 verbetes, 2 em 78, 2 em 78, 2 em 78 e 2 em 48) e a Gallagher p. 128 (o ciclo 4 juntava o ruído de um diagrama à prosa, «ae Hil aa now has a decisive blow. 25 Hed 1-0»; ela sai agora como com a regra desligada, o ruído em linhas dele e a prosa inteira); o B13 muda 41 das 280 do desligado (o ciclo 4, 43: a p. 462 da Flores e a Gallagher p. 128 deixam de mudar); a Estrin inteira em `deu+eng` (88 páginas), 25 da Gunderam (pp. 10–58) e 22 da Kmoch (pp. 10–52), rasterizadas a 300 DPI, com as duas leituras iguais às do ciclo 4 em todas as 135 (e mais 7 da Gunderam e 4 da Kmoch sem par no ciclo 4, que a varredura deste ciclo cobriu até o fim: o B13 não muda nenhuma); e os índices reais do ciclo 4 do crítico (Karpov 1 pp. 392–400, Aagaard *Matter* pp. 890–895, Yusupov 4 pp. 200–207, Nunn pp. 284–289; 29 páginas, pelo serviço, sem o B14): a leitura desligada igual à do crítico em todas; a ligada muda em 4 — duas para melhor (Karpov 1 p. 398, 1 linha de dois verbetes no ciclo 4 e nenhuma agora; Yusupov 4 p. 206, 37 → 0, as duas agora iguais ao desligado), a Nunn p. 288, contada aqui como a terceira por engano (pelo serviço ela sai 0,7516 ligada e desligada, a leitura do RapidOCR, e o «42 → 0» de linhas com dois verbetes dá 1 com a expressão do próprio `cmp_varre_c5.py`; §0.8 item 3(b)), e uma igual (Aagaard p. 893: o número da página, «893», sai numa linha dele no fim, e não colado ao título). A concordância nos dois sentidos, medida antes e descartada: nas 268 páginas da primeira etapa, 7 leituras desligadas mudaram — 5 para pior (Karpov 2 pp. 267/272 e Vladimirov pp. 380/384/385, o RapidOCR intercalando colunas), 1 para melhor (Stean p. 154) e 1 igual (Aagaard p. 190) | `scratchpad/c5/sondas3.sh`, `c5/varre.sh`, `c5/cmp_varre_c5.py` (o diff de cada página que muda em `c5/varre_diffs/`), `c5/cer_flores.py`, `c5/descidas.py`; a concordância nos dois sentidos, descartada: `c5/varre_simetrica/`, `c5/cmp_varre_simetrica.out` |
+| B13 em página real (ciclo 5: o código final, as sondas e as varreduras do crítico) | as sondas do crítico com o código final (`c5/sondas3.sh`; importador sem `CAISSA_FIGURINE_TESSDATA`): a Flores pp. 460–464 0,6708/0,7224/0,0230/0,7117/0,4949 → 0,0438/0,0853/0,0230/0,0202/0,0364, a Yusupov 4 p. 206 0,0465 = desligado, a Nunn p. 288 0,3212 → 0,0193, a p. 289 0,0174, a Aagaard *Matter* pp. 892/893 0,0958/0,0769, o `tres.pdf` idêntico ao desligado nas quatro páginas; o que o crítico mandou manter igual ao ciclo 4 — o `construido.pdf`, a Karpov 2 p. 268 (JSON igual), a Gallagher p. 50 em 0,2028, as tabelas do ciclo 2 (aberturas 0,0113), as páginas estreitas, a lista tabulada e a de avaliações separadas; a franja do texto corrido 0 de 41 páginas embaralhadas (o ciclo 4, 23); as três notas inglesas pelo importador idênticas ao desligado. As varreduras: as 280 páginas do crítico (a Gallagher inteira e as páginas finais de nove livros) com a leitura **desligada** igual à do ciclo 4 em 279 — a 280ª, a Stean p. 165, é a que a máquina sem memória degradou no ciclo 4, e voltou (item 3(d)) —; a ligada muda em **6**, as seis para melhor contra a ordem do livro: a Flores pp. 460–464 (o índice: linhas que juntam dois verbetes 7/17/31/2/7 no ciclo 4, 0/0/0/0/1 agora, e os nomes subindo em ordem — 3 descidas em 69 verbetes, 2 em 78, 2 em 78, 2 em 78 e 2 em 48) e a Gallagher p. 128 (o ciclo 4 juntava o ruído de um diagrama à prosa, «ae Hil aa now has a decisive blow. 25 Hed 1-0»; ela sai agora como com a regra desligada, o ruído em linhas dele e a prosa inteira); o B13 muda 41 das 280 do desligado (o ciclo 4, 43: a p. 462 da Flores e a Gallagher p. 128 deixam de mudar); a Estrin inteira em `deu+eng` (88 páginas), 25 da Gunderam (pp. 10–58) e 22 da Kmoch (pp. 10–52), rasterizadas a 300 DPI, com as duas leituras iguais às do ciclo 4 em todas as 135 (e mais 7 da Gunderam e 4 da Kmoch sem par no ciclo 4, que a varredura deste ciclo cobriu até o fim: o B13 não muda nenhuma); e os índices reais do ciclo 4 do crítico (Karpov 1 pp. 392–400, Aagaard *Matter* pp. 890–895, Yusupov 4 pp. 200–207, Nunn pp. 284–289; 29 páginas, pelo serviço, sem o B14): a leitura desligada igual à do crítico em todas; a ligada muda em 4 — duas para melhor (Karpov 1 p. 398, 1 linha de dois verbetes no ciclo 4 e nenhuma agora; Yusupov 4 p. 206, 37 → 0, as duas agora iguais ao desligado), a Nunn p. 288, contada aqui como a terceira por engano (pelo serviço ela sai 0,7516 ligada e desligada, a leitura do RapidOCR, e o «42 → 0» de linhas com dois verbetes dá 1 com a expressão do próprio `cmp_varre_c5.py`; §0.8 item 3(b)), e uma igual (Aagaard p. 893: o número da página, «893», sai numa linha dele no fim, e não colado ao título). A concordância nos dois sentidos, medida antes e descartada: nas 268 páginas da primeira etapa, 7 leituras desligadas mudaram — 5 para pior (Karpov 2 pp. 267/272 e Vladimirov pp. 380/384/385, o RapidOCR intercalando colunas), 1 para melhor (Stean p. 154) e 1 igual (Aagaard p. 190) | `scratchpad/c5/sondas3.sh`, `c5/varre.sh`, `c5/cmp_varre_c5.py` (o diff de cada página que muda em `c5/varre_diffs/`), `c5/cer_flores.py`, `c5/descidas.py`; a concordância nos dois sentidos, descartada: `c5/varre_simetrica/`, `c5/cmp_varre_simetrica.out` |
 | B13 em página real (ciclo 4: a regra final, as sondas e as varreduras do crítico) | as sondas do crítico: `construido.pdf` pp. 0–3 pelo importador idênticas ao desligado (0,0052 `accepted`, 0,2284, 0,0367, 0,0754; duas execuções), `b13_estreita3.py --justificar` 0,0140/0,0087 em inglês e 0,2132/0,0152 em alemão (300/200 DPI), `b13_tabulada.py` 0,0140/0,0157/0,0140, notas reais de cinco livros 0 de 6; a Karpov 2 p. 268, a Gallagher pp. 50–53 (p. 50 em 0,2028), a Reinfeld 1977 p. 319 e a Levenfis p. 134 pelo importador com o texto de cada região igual ao do ciclo 3; as tabelas do ciclo 2 como no ciclo 3 (as aberturas 0,0113). As varreduras do crítico: **280 páginas**, a leitura ligada igual à do ciclo 3 nas 280 (43 mudam do desligado; a Stean p. 165 aparece como 44ª só porque a leitura **desligada** desta corrida saiu pior — outra variante escolhida, com a máquina sem memória; a desligada não passa pelo `rows.py`; o mecanismo, medido no ciclo 5: o RapidOCR falhando na alocação, §0.7 item 3(d)); a Estrin inteira em `deu+eng` (88 páginas), 25 da Gunderam (pp. 10–58) e 22 da Kmoch (pp. 10–52), raster 300 DPI: a leitura ligada igual à do ciclo 3 nas 135 (a Gunderam e a Kmoch interrompidas por memória) | `scratchpad/c4/sondas.sh`, `c4/varre.sh` (`…\_critico_f5\c2\b13_varredura.py` e `c3\b13_varredura3.py`), `c4/cmp_varre_c4.py`, `c4/cmp_importador.py`, `c4/cer_construido.py` |
 | B13 em página real (ciclo 2) | Levenfis pp. 36–52 **15 de 17** idênticas, Estrin pp. 20–27 7 de 8, Stefaniu pp. 40–47 8 de 8, Kmoch pp. 28, 40, 44, 48 e 68 5 de 5, Gallagher pp. 48–55 7 de 8 (a p. 50 com a lista de lances por linha); pelo importador, a Gallagher pp. 50–53: p. 50 CER 0,2732 → **0,2028** contra a transcrição do crítico, pp. 51–53 idênticas; as três páginas construídas pelo crítico idênticas ao desligado; nenhum grupo atravessa a calha | `scratchpad/b13_c2_all.sh` → `b13_c2_all2.log` (`probe_b13_pages.py <pdf> <páginas> <lang>` e o `b13_importador.py` do crítico, com `CAISSA_FIGURINE_TESSDATA` fora do ambiente) |
 | B14 na população real, pelo importador (código final) | construtor: Estrin pp. 20–27 (79 regiões medidas, a menor 0,919), Levenfis pp. 40–51 (240, a menor 0,931) e Stefaniu pp. 40–51 (110, a menor **0,900**) — nenhuma das 429 sinalizada. As contagens diferem das 504 do ciclo 1 em dois lugares: a Estrin do ciclo 1 foi medida com o classificador de diagramas indisponível (a `CAISSA_FIGURINE_TESSDATA` no ambiente, que o importador recusa — o log daquela corrida diz isso); e a p. 49 do Stefaniu saiu então em 83 regiões do tamanho de uma linha e sai hoje em 9 de parágrafo — a corrida de 04:15 mediu um `rows.py` intermediário, anterior ao commit do ciclo 1 (o log dela registra 96 regiões fundidas no Stefaniu), e o código commitado, o do ciclo 1 (`99546e9`) e o final, dá 9: as 83 eram daquela regra, e o número do ciclo 1 não se refaz com código commitado (crítico, ciclo 2); crítico (a sonda `b14_populacao.py` dele, os mesmos oito livros e páginas do ciclo 1): 95 regiões medidas, 6 sinalizadas — todas já em revisão ou abstenção, 5 delas ruído lido dentro de diagrama (Reinfeld ×3, Karpov, Vladimirov) e a Gallagher p. 50 (0,896, a página de colunas estreitas, CER 0,20); nenhuma leitura boa sinalizada. Kmoch com a moldura do scanner, rasterizada a 300 DPI: 0 → 1.058/1.162/995 letras, 55 regiões medidas, nenhuma sinalizada (a menor 0,953) | `scratchpad/b14_final.sh` (`b14_moldura_final.py` e `…\_critico_f5\b14_populacao.py`) |
 | C17 régua do campo | 15 checkpoints × 3 execuções, linhas idênticas nas três; produção 103/1 no gate = `field_exact`; com zero errados, 74; sabotagem tau +0,31. Evidência versionada: `docs/quality/campo/f5_c17_regua.json` (as linhas por diagrama, o resumo e a sabotagem) | `benchmarks\model_ruler.py --runs 3 --tag f5_c17`; ciclo 2: `--linhas-de …_f5_c17.json --tag f5_c17_c2` e `--sabotar embaralhar --linhas-de …` |
-| `sol.json` publicado no commit da fase | ciclo 6: republicado sobre o **`99ad8d7`** (o OCR é o do `7f839f0`: o `99ad8d7` muda só o portão do teclado), sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c7_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c6/cmp_ab_c7.py`); aceitos errados 7; `sol_gate --report-only` igual ao do ciclo 5 — sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde (`c6/sol_gate_c7.out`); 797 s (`c6/publica_c7.sh` → `c6/publica7/`). A publicação no `2c81e36` saiu com o `rows.py` do segundo commit sujo e foi descartada, e a do `7f839f0` foi parada no começo, para ser feita no `99ad8d7` (§0.3). Ciclo 5: republicado sobre o **`b6978ec`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c5_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c5/cmp_ab_c5.py`); aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde (`c5/sol_gate_c5.out`); 787 s. Ciclo 4: republicado sobre o **`7736617`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c4_on` em todo campo por item que não é tempo (o publicado não grava o texto); aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 836 s. Ciclo 3: republicado sobre o **`3ff1830`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos do `sol.json` do ciclo 2 e aos da `f5c3_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 741 s. Ciclo 2: republicado sobre o **`4fc0f4d`**, sem `SOL_CONFIG`: os 747 itens idênticos aos do `sol.json` do ciclo 1 e aos da `f5c2_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 698 s. Ciclo 1: `bb41c55`, sem `SOL_CONFIG`: 747 itens idênticos aos da `f5_on`; `sol_gate --report-only` sem regressão fora do IC; os três absolutos do §0.3 bloqueados, o de 150 DPI verde (§A15) | `bench_sol … --label sol --publish`; `sol_gate.py --report-only docs\quality\sol\sol.json` |
+| `sol.json` publicado no commit da fase | ciclo 9: republicado sobre o **`d186ba3`** (o OCR é o do `e1691c5`: os commits dos ciclos 8 e 9 mudam a fila de revisão, o seguidor de foco, a âncora da Rotulagem e o portão do teclado), sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c8_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c7/cmp_ab_c8.py` → `c9/cmp_ab_c9c.out`); `sol_gate --report-only` igual ao dos ciclos 7 e 8 (e ao das publicações no `b0d59a4` e no `5f3c581`, `c9/sol_gate_c9.out`) — o portão de 150 DPI verde; o CER limpo, a acurácia de lances e os lances inventados vermelhos (§0.3) (`c9/sol_gate_c9c.out`); 820 s (`c9/publica_c9c.sh` → `c9/publica_c/`; as publicações no `b0d59a4` e no `5f3c581`, `c9/publica/sol_b0d59a4.json` e `c9/publica_b/sol_5f3c581.json`, saíram iguais, salvo os tempos). Ciclo 8: republicado sobre o **`dc04dce`** (o OCR é o do `e1691c5`: o `71d223b`, o `97da447` e o `dc04dce` mudam a fila de revisão, o seguidor de foco e o portão do teclado), sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c8_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c7/cmp_ab_c8.py` → `c8/cmp_ab_c8.out`); `sol_gate --report-only` igual ao do ciclo 7 — o portão de 150 DPI verde; o CER limpo, a acurácia de lances e os lances inventados vermelhos (§0.3) (`c8/sol_gate_c8.out`); 856 s (`c8/publica_c8.sh` → `c8/publica/`). Ciclo 7: republicado sobre o **`e1691c5`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c8_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c7/cmp_ab_c8.py`); aceitos errados 7; `sol_gate --report-only` igual ao do ciclo 6 — sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde (`c7/sol_gate_c8.out`); 928 s (`c7/bench_c7.sh` → `c7/bench/`). Ciclo 6: republicado sobre o **`99ad8d7`** (o OCR é o do `7f839f0`: o `99ad8d7` muda só o portão do teclado), sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c7_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c6/cmp_ab_c7.py`); aceitos errados 7; `sol_gate --report-only` igual ao do ciclo 5 — sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde (`c6/sol_gate_c7.out`); 797 s (`c6/publica_c7.sh` → `c6/publica7/`). A publicação no `2c81e36` saiu com o `rows.py` do segundo commit sujo e foi descartada, e a do `7f839f0` foi parada no começo, para ser feita no `99ad8d7` (§0.3). Ciclo 5: republicado sobre o **`b6978ec`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c5_on` em todo campo por item que não é tempo (o publicado não grava o texto; `c5/cmp_ab_c5.py`); aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde (`c5/sol_gate_c5.out`); 787 s. Ciclo 4: republicado sobre o **`7736617`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos da `f5c4_on` em todo campo por item que não é tempo (o publicado não grava o texto); aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 836 s. Ciclo 3: republicado sobre o **`3ff1830`**, sem `SOL_CONFIG` e com `dirty_code` vazio: os 747 itens idênticos aos do `sol.json` do ciclo 2 e aos da `f5c3_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 741 s. Ciclo 2: republicado sobre o **`4fc0f4d`**, sem `SOL_CONFIG`: os 747 itens idênticos aos do `sol.json` do ciclo 1 e aos da `f5c2_on`, em CER e decisão; aceitos errados 7; `sol_gate --report-only` sem regressão fora do IC, os mesmos três absolutos bloqueados e o de 150 DPI verde; 698 s. Ciclo 1: `bb41c55`, sem `SOL_CONFIG`: 747 itens idênticos aos da `f5_on`; `sol_gate --report-only` sem regressão fora do IC; os três absolutos do §0.3 bloqueados, o de 150 DPI verde (§A15) | `bench_sol … --label sol --publish`; `sol_gate.py --report-only docs\quality\sol\sol.json` |
+| C18, ciclo 9: o duplo clique — o foco que o painel move no clique aparece quando o mouse sossega, a âncora da tabela da Rotulagem, o duplo clique do portão linha após linha, as sabotagens `soltar` e `ancora` | no `d186ba3` contra o tronco `0ed4f8a`, os dois sem nada fora do commit (o JSON da janela grava os dois; a fila diz os dois no começo e no fim, `docs/quality/ui/c2_fase5/fila_ciclo9_d186ba3.log`): o portão da janela PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, dispositivos 135, ocupação 171 px), e as seis sabotagens REPROVARAM (`aperto` 16 espremidos por pele; `rodape` 3300–3318 px; `corte` 3 fora da vista sem barra na Clássica e na Foco; `mensagem` 0–142 px; `reserva` dispositivos 0–22 e ocupação 0–58 px; `linha` 16 medidas fora da linha do arnês). O teclado com a tecla, o clique, o clique com a ação e **o duplo clique linha após linha** nas três peles, a 1280×800, 1248×640 e 1280×641, a Rotulagem com a p. 6 do Kemeri reconhecida (47 linhas na medida) e a Revisão de texto com a fila de 12 linhas: as oito áreas e os quinze diálogos andam nos dois sentidos com o foco à vista, todo clique cai no lugar, depois do clique numa linha a «Verdade da linha» fica inteira, e os **142 duplos cliques** das nove passadas (34 na Rotulagem, de 2 a 5 por passada com a rolagem no fim; 108 na Revisão de texto, 6 em cada extremo) caem no mesmo controle e na mesma linha, com a verdade inteira depois: PASSOU nas nove. Com a Gallagher p. 51 (`--pagina 51`, 66 linhas) a 1280×641: PASSOU nas três peles, o duplo clique nas linhas 1–4 (Clássica e Foco) e 3–4 (Fita) no lugar. As sabotagens a 1280×641 REPROVAM nas três peles — `foco` e `guarda` com a verdade a 0×0 na Rotulagem e a 0 ou 33 de 60 px na Revisão de texto; `tabela`; `clique` e `soltar` com o segundo clique do duplo clique fora da tabela (no cartão, na verdade, nas figurinas ou em «Aceitar leitura») —; a `ponteiro` reprova na Clássica (a Revisão de texto, 33 de 60 px) e passa na Foco e na Fita, como no ciclo 8; a `ancora` REPROVA com a Gallagher p. 51 nas três peles (o segundo clique da linha 3 cai na linha 2, a mesma tabela sob o ponteiro) e passa com o Kemeri nas três (os cartões das linhas à vista têm a mesma altura: nada desliza). O `labeling/project.json` de quem roda o portão continua o de 2026-09-15 | `scratchpad/c9/mede_c9c.sh` → `docs/quality/ui/c2_fase5/minimo*_20260925_0051*–0053*.json`, `teclado_*_20260925_0054*–0114*.json` (as nove do Kemeri e as três da Gallagher p. 51) e `teclado_sabotagem/teclado_*_20260925_0100*–0115*.json` (as 18 do Kemeri, as três `ancora` no Kemeri e as três na Gallagher)`; a fila em `fila_ciclo9_d186ba3.log`; o resumo em `c9/janela_c/resumo_portoes.out` (`c9/resumo_portoes_c9.py`) |
+| C18, ciclo 8: o clique que deixa a ação rodar — o foco que o painel move no pressionar, a razão do foco, as sabotagens `guarda` e `ponteiro` | no `dc04dce` contra o tronco `967be8d`, os dois sem nada fora do commit (o JSON da janela grava os dois; a fila diz os dois no começo e no fim, `docs/quality/ui/c2_fase5/fila_ciclo8_dc04dce.log`): o portão da janela PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, dispositivos 135, ocupação 171 px), e as seis sabotagens REPROVARAM (`aperto` 16 espremidos por pele; `rodape` 3300–3318 px; `corte` 3 fora da vista sem barra na Clássica e na Foco; `mensagem` 0–142 px; `reserva` dispositivos 0–22 e ocupação 0–58 px; `linha` 16 medidas fora da linha do arnês). O teclado com a tecla, o clique **e o clique com a ação** nas três peles, a 1280×800, 1248×640 e 1280×641, a Rotulagem com a p. 6 do Kemeri reconhecida (47 linhas na medida) e a Revisão de texto com a fila de 12 linhas: as oito áreas e os quinze diálogos andam nos dois sentidos com o foco à vista, todo clique cai no lugar, e depois do clique numa linha a «Verdade da linha» fica **inteira** — na Rotulagem com a rolagem no fim (514–552×60), na Revisão de texto com a rolagem no topo e no fim (277–307×60): PASSOU nas nove passadas, e as três que o `97da447` reprovava (a marca «sob o ponteiro» velha, §0.10 item 1.5) passam. As sabotagens a 1280×641 REPROVAM nas três peles — `foco`, `tabela` e `clique` como no ciclo 7; `guarda` com a verdade a 0×0 na Rotulagem e a 0 ou 33 de 60 px na Revisão de texto —, e a `ponteiro` reprova exatamente as três passadas que o `97da447` reprovava (a Revisão de texto na Clássica a 1248×640, 32 de 60 px, e a 1280×641, 33, e na Fita a 1280×800, 17) e passa nas outras seis, onde o clique engolido do portão não cai na verdade. O `labeling/project.json` de quem roda o portão continua o de 2026-09-15 | `scratchpad/c8/janela_c8.sh` → `docs/quality/ui/c2_fase5/minimo*_20260924_2044*–2046*.json`, `teclado_*_20260924_2047*–2051*.json` e `teclado_sabotagem/teclado_*_20260924_2052*–2102*.json`; a fila em `fila_ciclo8_dc04dce.log`; o resumo em `c8/janela/resumo_portoes.out` (`c6/resumo_portoes.py`); no `97da447`, `c8/janela_97da447/` |
+| C18, ciclo 7: o clique — o seguidor sem o foco do mouse, o portão que clica, a sabotagem `clique` | no `e1691c5` contra o tronco `01e4147`, os dois sem nada fora do commit (o JSON da janela grava os dois; a fila diz os dois no começo e no fim, `docs/quality/ui/c2_fase5/fila_ciclo7_e1691c5.log`): o portão da janela PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, dispositivos 135, ocupação 171 px), e as seis sabotagens REPROVARAM (`aperto` 16 espremidos por pele; `rodape` 3308–3326 px; `corte` 3 fora da vista sem barra na Clássica e na Foco; `mensagem` 0–142 px; `reserva` dispositivos 0–22 e ocupação 0–58 px; `linha` 16 medidas fora da linha do arnês). O teclado com a tecla **e o clique** nas três peles, a 1280×800, 1248×640 e 1280×641, a Rotulagem com a p. 6 do Kemeri reconhecida (47 linhas na medida): as oito áreas — o **Texto** também, desde o `aa22702` da outra sessão (46, 42 e 66 controles nos dois sentidos, na Foco, na Clássica e na Fita) — e os quinze diálogos andam nos dois sentidos com o foco à vista, e **todo clique cai no lugar** (na Foco a 1280×641: 2 no Resultado, 2 no Estudo, 1 na Galeria, 1 na Revisão de texto e 1 na lista de 40 bases): PASSOU nas nove passadas. As sabotagens a 1280×641 REPROVAM nas três peles: `clique` com os cliques que o crítico achou perdidos («Brancas» e «Pretas» do Resultado, o «Tabuleiro da partida» e o «Comentário do lance» do Estudo, o «Gravar» da Galeria na Clássica, a «Leitura do motor» da Rotulagem, «base_12.pgn»…), `foco` e `tabela` como no ciclo 6. Na Clássica a 1280×800 a volta do Shift+Tab na Revisão de texto contou 44 controles e a do Tab 45 (os dois sentidos fecham, nenhum escondido): três passadas da sonda que conta também pelo endereço C++ (duas sem segurar os controles, como o portão) deram 45/45, sem `id` reusado — o número varia com o instante, e o JSON grava só a contagem (§0.3). O `labeling/project.json` de quem roda o portão continua o de 2026-09-15 | `scratchpad/c7/janela_c7.sh` (a janela) e `teclado_c7.sh` (o teclado, refeito: §0.1) → `docs/quality/ui/c2_fase5/minimo*_20260924_1509*–1515*.json`, `teclado_*_20260924_1535*–1540*.json` e `teclado_sabotagem/teclado_*_20260924_1541*–1546*.json`; o resumo em `c7/janela/resumo_portoes.out` (`c6/resumo_portoes.py`); a contagem em `c7/sonda_contagem.py` → `c7/contagem/` |
 | C18, ciclo 6: o teclado onde o usuário o usa — as rolagens no topo em cada sentido, a Rotulagem com uma página, as sabotagens `foco` e `tabela` | no `99ad8d7` contra o tronco `6e68315`, os dois sem nada fora do commit (o JSON da janela grava os dois; o do teclado não grava commit, e a fila diz os dois no começo, `docs/quality/ui/c2_fase5/fila_ciclo6_99ad8d7.log`): o portão da janela PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, a linha nunca reposta), e as seis sabotagens REPROVARAM (`aperto` 8 controles espremidos em cada pele e tamanho; `rodape` 3318 px; `corte` 3 fora da vista sem barra na Clássica e na Foco; `mensagem` 0–22 px no mínimo; `reserva` dispositivos 0 px e ocupação 0–10 px; `linha` as oito áreas fora da linha do arnês). E o teclado com a tecla nas três peles, a 1280×800, 1248×640 e 1280×641, cada sentido com as rolagens no topo, a Rotulagem com a p. 6 do Kemeri reconhecida — **47 linhas na tabela na medida**, que o JSON agora grava — e o diálogo de bases também com 40: as sete áreas da suíte e do tronco menos o Texto e os quinze diálogos andam nos dois sentidos com o foco à vista (na Foco a 1280×641 a tecla alcança 31 controles no Resultado, 59 no Estudo, 38 na Revisão, 27 no Dataset, 53 na Galeria, 63 na Rotulagem e 49 na Revisão de texto), e a «Folha transcrita» do Texto empaca — REPROVOU, arquivo de outra sessão. As sabotagens a 1280×641 REPROVAM nas três peles: `foco` com o foco fora da vista no Resultado («Esconder incerteza»), na Galeria («Copiar cabeçalhos para todos»), na Rotulagem («Leitura do motor», «Linhas da página»), na Revisão de texto («Letras → figurinas») e na lista de 40 bases («base_39.pgn») — na Fita também no Estudo («Comentário do lance») e na Revisão («Próximo pendente») —, e `tabela` com a Rotulagem empacando em «Linhas da página» nos dois sentidos. O `labeling/project.json` de quem roda o portão continua o de 2026-09-15 (no `2c81e36`, a janela com os mesmos números, `c6/janela/`; o teclado de lá gravava `linhas_na_medida: null`, o defeito que o `99ad8d7` conserta, §0.8 item 2) | `scratchpad/c6/janela_c6.sh` (a janela) e `janela_c6b.sh` (o teclado, retomado) → `docs/quality/ui/c2_fase5/minimo*_20260924_0322*–0324*.json`, `teclado_*_20260924_0324*–0328*.json` e `teclado_sabotagem/teclado_*_20260924_0328*–0331*.json`; o resumo em `c6/janela7/resumo_teclado.out` (`c6/resumo_portoes.py`) |
 | C18, ciclo 5: a linha assentada nas duas passadas, e o teclado com a tecla | no `b6978ec` contra o tronco `7a78367`, os dois sem nada fora do commit (o JSON grava os dois): o portão da janela PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px), com a linha reposta pelo arnês quando o produto a reescreveu, na passada da vista e na do rodapé (uma vez cada na corrida sem livro); as seis sabotagens REPROVARAM (`rodape` 3318 px; `corte` 3 controles fora da vista sem barra; `mensagem` 0–6 px; `aperto` 8 espremidos; `reserva` dispositivos e ocupação com 0–2 px; `linha` as oito áreas medidas fora da linha do arnês nas duas larguras, e o rodapé também). A pergunta antiga sobre a linha, reposta no arnês, deixa a sabotagem `linha` passar (`c5/linha_antiga.py` → `c5/linha_antiga.out`: «fora da linha em 0 áreas, reposta 1600×», «na linha True (reposta 200×)»). O teclado com a tecla nas três peles, a 1280×800, 1248×640 e 1280×641: as oito áreas e os catorze diálogos andam nos dois sentidos com o foco à vista (na Foco a tecla alcança 31 controles no Resultado, 59 no Estudo, 38 na Revisão, 27 no Dataset, 53 na Galeria, 63 na Rotulagem e 49 na Revisão de texto), e a «Folha transcrita» do Texto empaca — REPROVOU, arquivo de outra sessão. Antes dos consertos deste ciclo o portão achava também a lista de lances e a caixa de colar do Estudo e a «Leitura do motor» da Rotulagem (`c5/teclado_pre/`, `c5/janela_4f3e218/`) | `scratchpad/c5/janela_c5.sh` → `docs/quality/ui/c2_fase5/minimo*_20260923_2334*–2336*.json` e `teclado_*_20260923_2336*.json` |
 | C18, ciclo 4: o arnês que mede com a linha assentada e grava de onde veio o código | no `7736617` (a suíte limpa) contra o tronco `7cd400a` limpo — o JSON grava os dois: PASSOU sem livro e com o Kemeri (1248×606 / 1248×640 / 1246×629; no mínimo, mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, para os dois nomes); as cinco sabotagens REPROVARAM (`reserva`: dispositivos 0 px e ocupação 0–10; `rodape`: 3318 px; `mensagem`: 0–22 px; `aperto`: espremidos; `corte`: fora da vista sem barra). Nas sete corridas no commit, com a máquina quieta, o produto não reescreveu a linha (`linha_reposta` 0); nas sete de antes do commit, com oito processos de OCR ao lado, reescreveu em seis delas (uma ou duas vezes), e o arnês a repôs (`c4/janela/`). Teclado PASSOU a 1280×800 e 1248×640 (Revisão de texto 50/50), com a ordem gravada no JSON: a tabela, o cartão, as ações | `scratchpad/c4/janela_c4.sh` → `docs/quality/ui/c2_fase5/minimo*_20260923_1835*–1837*.json` e `teclado_foco_20260923_1837*.json` |
 | C18, ciclo 3: as quatro zonas do rodapé | PASSOU com e sem livro (1248×606 / 1248×640 / 1246×629); no mínimo, mensagem 320, documento 272–288, dispositivos 135, ocupação 171 px, para o nome de 149 caracteres e o da Karpov 2 (58); a 1366×728 documento 390–408; as sabotagens `aperto`, `rodape` (3318 px), `corte`, `mensagem` e **`reserva`** (dispositivos e ocupação com 0 px) REPROVARAM; sete corridas, nenhuma pele morta; teclado PASSOU (Revisão de texto 50/50); a sonda do crítico sobre o acervo: dispositivos cortados em 0 dos 46 livros a 1248–1600 px (ciclo 2: 46/46/45/22); a 1280×641 as seis ações da Revisão de texto à vista nas três peles | `scratchpad/minimo_c3.sh` → `docs/quality/ui/c2_fase5/minimo*_20260923_1353*–1356*.json`; `teclado_c2.sh`; `…\_critico_f5\c2\c18_rodape_acervo.py`, `…\_critico_f5\c18_visiveis.py` |
 | C18 mínimo da janela e o que fica à vista (ciclo 2) | PASSOU com e sem livro (1248×606 / 1248×640 / 1246×629; 0 fora da vista sem barra e 0 espremidos no mínimo e a 1366×728; a mensagem com 480 px e o nome com 418–554 px, com a linha cheia); as sabotagens `aperto`, `rodape`, `corte` e `mensagem` REPROVARAM; duas corridas completas iguais, nenhuma morte (§0.1); teclado da Foco a 1280×800 e 1248×640 PASSOU em toda área (Revisão de texto 50/50, Rotulagem 65/65, Galeria 57/57) | `scratchpad/minimo_c2d.sh` (`caissa.ui.audit.minimo --tronco <árvore> [--pdf …1937 Kemeri.pdf] [--sabotar S]`, uma saída por corrida); `teclado_c2.sh` (`caissa.ui.audit.teclado --pele foco --pdf … --largura L --altura A`) |
-| testes da suíte (com PyQt6, **com** `test_arquitetura.py` na mesma corrida) | ciclo 6: no `99ad8d7`, **4.072 passaram, 9 pulados, 0 reprovaram** em 847 s, com o `test_arquitetura` na mesma corrida e a árvore igual antes e depois — salvo o log da fila dos portões, que o construtor copiou para `docs/` durante a corrida (`c6/suite_testes_c6.sh` → `c6/suite_tests_c6.out`); ciclo 5: **4.051 passaram, 9 pulados, 1 reprovou** em 914 s, com o `test_arquitetura` na mesma corrida (`c5/suite_tests_c5.out`): o reprovado é a sabotagem do teste de ponta a ponta do ciclo 4 (`test_table_rows_page.py`) — desligar só o texto corrido já não embaralha a página, porque a calha da partida também a segura (cada regra sozinha) —; a sabotagem passou a desligar as duas, e o arquivo, de novo, passa; nenhum `src` mudou depois da corrida; ciclo 4: **4.032 passaram, 9 pulados, 0 reprovaram** em 1.089 s, com a publicação do `sol.json` ao lado (`c4/suite_tests_c4.out`); ciclo 3: **4.025 passaram, 9 pulados, 0 reprovaram** em 955 s (`suite_tests_c3.out`); ciclo 2: **4.020 passaram, 9 pulados, 0 reprovaram** em 789 s (`suite_tests_c2.out`; ciclo 1: 4.004 + 9) — nenhuma exceção | `PYTHONPATH=.venv-pack\Lib\site-packages QT_QPA_PLATFORM=offscreen .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` |
-| testes do tronco (sem `--deselect`; ciclo 4 numa árvore limpa do `7cd400a`, os ciclos 2 e 3 numa do `8243e90` com os arquivos deles) | ciclo 6, numa árvore limpa do `6e68315`: **4.798 passaram, 16 pulados, 8 xfail, 1 reprovou** em 348 s, a árvore limpa antes e depois (`c6/tronco_testes_c6.sh` → `c6/trunk_tests_c6.out`) — o reprovado é o do ambiente (`test_o_pacote_instalado_resolve_para_esta_arvore`), por construção da árvore efêmera; no checkout principal, `test_environment.py` e o `ImpressaoDaMedicaoTests` passam (17); os 6 a mais que no ciclo 5 são os de `tests/test_qt_foco_a_vista.py`; ciclo 5, numa árvore limpa do `7a78367`: **4.792 passaram, 16 pulados, 8 xfail, 1 reprovou** em 464 s, a árvore limpa antes e depois (`c5/trunk_tests_c5b.out`; no `4f3e218`, 4.791 passaram, `c5/trunk_tests_c5.out`) — o reprovado é o do ambiente, por construção da árvore efêmera; ciclo 4: **4.789 passaram, 16 pulados, 8 xfail, 1 reprovou** em 3.590 s, com as varreduras ao lado (`c4/trunk_tests_c4.out`); ciclo 3: **4.790 passaram, 15 pulados, 8 xfail, 1 reprovou** em 547 s (`trunk_tests_c3.out`); ciclo 2: **4.787 passaram, 15 pulados, 8 xfail, 1 reprovou** em 746 s (`trunk_tests_c2.out`; ciclo 1: 4.781 passaram em 523 s): o reprovado é `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore`, **por construção** na árvore efêmera (ela usa o `.venv` do checkout principal, cuja instalação editável aponta para lá — a mensagem diz isso); os 11 pulados a mais que no checkout principal pedem artefatos fora do git (PDFs, modelos). No checkout principal, `test_environment.py` e `ImpressaoDaMedicaoTests` **17/17** — o `ImpressaoDaMedicaoTests` sem `--deselect` pela primeira vez desde a fase 2. A suíte inteira do tronco não foi rodada no checkout principal para o portão: ele tinha o trabalho em andamento de outra sessão | `cd <árvore> && PYTHONPATH=<árvore>\src QT_QPA_PLATFORM=offscreen ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider`; no checkout principal `…pytest tests/test_environment.py tests/test_field_eval.py::ImpressaoDaMedicaoTests` |
+| testes da suíte (com PyQt6, **com** `test_arquitetura.py` na mesma corrida) | ciclo 9: no `d186ba3`, **4.123 passaram, 9 pulados, 0 reprovaram** em 928 s, com o `test_arquitetura` na mesma corrida e a árvore igual antes e depois (`c9/testes_c9c.sh` → `c9/suite_tests_c9c.out`); os 19 a mais que no ciclo 8 são os testes novos do ciclo 9 (7 do seguidor e da âncora, 2 do portão do teclado, 2 da Rotulagem, 4 da fila de revisão, 3 do importador e 1 da Revisão de texto); ciclo 8: no `dc04dce`, **4.104 passaram, 9 pulados, 0 reprovaram** em 965 s, com o `test_arquitetura` na mesma corrida e a árvore igual antes e depois (`c8/suite_testes_c8.sh` → `c8/suite_tests_c8.out`); os 13 a mais que no ciclo 7 são os testes novos do ciclo 8 (7 do seguidor, 2 do portão do teclado, 2 da fila de revisão, 1 da Rotulagem e 1 da Revisão de texto); ciclo 7: no `e1691c5`, **4.091 passaram, 9 pulados, 0 reprovaram** em 1.105 s, com o `test_arquitetura` na mesma corrida e a fila das sondas ao lado; a árvore igual antes e depois, salvo a evidência dos portões, que o construtor copiou para `docs/` durante a corrida (`c7/suite_testes_c7.sh` → `c7/suite_tests_c7.out`); os 19 a mais que no ciclo 6 são os testes novos do ciclo; ciclo 6: no `99ad8d7`, **4.072 passaram, 9 pulados, 0 reprovaram** em 847 s, com o `test_arquitetura` na mesma corrida e a árvore igual antes e depois — salvo o log da fila dos portões, que o construtor copiou para `docs/` durante a corrida (`c6/suite_testes_c6.sh` → `c6/suite_tests_c6.out`); ciclo 5: **4.051 passaram, 9 pulados, 1 reprovou** em 914 s, com o `test_arquitetura` na mesma corrida (`c5/suite_tests_c5.out`): o reprovado é a sabotagem do teste de ponta a ponta do ciclo 4 (`test_table_rows_page.py`) — desligar só o texto corrido já não embaralha a página, porque a calha da partida também a segura (cada regra sozinha) —; a sabotagem passou a desligar as duas, e o arquivo, de novo, passa; nenhum `src` mudou depois da corrida; ciclo 4: **4.032 passaram, 9 pulados, 0 reprovaram** em 1.089 s, com a publicação do `sol.json` ao lado (`c4/suite_tests_c4.out`); ciclo 3: **4.025 passaram, 9 pulados, 0 reprovaram** em 955 s (`suite_tests_c3.out`); ciclo 2: **4.020 passaram, 9 pulados, 0 reprovaram** em 789 s (`suite_tests_c2.out`; ciclo 1: 4.004 + 9) — nenhuma exceção | `PYTHONPATH=.venv-pack\Lib\site-packages QT_QPA_PLATFORM=offscreen .venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider --ignore=tests\integration\test_packaging.py --ignore=tests\unit\model\test_roundtrip_corpus.py` |
+| testes do tronco (sem `--deselect`; ciclo 4 numa árvore limpa do `7cd400a`, os ciclos 2 e 3 numa do `8243e90` com os arquivos deles) | ciclo 9, numa árvore limpa do `0ed4f8a`: **4.870 passaram, 16 pulados, 8 xfail, 1 reprovou** em 360 s, a árvore limpa antes e depois (`c9/testes_c9c.sh` → `c9/trunk_tests_c9c.out`) — o reprovado é o do ambiente, por construção da árvore efêmera; os 3 a mais que no ciclo 8 são os de `tests/test_qt_foco_a_vista.py` (16 → 19); ciclo 8, numa árvore limpa do `967be8d`: **4.867 passaram, 16 pulados, 8 xfail, 1 reprovou** em 424 s, a árvore limpa antes e depois (`c8/tronco_testes_c8.sh` → `c8/trunk_tests_c8.out`) — o reprovado é o do ambiente, por construção da árvore efêmera; os 63 a mais que no ciclo 7 são 5 de `tests/test_qt_foco_a_vista.py` e 58 do `491a79f` da outra sessão (a digitação na aba Texto: `tests/test_qt_texto_digitacao.py` e `tests/test_texto_digitacao.py`); ciclo 7, numa árvore limpa do `01e4147`: **4.804 passaram, 16 pulados, 8 xfail, 1 reprovou** em 468 s, a árvore limpa antes e depois (`c7/tronco_testes_c7.sh` → `c7/trunk_tests_c7.out`) — o reprovado é o do ambiente, por construção da árvore efêmera; os 6 a mais que no ciclo 6 são 5 de `tests/test_qt_foco_a_vista.py` e 1 de `tests/test_qt_texto.py` (o `aa22702` da outra sessão); ciclo 6, numa árvore limpa do `6e68315`: **4.798 passaram, 16 pulados, 8 xfail, 1 reprovou** em 348 s, a árvore limpa antes e depois (`c6/tronco_testes_c6.sh` → `c6/trunk_tests_c6.out`) — o reprovado é o do ambiente (`test_o_pacote_instalado_resolve_para_esta_arvore`), por construção da árvore efêmera; no checkout principal, `test_environment.py` e o `ImpressaoDaMedicaoTests` passam (17); os 6 a mais que no ciclo 5 são os de `tests/test_qt_foco_a_vista.py`; ciclo 5, numa árvore limpa do `7a78367`: **4.792 passaram, 16 pulados, 8 xfail, 1 reprovou** em 464 s, a árvore limpa antes e depois (`c5/trunk_tests_c5b.out`; no `4f3e218`, 4.791 passaram, `c5/trunk_tests_c5.out`) — o reprovado é o do ambiente, por construção da árvore efêmera; ciclo 4: **4.789 passaram, 16 pulados, 8 xfail, 1 reprovou** em 3.590 s, com as varreduras ao lado (`c4/trunk_tests_c4.out`); ciclo 3: **4.790 passaram, 15 pulados, 8 xfail, 1 reprovou** em 547 s (`trunk_tests_c3.out`); ciclo 2: **4.787 passaram, 15 pulados, 8 xfail, 1 reprovou** em 746 s (`trunk_tests_c2.out`; ciclo 1: 4.781 passaram em 523 s): o reprovado é `test_environment::test_o_pacote_instalado_resolve_para_esta_arvore`, **por construção** na árvore efêmera (ela usa o `.venv` do checkout principal, cuja instalação editável aponta para lá — a mensagem diz isso); os 11 pulados a mais que no checkout principal pedem artefatos fora do git (PDFs, modelos). No checkout principal, `test_environment.py` e `ImpressaoDaMedicaoTests` **17/17** — o `ImpressaoDaMedicaoTests` sem `--deselect` pela primeira vez desde a fase 2. A suíte inteira do tronco não foi rodada no checkout principal para o portão: ele tinha o trabalho em andamento de outra sessão | `cd <árvore> && PYTHONPATH=<árvore>\src QT_QPA_PLATFORM=offscreen ..\ChessVisionOFF_Puro\.venv\Scripts\python.exe -m pytest tests -q -p no:cacheprovider`; no checkout principal `…pytest tests/test_environment.py tests/test_field_eval.py::ImpressaoDaMedicaoTests` |
 | `git status --short` | só os caminhos da fase nas duas árvores; fora deles, o trabalho de outras sessões (`packaging/*` e `uv.lock` na suíte, e no ciclo 2 `docs/EDITOR_HTML_CSS_ROADMAP.md`, `docs/EDITOR_HTML_CSS_SPEC.md` e `docs/quality/EDITOR_HTML_CSS_CRITICAS.md`; no tronco, `tests/test_qt_resultado_vista_do_impresso.py` e — surgidos durante a integração — `qt/janela.py`, `qt/painel_de_texto.py`, `text/rico.py`, `ui/texto_declarado.py`, e no ciclo 2 `tests/test_qt_texto_digitacao.py` e `tests/test_texto_digitacao.py`), não tocado; os commits do ciclo 2 foram feitos por caminho | `git status --short` |
 
 ### 0.3 O que ficou vermelho ou aberto (honesto)
@@ -237,7 +280,7 @@
 - **O portão da janela não roda na plataforma real**: tudo `offscreen` com a fonte do produto
   imposta (o crítico disse o mesmo); e o `pdf` que os JSON do portão gravam é o caminho absoluto
   desta máquina, como no ciclo 1.
-- **A «Folha transcrita» do Texto empaca a tecla** (o portão do teclado com a tecla, ciclo 5): o editor da folha guarda o Tab e escreve a tabulação no texto (e o Ctrl+Tab, que num editor do Qt sai do campo, troca de área nesta janela). O arquivo (`qt/painel_de_texto.py`, tronco) é de outra sessão, que trabalha nele agora: o portão fica **REPROVADO** ali, e o conserto — o `setTabChangesFocus(True)` do Estudo e do cartão, ou uma saída anunciada — fica para quem o edita.
+- **A «Folha transcrita» do Texto empaca a tecla** — **fechado pela outra sessão no `aa22702`**: no commit do ciclo 7 o portão passa o Texto nas nove passadas (§0.2). O que o ciclo 5 disse (o portão do teclado com a tecla): o editor da folha guarda o Tab e escreve a tabulação no texto (e o Ctrl+Tab, que num editor do Qt sai do campo, troca de área nesta janela). O arquivo (`qt/painel_de_texto.py`, tronco) é de outra sessão, que trabalha nele agora: o portão fica **REPROVADO** ali, e o conserto — o `setTabChangesFocus(True)` do Estudo e do cartão, ou uma saída anunciada — fica para quem o edita.
 - **A franja do texto corrido** (não bloqueante 1 do ciclo 4), com os números: 0–9 % das páginas, conforme o livro, têm notas que nenhuma regra de prosa segura (a triagem do crítico, `…\_critico_f5\c4\risco_paginas.out`); com uma partida ao lado, o ciclo 4 embaralhava 12 das 29 dessas páginas (e pelo importador a Nunn p. 29 0,0824 → 0,6571, a p. 143 0,1778 → 0,7276, a Burgess p. 133 0,1016 → 0,6213), e o ciclo 5, pela calha da partida, **nenhuma** (0 de 41 com as 11 do índice da Dvoretsky e a da Aagaard; as três inglesas idênticas ao desligado). Fica sem regra, e sem medida, a nota que nenhuma regra chama de prosa ao lado de algo que não é partida — uma tabela longa de células —: ali a calha só vale pelas regras de antes. E na posição da Gallagher p. 50 (as notas à esquerda, a partida com as pretas numa parada), o crítico mediu 1 de 41 embaralhada, a Dvoretsky p. 789, 0,5052 → 0,6522 — igual ao ciclo 4 (não bloqueante 9 do ciclo 5; no commit do ciclo 6, **0 de 41**: a mesma página sai 0,3720, abaixo do desligado — `scratchpad/c6/sondas7/franja_espelho.out`).
 - **A última página de um índice de três colunas, lida junta pelo próprio Tesseract** (não
   bloqueante 10 do ciclo 5): com três ou cinco verbetes na terceira coluna, o Tesseract junta cada
@@ -253,7 +296,9 @@
   sai 0,3316 desligada e **0,7053** ligada, igual à regra do commit anterior — o OCR perde os pontos
   inteiros sozinhos numa linha («7», «6»), lê «7½» como «Th» e «6½» como «6%», e da segunda metade
   não lê ponto nenhum: sem os pontos, nada diz que a segunda coluna de nomes continua a primeira, e
-  a calha entre elas não é de faixas comparáveis. Dito, não resolvido.
+  a calha entre elas não é de faixas comparáveis. Dito, não resolvido no ciclo 6 — e **fechado no
+  ciclo 7**: com a página de listas, o «%» como ½ e o nome com o ponto na mesma altura, ela sai
+  **0,2526** pelo importador, aceita, abaixo do desligado (§0.9 item 1).
 - **Uma coluna de um verbete só não é coluna para o `find_gutters`**: a última página de um índice
   com um verbete na segunda coluna não deixa calha antes dela, e o verbete se junta à primeira
   linha (uma linha; com dois verbetes ou mais, cada lista na sua: `test_table_rows.py`).
@@ -261,7 +306,10 @@
   Pretas»), pela calha de faixas comparáveis, como desde o ciclo 3 (0,6853, igual ao desligado); em
   três colunas ou mais, pela regra das listas do ciclo 6 (uma página só de nomes, em colunas, é de
   listas). É o preço de «uma lista ao lado de outra é lista»: só nomes, uma lista em colunas e uma
-  tabela não se distinguem pela forma.
+  tabela não se distinguem pela forma. Desde o ciclo 7, o mesmo vale para toda página cujas colunas
+  são todas de lista (verbetes, nomes com valores, só nomes: a página de listas) — um emparceiramento
+  com o rating na célula do nome sai por colunas, 0,6563, igual ao desligado; com os ratings numa
+  coluna à parte, a faixa é de tabela (`_numbers_beside`) e sai por linhas (0,0958).
 - **Um ponto inteiro sozinho numa linha («7») é tomado por número de lance**, e um grupo só aceita
   uma numeração: numa classificação com os pontos inteiros em blocos de uma linha, só um deles entra
   na linha do jogador (a regra da numeração, do ciclo 2; `test_table_rows.py`, a partida ao lado da
@@ -274,13 +322,103 @@
 - **O `bench_sol` grava o commit e o `dirty_code` no fim da corrida, e não no começo** (ciclo 6,
   achado pelo construtor): o que a corrida mede é o código que o processo importou no começo, e
   uma mudança feita enquanto ela roda sai no registro. A publicação no `2c81e36` saiu com o
-  `rows.py` do segundo commit sujo, porque ele foi editado durante a corrida; ela foi descartada e
-  refeita no `7f839f0`, sem nada tocado enquanto rodava (§0.8). Gravar os dois momentos, e recusar
-  a corrida quando diferem, fica para a próxima fase.
+  `rows.py` do segundo commit sujo, porque ele foi editado durante a corrida; ela foi descartada,
+  a do `7f839f0` foi parada no começo, e a publicação foi refeita no `99ad8d7` (o OCR é o do
+  `7f839f0`), sem nada tocado enquanto rodava (§0.8; o ciclo 6 do crítico achou o «refeita no
+  `7f839f0`» que esta frase dizia). Gravar os dois momentos, e recusar a corrida quando diferem,
+  fica para a próxima fase.
 - **O portão do teclado não grava o commit das árvores** (o da janela grava, desde o ciclo 4): o
   JSON diz a pele, o tamanho, o Qt e o livro, e o commit da suíte e o do tronco só estão na fila
   que o rodou (`docs/quality/ui/c2_fase5/fila_ciclo6_99ad8d7.log`: `suite=99ad8d7 src=[0]
   tronco=6e68315 [0]` no começo). Gravá-los no JSON, como o `minimo` faz, fica para a próxima fase.
+- **A roda e a tecla numa caixa de escolha sob o ponteiro parado** (ciclo 7; **fechado no ciclo 8**,
+  §0.10 item 1.5): a guarda do mouse pergunta agora a razão do `QFocusEvent` — anotada do `FocusIn`,
+  que chega antes do sinal de troca de foco —, e não o ponteiro; o Tab que vem de fora da rolagem
+  mostra inteira a caixa de escolha sob o ponteiro parado (o teste; sabotado, 9 px). A roda não se
+  fabrica pelo Python: o teste dela continua sendo o foco dado com `MouseFocusReason`.
+- **A volta da janela pelo clique não foi medida na plataforma real** (ciclos 8 e 9, §0.10 item 1.6,
+  §0.11 item 2.2): o foco que o Qt devolve com a ativação espera o intervalo do duplo clique inteiro
+  (500 ms no Windows de fábrica) — desde o ciclo 9, e não mais uma volta do laço de eventos —, e o
+  pressionar do clique que reativou a janela chega dentro dele, venha a mensagem postada antes ou
+  depois do `WM_LBUTTONDOWN` (o não bloqueante 2 do crítico, ciclo 8). O offscreen não ativa janela
+  por clique (o `activateWindow` entra na fila, e o `QTest` entrega o pressionar antes dela); o teste
+  dá o foco da volta e o pressionar um atrás do outro. Um clique que viesse mais de meio segundo
+  depois da ativação acharia a vista já rolada, como antes do ciclo 8.
+- **O foco que o painel move no clique aparece depois do intervalo do duplo clique** (ciclo 9,
+  §0.11 item 2): 400 ms no offscreen, 500 no Windows de fábrica, ou na primeira tecla — o preço de
+  o segundo clique de um duplo clique cair onde o primeiro caiu. Quem clica na linha e digita logo vê
+  a verdade antes da letra; quem só olha a vê meio segundo depois. A sonda do crítico que mede logo
+  depois do soltar (`clique_linha_c7.py`, 3 voltas do laço) agora acha a verdade da Rotulagem com
+  0×0 px nesse instante, e inteira depois do texto: na Rotulagem com a rolagem no fim, a verdade 0×0 logo depois do soltar e inteira sossegado o mouse e depois do texto, nas cinco configurações; na Revisão de texto com a rolagem no fim a 1280×641, 5 px (Clássica) ou 0 (Foco e Fita) logo depois do soltar, e inteira depois (`c9/clique_linha_c9.py` → `c9/ui3_c/`).
+- **A âncora da Rotulagem põe uma folga no alto do conteúdo** (ciclo 9, §0.11 item 2.4) quando a
+  rolagem está no começo e o cartão encolhe entre os dois cliques (a barra não pode subir): a
+  tabela fica sob o ponteiro até o mouse sossegar, e então sobe o que o cartão encolheu, meio
+  segundo depois do clique. Com a rolagem no meio ou no fim, a barra anda e nada salta.
+- **A sabotagem `ancora` só reprova numa página em que o cartão muda de altura entre as linhas à
+  vista** (ciclo 9): na Gallagher p. 51 (`--pagina 51`, a página da sonda do duplo clique do
+  crítico) ela reprova nas três peles; na p. 6 do Kemeri, a página padrão do portão, os cartões das
+  quatro linhas à vista no fim têm a mesma altura, e ela passa. O portão da fase roda também com
+  a Gallagher p. 51.
+- **O anotador da razão do foco é um filtro de eventos em Python na aplicação inteira** (ciclo 8):
+  todo evento de todo objeto passa por ele, e ele só olha o `FocusIn`. Custo medido: **+0,96 µs por
+  evento** (`scratchpad/c8/custo_do_filtro.py`: 306 → 1.264 ns por `sendEvent`, medianas de 6
+  rodadas de 200 mil, com as filas de medição rodando ao lado); a janela parada despacha ~1
+  evento/s. Não medido: quantos eventos por segundo uma sessão de trabalho despacha — a mil por
+  segundo, ~1 ms por segundo. O filtro da espera do soltar, este sim, fica só entre o pressionar e
+  o soltar.
+- **Pelo importador, uma partida ao lado de outra coluna sai intercalada e aceita, com o B13 ligado
+  ou desligado** (não bloqueante 2 do ciclo 6, que fica): a partida ao lado dos ratings 0,6080 e ao
+  lado de um índice 0,6978, aceitas. O importador escolhe a leitura da página inteira em modo de
+  lista de lances (a variante `movetext` do Tesseract), que lê cada linha através da calha («2 Nf3
+  Nc6 2800»); o B13 não forma grupo ali. Pelo serviço, a partida ao lado dos ratings sai 0,0170,
+  igual ao desligado; a partida ao lado do índice, medida no nível do B13 no ciclo 6, 0,0149 (§0.8).
+  É a classe que o B13 existe para resolver, com confiança alta; o conserto é o da escolha da
+  variante, e esta fase não o toma.
+- **As contagens do portão do teclado variam de um controle entre corridas** (ciclo 7): a volta do
+  Shift+Tab da Revisão de texto na Clássica a 1280×800 contou 44 e a do Tab 45, e três passadas
+  seguintes da sonda de contagem, 45/45 (ciclo 6: 45/45); na Fita e na Foco, 68/69 e 48/49 entre
+  tamanhos, nos dois ciclos. A sonda (`scratchpad/c7/sonda_contagem.py`) conta também pelo endereço
+  C++ e não achou `id` reusado: o número depende do instante, e o JSON grava só a contagem, não a
+  lista. O veredito não depende dela (fecha, empaca, escreve, escondidos); os números citados neste
+  relatório são de uma passada.
+- **A página de listas e a partida de números cortados devolvem ao desligado classes que o ciclo 6
+  lia por linhas** (não bloqueantes 1 e 2 do ciclo 7, medidos pelo crítico:
+  `…\_critico_f5\c7\importador_c6_x_c7.out`, `c7\servico\ataques_c7.out`, `c7\refaz\importador.out`,
+  `c7\ataques_b_saida\servico.out`). Uma tabela cujas colunas são todas de lista — nome, país,
+  lugar e ano (os campeões do mundo, «Nome | País | Moscovo 1948») — sai por colunas, **aceita**:
+  pelo importador 0,0000 → 0,6585, pelo serviço 0,0152 → 0,6616, igual ao desligado. Uma coluna de
+  linhas curtas de lances ao lado de nomes ou de páginas é tomada por partida (`_cut_game`), e o
+  `mixes` não a junta à coluna ao lado: o índice de aberturas pelos lances («1 e4 c5 | Defesa
+  Siciliana 23») 0,0485 → 0,4970 **aceito**, pelos dois caminhos; as respostas de exercícios («12
+  Qh5 | Kasparov – Topalov 1999») 0,0055 → 0,4463, em revisão; e o índice de variantes com a página
+  na margem (o «Index of Variations» da Gallagher) pelo importador 0,1100/0,1200/0,0190 →
+  0,4033/0,5600/0,3987 e pelo serviço 0,1133 → 0,5533 e 0,0127 → 0,3924 — tudo de volta ao
+  desligado, nenhum abaixo dele. E Nome | Rating | Federação sai por colunas e **aceita** nos ciclos
+  6 e 7 (0,7427; desligado 0,7593): a calha entre os ratings e as federações não é achada, e a faixa
+  junta as duas colunas — a coluna que não é lista só faz a página ser de tabela quando a calha dela
+  é achada. Nas páginas reais, hoje, nenhuma leitura escolhida muda (o crítico: 0 de 36 nos índices
+  a 150 DPI com outras sementes; as pp. 187–189 da Gallagher o importador abstém nos dois códigos);
+  três das cinco leituras não escolhidas que a regra do ciclo 7 muda são desta classe e pioram
+  (§0.9). Separar a coluna de lances de uma partida cortada da coluna de lances de uma tabela pede
+  evidência que a regra não tem: fica dito.
+- **Uma decisão sobre a página que o OCR não leu não existe** (ciclo 8; e só sobre ela, desde o ciclo
+  9 — o item de página **sem leitura e sem motor**, `review.unread_page`; a página que o OCR leu numa
+  região só aceita as três decisões, §0.11 item 1): a janela recusa aceitar,
+  gravar a edição e manter como imagem num item de página, porque a importação só aplica decisões às
+  regiões que o OCR lê. Quem revisa perde a edição de uma página de uma região só, que o ciclo 7
+  aplicava (IoU ≥ 0,5): o preço de não prometer o que numa página de várias regiões não se aplica
+  (não bloqueante 4 do ciclo 7). A página fica na fila até o OCR a ler.
+- **A sonda da rolagem morta sai em access violation** (o `os._exit` dela, com os filhos do processo
+  de trabalho vivos): com o `PYTHONFAULTHANDLER`, o código do ciclo 7 (`e1691c5` + `01e4147`) e o
+  deste ciclo saem do mesmo jeito (`scratchpad/c8/ui_71d223b/rolagem_morta_c7_codigo_c7.out`,
+  `rolagem_morta_c7_corrigido.out`, e `c8/ui/rolagem_morta_c7.out` no `dc04dce`); as medidas dela,
+  os passos 1 a 3, vêm antes e dizem 0 exceções.
+- **Um arquivo de decisões de antes do ciclo 8 com a edição ou o «manter como imagem» da página que o
+  OCR não leu** (o não bloqueante 3 do ciclo 8, na parte que fica): a importação ainda aplica a
+  decisão quando uma região cobre a página (IoU ≥ 0,5, a regra de sempre do `ReviewDecisions.match`,
+  que não sabe de que item a decisão veio), a fila não a conta — a página não foi lida, e fica
+  pendente —, e a gravação seguinte a tira do arquivo. Guardá-la sem contá-la pediria marcar no arquivo
+  de que item cada decisão veio; só janelas dos ciclos 7 e anteriores escreveram decisões assim.
 - **Não tomados, como o §3d disse**: o `18 . . .` do Dvoretsky, os homóglifos `Kp`/`Кр`, o `vazio`
   a 200 %, o alto contraste como pele, a crítica das fases 3 e 4.
 
@@ -800,8 +938,12 @@ mas não na classe, e reprovou por dois defeitos novos (veredito em `OCR_UI_ANAL
      regra alfabética segurava: 0,0000 → 0,7931 no nível do B13, `scratchpad/c6/paginas_c6.py`).
      A regra alfabética sai inteira (`_index_gutters`, `_index_column`, `_entry_words`,
      `_sort_key`, `list_min_heads`, `list_sorted_share`, `list_rising_share`, `list_margin_chars`):
-     a forma das colunas faz o trabalho dela em toda página que ela fazia, e o que ela errava
-     (a tabela em ordem por acaso) deixa de errar;
+     a forma das colunas faz o trabalho dela nas páginas em que ela o fazia e que foram medidas
+     — **não em toda**: com colunas de formas diferentes lado a lado (um índice de números de
+     quatro algarismos, uma coluna só de nomes entre duas de verbetes, uma metade da
+     classificação sem os pontos), a regra das formas intercalava a página e o importador a
+     aceitava (bloqueante 1 do ciclo 6 do crítico; a página de listas, §0.9) —, e o que ela
+     errava (a tabela em ordem por acaso) deixa de errar;
   3. **uma partida nunca se junta a uma coluna de nomes** (`_moveish`, `_names`, `mixes` em
      `table_groups`): a coluna de nomes tem três linhas ou mais, curtas como células, 60 % delas
      nomes (sós, com um valor ou com os números deles). Uma coluna de lances mal lida («R£6+»,
@@ -998,9 +1140,502 @@ mas não na classe, e reprovou por dois defeitos novos (veredito em `OCR_UI_ANAL
   que o próprio Tesseract lê junta, aceita (não bloqueante 10); o `bench_sol`, que grava o commit e o
   `dirty_code` no fim da corrida, e não no começo — a publicação no `2c81e36` saiu com o `rows.py`
   do segundo commit sujo, porque ele foi editado enquanto ela rodava (o que ela mediu era o
-  `2c81e36`: o processo importa o código uma vez); ela foi descartada e refeita no `7f839f0`, sem
-  nada tocado durante a corrida; e, dos ciclos anteriores, as oito brechas do A15, a
+  `2c81e36`: o processo importa o código uma vez); ela foi descartada, a do `7f839f0` parada no
+  começo, e a publicação refeita no `99ad8d7`, sem nada tocado durante a corrida; e, dos ciclos
+  anteriores, as oito brechas do A15, a
   Estrin pp. 29/77, o custo da reserva de 320 px e o nome a ~95 px, o portão só `offscreen`.
+
+### 0.9 O ciclo 6 do crítico: REPROVADO com três bloqueantes, e o que mudou
+
+O crítico conferiu os dois bloqueantes do ciclo 5 e os deu por resolvidos nas páginas dele (o
+`indices_ataque.pdf` pp. 4 e 8 pelo importador, as cinco de partida × tabela pelo serviço, a tabela
+em ordem; a Rotulagem com 66 linhas nos dois sentidos, o foco que entra nas rolagens do tronco nas
+três peles, o diálogo de bases com 40), e reprovou por três defeitos novos (veredito em
+`OCR_UI_ANALISE_C2_CRITICAS.md` «Fase 5», ciclo 6). O construtor não contestou nenhum item.
+
+- **1. Uma lista ao lado de outra é lista, qualquer que seja a forma de cada coluna** (bloqueante
+  1). A calha entre duas colunas só era da página quando as duas tinham a **mesma forma** (§0.8
+  item 1.2). O crítico compôs páginas em que um detalhe muda a forma de uma coluna e, pelo
+  importador, três execuções iguais: um índice de números de problema de quatro algarismos em três
+  colunas, em que duas colunas têm uma linha de dois números e a terceira não (formas `E`, `E`,
+  `V`), **0,0026 aceito → 0,4916 aceito** («Chiburdanidze 4377 Larsen 2131»); verbetes | só nomes
+  | verbetes, **0,0032 → 0,7747 aceito**; e a classificação em duas metades que o construtor tinha
+  composto e deixado aberta (§0.3), **0,3316 → 0,7053 aceito**. O que mudou (`rows.py`, `437ce76`;
+  `test_table_rows.py` +5, `test_listas_compostas.py` +4, cada um com a sabotagem executada):
+  1. **a página de listas** (`_page_of_lists`): numa página em que toda unidade é uma lista —
+     verbetes, nomes com valores ou só nomes —, a calha entre quaisquer duas é da página, qualquer
+     que seja a forma de cada; uma tabela tem uma coluna que não é nenhuma delas (números sozinhos,
+     pontos, linhas numeradas) — quando a calha dessa coluna é achada: Nome | Rating | Federação,
+     cuja calha entre os ratings e as federações não é achada, sai por colunas e aceita nos ciclos 6
+     e 7 (o crítico, ciclo 7; §0.3). E uma faixa com uma coluna de números ao lado dos nomes, na mesma
+     altura, é de tabela (`_numbers_beside`: os ratings de um emparceiramento, «Nepomniachtchi |
+     2790 | Firouzja | 2710», que a página de listas leria por colunas);
+  2. **o ½ que o OCR lê** (`_SCORE` aceita o «%», como o «=»: «6½» → «6%»), e **um nome e o ponto
+     dele na mesma altura são um nome com valor** (`_line_kinds`, como um nome e as páginas dele são
+     um verbete): sem isso a primeira metade da classificação, com os pontos lidos em blocos de uma
+     linha, não tinha forma de lista, e a página de listas não a via;
+  3. **a partida ao lado de uma coluna que não numera os lances** (não bloqueantes 2 e 3): `_values`
+     e o `mixes` — um grupo nunca tem uma partida e uma coluna só de números ou de pontos que não
+     numera os lances (a `part_numeros` dele: os ratings ao lado da partida); a partida cujos números
+     o Tesseract cortou da maioria das linhas, lidos à parte numa linha alta (a `part_alema` dele, em
+     notação alemã, ao lado da classificação), é uma partida (`_cut_game`); e o «.» que o número
+     cortado deixa não é um lance (`_move_tokens`).
+
+  **Como foi medido antes de rodar o OCR de novo** (`scratchpad/c7/cache_c7.sh` → `c7/cache/`: as
+  páginas do ciclo 6 do crítico lidas antes do B13 — as 17 pelo serviço, os ataques, as três páginas
+  do construtor e os índices a 150 DPI pelo importador —, mais as 1.622 leituras do ciclo 6;
+  `compara_regras.py <rows base> <rows novo>`): **1.688 leituras, 14 mudam**. As 9 com verdade
+  melhoram todas — a classificação em duas metades 0,7053 → 0,2526 (pelo serviço e pelo importador),
+  o índice de quatro algarismos 0,4916 → 0,0026 e a coluna só de nomes 0,7747 → 0,0032 (os dois
+  caminhos), pelo serviço a partida ao lado dos ratings 0,6193 → 0,0284 e a alemã 0,7594 → 0,2481,
+  e pelo importador a partida com figurinas 0,7283 → 0,2441 (no nível do B13) —; nenhum dos 1.048
+  itens do corpus muda, nenhuma página que o crítico mandou manter. As 5 outras são leituras que o
+  árbitro não escolhe: a p. 7 dos índices a 150 DPI, a `part_alema` e a `part_numeros` pelo
+  importador — as três páginas saem, pelo importador no commit, **idênticas às corridas do crítico
+  no `9eb401c`**, região a região —, e a Gallagher p. 189 e a Stefaniu p. 242 das varreduras, que
+  rodaram de novo pelo serviço nos dois commits (`c7/sondas_c.sh` → `c7/sondas/gallagher189_*`,
+  `stefaniu242_*`): o JSON de cada uma — o texto da página, ligado e desligado — é **o mesmo nos
+  dois commits**; a leitura que muda não é a que a página usa. Mas **três das cinco pioram** como
+  leituras (o crítico, ciclo 7): a p. 7 dos índices a 150 DPI (a Aagaard p. 892) 0,1285 → 0,6646 — um
+  falso positivo do `_numbers_beside` —, a Gallagher p. 189 (o «Index of Variations» do livro) e a
+  Stefaniu p. 242 (o índice de aberturas), da classe das linhas curtas de lances que o `_cut_game`
+  toma por partida (§0.3). As variantes, cada uma medida antes da seguinte
+  (`faz_c7a.py`…`faz_c7d.py` → `compara_c7a.out`…`compara_c7d.out`): só a página de listas, 4
+  mudam — as duas páginas do crítico nos dois caminhos; a classificação não, porque a metade com os
+  pontos lidos como «Th» e «6%» não tinha forma —; com o «%» e o nome com ponto, 6 (a classificação
+  junto); com a pontuação solta e as colunas de valores, 11 (a partida ao lado dos ratings, e quatro
+  leituras não escolhidas); com a partida de números cortados, 14 (a alemã).
+
+  **No commit** (`e1691c5`, o último de código; o B13 é o do `437ce76`): pelo importador de produção
+  (`c7/sondas_a.sh`, `sondas_b.sh` → `c7/sondas/`, sem `CAISSA_FIGURINE_TESSDATA`), o índice de
+  quatro algarismos **0,0026** e a coluna só de nomes **0,0032**, aceitos, iguais ao desligado e sem
+  linha que junte dois verbetes; a classificação em duas metades **0,2526** aceita (desligada 0,3316)
+  — três execuções de cada, iguais byte a byte (`cmp_sondas.py` → `c7/sondas/cmp_sondas.out`; o CER
+  pelo `cer_c6.py` dele). O que ele mandou manter sai **idêntico às corridas dele no `9eb401c`**,
+  região a região, ligado e desligado: o `indices_ataque.pdf` do ciclo 5 (as nove páginas), o
+  `tres.pdf`, o `indices_raster.pdf`, a Flores pp. 460–464, as notas inglesas, o `construido.pdf`, a
+  Karpov 2 p. 268 e a Gallagher pp. 50–53 (a p. 50 em 0,2028); e os ataques dele que não eram para
+  mudar também — o emparceiramento com os ratings em coluna própria por linhas (0,7577 → 0,0958; sem a
+  coluna das mesas 0,7470 → 0,0000), com o rating na célula do nome por colunas (0,6563, igual ao
+  desligado), a tabela de matches (0,7318 → 0,6642), a partida alemã e a de números (0,7256 e 0,6080,
+  iguais ao desligado: o intercalado é do caminho do importador, §0.3), os índices a 150 DPI (nove
+  páginas). Pelo serviço (`b13_servico_regras.py --regras off,commit`), as 17 páginas de ataque do
+  ciclo 6 iguais às corridas dele, menos as que tinham de mudar: o índice e a coluna só de nomes
+  iguais ao desligado (0,0026, 0,0032), a partida ao lado dos ratings **0,0170**, igual ao desligado
+  (o ciclo 6 a levava a 0,6136), e a alemã **0,2481**, abaixo do desligado (0,3308; o ciclo 6,
+  0,7519); as cinco de partida × tabela e as duas tabelas em ordem iguais às do ciclo 6
+  (P|T 0,1418, P|Tn e P|T3 0,2611, Pt|T 0,1527, T|P 0,2109; 0,1280 e 0,1207); as tabelas dos ciclos 2
+  e 3 dele, as notas de risco e a franja do texto corrido (**0 de 41** nos quatro leiautes) iguais às do
+  ciclo 6 (fora os tempos). A fila de A/B no
+  `e1691c5` (`f5c8_*`) dá os 747 itens idênticos aos do ciclo 6 em todo campo por item que não é
+  tempo — como as leituras guardadas diziam antes das corridas (0 dos 1.048) —, e o `sol.json`
+  publicado nele também (§0.2).
+
+- **2. O seguidor de foco não rola no foco que o mouse dá** (bloqueante 2). O Qt dá o foco ao
+  controle no *pressionar* do clique, antes de entregar o evento; o seguidor do ciclo 6 rolava ali
+  — o controle saía de baixo do ponteiro, e o *soltar* caía noutro lugar: 15 de 15 cliques do
+  crítico em controles meio à vista, nas três peles; na Foco a 1280×641, um clique na parte de baixo
+  da casa e7 do Estudo, com as pretas a jogar, rolava 19 px e **jogava 1…e6**; o rádio «Pretas» do
+  Resultado não marcava. O que mudou (tronco **`01e4147`**, suíte `e1691c5`):
+  1. **`veio_do_mouse`**, nos dois seguidores (`qt/foco_a_vista.py`, `ui/widgets/foco_a_vista.py`):
+     o foco que chega com um botão do mouse apertado, ou pela roda — o controle toma o foco dela
+     (`Qt.FocusPolicy.WheelFocus`: só as caixas de escolha e de número) e está sob o ponteiro —, não
+     rola a rolagem: o controle já está sob o ponteiro, à vista. A primeira versão (antes do commit)
+     tomava por foco do mouse todo controle sob o ponteiro; o construtor a estreitou ao reler o
+     próprio código: o Tab que cai num botão sob o ponteiro parado o deixaria meio à vista
+     (`scratchpad/c7/sonda_ponteiro.py`, `sonda_ponteiro2.py`: o `mouseMove` pelo `QWindow` marca o
+     `underMouse`; a roda não se fabrica pelo Python — o `QWheelEvent` mandado ao `QWindow` não é
+     espontâneo, e o Qt não dá o foco). Testes, com as sabotagens executadas no teste: o clique pelo
+     `QWindow` numa caixa com 9 px à vista marca e não rola (suíte e tronco); no tronco, o clique na
+     casa e7 depois de 1.e4 só seleciona o peão e o clique em «Pretas» marca — sabotados (sem a
+     guarda), o lance fantasma e o clique perdido voltam; o Tab sob o ponteiro parado mostra o botão
+     inteiro, e o foco da roda numa caixa de escolha sob o ponteiro não rola — sabotados, o ponteiro
+     sozinho como mouse deixa o botão com 9 px, e sem guarda a caixa salta
+     (`tests/test_qt_foco_a_vista.py` 6 → 11, `test_foco_a_vista.py` 2 → 4);
+  2. **o portão do teclado clica** (`ui/audit/teclado.py`, `_cliques_meio_a_vista`): em cada
+     rolagem que segue o foco, até seis controles meio à vista (3 px ou mais), com as rolagens no
+     topo e o foco longe do controle, um clique pelo `QWindow` — pressionar e soltar no mesmo ponto,
+     2 px para dentro da parte à vista, junto do corte —; um filtro no controle e nos filhos engole
+     os dois (nenhuma ação roda) e anota onde o soltar caiu. Um clique perdido (a rolagem se mexeu,
+     ou o soltar caiu fora) reprova a área; a sabotagem `--sabotar clique` tira a guarda dos dois
+     seguidores (`test_teclado_tecla.py` +1, com ela).
+
+  **No commit** (`e1691c5` contra o tronco `01e4147`, as árvores sem nada fora do commit;
+  `c7/teclado_c7.sh` → `docs/quality/ui/c2_fase5/teclado_*_20260924_1535*–1540*.json`): nas três
+  peles, a 1280×800, 1248×640 e 1280×641, **todo clique no lugar** — na Foco a 1280×641, 2 no
+  Resultado («Brancas», «Pretas»), 2 no Estudo («Comentário do lance», o «Tabuleiro da partida»), 1
+  na Galeria, 1 na Revisão de texto e 1 na lista de 40 bases —, e as oito áreas e os quinze diálogos
+  andam nos dois sentidos com o foco à vista: PASSOU nas nove passadas. A sabotagem `clique` REPROVA
+  nas três peles, com os cliques que o crítico achou: na Foco «Brancas» e «Pretas» (Resultado), o
+  «Tabuleiro da partida» e o «Comentário do lance» (Estudo), «Valor do header extra» (Galeria),
+  «Verdade da linha» (Revisão de texto) e «base_12.pgn»; na Clássica o «Gravar» da Galeria e a
+  «Leitura do motor» da Rotulagem; na Fita o «Texto da página», a «Tabela de resultados» e «Result»;
+  e `foco` e `tabela` reprovam como no ciclo 6. As sondas dele no commit (`c7/sondas_ui.sh` →
+  `c7/ui/`, as dele sem mudança): o clique na casa e7 **rola 0 px e só seleciona o peão** (a pilha
+  `['e2e4']`; o ciclo 6, +19 px e `['e2e4','e7e6']`); o clique em «Pretas» e em «Brancas» **rola 0
+  px e marca**; nas três peles, os **15** controles meio à vista que a sonda `clique_parcial.py`
+  dele acha (4 na Clássica, 6 na Foco, 5 na Fita) recebem o soltar dentro, com 0 px de rolagem,
+  seguidor ligado e desligado — no ciclo 6, 15 de 15 fora.
+
+- **3. O aceite de um item sem leitura não aceita nada** (bloqueante 3). O item de página do
+  `MemoryError` (`_failed_for_review`, `2c81e36`: o retângulo da página inteira, texto vazio),
+  aceito com o Enter na verdade vazia, gravava um `accept` que a importação seguinte aplicava à
+  região da página (IoU 1,00): «aceita pelo revisor», `verified=True`, fora da fila — uma leitura
+  que ninguém viu; o item da camada contestada sem resposta (`_contested_without_answer`, desde a
+  fase 1) é o mesmo. O que mudou (`ocr/review.py`, `80d9ddf`): `accepts_nothing` — um `accept` sem
+  leitura — é recusado pela janela com a frase («não há leitura para aceitar: o OCR não leu esta
+  página. Escreva o texto e grave a edição, ou mantenha-a como imagem.»), fica fora de
+  `decisions()` e não casa com região nenhuma em `ReviewDecisions.match` (um arquivo gravado antes
+  da recusa). Testes com a sabotagem (o aceite de nada volta a contar, e a página sai aceita): os
+  dois itens de página na fila (`test_review.py`), o Enter na janela recusado e nada gravado
+  (`test_revisao_de_texto_view.py`), e de ponta a ponta pelo importador — o OCR levanta na página,
+  o Enter no item, a importação de novo: nenhuma região «aceita pelo revisor», a página continua na
+  fila (`test_importer.py`). **No commit**, as duas sondas dele: pelo importador, a Gallagher p. 54
+  com o `MemoryError` — o aceite do item dá **nenhuma decisão** para o importador, e a importação
+  seguinte deixa a região em revisão, não verificada, com a página na fila (no `9eb401c`: 1 decisão
+  aplicada, «aceita pelo revisor», verificada, 0 itens; `c7/sondas/pagina_abstida_aceita_gal53.out`);
+  na janela, o Enter na verdade vazia mostra «Recusado: não há leitura para aceitar…» e **nenhum
+  arquivo** de decisões é gravado (`c7/ui/pagina_abstida_enter.out`).
+
+- **4. Os itens do mesmo ciclo.** (a) **As teclas de lista nas duas tabelas** (não bloqueante 1):
+  `ui/widgets/tabela_de_linhas.py`, `TabelaDeLinhas` — PgUp, PgDn, Home e End andam pelas linhas
+  com o foco na tabela e não viram a página do livro; a guarda de atalhos do tronco cede a tecla a
+  quem a declara (`ui/atalhos.DonoDeAcoes`: `acoes_proprias`, `atender`), e sem a guarda (a aba
+  sozinha) Home e End vão às pontas da lista, e não às colunas (`test_tabela_de_linhas.py`, novo,
+  com a sabotagem: a tabela do Qt vira a página). «Linhas da página» (Rotulagem) e «Dúvidas do
+  livro» (Revisão de texto) a usam; o `pelas_setas` diz o que as teclas fazem. A sonda dele no
+  commit (`c7/ui/teclas_de_lista_classica.out`): na Rotulagem com a Gallagher p. 51 (66 linhas),
+  PgDn leva à linha 7, PgUp à 2, End à 65 e Home à 0, e a página da aba (51) e a da janela (0) não
+  mudam — no ciclo 6, o PgDn levava a aba à p. 52 com a tabela vazia e o End mandava a janela à p.
+  191; em «Dúvidas do livro», PgDn e End levam à linha 13 e Home à 0, a página do livro parada.
+  (b) **O diálogo «Base de partidas» morre com a pergunta** (não bloqueante 7): `perguntar_bases`
+  destrói o diálogo (`deleteLater`), e o seguidor da lista dele com ele — 20 perguntas, nenhum
+  seguidor vivo; sabotado, ficam (`test_qt_foco_a_vista.py`, `DialogoDeBasesTests`). A sonda
+  `rolagem_morta.py` dele, no passo (3), abre o diálogo como o `perguntar_bases` do `6e68315` o
+  abria — constrói e chama `exec`, sem passar pelo `perguntar_bases` — e, no commit, ainda conta
+  12 seguidores e 5 diálogos vivos; o produto só o abre pelo `perguntar_bases` (`qt/dialogos.py:368`,
+  chamado de `qt/painel_da_galeria.py:876`), e a mesma sonda com o passo (3) por ele
+  (`scratchpad/c7/rolagem_morta_c7.py`) dá **7 antes, 7 depois, 0 diálogos vivos**
+  (`c7/ui/rolagem_morta_c7.out`); os passos (1) e (2), iguais, sem exceção. (c) **As frases** (não
+  bloqueante 8): o «24» do §0.2 e do roadmap é 23; o «refeita no `7f839f0`» do §0.3 e do §0.8 é o
+  `99ad8d7`; a frase do §0.8 sobre a forma das colunas (item 1.2) diz agora onde ela falhava. (d)
+  **A «Folha transcrita» do Texto** (não bloqueante 9): fechada pela outra sessão no `aa22702` — o
+  portão do teclado no commit passa o Texto nas nove passadas (a Foco a 1280×641, 46 controles nos
+  dois sentidos). (e) **Os outros ataques** (não bloqueantes 2, 3, 5 e 6): o que mudou e o que ficou
+  está no item 1 e no §0.3 — a partida ao lado de outra coluna **pelo importador** continua
+  intercalada e aceita com o B13 ligado ou desligado (0,6080 e 0,6978), porque o importador escolhe
+  a leitura inteira da página em modo de lista de lances (a variante `movetext` do Tesseract, que lê
+  cada linha através da calha: «2 Nf3 Nc6 2800»), e não é o B13 que a intercala.
+
+### 0.10 O ciclo 7 do crítico: REPROVADO com um bloqueante, e o que mudou
+
+O crítico deu os três bloqueantes do ciclo 6 por resolvidos — o B13 pelo importador, três execuções
+iguais byte a byte (o índice de quatro algarismos 0,0026 e a coluna só de nomes 0,0032, iguais ao
+desligado; a classificação em duas metades 0,2526), e tudo o que ele mandou manter igual byte a byte
+às corridas dele do ciclo 6; o clique (e7 só seleciona, «Pretas» marca, os controles meio à vista no
+lugar nas três peles, o portão reprovando com `--sabotar clique`); o aceite de nada (recusado, fora
+das decisões, sem efeito na importação) —, e reprovou por um defeito novo que o conserto do clique
+abriu (veredito em `OCR_UI_ANALISE_C2_CRITICAS.md` «Fase 5», ciclo 7). O construtor não contestou
+nenhum item.
+
+- **1. O foco que o programa move no meio do clique aparece depois do soltar** (bloqueante 1). A
+  guarda do mouse do `e1691c5` (`veio_do_mouse`: «um botão está apertado») calava o seguidor em todo
+  foco que chegava com o botão apertado — também no que o painel manda a **outro** controle no
+  pressionar: a linha das tabelas «Linhas da página» (Rotulagem) e «Dúvidas do livro» (Revisão de
+  texto) muda no pressionar, e o painel manda o foco à «Verdade da linha» ali mesmo. O ponteiro
+  estava na tabela, e a verdade ficava com **0×0 px** a 1280×641 nas três peles na Rotulagem (e a
+  1366×728 na Clássica e na Foco), 0 px na Foco e na Fita e 5 de 60 na Clássica na Revisão de
+  texto; o que se digitava ia para lá. O portão não via: o clique dele engole o pressionar e o
+  soltar, e nenhum painel move o foco. O que mudou (tronco `c2fd00c`, `d706653` e `967be8d`; suíte
+  `71d223b`, `97da447` e `dc04dce`):
+  1. **o foco do mouse é o que o clique dá ao controle clicado; o que o programa move no meio do
+     clique é mostrado depois do soltar** (`veio_do_mouse`, `no_meio_do_clique`, nos dois
+     seguidores): o seguidor põe um filtro na aplicação só entre o pressionar e o soltar, e rola
+     depois de o soltar chegar ao controle clicado — o clique termina onde foi dado (a linha clicada
+     é a escolhida), e a verdade aparece em seguida. Quem diz qual foco é o do clique é, desde o
+     `967be8d`/`dc04dce`, a razão do `QFocusEvent` (item 5); a primeira versão (`c2fd00c`,
+     `71d223b`, `97da447`) perguntava ao ponteiro;
+  2. **o controle que cabe por pouco aparece inteiro** (`_encaixar`): a verdade da Rotulagem tem 549
+     px numa vista de 550, e a folga de 6 px de cada lado não cabia — o seguidor mostrava o começo
+     dela com a folga e deixava 3 px cortados («546 à vista», no ciclo 6 também). Com menos folga
+     quando só o controle cabe, ela sai inteira (549×60). Achado pelo construtor na primeira passada
+     do portão novo, que exige o foco inteiro (item 4);
+  3. **a rolagem destruída com o foco dentro não levanta** (`d706653`, `97da447`): a primeira versão
+     deste ciclo (`c2fd00c`, `71d223b`) pedia o conteúdo à rolagem antes de perguntar se havia foco
+     novo, e a rolagem do diálogo «Base de partidas», destruída com o foco na lista, limpa o foco no
+     destrutor — quando o embrulho dela já se foi e o seguidor, filho dela, ainda não: «wrapped
+     C/C++ object of type QScrollArea has been deleted», 20 vezes nas 20 perguntas da sonda
+     `rolagem_morta` do crítico. Achado pelo construtor ao rodar a sonda no `71d223b`; a ordem
+     voltou à do ciclo 7 (primeiro se há foco novo e se a rolagem vive);
+  4. **o portão do teclado clica deixando a ação rodar** (`_cliques_com_acao`): em cada vista de
+     itens da área com duas linhas ou mais, com as rolagens no topo e depois no fim, um clique pelo
+     `QWindow` numa linha inteira à vista e diferente da atual, sem filtro — a linha muda, o painel
+     move o foco —, e o foco que sobra tem de estar **inteiro** na rolagem que segue o foco (com
+     algum pixel fora delas); uma vista com linhas e nenhuma linha inteira à vista nos dois extremos
+     também reprova (o clique não medido). A Revisão de texto é medida com uma fila
+     (`_revisao_com_uma_fila`): o portão não importa o livro, e as 12 primeiras linhas da camada de
+     texto da página do portão entram como itens em dúvida — de mentira, como as 40 bases do diálogo
+     de bases. A sabotagem `guarda` devolve os dois seguidores à guarda do ciclo 7; a `clique` os
+     devolve ao ciclo 6 (rolar no pressionar) com as duas funções;
+  5. **a razão do foco, e não o ponteiro** (`967be8d`, `dc04dce`; achado pelo construtor com o
+     portão do item 4 no `97da447`). A primeira versão deste ciclo tomava por foco do clique o do
+     controle «sob o ponteiro» (`underMouse`), e essa marca fica velha: os cliques engolidos do
+     portão terminam com o ponteiro fora da janela, e o Qt não manda o evento de saída — a «Verdade
+     da linha», clicada antes, continuava «sob o ponteiro» no clique da linha, e ficava meio à
+     vista: **17 a 33 de 60 px** na Revisão de texto, na Clássica a 1248×640 e a 1280×641 e na Fita
+     a 1280×800 (3 dos 9 portões do teclado no `97da447` reprovados,
+     `scratchpad/c8/janela_97da447/`; a guarda anotada na sonda `c8/sonda_guarda_no_portao.py`:
+     «foco em 'Verdade da linha' → veio_do_mouse=True; underMouse subindo ['QPlainTextEdit:1', …]»);
+     a marca fica velha também quando a rolagem se mexe sob o ponteiro parado (o crítico, ciclo 7,
+     «O que falta»). Agora um filtro só, na aplicação, anota a razão de cada `FocusIn`
+     (`_RazaoDoFoco`: o `FocusIn` chega antes do `focusChanged`, e diz a razão que o sinal não diz —
+     a sonda `c8/sonda_razao.py`: «FocusIn lista MouseFocusReason … FocusIn campo OtherFocusReason …
+     focusChanged → campo»): o clique e a roda dão `MouseFocusReason`, o Tab dá a dele, o
+     `setFocus()` do programa dá `OtherFocusReason`. O foco do mouse é o que chega com
+     `MouseFocusReason`, e o ponteiro não conta mais. Isto fecha também o item do §0.3 do ciclo 7 (o
+     Tab numa caixa de escolha sob o ponteiro parado não rolava): o Tab que vem de fora da rolagem
+     mostra a caixa inteira. A sabotagem nova `ponteiro` devolve os dois seguidores àquela guarda;
+  6. **o foco que a janela devolve ao voltar espera o clique que a reativou** (`967be8d`, `dc04dce`;
+     achado pelo construtor ao rever as razões do foco). Quando a janela volta a ser a ativa, o Qt
+     devolve o foco ao controle que o tinha (`ActiveWindowFocusReason`), e o Windows ativa a janela
+     antes de entregar o pressionar do clique que a reativou. Com a vista levada pela roda para
+     longe daquele controle, o seguidor rolava até ele e o pressionar caía noutro lugar: na sonda
+     `c8/sonda_ativacao.py --ativa-antes` (a ativação processada antes do pressionar), a rolagem vai
+     de 242 a 3 e o «Aceitar» clicado não recebe o clique — o pressionar cai no fundo da rolagem. Um
+     defeito do seguidor desde o ciclo 5, que nenhum portão mede (o offscreen não ativa janela por
+     clique). Agora esse foco é mostrado depois dos eventos que chegam com a volta
+     (`voltou_com_a_janela`, `_depois_da_volta`): com o botão apertado, depois do soltar, e só se o
+     clique não levou o foco a outro controle; sem clique (o Alt+Tab, o diálogo que fechou), em
+     seguida — o teclado não perde nada.
+
+  Testes, cada um com a sabotagem executada no teste: `test_foco_a_vista.py` (suíte, 4 → 11) e
+  `tests/test_qt_foco_a_vista.py` (tronco, 11 → 16) — a lista cuja linha, no pressionar, manda o
+  foco à caixa abaixo da dobra (a linha clicada uma vez, a caixa inteira depois do soltar, o que se
+  digita nela; sabotado com a guarda do ciclo 7, a caixa escondida, e com o seguidor do ciclo 6 o
+  clique se perde), o controle 1 px menor que a vista (sabotado com o encaixe do ciclo 7, o fim
+  cortado), a rolagem destruída com o foco dentro (sabotado com a ordem do `71d223b`, a exceção), a
+  marca velha «sob o mouse» na caixa e o clique na linha (sabotado com a guarda do ponteiro, a caixa
+  escondida), o Tab de fora da rolagem numa caixa de escolha sob o ponteiro parado (sabotado, 9 px),
+  a volta da janela com o clique logo atrás (o foco da volta e o pressionar um atrás do outro, sem o
+  laço de eventos no meio, como no Windows: o botão recebe o clique e nada rola; sem clique, a
+  janela reativada de verdade pelo `activateWindow` mostra o campo; sabotado — o foco da volta
+  mostrado na hora —, o clique se perde); `test_rotulagem_view.py` e `test_revisao_de_texto_view.py`
+  (o clique pelo `QWindow` numa linha à vista das duas tabelas: a verdade inteira depois do soltar e
+  o texto digitado nela; com a guarda do ciclo 7, 0 px); `test_teclado_tecla.py` (o clique com a
+  ação e a sabotagem `guarda`; a marca velha que os cliques engolidos deixam e a sabotagem
+  `ponteiro`, que só reprova com a marca: sem ela, a verdade inteira, 304×60 —
+  `c8/sonda_ponteiro_sem_marca.py`).
+
+  **No commit** (`dc04dce` contra o tronco `967be8d`): o portão da janela PASSOU sem livro e com o
+  Kemeri e as seis sabotagens REPROVARAM; o do teclado — a tecla, o clique e o clique com a ação —
+  PASSOU nas nove passadas (três peles × 1280×800, 1248×640 e 1280×641; a Rotulagem com 47 linhas, a
+  Revisão de texto com a fila de 12): depois do clique na linha, a verdade inteira nas duas tabelas
+  (514–552×60 na Rotulagem, com a rolagem no fim; 277–307×60 na Revisão de texto, no topo e no fim),
+  e as três passadas que o `97da447` reprovava passam; as sabotagens `foco`, `tabela`, `clique` e
+  `guarda` REPROVAM nas três peles a 1280×641 (a `guarda` com a verdade a 0×0 na Rotulagem), e a
+  `ponteiro` reprova exatamente as três passadas que o `97da447` reprovava — a Revisão de texto na
+  Clássica a 1248×640 (32 de 60 px) e a 1280×641 (33) e na Fita a 1280×800 (17) — e passa nas outras
+  seis, onde o clique engolido do portão não cai na verdade (`c8/janela/resumo_portoes.out`,
+  `resumo_portoes_c8.py`; §0.2). As sondas do crítico no commit (`scratchpad/c8/sondas_ui_c8.sh` →
+  `c8/ui/`, as dele sem mudança): o clique numa linha de «Linhas da página» (rolagem no fim) e de
+  «Dúvidas do livro», a 1280×641 nas três peles e a 1366×728 na Clássica e na Foco: a verdade
+  inteira depois do clique (549×60, 552×60 na Fita e 632×60 a 1366×728 na Rotulagem; 295×60, 300×60
+  na Fita e 344×60 a 1366×728 na Revisão de texto) e o «XYZ» digitado nela (`clique_linha_*.out`);
+  e7 só seleciona (rolou +0 px, a casa 12 selecionada, nenhum lance jogado), «Pretas» e «Brancas»
+  marcam (rolou +0 px), os controles meio à vista das três peles no lugar (rolou +0 px, o soltar
+  dentro); a rolagem morta, 0 exceções nos passos 1 a 3 (7 seguidores antes e depois das 20
+  perguntas); as teclas de lista andam pelas linhas.
+
+- **2. Os itens do mesmo ciclo.** (a) **Uma decisão sobre a página que o OCR não leu não existe**
+  (a regra deste ciclo recusava todo item de tipo «page», também o da página lida numa região só —
+  o bloqueante 1 do ciclo 8, consertado no §0.11 item 1)
+  (não bloqueantes 3 e 4): `review.sem_efeito` — o aceite sem leitura e **toda** decisão sobre um
+  item de página (o `MemoryError`, a camada contestada sem resposta) —: a janela recusa as três
+  (aceitar, gravar a edição, manter como imagem) com a frase «o OCR não leu esta página, e uma
+  decisão sobre ela não chega ao livro: a importação só aplica decisões às regiões que o OCR lê. Ela
+  fica na fila; importe o livro de novo quando o OCR puder lê-la» — a de antes prometia a edição e a
+  imagem, que numa página de seis regiões não se aplicavam (a maior com IoU 0,25 com a página) —; e
+  `decided()`, `pending()` e `decisions()` não contam a decisão sem efeito de um log gravado antes
+  da recusa: a página não some mais da lista («0 pendente(s) de 1»), nem o `carry_over` leva a
+  decisão ao item novo. A região sem leitura (não a página) continua com a edição e a imagem, que a
+  importação aplica a ela. Testes com a sabotagem (`test_review.py` +2, e os do item de página em
+  `test_review.py`, `test_revisao_de_texto_view.py` e `test_importer.py` com a frase nova). As
+  sondas dele no commit: o Enter, «Aceitar leitura», um espaço e o Enter e o texto escrito e o Enter
+  na página do `MemoryError` — as quatro recusadas com a frase nova, 1 pendente de 1, nada gravado;
+  o log antigo, a página pendente (1 de 1) e a importação seguinte aplicando 0 decisões; a página de
+  uma região (Gallagher p. 53) e a de seis (p. 51), com a edição e com manter como imagem, 0
+  decisões aplicadas — as quatro saídas (`c8/ui/pagina_abstida_*`, `fila_antiga_c7.out`) iguais byte
+  a byte às do `97da447`. (b) **As classes que o B13 do ciclo 7 devolve ao desligado** (não
+  bloqueantes 1 e 2) estão ditas no §0.3, com os números dele, e a frase do §0.9 item 1.1 («uma
+  tabela tem uma coluna que não é nenhuma delas») diz quando vale; o §0.9 diz agora que três das
+  cinco leituras não escolhidas que a regra muda pioram. (c) **O HANDOFF** diz «até seis controles
+  meio à vista por rolagem» (não bloqueante 6). (d) **O que fica do ciclo 6** (não bloqueante 5)
+  fica como estava dito no §0.3.
+
+### 0.11 O ciclo 8 do crítico: REPROVADO com dois bloqueantes, e o que mudou
+
+O crítico deu o bloqueante do ciclo 7 por resolvido — depois do clique numa linha das duas tabelas, a
+verdade inteira e o texto digitado nela, a 1280×641 nas três peles e a 1366×728 na Clássica e na Foco;
+o portão que clica deixando a ação rodar, reprovando com as sabotagens `guarda` e `clique`; e7, «Pretas»,
+os cliques meio à vista e o teclado como no ciclo 7 —, e reprovou por dois defeitos que os consertos do
+ciclo 8 abriram (veredito em `OCR_UI_ANALISE_C2_CRITICAS.md` «Fase 5», ciclo 8). O construtor não
+contestou nenhum item.
+
+- **1. Uma decisão sobre a página que o OCR leu numa região só vale** (bloqueante 1). O
+  `review.sem_efeito` do `71d223b` recusava toda decisão sobre um item de tipo «page», pensando no item
+  da página que o OCR não leu (o `MemoryError`, a camada contestada sem resposta). Mas o item de uma
+  região lida leva o tipo da região, e a página que o OCR lê sem divisão do leiaute é **uma região**
+  `RegionKind.PAGE` — tipo «page», com a leitura. A Gallagher p. 54, lida pelo OCR numa região só (1.379
+  caracteres, em revisão): aceitar, editar, manter como imagem, recusados com «o OCR não leu esta
+  página», a página pendente para sempre; e a edição que uma janela de antes gravou saía do arquivo na
+  gravação seguinte. Em importações de verdade, 13 de 39 itens da Karpov 2 pp. 101–115, 6 de 129 da
+  Gallagher pp. 41–60, 5 de 94 da Nunn. Os testes do ciclo 8 não viam: o item de página deles não tinha
+  leitura, e a região da página inteira do teste era `PARAGRAPH`. O §0.3, o §0.10, o roadmap e o
+  HANDOFF diziam «a página que o OCR não leu» — a intenção, e não o código. O que mudou (suíte
+  `b0d59a4`): `review.unread_page` — o item de página **sem leitura e sem motor**, que só o
+  `_failed_for_review` e o `_contested_without_answer` do importador criam —, e `sem_efeito(item,
+  action)` só para ele (e para o aceite sem leitura, de qualquer tipo). A página lida numa região só tem
+  a leitura e o motor: as três decisões gravam, contam, vão ao arquivo e chegam à importação seguinte, e
+  a edição de antes fica no arquivo. Testes com a sabotagem (a regra do `71d223b`, todo item «page» sem
+  leitura): `test_review.py` (+4: as três decisões numa página lida, contadas e aplicadas à região
+  `PAGE`; a edição de antes retomada, levada à fila da importação seguinte e guardada),
+  `test_importer.py` (+3: pelo importador, a página lida numa região só e as três decisões no livro —
+  o aceite verificado, o texto da edição no parágrafo, a página mantida como imagem),
+  `test_revisao_de_texto_view.py` (+1: o Enter na verdade aceita a página lida, e a decisão chega ao
+  arquivo do importador). As sondas dele no commit (`d186ba3`): a Gallagher p. 54 pelo OCR de produção
+  sai com um item só, «page», em revisão, com 1.379 caracteres de leitura
+  (`c8/revisao_pagina_inteira.py` → `c9/ui_c/revisao_pagina_inteira_gal53.out`); o Enter na verdade,
+  «Aceitar leitura», «Manter como imagem» e a leitura corrigida com o Enter gravam — «1 decidida(s), 0
+  pendente(s) de 1», e a decisão no arquivo —, e a importação seguinte com o arquivo aplica 1 e não
+  deixa item de revisão. O log antigo com a edição da p. 54 (`c8/log_antigo_pagina_inteira.py`): a
+  fila retomada conta o item como decidido, a importação aplica a edição, e depois do aceite de um
+  título da p. 52 o arquivo guarda os dois (`[('edit', 53, True), ('accept', 51, False)]`) e a
+  importação seguinte aplica 2. Os tipos da fila numa importação de verdade (`c9/tipos_c9c.sh` →
+  `c9/tipos_c/`, a cópia da sonda dele que conta pela recusa da fila): itens COM leitura recusados,
+  **0 de 39** na Karpov 2 pp. 101–115 (13 deles «page»), 0 de 129 na Gallagher pp. 41–60 (6), 0 de 94
+  na Nunn *Minor Piece* pp. 61–75 (5), 0 de 143 no Kemeri pp. 1–20 — no `dc04dce`, 13, 6, 5 e 0. E a
+  página que o OCR não leu continua recusada: o Enter, «Aceitar leitura», um espaço e o Enter, o texto
+  escrito e o Enter na p. 54 do `bad allocation` (`c7/pagina_abstida_enter_c7.py`) — «Recusado: o OCR
+  não leu esta página…», nada no arquivo —; o log antigo com o aceite vazio dela
+  (`c7/fila_antiga_c7.py`) — aplicadas 0, a página de volta à revisão. As cinco saídas iguais às do
+  `b0d59a4`, linha a linha (`c9/resumo_c9c.py`).
+
+- **2. O segundo clique de um duplo clique cai onde o primeiro caiu** (bloqueante 2). A rolagem que
+  mostrava o foco que o painel move no clique vinha logo depois do soltar (um `singleShot(0)`) e mexia
+  o conteúdo debaixo do ponteiro parado antes do segundo clique de um duplo clique — o gesto da
+  Rotulagem para ir à verdade (`table.activated`): na Clássica e na Foco a 1280×641, com a rolagem no
+  fim, o segundo clique na linha 4 caía em «Aceitar leitura» e marcava a linha como feita com a leitura
+  do motor («3 ♘f3 g5»), um rótulo que ninguém aceitou. O portão não via: o clique com a ação dele é um
+  só. O que mudou (tronco `0ed4f8a`; suíte `b0d59a4` e, para o item 4, `5f3c581` e `d186ba3`):
+  1. **o foco que o programa move no clique aparece quando o mouse sossega** (`mouse_sossegado`, nos
+     dois seguidores): nenhum botão apertado, e o intervalo do duplo clique da plataforma
+     (`QStyleHints.mouseDoubleClickInterval`: 400 ms no offscreen, 500 no Windows de fábrica) passado
+     desde o último soltar — que o anotador da razão do foco agora também guarda —; o relógio para no
+     pressionar e recomeça no soltar. Vale também para o foco que o programa move no soltar (o
+     `clicked` de um botão), e não só no pressionar. A primeira tecla que não é só um modificador o
+     mostra na hora, antes de chegar a ele (quem clica e digita logo vê a verdade antes da letra); o Tab
+     e o Shift+Tab rolam na hora (`veio_do_teclado`); o foco que sai do controle que esperava encerra a
+     espera; o filtro do seguidor fica na aplicação só durante ela;
+  2. **o foco que a janela devolve ao voltar espera o mesmo sossego** — o intervalo inteiro, e não mais
+     uma volta do laço de eventos: o pressionar do clique que reativou a janela chega dentro dele, venha
+     a mensagem postada antes ou depois do `WM_LBUTTONDOWN` (o não bloqueante 2 do crítico);
+  3. **o portão faz o duplo clique** (`_duplos_cliques`): em cada vista de itens da área, com as
+     rolagens no topo e no fim, um duplo clique pelo `QWindow` em cada linha inteira à vista, uma depois
+     da outra (até 6 por extremo; 80 ms entre os dois cliques; o segundo entregue como o Qt o entrega —
+     o pressionar, o `MouseButtonDblClick` ao controle sob o ponteiro, o soltar —, porque o `QTest` põe o
+     intervalo do duplo clique entre dois cliques dele para nunca fazer um duplo clique por acaso); o
+     controle **e a linha** sob o ponteiro no segundo clique têm de ser os do primeiro, e o foco que
+     sobra, à vista. O clique com a ação mede o foco depois de o mouse sossegar. A sabotagem nova
+     `soltar` devolve os dois seguidores ao ciclo 8 (o intervalo a 0: a rolagem logo depois do soltar);
+     a `clique` ganhou o mouse sossegado (o ciclo 6);
+  4. **a tabela da Rotulagem fica sob o ponteiro quando o cartão acima dela muda de altura** (achado do
+     construtor ao medir o `b0d59a4` com a sonda do crítico: nenhuma linha aceita, mas o segundo clique
+     nas linhas 3 e 4 da Gallagher p. 51 caía nas linhas 2 e 5, nas três peles a 1280×641). O motivo do
+     cartão da linha quebra em uma ou duas linhas conforme a linha, e o cartão fica acima da tabela na
+     mesma rolagem: com a rolagem parada, a tabela deslizava 16 px sob o ponteiro entre os dois cliques
+     (`c9/sonda_tabela_desliza.py`). O portão do `b0d59a4` não via: comparava só o controle sob o
+     ponteiro (a mesma tabela), e clicava uma linha por extremo. O que mudou (suíte `5f3c581`):
+     `foco_a_vista.ancorar` mantém o controle clicado no mesmo lugar da vista até o mouse sossegar — vigia
+     o controle e os que o contêm dentro do conteúdo (o `Move`) e o alcance da barra, e anda a barra o que
+     ele andou; com a rolagem no começo, o que encolhe acima dele (a barra não pode subir) vira uma folga
+     no alto do conteúdo, tirada ao soltar; a roda, a barra e as teclas da rolagem (`actionTriggered`)
+     soltam a âncora, e o seguidor a solta antes de mostrar um controle. A Rotulagem ancora a tabela no
+     clique numa linha, antes de trocar o cartão. **Uma âncora por rolagem**, feita no primeiro clique e
+     usada de novo, com os sinais da barra ligados uma vez (`d186ba3`): a primeira versão (`5f3c581`)
+     fazia uma âncora por clique e desligava os sinais ao soltar — o PyQt apaga o intermediário de um
+     slot Python desligado com `deleteLater`, e a sonda do crítico que digita logo depois do clique e sai
+     por `os._exit` (`clique_linha_c7.py`) passou a mostrar «access violation» na saída, nas cinco
+     configurações, com o código de saída 0 e o resto da saída igual ao do `b0d59a4` (medido pelo
+     construtor na sonda da Clássica a 1280×641: 2 de 2 com a âncora, 0 de 2 sem ela, 0 de 2 apagando os
+     pendentes antes de sair; na bisseção do soltar, só o passo que desligava os sinais; e 0 de 2 no
+     `d186ba3` — `c9/av/`). O produto não sai por `os._exit`. O portão passou a clicar linha após linha e a comparar a
+     linha (item 3), tem `--sabotar ancora` e `--pagina` (a página que a Rotulagem reconhece; o padrão
+     continua a p. 6 do Kemeri): **a sabotagem `ancora` só reprova numa página em que o cartão muda de
+     altura entre as linhas à vista** — a Gallagher p. 51 sim; na p. 6 do Kemeri os cartões das quatro
+     linhas à vista no fim têm a mesma altura, e ela passa (medido, abaixo). A Revisão de texto não
+     precisa: a tabela «Dúvidas do livro» fica fora da rolagem do cartão. O tronco não tem a âncora,
+     e não precisa, lido no código (não medido: no estado do portão, o Kemeri aberto, nenhuma vista de
+     itens do tronco tem duas linhas à vista): a lista de diagramas do Resultado é o primeiro controle
+     do painel, nada acima dela; a paleta de símbolos do Texto fica ao lado do texto; as listas de
+     partidas do Estudo e as ocorrências da busca do Texto ficam em diálogos, sem rolagem que siga o
+     foco.
+
+  Testes, cada um com a sabotagem executada no teste: `test_foco_a_vista.py` (suíte, 11 → 18) e
+  `tests/test_qt_foco_a_vista.py` (tronco, 16 → 19) — o duplo clique na lista (os dois pressionares na
+  lista, que recebe o duplo clique; sabotado com o intervalo a 0, o conteúdo se mexe e o segundo clique
+  cai fora dela), a tecla que mostra na hora (sabotado, a letra entra na caixa abaixo da dobra), o foco
+  que o programa move no soltar (sabotado, o botão sai de baixo do ponteiro); na suíte, a âncora: a
+  linha fica sob o ponteiro quando o cartão acima cresce 40 px entre os dois cliques e, no começo da
+  rolagem, quando ele encolhe (a folga, tirada quando o mouse sossega), e a pessoa que rola solta a
+  âncora (sabotado, sem a âncora, o segundo clique cai noutra linha); e a âncora é uma por rolagem —
+  três duplos cliques em três linhas deixam uma, sem segurar nada depois do sossego, e ela vai com a
+  rolagem (sabotado, uma âncora nova por clique: três); os testes do clique e da volta da
+  janela medem depois de o mouse sossegar, e cada teste começa com o anotador sem o soltar do teste de
+  antes; `test_rotulagem_view.py` (+2: o painel sozinho a 1000×710 com 12 linhas, a linha cujo ponto a
+  rolagem antiga põe sob «Aceitar leitura» achada com a sabotagem ligada, e o duplo clique nela não
+  aceita nada, a tabela fica na linha clicada e a verdade aparece inteira — sabotado, a linha aceita por
+  ninguém —; e, com os motivos das linhas ímpares longos, o duplo clique numa linha ímpar fica nela
+  enquanto o cartão cresce — sabotado, sem a âncora, o segundo clique escolhe outra linha);
+  `test_teclado_tecla.py` (+2: o duplo clique do portão e a sabotagem `soltar`; o duplo clique linha
+  após linha acha a linha que deslizou, e a sabotagem `ancora` reprova com a mesma lista sob o ponteiro
+  e outra linha).
+
+  **No commit** (`d186ba3` contra o tronco `0ed4f8a`): o portão da janela PASSOU sem livro e com o
+  Kemeri, e as seis sabotagens dele REPROVARAM; o do teclado com a tecla, o clique, o clique com a
+  ação e o duplo clique linha após linha PASSOU nas nove passadas (três peles × 1280×800, 1248×640 e
+  1280×641, o Kemeri aberto) — os **142 duplos cliques** (34 na Rotulagem, 108 na Revisão de texto) no
+  mesmo controle e na mesma linha, a verdade inteira depois — e nas três peles com a Gallagher p. 51 a
+  1280×641; as sabotagens `foco`, `tabela`, `clique`, `guarda` e `soltar` REPROVAM nas três peles a
+  1280×641, a `ponteiro` na Clássica, e a `ancora` nas três com a Gallagher p. 51 (o segundo clique da
+  linha 3 cai na linha 2, a mesma tabela sob o ponteiro), passando com o Kemeri (§0.2, «C18, ciclo 9»).
+  A âncora na janela do produto: a sonda do crítico do segundo clique (`c8/segundo_clique.py`, a
+  Gallagher p. 51 a 1280×641, a rolagem no fim), nas três peles — o segundo clique cai na linha do
+  primeiro (as linhas 1–4 na Clássica e na Foco, 3–4 na Fita), a rolagem anda +16 px no clique da
+  linha 3 (o cartão cresce) e −16 px no da 4 (encolhe), e nenhuma linha é aceita (no `b0d59a4`, o
+  segundo clique nas linhas 3 e 4 caía nas 2 e 5) —; a variante com o duplo clique entregue como o Qt
+  o entrega (`c8/segundo_clique_dbl.py`), nas três peles: o mesmo, com o foco na «Verdade da linha»
+  depois; a sonda do clique na linha (`c7/clique_linha_c7.py`, nas cinco configurações) igual à do
+  `b0d59a4` salvo a rolagem da Fita, que anda +16 px no clique da linha 3 (a âncora), e sem «access
+  violation» na saída (no `5f3c581`, 5 de 5). As outras sondas do crítico no commit
+  (`scratchpad/c9/sondas_ui_c9c.sh` → `c9/ui_c/`, as dele sem mudança), iguais às do `b0d59a4` linha a
+  linha: o tabuleiro, o rádio, os cliques meio à vista nas três peles, a rolagem morta (a cópia do
+  construtor da sonda do ciclo 6 dele, `c7/rolagem_morta_c7.py`) — que mostra «access violation» na
+  saída no `b0d59a4` e no `d186ba3`, onde a âncora não entra: ela abre, fecha e apaga 20 vezes o
+  diálogo «Base de partidas», com o seguidor dele, e sai por `os._exit`; não investigado além disso —,
+  as teclas de lista, e as da fila acima. A
+  cópia do construtor da sonda do clique na linha, em três instantes (`c9/clique_linha_c9.py` →
+  `c9/ui3_c/`): na Rotulagem, com a rolagem no fim, a verdade com 0×0 px logo depois do soltar e
+  inteira sossegado o mouse e depois do texto (549×60 na Clássica e na Foco, 552×60 na Fita, 632×60 a
+  1366×728), com o texto nela; na Revisão de texto, com a rolagem no fim a 1280×641, 5 px (Clássica) ou
+  0 (Foco e Fita) logo depois do soltar e inteira sossegado o mouse, e inteira nos três instantes com
+  a rolagem no começo e a 1366×728.
+
+- **3. Os não bloqueantes.** (1) A sabotagem `ponteiro` só reprova quando a marca velha cai na verdade:
+  dito no §0.10, e medido de novo (a 1280×641, ela reprova na Clássica — a Revisão de texto, a verdade
+  com 33 de 60 px — e passa na Foco e na Fita, como no ciclo 8). (2) A ordem da ativação no Windows: o relógio é agora o
+  intervalo do duplo clique (item 2.2), e não medido na plataforma real (§0.3). (3) O arquivo antigo e a
+  fila: para a página lida numa região só, concordam (item 1); para a página que o OCR não leu, o que
+  fica está no §0.3. (4) O resto continua como dito no §0.3.
 
 ## §B13 — A tabela e a lista de lances lidas por linha
 
@@ -1008,7 +1643,7 @@ mas não na classe, e reprovou por dois defeitos novos (veredito em `OCR_UI_ANAL
   `TableRowsConfig`), `ocr/arbiter.py` (`ArbiterConfig.table_rows`; aplicado ao resultado de todo
   motor em PSM 1/3 — o de segmentação própria —, antes do escore), `ingest/pdf/ocr_service.py`
   (`OcrServiceConfig.table_rows`, levado ao árbitro da página e das variantes),
-  `tests/unit/ocr/test_table_rows.py` (novo, 16 → 24 no ciclo 2 → 29 no ciclo 3 → 34 no ciclo 4 → 40 no ciclo 5 → **48** no ciclo 6), `tests/unit/ingest/test_table_rows_page.py` (novo no ciclo 4: a página do crítico pelo importador, com o Tesseract), `tests/unit/ingest/test_indices_do_acervo.py` (novo no ciclo 5: a Flores pp. 460–464, a Nunn p. 288 e a Yusupov p. 206 digitalizadas, pelo importador, com as sabotagens) e `tests/unit/ingest/test_listas_compostas.py` (novo no ciclo 6: as páginas que o crítico compôs no ciclo 5, pelo importador e pelo serviço, com as sabotagens); ciclo 5: `ocr/arbiter.py` (`_engine_order`: a concordância na ordem de cada motor). O `bench_sol` já entrega o
+  `tests/unit/ocr/test_table_rows.py` (novo, 16 → 24 no ciclo 2 → 29 no ciclo 3 → 34 no ciclo 4 → 40 no ciclo 5 → 48 no ciclo 6 → **53** no ciclo 7), `tests/unit/ingest/test_table_rows_page.py` (novo no ciclo 4: a página do crítico pelo importador, com o Tesseract), `tests/unit/ingest/test_indices_do_acervo.py` (novo no ciclo 5: a Flores pp. 460–464, a Nunn p. 288 e a Yusupov p. 206 digitalizadas, pelo importador, com as sabotagens) e `tests/unit/ingest/test_listas_compostas.py` (novo no ciclo 6: as páginas que o crítico compôs no ciclo 5, pelo importador e pelo serviço, com as sabotagens; +4 no ciclo 7: as do ciclo 6 dele e a do construtor); ciclo 5: `ocr/arbiter.py` (`_engine_order`: a concordância na ordem de cada motor). O `bench_sol` já entrega o
   `SOL_CONFIG` inteiro ao `OcrServiceConfig`: nenhuma linha nova lá.
 - **A regra** (a docstring de `rows.py` tem os números e a razão de cada um): blocos **lado a lado**
   (`x` disjuntos, `y` sobrepostos); o grupo nasce num bloco de **células** — linha mediana de até

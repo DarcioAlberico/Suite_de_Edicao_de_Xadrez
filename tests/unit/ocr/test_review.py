@@ -234,42 +234,187 @@ def _whole_page_recognition():
 
 
 @pytest.mark.parametrize("which", sorted(PAGE_ITEMS))
-def test_an_accept_of_no_reading_is_refused_left_out_and_never_applied(monkeypatch, which):
+def test_a_decision_on_a_page_item_is_refused_left_out_and_never_applied(monkeypatch, which):
     """Crítico da fase 5, ciclo 6: the page item of a ``MemoryError``, accepted with the Enter on
     the empty truth, was an accept over the whole page, and the next import applied it to the
     reading that came then -- «aceita pelo revisor», verified, out of the queue; the contested
-    page the OCR could not answer is the same item.  The window refuses it, the decisions leave it
-    out, and a file written before is not applied.  The sabotage: an accept of nothing counts
-    again, and the whole page is accepted."""
+    page the OCR could not answer is the same item.  Ciclo 7: the refusal told the reviewer to
+    write the text or keep the page as a picture, and on a page of several regions the next import
+    applied neither.  Every decision on a page item is refused, with a phrase that promises nothing
+    the import does not do; none is left in the decisions or counted as taken -- the page stays
+    pending --, and a file written before with the accept is not applied.  The sabotage: a decision
+    that decides nothing counts again, and the whole page is accepted."""
     from caissa.ocr import review
     from caissa.ocr.decision import Decision
     from caissa.ocr.review import Decided, ReviewDecisions
 
     queue = ReviewQueue.from_import(_page_item_report(which), document="livro", reviewer="ana")
     (item,) = queue.items
-    assert "não há leitura para aceitar" in queue.refusal(item.key, Action.ACCEPT)
-    assert queue.refusal(item.key, Action.EDIT) == ""
-    assert queue.refusal(item.key, Action.KEEP_IMAGE) == ""
+    for action in (Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE):
+        frase = queue.refusal(item.key, action)
+        assert frase.startswith("o OCR não leu esta página"), (action, frase)
+        assert "grave a edição" not in frase
+        assert "mantenha" not in frase
+    assert queue.refusal(item.key, Action.SKIP) == ""
     queue.decide(item.key, Action.ACCEPT)          # an old window, or a script
+    queue.decide(item.key, Action.KEEP_IMAGE, note="uma janela do ciclo 7")
     assert len(queue.decisions()) == 0
+    assert queue.pending() == [item], "the page stays pending"
     old_file = ReviewDecisions(entries=(Decided(3, item.rect, Action.ACCEPT, reviewer="ana"),))
     recognition = _whole_page_recognition()
     assert old_file.apply(recognition, _Frame()) == 0
     assert recognition.regions[0].decision.decision is Decision.REVIEW
     assert not recognition.regions[0].verified
-    # what the reviewer can do with a page nobody read: write its text, or keep it as a picture
-    typed = ReviewDecisions(entries=(Decided(3, item.rect, Action.EDIT, text="1 e4 e5"),))
-    recognition = _whole_page_recognition()
-    assert typed.apply(recognition, _Frame()) == 1
-    assert recognition.regions[0].result.text == "1 e4 e5"
 
+    monkeypatch.setattr(review, "sem_efeito", lambda _item, _action: False)
     monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
     assert queue.refusal(item.key, Action.ACCEPT) == ""
     assert len(queue.decisions()) == 1
+    assert queue.pending() == []
     recognition = _whole_page_recognition()
     assert old_file.apply(recognition, _Frame()) == 1
     assert recognition.regions[0].verified
     assert "aceita pelo revisor" in recognition.regions[0].decision.reasons_pt
+
+
+def _read_page_report():
+    """A report whose one review item is a page the OCR read in one region -- ``RegionKind.PAGE``,
+    the whole page with no division of the layout --, with the reading and the engine: the
+    Gallagher p. 54 of the critic (fase 5, ciclo 8), 1.379 characters, in review."""
+    return SimpleNamespace(review_items=[SimpleNamespace(
+        page_index=3, rect=(0.0, 0.0, 612.0, 792.0), kind="page", decision="review",
+        reasons=("sequência de lances repetida: suspeita de invenção",), text="1 e4 e5 2 e4 e5",
+        engine="tesseract", score=0.6, alternatives=())], ocr_traces={})
+
+
+def _read_page_recognition():
+    """The next import of that page: the same region over the whole page, of kind PAGE."""
+    from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+    from caissa.ocr.decision import Decision, RegionDecision
+    from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+    box = BBox(0.0, 0.0, 2550.0, 3300.0)       # 612 × 792 pt at 300 DPI
+    words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                  for w in ("1", "e4", "e5", "2", "e4", "e5"))
+    result = OcrResult(engine="tesseract", lang="eng", lines=(
+        OcrLine(words=words, box=box, kind=RegionKind.PAGE),))
+    return PageRecognition(page_index=3, dpi=300.0, regions=[RegionRecognition(
+        reading_order=0, kind=RegionKind.PAGE, box_px=box, result=result,
+        decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                ("sequência de lances repetida: suspeita de invenção",)),
+        engine="tesseract", variant="base", score=0.6)],
+        portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+
+
+@pytest.mark.parametrize("action", [Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE])
+def test_a_decision_on_a_page_the_ocr_read_in_one_region_counts_and_is_applied(
+        monkeypatch, action):
+    """Crítico da fase 5, ciclo 8: a page the OCR reads with no division of the layout is one
+    region of kind PAGE, and its review item is of kind «page» -- with the reading and the engine.
+    The rule of cycle 8 took every item of kind «page» for a page nobody read: the accept, the edit
+    and «keep as image» refused with «o OCR não leu esta página», and the page pending for ever
+    (13 of 39 items of the Karpov 2 pp. 101-115).  Now the decision is not refused, counts, goes
+    into the decisions, and the next import applies it to the page's region.  The sabotage: the
+    rule of cycle 8 (every item of kind «page» unread) -- refused, nothing in the decisions."""
+    from caissa.ocr import review
+    from caissa.ocr.decision import Decision
+
+    texto = "1 e4 e5 2 Nf3 Nc6" if action is Action.EDIT else None
+    queue = ReviewQueue.from_import(_read_page_report(), document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind == "page"
+    assert not review.unread_page(item)
+    assert queue.refusal(item.key, action) == ""
+    queue.decide(item.key, action, text=texto)
+    assert queue.pending() == []
+    (decidida,) = queue.decisions().entries
+    assert decidida.action is action
+    recognition = _read_page_recognition()
+    assert queue.decisions().apply(recognition, _Frame()) == 1
+    (region,) = recognition.regions
+    assert region.verified
+    esperada = Decision.ABSTAINED if action is Action.KEEP_IMAGE else Decision.ACCEPTED
+    assert region.decision.decision is esperada
+    if action is Action.EDIT:
+        assert " ".join(w.text for line in region.result.lines for w in line.words) == texto
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotada = ReviewQueue.from_import(_read_page_report(), document="livro", reviewer="ana")
+    (item,) = sabotada.items
+    assert sabotada.refusal(item.key, action).startswith("o OCR não leu esta página")
+    sabotada.decide(item.key, action, text=texto)      # an old window, or a script
+    assert len(sabotada.decisions()) == 0, "sabotaged: the decision on the page read counts not"
+
+
+def test_the_edit_a_window_before_saved_on_a_page_read_in_one_region_is_kept(
+        monkeypatch, tmp_path):
+    """Crítico da fase 5, ciclo 8: the edit of a page read in one region, saved by a window before
+    (the queue's log), was taken up again with the page pending, and the first decision on another
+    item rewrote the decisions file without it -- the next import sent the page back to review and
+    the reviewer's correction left the book.  Loaded and carried over to the next import's queue,
+    the edit counts and stays in the decisions.  The sabotage: the rule of cycle 8 -- the edit is
+    left out of the next save."""
+    from caissa.ocr import review
+
+    queue = ReviewQueue.from_import(_read_page_report(), document="livro", reviewer="ana")
+    (item,) = queue.items
+    queue.decide(item.key, Action.EDIT, text="1 e4 e5 2 Nf3 Nc6")
+    queue.save(tmp_path / "livro.fila.json")
+    retomada = ReviewQueue.load(tmp_path / "livro.fila.json")
+    assert retomada.pending() == []
+    nova = ReviewQueue.from_import(_read_page_report(), document="livro", reviewer="ana")
+    nova.carry_over(retomada)
+    assert nova.pending() == []
+    assert [(d.action, d.text) for d in nova.decisions().entries] == [
+        (Action.EDIT, "1 e4 e5 2 Nf3 Nc6")]
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotada = ReviewQueue.from_import(_read_page_report(), document="livro", reviewer="ana")
+    sabotada.carry_over(ReviewQueue.load(tmp_path / "livro.fila.json"))
+    assert len(sabotada.decisions()) == 0, "sabotaged: the old edit is left out of the save"
+
+
+def test_an_old_log_with_a_decision_on_the_page_nobody_read_does_not_hide_it(
+        monkeypatch, tmp_path):
+    """Crítico da fase 5, ciclo 7: the queue file the tab of cycle 6 wrote after the Enter on the
+    page item (an accept with no text) was taken up again with «0 pendente(s) de 1», and the next
+    import's queue took the accept over (`carry_over`): the page left the list read page by page,
+    which is what the page item exists for.  Loaded, the page is pending; carried over, it is
+    pending in the new queue too.  The sabotage: the old accept counts, and the page hides."""
+    from caissa.ocr import review
+
+    queue = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    (item,) = queue.items
+    queue.decide(item.key, Action.ACCEPT)          # the log of the tab of cycle 6
+    queue.save(tmp_path / "livro.fila.json")
+    retomada = ReviewQueue.load(tmp_path / "livro.fila.json")
+    assert [i.key for i in retomada.pending()] == [item.key]
+    nova = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    nova.carry_over(retomada)
+    assert [i.page_index for i in nova.pending()] == [item.page_index]
+    assert len(nova.decisions()) == 0
+
+    monkeypatch.setattr(review, "sem_efeito", lambda _item, _action: False)
+    assert retomada.pending() == []
+    sabotada = ReviewQueue.from_import(_page_item_report(), document="livro", reviewer="ana")
+    sabotada.carry_over(retomada)
+    assert sabotada.pending() == [], "sabotaged: the old accept is carried over and hides the page"
+
+
+def test_a_region_with_no_reading_refuses_the_accept_but_not_the_edit():
+    """A region the OCR read to nothing (abstained, no text) is not a page: the accept is refused
+    -- there is nothing to accept --, and the edit and «keep as image», which the next import
+    applies to the region, are what the phrase offers."""
+    report = _report()
+    report.review_items = [report.review_items[1]]      # the abstained movetext, text ""
+    queue = ReviewQueue.from_import(report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind != "page"
+    frase = queue.refusal(item.key, Action.ACCEPT)
+    assert frase.startswith("não há leitura para aceitar: o OCR não leu esta região"), frase
+    assert "grave a edição" in frase
+    assert queue.refusal(item.key, Action.EDIT) == ""
+    assert queue.refusal(item.key, Action.KEEP_IMAGE) == ""
 
 
 def test_a_blind_page_refuses_accept_and_edit_with_the_phrase_but_not_the_image():
