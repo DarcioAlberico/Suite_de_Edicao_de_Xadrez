@@ -1,0 +1,17 @@
+{
+ "leia-me": "O que a conferência do leitor legível guarda como bruto em cada edição à mão (Capitulo.brutos, etiqueta.classe na ordem do arquivo), e por quê. O portão do H5 exige esta lista exata; nas fixtures do contrato e nos arquivos da ida, nenhuma.",
+ "brutos": {
+  "07_partida_com_marcacao_no_comentario.xhtml": {
+   "esperado": ["section.cb-game"],
+   "porque": "o comentário do IR é texto: o <em> dentro dele e a classe no número do lance não voltariam"
+  },
+  "08_diagrama_com_nova_posicao.xhtml": {
+   "esperado": ["figure.cb-diagram"],
+   "porque": "o segundo diagrama tem um title na imagem, que é derivada: o IR não o guarda"
+  },
+  "09_lance_e_diagrama_na_prosa.xhtml": {
+   "esperado": ["span.cb-move"],
+   "porque": "o lance digitado sem o span.cb-piece não é a forma do contrato (§6.2): o escritor o poria"
+  }
+ }
+}

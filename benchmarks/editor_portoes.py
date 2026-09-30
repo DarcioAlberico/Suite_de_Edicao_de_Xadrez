@@ -85,6 +85,8 @@ def _checkout_principal(raiz: Path) -> Path:
 PRINCIPAL = _checkout_principal(RAIZ)
 TRONCO = PRINCIPAL.parent / "ChessVisionOFF_Puro"
 RELATORIOS = RAIZ / "benchmarks" / "reports" / "editor"
+IR_REAL_DO_H5 = "benchmarks/reports/editor/h5_ir_real"
+"""O IR real das páginas do portão do H5, que o `editor_ida_e_volta.py --gerar-ir-real` grava."""
 
 #: As pastas do usuário que nenhum arnês deste programa toca (roadmap §0.3).
 PASTAS_DO_USUARIO = ("labeling", "data", "editor")
@@ -586,6 +588,55 @@ PASSOS: dict[str, Passo] = {
                                          ("estipulacao_sobrescrita", "2_estipulacao"),
                                          ("caminho_no_ir", "10_caminho"))),
         ),
+    ),
+    "H5": Passo(
+        nome="H5",
+        descricao="o perfil legível, os atributos preservados, o CSS como recurso e o mapa de "
+                  "estilo",
+        instrumentos=(
+            "src/caissa/export/legivel.py",
+            "src/caissa/editor/leitura.py",
+            "src/caissa/editor/paginas.py",
+            "src/caissa/editor/css/mapa_de_estilo.py",
+            "docs/MARKUP_CAISSA.md",
+            "benchmarks/editor_ida_e_volta.py",
+            "tests/unit/export/test_legivel.py",
+            "tests/unit/export/test_legivel_ida.py",
+            "tests/unit/export/test_legivel_conferencia.py",
+            "tests/unit/editor/test_leitura.py",
+            "tests/unit/editor/test_mapa_de_estilo.py",
+            "tests/unit/editor/test_paginas.py",
+            "tests/unit/model/test_esquema_v2.py",
+            "tests/fixtures/editor/contrato",
+            "tests/fixtures/editor/editados",
+            "tests/fixtures/editor/editados/esperado.json",
+            "tests/fixtures/editor/css/mapa_positivo",
+            "tests/fixtures/editor/css/mapa_negativo",
+            # O IR real das páginas do portão, importado uma vez (`--gerar-ir-real`).
+            *(f"{IR_REAL_DO_H5}/{livro}.ir.json" for livro in ("livro", "kemeri", "pedido", "dem")),
+            "{principal}/../Sigil-master/src/Resource_Files/python3lib/sigil_chess/validate.py",
+        ),
+        portao=(
+            Comando("test_legivel", _pytest(
+                "tests/unit/export/test_legivel.py", "tests/unit/export/test_legivel_ida.py",
+                "tests/unit/export/test_legivel_conferencia.py",
+                "tests/unit/editor/test_leitura.py", "tests/unit/editor/test_mapa_de_estilo.py",
+                "tests/unit/editor/test_paginas.py", "tests/unit/model/test_esquema_v2.py")),
+            Comando("roundtrip_corpus", _pytest("tests/unit/model/test_roundtrip_corpus.py")),
+            Comando("ida_e_volta", ("{py}", "benchmarks/editor_ida_e_volta.py", "--ir-real",
+                                    IR_REAL_DO_H5, "--saida", "{saida}"), repeticoes=3),
+        ),
+        sabotagens=tuple(
+            Sabotagem(nome, Comando(f"ida_e_volta_{nome}", (
+                "{py}", "benchmarks/editor_ida_e_volta.py", "--ir-real", IR_REAL_DO_H5,
+                "--nos", "2000", "--sem-epubcheck", "--sabotar", nome, "--saida", "{saida}")),
+                motivo=motivo)
+            for nome, motivo in (("perde_fen", "REPROVADO: ida"),
+                                 ("perde_classe", "REPROVADO: ida"),
+                                 ("engole_desconhecido", "REPROVADO: volta"),
+                                 ("perde_atributo", "REPROVADO: volta"),
+                                 ("css_silencioso", "REPROVADO: mapa de estilo"),
+                                 ("nula", "REPROVADO: ida"))),
     ),
     "H6": Passo(
         nome="H6",

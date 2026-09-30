@@ -32,6 +32,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
+from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import escape, quoteattr
 
@@ -99,6 +100,7 @@ from caissa.core.model import (
     RawInline,
     RawPassthrough,
     RecognitionResult,
+    ResourceKind,
     RunProps,
     SectionBreak,
     SectionBreakKind,
@@ -131,6 +133,7 @@ __all__ = [
     "MapaDaProveniencia",
     "canon",
     "escrever_capitulo",
+    "folhas_do_livro",
     "forma_normal",
     "ler_capitulo",
 ]
@@ -219,33 +222,38 @@ def slug(nome: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-") or "estilo"
 
 
+_ESPACO_DO_XML = " \t\r\n"
+"""O espaço que o XML trata como insignificante; o sem quebra e os finos não são."""
+_CORRIDA_DO_XML = re.compile("[ \t\r\n]+")
+
+
 def _normalizar(elemento: ET.Element) -> None:  # noqa: PLR0912 - as bordas de cada bloco
-    """A N4: espaço colapsado, e sem espaço junto das bordas dos blocos."""
+    """A N4: espaço do XML colapsado, e sem espaço junto das bordas dos blocos."""
     if elemento.text is not None:
-        elemento.text = re.sub(r"\s+", " ", elemento.text)
+        elemento.text = _CORRIDA_DO_XML.sub(" ", elemento.text)
     for filho in elemento:
         _normalizar(filho)
         if filho.tail is not None:
-            filho.tail = re.sub(r"\s+", " ", filho.tail)
+            filho.tail = _CORRIDA_DO_XML.sub(" ", filho.tail)
     if _local(elemento) in BLOCOS or _nome(elemento.tag) == "m:math":
         if elemento.text:
-            elemento.text = elemento.text.lstrip()
+            elemento.text = elemento.text.lstrip(_ESPACO_DO_XML)
         if len(elemento):
             ultimo = elemento[-1]
             if ultimo.tail:
-                ultimo.tail = ultimo.tail.rstrip()
+                ultimo.tail = ultimo.tail.rstrip(_ESPACO_DO_XML)
         elif elemento.text:
-            elemento.text = elemento.text.rstrip()
+            elemento.text = elemento.text.rstrip(_ESPACO_DO_XML)
     anterior: ET.Element | None = None
     for filho in elemento:
         if _local(filho) in BLOCOS:
             if anterior is None:
                 if elemento.text:
-                    elemento.text = elemento.text.rstrip()
+                    elemento.text = elemento.text.rstrip(_ESPACO_DO_XML)
             elif anterior.tail:
-                anterior.tail = anterior.tail.rstrip()
+                anterior.tail = anterior.tail.rstrip(_ESPACO_DO_XML)
             if filho.tail:
-                filho.tail = filho.tail.lstrip()
+                filho.tail = filho.tail.lstrip(_ESPACO_DO_XML)
         anterior = filho
 
 
@@ -408,6 +416,14 @@ class Capitulo:
     titulo: str = ""
     folhas: tuple[str, ...] = ()
     idioma: str = "pt-BR"
+    brutos: tuple[str, ...] = ()
+    """O que a conferência do leitor guardou como bruto, porque o IR não o diria de volta
+    (`etiqueta.classe`, na ordem do arquivo): o escritor não o usa; a validação o mostra."""
+
+
+def _imagem_do_diagrama(fen: str, orientacao: str) -> str:
+    """O arquivo da imagem derivada: `dg_<hash>.svg`, pelo conteúdo (o contrato, §6.1)."""
+    return f"dg_{hashlib.sha256(f'{fen}|{orientacao}'.encode()).hexdigest()[:12]}.svg"
 
 
 def _pagina_da_maquina(no: Any) -> int | None:
@@ -570,7 +586,8 @@ class EscritorLegivel:
 
     def capitulo(self, capitulo: Capitulo) -> str:
         linhas = ['<?xml version="1.0" encoding="utf-8"?>', "<!DOCTYPE html>",
-                  f'<html xmlns="{XHTML}" xmlns:epub="{EPUB}"'
+                  f'<html xmlns="{XHTML}" xmlns:epub="{EPUB}" xmlns:svg="{SVG}" '
+                  f'xmlns:m="{MATHML}"'
                   f"{_atributo('lang', capitulo.idioma)}{_atributo('xml:lang', capitulo.idioma)}>",
                   "<head>", f"<title>{_texto(capitulo.titulo)}</title>"]
         linhas += [f'<link rel="stylesheet" type="text/css" href={quoteattr(folha)}/>'
@@ -688,8 +705,7 @@ class EscritorLegivel:
         campos = fen.split()
         stm = campos[1] if len(campos) > 1 and campos[1] in ("w", "b") else "w"
         orientacao = "black" if no.orientation is Orientation.BLACK else "white"
-        chave = hashlib.sha256(f"{fen}|{orientacao}".encode()).hexdigest()[:12]
-        nome = f"dg_{chave}.svg"
+        nome = _imagem_do_diagrama(fen, orientacao)
         if nome not in self.imagens:
             self.imagens[nome] = self._svg(no)
         alt = no.alt_text if no.alt_text is not None else self._alt_do_diagrama(no, fen, stm)
@@ -1107,8 +1123,7 @@ class EscritorLegivel:
         fen = no.fen or ""
         campos = fen.split()
         orientacao = "black" if no.orientation is Orientation.BLACK else "white"
-        chave = hashlib.sha256(f"{fen}|{orientacao}".encode()).hexdigest()[:12]
-        nome = f"dg_{chave}.svg"
+        nome = _imagem_do_diagrama(fen, orientacao)
         alt = no.alt_text if no.alt_text is not None else descrever_posicao(
             fen, campos[1] if len(campos) > 1 else None, self.idioma, True, miniatura=True)
         if nome not in self.imagens:
@@ -1147,7 +1162,7 @@ class EscritorLegivel:
             except ValueError:
                 pass
             derivado = _meio_lance_da_fen(no.position_before)
-        if no.ply != derivado:
+        if no.ply != (derivado or 0):  # sem posição, o leitor lê o 0
             atributos.append(("data-ply", str(no.ply)))
         automatico = _texto_do_numero(no.ply)
         numero = ""
@@ -1522,10 +1537,38 @@ class _Leitor:
     """XHTML legível → IR, pelo contrato; o resto, preservado."""
 
     def __init__(self, mapa: MapaDaProveniencia | None, estilos: Iterable[str] = (),
-                 idioma: str = "pt-BR") -> None:
+                 idioma: str = "pt-BR", *, conferir: bool = True) -> None:
         self.mapa = mapa
         self.idioma = idioma
         self.estilo_do_slug = {slug(nome): nome for nome in estilos}
+        self.conferir = conferir
+        """Se cada elemento lido é reescrito e comparado com o original (R2.3)."""
+        self._dentro_de_link = False
+        """Se o elemento em leitura está dentro de um link (o escritor muda a forma, lá)."""
+        self.brutos: list[str] = []
+        """O que a conferência guardou como bruto (`Capitulo.brutos`)."""
+
+    # -- a conferência ---------------------------------------------------
+
+    def _confere(self, no: Any, elemento: ET.Element, *, bloco: bool) -> bool:
+        """Se o nó, reescrito, é o elemento de volta — o que o IR não guardou não se perdeu.
+
+        O que o elemento tem e o nó não diz (um atributo num elemento interno da partida, a
+        marcação dentro de um comentário, o `title` na imagem do diagrama) faz a reescrita sair
+        diferente; o leitor então guarda o elemento inteiro como bruto, e nada se perde em
+        silêncio. A comparação é pelo `canon`, sem os `id` de página (o mapa os devolve) e com o
+        que o contrato diz derivado recalculado no original (§6.1: a imagem do diagrama, o
+        `data-stm`, o `data-mode` e a fala do lado que joga).
+        """
+        escritor = EscritorLegivel()
+        escritor.idioma = self.idioma
+        escritor._no_link = self._dentro_de_link
+        try:
+            escrito = escritor.bloco(no) if bloco else escritor.inline(no)
+            original = _serializar(_entrada_normalizada(elemento, self.idioma), ordenar=False)
+            return _canon_de_fragmento(escrito) == _canon_de_fragmento(original)
+        except (ValueError, KeyError, TypeError, IndexError, ET.ParseError):
+            return False
 
     # -- identidade ------------------------------------------------------
 
@@ -1589,7 +1632,16 @@ class _Leitor:
         fora = {id(e) for e in ignorar}
         return [self.bloco(filho) for filho in pai if id(filho) not in fora]
 
-    def bloco(self, elemento: ET.Element) -> Any:  # noqa: PLR0911, PLR0912 - um ramo por forma
+    def bloco(self, elemento: ET.Element) -> Any:
+        """O bloco do elemento; o que não volta igual pela reescrita fica bruto (R2.3)."""
+        no = self._bloco(elemento)
+        if self.conferir and not isinstance(no, RawPassthrough) and not self._confere(
+                no, elemento, bloco=True):
+            self.brutos.append(_descricao(elemento))
+            return RawPassthrough(format="xhtml", text=serializar_elemento(elemento))
+        return no
+
+    def _bloco(self, elemento: ET.Element) -> Any:  # noqa: PLR0911, PLR0912 - um ramo por forma
         nome = _local(elemento)
         classes = _classes(elemento)
         if nome in ("h1", "h2", "h3", "h4", "h5", "h6"):
@@ -1641,7 +1693,7 @@ class _Leitor:
             return self._sumario(elemento)
         if nome == "aside" and "cb-callout" in classes:
             return self._destaque(elemento)
-        if _nome(elemento.tag) == "m:math":
+        if _formula_do_contrato(elemento):
             return self._formula(elemento)
         if (nome == "section" and "cb-chapter" in classes) or nome == "div":
             return self._grupo(elemento, capitulo=nome == "section")
@@ -1756,7 +1808,9 @@ class _Leitor:
         """O conteúdo da célula ou do item: blocos, ou o texto solto como um parágrafo."""
         filhos = [f for f in elemento if f not in ignorar]
         texto = elemento.text if not ignorar else (ignorar[-1].tail or "")
-        if any(_local(f) in BLOCOS or _nome(f.tag) == "m:math" for f in filhos):
+        # A fórmula de bloco sempre diz o `display`; a de dentro do parágrafo, nunca.
+        if any(_local(f) in BLOCOS or (_nome(f.tag) == "m:math" and f.get("display") is not None)
+               for f in filhos):
             return self.blocos(elemento, ignorar=ignorar)
         if not filhos and not texto:
             return []
@@ -2031,7 +2085,16 @@ class _Leitor:
                           elemento, conhecidos=lingua,
                           classes_conhecidas=(*classes_conhecidas, *estilos)))
 
-    def inline(self, elemento: ET.Element) -> Any:  # noqa: PLR0911, PLR0912 - um ramo por forma
+    def inline(self, elemento: ET.Element) -> Any:
+        """O nó do elemento de dentro do parágrafo; o que não volta igual fica bruto (R2.3)."""
+        no = self._inline(elemento)
+        if self.conferir and not isinstance(no, RawInline) and not self._confere(
+                no, elemento, bloco=False):
+            self.brutos.append(_descricao(elemento))
+            return RawInline(format="xhtml", text=serializar_elemento(elemento))
+        return no
+
+    def _inline(self, elemento: ET.Element) -> Any:  # noqa: PLR0911, PLR0912 - um ramo por forma
         nome = _local(elemento)
         classes = _classes(elemento)
         simples = {"em": Emphasis, "strong": Strong, "u": Underline, "s": Strike,
@@ -2077,7 +2140,7 @@ class _Leitor:
             return ImageInline(resource=(elemento.get("src") or "").rpartition("/")[2],
                                alt_text=elemento.get("alt"),
                                html_attributes=_preservados(elemento, conhecidos=("src", "alt")))
-        if _nome(elemento.tag) == "m:math":
+        if _formula_do_contrato(elemento):
             return MathInline(latex="".join(elemento.itertext()),
                               mathml=elemento.get("data-mathml"),
                               html_attributes=_preservados(elemento,
@@ -2099,7 +2162,12 @@ class _Leitor:
     def _link(self, elemento: ET.Element, alvo: str, atributo_do_alvo: str) -> Link:
         props, estilos, lingua = self._props_de_corrida(elemento)
         tipo = elemento.get("data-kind")
-        return Link(target=alvo, content=tuple(self.inlines(elemento)),
+        fora, self._dentro_de_link = self._dentro_de_link, True
+        try:
+            conteudo = tuple(self.inlines(elemento))
+        finally:
+            self._dentro_de_link = fora
+        return Link(target=alvo, content=conteudo,
                     tooltip=elemento.get("title"), title=elemento.get("data-title"),
                     kind=LinkKind(tipo) if tipo else _tipo_do_link(alvo), props=props,
                     html_attributes=_preservados(
@@ -2190,6 +2258,72 @@ class _Leitor:
                             "data-number-text", "data-render", "data-language",
                             "data-figurine-set", *lingua),
                         classes_conhecidas=("cb-move", *estilos)))
+
+
+def _descricao(elemento: ET.Element) -> str:
+    """`etiqueta.classe.classe` do elemento, para o registro do que ficou bruto."""
+    return ".".join([_nome(elemento.tag), *_classes(elemento)])
+
+
+_ID_DE_PAGINA = re.compile(r"^p[1-9]\d*-[dg]?[1-9]\d*$")
+
+
+def _canon_de_fragmento(texto: str) -> str:
+    """O `canon` de um trecho sem declarações, sem os `id` que o escritor gera pela página."""
+    envelope = (f'<r xmlns="{XHTML}" xmlns:epub="{EPUB}" xmlns:svg="{SVG}" '
+                f'xmlns:m="{MATHML}">{texto}</r>')
+    raiz = ET.fromstring(envelope.encode("utf-8"))  # noqa: S314 - o texto do próprio escritor
+    for elemento in raiz.iter():
+        if _ID_DE_PAGINA.match(elemento.get("id") or ""):
+            del elemento.attrib["id"]
+    _normalizar(raiz)
+    return _serializar(raiz, ordenar=True)
+
+
+def _entrada_normalizada(elemento: ET.Element, idioma: str) -> ET.Element:
+    """O elemento com o que o contrato diz derivado recalculado (§6.1), para a conferência.
+
+    O `data-mode` e o `data-orientation` ausentes são os padrões; o `data-stm` ausente sai da
+    FEN; o `src` da imagem do diagrama e a fala do marcador do lado que joga são derivados, e
+    o leitor não os lê.
+    """
+    import copy
+
+    copia = copy.deepcopy(elemento)
+    for figura in copia.iter():
+        classes = _classes(figura)
+        if "cb-diagram" not in classes and "cb-inline-diagram" not in classes:
+            continue
+        fen = figura.get("data-fen") or ""
+        campos = fen.split()
+        lado = campos[1] if len(campos) > 1 and campos[1] in ("w", "b") else "w"
+        if "cb-diagram" in classes:
+            figura.attrib.setdefault("data-mode", "svg")
+            figura.attrib.setdefault("data-stm", lado)
+        figura.attrib.setdefault("data-orientation", "white")
+        orientacao = "black" if figura.get("data-orientation") == "black" else "white"
+        for parte in figura.iter():
+            if "cb-svg" in _classes(parte):
+                parte.set("src", f"../Images/{_imagem_do_diagrama(fen, orientacao)}")
+            elif "cb-stm-marker" in _classes(parte):
+                falado = ({"w": "White to move", "b": "Black to move"} if idioma.startswith("en")
+                          else {"w": "Brancas jogam", "b": "Pretas jogam"})
+                parte.set("aria-label", falado[lado])
+    return copia
+
+
+def _formula_do_contrato(elemento: ET.Element) -> bool:
+    """O `math` que o escritor escreve: uma `annotation` do TeX e nada mais.
+
+    O MathML que a pessoa escreve (`mi`, `mo`, `mfrac`...) não é o `latex` do IR: fica como
+    bruto, preservado (R2.3), em vez de virar o texto dele.
+    """
+    if _nome(elemento.tag) != "m:math" or (elemento.text or "").strip() or len(elemento) != 1:
+        return False
+    anotacao = elemento[0]
+    return (_nome(anotacao.tag) == "m:annotation"
+            and anotacao.get("encoding") == "application/x-tex" and not len(anotacao)
+            and not (anotacao.tail or "").strip())
 
 
 def _texto_nu(no: Any) -> bool:
@@ -2688,6 +2822,27 @@ def forma_normal(blocos: Iterable[Any]) -> tuple[tuple[Any, ...], Counter[str]]:
     return novos, normal.contagem
 
 
+def folhas_do_livro(documento: Document) -> list[tuple[str, bytes]]:
+    """As folhas do projeto, na ordem do documento, byte a byte (spec R2.2b).
+
+    O CSS é recurso, e não semântica do IR (spec D1): o EPUB e o HTML levam cada
+    `Resource(kind=STYLESHEET)` como ela está no disco, com o nome do arquivo. A folha que não
+    está no disco é um erro, e não uma folha a menos (R2.3).
+
+    Raises:
+        FileNotFoundError: Uma folha do documento não está no caminho dela.
+    """
+    folhas = []
+    for recurso in documento.resources:
+        if recurso.kind is not ResourceKind.STYLESHEET:
+            continue
+        caminho = Path(recurso.path) if recurso.path else None
+        if caminho is None or not caminho.is_file():
+            raise FileNotFoundError(f"a folha {recurso.key} não está em {recurso.path!r}")
+        folhas.append((caminho.name, caminho.read_bytes()))
+    return folhas
+
+
 def ler_capitulo(texto: str, *, mapa: MapaDaProveniencia | None = None,
                  estilos: Iterable[str] = ()) -> Capitulo:
     """O XHTML legível de volta ao IR (os blocos do capítulo, o título, as folhas e o idioma).
@@ -2720,7 +2875,8 @@ def ler_capitulo(texto: str, *, mapa: MapaDaProveniencia | None = None,
             mapa.folios.setdefault(pagina, filho.get("aria-label") or str(pagina))
             continue
         blocos.append(leitor.bloco(filho))
-    return Capitulo(blocos=tuple(blocos), titulo=titulo, folhas=tuple(folhas), idioma=idioma)
+    return Capitulo(blocos=tuple(blocos), titulo=titulo, folhas=tuple(folhas), idioma=idioma,
+                    brutos=tuple(leitor.brutos))
 
 
 def escrever_capitulo(capitulo: Capitulo, documento: Document | None = None, *,

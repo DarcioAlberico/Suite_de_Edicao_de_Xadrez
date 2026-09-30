@@ -69,6 +69,8 @@ dependencies = [
     "chess>=1.10,<2",
     "platformdirs>=4.2,<5",
     "python-ulid>=2.7,<4",
+    # O mapa de estilo do Editor HTML/CSS lê o CSS do projeto (caissa.editor.css; BSD).
+    "tinycss2>=1.3,<2",
     "tomli-w>=1.0,<2",
     "typing-extensions>=4.12,<5",
 ]

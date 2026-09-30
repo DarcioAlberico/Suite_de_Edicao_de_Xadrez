@@ -182,6 +182,23 @@ def test_a_tabela_do_h4_conta_os_sintomas_antes_e_depois() -> None:
         "rect_como_lista", "estipulacao_sobrescrita", "caminho_no_ir"}
 
 
+def test_a_tabela_do_h5_mede_a_ida_e_a_volta_com_as_sabotagens() -> None:
+    passo = portoes.PASSOS["H5"]
+    assert {"benchmarks/editor_ida_e_volta.py", "tests/fixtures/editor/editados",
+            "tests/fixtures/editor/editados/esperado.json"} <= set(passo.instrumentos)
+    assert sum(i.startswith(portoes.IR_REAL_DO_H5) for i in passo.instrumentos) == 4
+    assert [c.nome for c in passo.portao] == ["test_legivel", "roundtrip_corpus", "ida_e_volta"]
+    ida_e_volta = next(c for c in passo.portao if c.nome == "ida_e_volta")
+    assert ida_e_volta.repeticoes == 3
+    assert "{saida}" in ida_e_volta.argv
+    assert {s.nome for s in passo.sabotagens} == {
+        "perde_fen", "perde_classe", "engole_desconhecido", "perde_atributo", "css_silencioso",
+        "nula"}
+    for sabotagem in passo.sabotagens:
+        assert sabotagem.motivo.startswith("REPROVADO: "), sabotagem.nome
+        assert sabotagem.nome in sabotagem.comando.argv
+
+
 def test_a_tabela_do_h2_mede_o_prototipo_e_a_sonda_uia() -> None:
     passo = portoes.PASSOS["H2"]
     assert {"benchmarks/editor_codigo.py", "benchmarks/editor_uia.py", "{med}"} <= set(

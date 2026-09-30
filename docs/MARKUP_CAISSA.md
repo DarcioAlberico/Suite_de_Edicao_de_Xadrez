@@ -38,7 +38,8 @@ padrão do campo. As únicas diferenças aceitas são N1–N4 (§8).
 - Documento de conteúdo do EPUB 3 em XML bem formado, UTF-8:
   `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"
   lang="…" xml:lang="…">`, com `<head>` (`<title>`, e um `<link rel="stylesheet">` por folha do
-  projeto, na ordem da espinha) e `<body>`.
+  projeto, na ordem da espinha) e `<body>`. A raiz declara também os prefixos `svg` e `m`
+  (MathML), que o bruto preservado usa.
 - **O escritor legível não escreve** `data-ir`, `data-ir-id`, classe gerada `.pN/.rN/.dN` (N2),
   `<style>` gerado, nem dado da máquina: caminho local, nome de usuário, confiança, motor ou nota
   de OCR (R2.4). Esses dados vão para o `proveniencia.json` do projeto e para o sidecar.
@@ -235,6 +236,12 @@ Zobrist).
 - **Atributo desconhecido num elemento do contrato** — `style`, `title`, `aria-*`, `data-*` fora
   deste documento, classe além da de estilo — → `IRNode.html_attributes` do nó; o escritor os
   devolve na ordem do `canon`.
+- **Elemento do contrato com o que o IR não guarda** — um atributo num elemento interno (o
+  número do lance, a imagem do diagrama, a legenda da tabela), marcação dentro de um comentário
+  da partida, o lance digitado fora da forma do §6.2 — → o elemento **inteiro** fica bruto, como
+  está. O leitor confere cada elemento que lê reescrevendo-o e comparando pelo `canon` (sem os
+  `id` de página, com o derivado do §6.1 recalculado no original), e registra o que guardou assim
+  (`Capitulo.brutos`); a validação (H10) o mostra à pessoa.
 - **Nomes proibidos no livro publicado** (R2.4): o escritor nunca escreve atributo com nome de
   campo de proveniência (`data-confidence`, `data-engine`, `data-note`…). Se a pessoa escrever, a
   varredura da exportação (H24) acusa.
