@@ -114,6 +114,19 @@ def test_castling_counts_as_a_move(token):
     assert run is not None and token in run.text
 
 
+@pytest.mark.parametrize("token", ["5.O-O", "5.0-0", "8...O-O", "5.O-O-O", "5.O-O!", "5.O-O±"])
+def test_castling_with_its_number_glued_is_still_a_move(token):
+    """OCR_UI_ROADMAP_C2 passo A5 (analysis §5.3): ``5.O-O`` left the run and
+    the replay lost every move after it.  The number comes off first."""
+    from caissa.ocr.notation.movetext import _is_move, _piece_letters
+
+    assert _is_move(token, _piece_letters(""))
+    text = f"1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 {token} Be7 6.Re1 b5"
+    run = longest_run(text)
+    assert run is not None and token in run.text
+    assert run.moves == 12, run.describe_pt()
+
+
 def test_a_cipher_slot_keeps_its_place_in_the_sequence():
     """``?h2+`` is a move whose piece is still open, and dropping it would
     splice two half-games together and make every later move illegal."""

@@ -21,21 +21,23 @@ minutos — por isso o campo de páginas, para revisar um capítulo de cada vez.
 
 from __future__ import annotations
 
+import itertools
 import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QKeySequence, QPixmap, QShortcut
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
-    QHBoxLayout,
+    QFrame,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
@@ -54,7 +56,13 @@ from caissa.ocr.review import (
     blind_guard,
     decisions_path,
 )
-from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha
+from caissa.ui.theme import pele
+from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas
+from caissa.ui.widgets.fileira_fluida import FileiraFluida
+from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, focaveis
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
+from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
+from caissa.ui.widgets.um_clique import um_clique_por_vez
 
 __all__ = [
     "TITULO",
@@ -227,27 +235,30 @@ class PainelDeRevisaoDeTexto(QWidget):
     def _montar(self) -> None:  # noqa: PLR0915 - one widget tree, top to bottom
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(4, 4, 4, 4)
-        barra = QHBoxLayout()
-        raiz.addLayout(barra)
+        # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` a barra somava 767 px e, com a aba
+        # a 538, o Qt espremia os botões abaixo do texto deles.
+        barra = FileiraFluida(self)
+        raiz.addWidget(barra)
 
         def botao(texto: str, acao: Callable[[], Any], *, dica: str = "") -> QPushButton:
             b = QPushButton(texto, self)
             b.clicked.connect(lambda _c=False: acao())
             if dica:
                 b.setToolTip(dica)
-            barra.addWidget(b)
+            barra.adicionar(b)
             return b
 
         self.btn_abrir = botao("Abrir PDF…", self.escolher_pdf)
-        self.doc_label = QLabel("(nenhum PDF)", self)
+        # Elidido: o caminho do PDF pode ter os 149 caracteres de um nome do acervo.
+        self.doc_label = RotuloQueEncolhe("(nenhum PDF)", self)
         self.doc_label.setAccessibleName("Documento aberto")
-        barra.addWidget(self.doc_label, 1)
-        barra.addWidget(QLabel("Páginas:", self))
+        barra.adicionar(self.doc_label)
+        barra.adicionar(QLabel("Páginas:", self))
         self.pages_edit = QLineEdit(self)
         self.pages_edit.setPlaceholderText("todas · ex.: 10-25, 40")
         self.pages_edit.setFixedWidth(150)
         self.pages_edit.setAccessibleName("Páginas a importar")
-        barra.addWidget(self.pages_edit)
+        barra.adicionar(self.pages_edit)
         self.btn_importar = botao(
             "Importar (OCR)", self.importar, dica="Lê as páginas com OCR e monta a fila de dúvidas"
         )
@@ -259,11 +270,13 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.so_pendentes = QCheckBox("só pendentes", self)
         self.so_pendentes.setChecked(True)
         self.so_pendentes.toggled.connect(lambda _v: self._fill_table())
-        barra.addWidget(self.so_pendentes)
+        barra.adicionar(self.so_pendentes)
 
         corpo = QSplitter(Qt.Orientation.Horizontal, self)
         raiz.addWidget(corpo, 1)
-        self.table = QTableWidget(0, len(COLUNAS), corpo)
+        # PgUp, PgDn, Home e End andam pelas dúvidas com o foco na tabela, e não viram a página do
+        # livro atrás da aba (`TabelaDeLinhas`; crítico da fase 5, ciclo 6)
+        self.table = TabelaDeLinhas(0, len(COLUNAS), corpo)
         self.table.setHorizontalHeaderLabels(list(COLUNAS))
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -271,10 +284,28 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAccessibleName("Dúvidas do livro")
+        # As setas andam pelas linhas -- o cartão mostra a dúvida e o foco fica na tabela -- e o
+        # Enter leva ao campo da verdade; o Tab sai da tabela (com a navegação do Tab ligada, ele
+        # andava de célula em célula e nunca chegava ao cartão). Até o ciclo 5 do crítico da fase
+        # 5, a primeira seta mandava o foco à verdade, e as seguintes ficavam nela.
+        self.table.setTabKeyNavigation(False)
         self.table.itemSelectionChanged.connect(self._on_table_select)
+        self.table.activated.connect(lambda _indice: self.cartao.verdade.setFocus())
         corpo.addWidget(self.table)
 
-        direita = QWidget(corpo)
+        # C18: o cartão numa rolagem vertical. Solto, ele punha esta aba em 501 px de altura -- a
+        # segunda mais alta da pilha de áreas, logo abaixo da Galeria do tronco (516 px, que é quem
+        # segura a pele Foco em 640, no teto do portão `caissa.ui.audit.minimo`). Na rolagem a aba
+        # pede 135 px: quando a Galeria deixar de decidir a altura, não será esta a decidir.
+        rolagem = QScrollArea(corpo)
+        rolagem.setWidgetResizable(True)
+        rolagem.setFrameShape(QFrame.Shape.NoFrame)
+        # A horizontal aparece quando precisa (crítico da fase 5): desligada, o que passava da
+        # largura ficava cortado sem aviso. O conteúdo reflui (fileiras fluidas, texto que quebra
+        # linha) e a barra é a rede para o que ainda não couber.
+        rolagem.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        rolagem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        direita = QWidget()
         dir_ = QVBoxLayout(direita)
         dir_.setContentsMargins(4, 0, 0, 0)
         self.cartao = CartaoDaLinha(direita, vazio=SEM_ITEM)
@@ -284,7 +315,15 @@ class PainelDeRevisaoDeTexto(QWidget):
         self.cartao.andar.connect(self.step)
         self.cartao.alternativa_pedida.connect(self._use_alternative)
         dir_.addWidget(self.cartao)
-        botoes = QHBoxLayout()
+        # Fluida (C18, crítico da fase 5): numa `QHBoxLayout` as seis ações somavam 466 px, e a
+        # 1248x640 «Pular», «Anterior» e «Próxima» ficavam com 0 px à vista. E **fora da rolagem**
+        # (crítico, ciclo 2): dentro dela, abaixo do cartão, no portátil-alvo maximizado (1280x641,
+        # pele Foco) «Aceitar leitura», «Gravar edição» e «Próxima» ficavam abaixo da dobra, com
+        # 0 px à vista, e só se chegava a elas rolando o cartão. O cartão rola; as ações ficam.
+        lado = QWidget(corpo)
+        coluna = QVBoxLayout(lado)
+        coluna.setContentsMargins(0, 0, 0, 0)
+        botoes = FileiraFluida(lado)
         self.acoes: dict[str, QPushButton] = {}
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(Action.ACCEPT)),
@@ -292,36 +331,51 @@ class PainelDeRevisaoDeTexto(QWidget):
             ("Manter como imagem", lambda: self.decide(Action.KEEP_IMAGE)),
             ("Pular", lambda: self.decide(Action.SKIP)),
         ):
-            b = QPushButton(texto, direita)
+            b = QPushButton(texto, lado)
             b.clicked.connect(lambda _c=False, a=acao: a())
-            botoes.addWidget(b)
+            botoes.adicionar(b)
             self.acoes[texto] = b
-        botoes.addStretch(1)
-        for texto, delta in (("◀ anterior", -1), ("próxima ▶", 1)):
-            b = QPushButton(texto, direita)
+        paginador = []
+        for texto, delta in (("Anterior", -1), ("Próxima", 1)):
+            b = QPushButton(texto, lado)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
-            botoes.addWidget(b)
-        dir_.addLayout(botoes)
+            botoes.adicionar(b)
+            paginador.append(b)
+        pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
+        # O segundo clique de um duplo clique num botão que decide e anda não decide o item
+        # seguinte, que ninguém viu (crítico da fase 5, ciclo 9: 2 itens em 4 de 4).
+        self._um_clique_por_vez = um_clique_por_vez(self, *self.acoes.values(), *paginador)
         dir_.addStretch(1)
-        corpo.addWidget(direita)
+        rolagem.setWidget(direita)
+        coluna.addWidget(rolagem, 1)
+        coluna.addWidget(botoes)
+        corpo.addWidget(lado)
         corpo.setStretchFactor(0, 2)
         corpo.setStretchFactor(1, 3)
         corpo.setSizes([440, 560])
+        # A ordem do Tab segue a visual (crítico da fase 5, ciclo 3): a rolagem recebeu o cartão
+        # depois de as ações nascerem, e a cadeia do foco punha as seis ações logo depois da
+        # tabela, antes do cartão que fica acima delas.
+        cadeia = [self.table, *focaveis(self.cartao), *self.acoes.values(), *paginador]
+        for antes, depois in itertools.pairwise(cadeia):
+            QWidget.setTabOrder(antes, depois)
+        # O foco que entra no cartão vindo de fora da rolagem -- o Shift+Tab das ações -- não
+        # passa pelo `focusNextPrevChild` dela, e a rolagem não descia: a 1280x641 o foco caía em
+        # «Letras → figurinas» com 0 px à vista (crítico da fase 5, ciclo 4).
+        self._rolagem = rolagem
+        self._segue_o_foco = RolagemSegueOFoco(rolagem)
 
-        self.status = QLabel("", self)
-        self.status.setStyleSheet("padding:3px 6px; border-top:1px solid #d1d5db;")
+        self.status = RotuloQueEncolhe("", self)   # C18
+        self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         self.status.setAccessibleName("Estado da revisão")
         raiz.addWidget(self.status)
 
     def _atalhos(self) -> None:
-        contexto = Qt.ShortcutContext.WidgetWithChildrenShortcut
-        for tecla, acao in (
-            ("Ctrl+S", self.gravar),
-            ("Ctrl+O", self.escolher_pdf),
-        ):
-            atalho = QShortcut(QKeySequence(tecla), self)
-            atalho.setContext(contexto)
-            atalho.activated.connect(acao)
+        """Nenhum atalho local desde o passo C8: ``Ctrl+S`` e ``Ctrl+O`` eram ambíguos com os
+        globais da janela do tronco (com a aba à frente, nem um nem outro disparava). As duas
+        ações estão em :data:`caissa.ui.views.declarados.COMANDOS_DA_REVISAO_DE_TEXTO`; a
+        janela as liga ao catálogo, ao menu, à paleta e às teclas -- e roteia o ``Ctrl+S``
+        global para :meth:`gravar` quando esta aba está à frente."""
 
     # -- the book ----------------------------------------------------------- #
 
@@ -330,16 +384,25 @@ class PainelDeRevisaoDeTexto(QWidget):
         if caminho:
             self.abrir(Path(caminho))
 
-    def abrir(self, pdf: Path) -> None:
-        """Open the book; a queue saved for it earlier comes back with its log."""
+    def abrir(self, pdf: Path, *, page_count: int | None = None) -> None:
+        """Open the book; a queue saved for it earlier comes back with its log.
+
+        The window passes ``page_count`` (it already has it) so this tab does not
+        reopen the PDF on the interface thread -- the heavy opening that
+        ``caissa.ui.audit.bloqueio`` caught lived in the labelling tab, which
+        defers it until shown.
+        """
         self.pdf = pdf
-        try:
-            with open_pdf(pdf) as doc:
-                self.page_count = doc.page_count
-        except Exception as exc:  # noqa: BLE001 - said in the status, not raised at the window
-            self.page_count = 0
-            self._set_status(f"Não abriu {pdf.name}: {exc}")
-            return
+        if page_count is not None:
+            self.page_count = int(page_count)
+        else:
+            try:
+                with open_pdf(pdf) as doc:
+                    self.page_count = doc.page_count
+            except Exception as exc:  # noqa: BLE001 - said in the status, not raised at the window
+                self.page_count = 0
+                self._set_status(f"Não abriu {pdf.name}: {exc}")
+                return
         self.doc_label.setText(f"{pdf.name} · {self.page_count} páginas")
         salva = self._fila_path()
         self.queue = None
@@ -380,12 +443,44 @@ class PainelDeRevisaoDeTexto(QWidget):
     def importador_cancelar(self) -> None:
         self.importador.cancelar()
 
+    def receber_importacao(self, result: Any, *, pdf: Path | str | None = None) -> bool:
+        """Take an ``ImportResult`` produced elsewhere and build the queue from it.
+
+        OCR_UI ciclo 2, passo C7: the window's own import (the page rail's *Importar*)
+        already ran the OCR; this tab used to run it a second time to get its
+        queue. Now the trunk hands the result over and the OCR runs once per book.
+        ``pdf`` names the book the result belongs to; if it is not the one open
+        here, it is opened first (a saved queue for it is superseded by the
+        fresh result). ``False`` when nothing could be taken (no result, no PDF).
+        """
+        if result is None or getattr(result, "report", None) is None:
+            return False
+        if getattr(result.report, "canceled", False):
+            # A cancelled import is half a book: it serves the page rail, not this
+            # queue, which would replace the book's queue with a partial one.
+            self._set_status("Importação cancelada: a fila de dúvidas não foi substituída.")
+            return False
+        alvo = Path(pdf) if pdf is not None else None
+        if alvo is not None and alvo != self.pdf:
+            self.abrir(alvo)
+        if self.pdf is None:
+            return False
+        self._importado(result)
+        return True
+
     def _importado(self, result: Any) -> None:
         if self.pdf is None:
             return
+        anterior = self.queue
         self.queue = ReviewQueue.from_import(
             result.report, document=self.pdf.stem, reviewer=self.revisor, blind=self._cega
         )
+        # The decisions already taken on this book (loaded from its file, or
+        # taken in this session) come along: the regions they settled were
+        # applied on the import and are not in the new queue, and ``gravar``
+        # writes what the queue knows (C7; critic, fase 1 ciclo 1).
+        if anterior is not None and anterior.items and anterior.items[0].document == self.pdf.stem:
+            self.queue.carry_over(anterior)
         self.current = None
         self._fill_table()
         self.cartao.limpar()
@@ -441,7 +536,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         if not rows or self.queue is None:
             return
         key = self.table.item(rows[0].row(), 0).data(Qt.ItemDataRole.UserRole)
-        self._show_item(self.queue.open(key))
+        self._show_item(self.queue.open(key), focar=not pelas_setas(self.table))
 
     def _select_row(self, row: int) -> None:
         if 0 <= row < self.table.rowCount():
@@ -469,7 +564,7 @@ class PainelDeRevisaoDeTexto(QWidget):
 
     # -- the card ----------------------------------------------------------- #
 
-    def _show_item(self, item: ReviewItem) -> None:
+    def _show_item(self, item: ReviewItem, *, focar: bool = True) -> None:
         self.current = item
         if self.pdf is not None:
             x0, y0, x1, y1 = item.rect
@@ -511,7 +606,7 @@ class PainelDeRevisaoDeTexto(QWidget):
         if item.suggestion:
             reasons.append(f"sugestão (não aplicada): {item.suggestion}")
         self.cartao.motivo.setText(" · ".join(reasons))
-        self.cartao.mostrar_verdade(entry.text if entry and entry.text else item.text)
+        self.cartao.mostrar_verdade(entry.text if entry and entry.text else item.text, focar=focar)
 
     def _use_alternative(self, index: int) -> None:
         texto = self.cartao.alternativa(index)

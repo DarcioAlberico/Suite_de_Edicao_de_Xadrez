@@ -21,7 +21,9 @@ Three things it does that the detection harness does not:
 
 Variants::
 
-    baseline           trunk detection, unchanged
+    baseline           trunk detection as it ships -- since OCR_UI cycle 2 step A1 this
+                       is the recall pack (`config.DEFAULT_RECALL`), so it equals recall-pack
+    raw                the detector with every recovery off (the pre-A1 baseline)
     recall-pack        the three recoveries of caissa.vision.detect.recall (what ships)
     recall-pack+refine recall-pack plus RecognitionOptions.refine_detected_boards
 
@@ -111,6 +113,8 @@ def _variant(name: str) -> Any:
 
     if name == "baseline":
         return contextlib.nullcontext()
+    if name == "raw":
+        return recall_pack(scales=(), rescue_squares=False, embedded_floor=None)
     return recall_pack()
 
 
@@ -120,17 +124,131 @@ def _slice(report: Any) -> dict[str, Any]:
         "pages", "annotated", "detected", "matched", "false_positives", "detection_recall",
         "detection_precision", "legal", "above_gate", "exported", "export_rate", "comparable",
         "exact", "conditional_exact", "exported_comparable", "exported_exact", "exported_wrong",
-        "field_exact", "repaired_squares", "repaired_diagrams", "seconds", "seconds_per_diagram",
+        "field_exact", "repaired_squares", "repaired_diagrams", "next_move_checked",
+        "next_move_replayed", "next_move_repaired", "next_move_repaired_exact",
+        "next_move_repaired_wrong", "next_move_ambiguous", "colour_repaired",
+        "colour_repaired_squares", "colour_repaired_exact", "colour_repaired_wrong",
+        "stipulation_checked", "stipulation_closed", "stipulation_failed", "stipulation_unverified",
+        "stipulation_repaired", "stipulation_repaired_exact", "stipulation_repaired_wrong",
+        "stipulation_ambiguous", "stipulation_truth_checked", "stipulation_truth_closes",
+        "stipulation_truth_failed", "contaminated", "contaminated_exported",
+        "contaminated_exported_comparable", "contaminated_exported_exact",
+        "clean_exported_comparable", "field_exact_clean",
+        "seconds", "seconds_per_diagram",
     )
     return {key: data[key] for key in keep if key in data}
 
 
-def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path) -> tuple[dict[str, Any], Any]:
+def _stipulation_engine(motor: str | None) -> Any:
+    """The engine resolver for ``RecognitionOptions.stipulation_engine`` (C12): ``None`` keeps the
+    trunk's default (settings + ``find_engine``), ``"nenhum"`` never opens a process, a path opens
+    that binary once for the whole measurement."""
+    if motor is None:
+        return None
+    if motor.strip().lower() in ("nenhum", "none", ""):
+        return lambda: None
+    from chess_diagram_ocr.engine import EngineAnalyzer
+    from chess_diagram_ocr.estipulacao import registrar_fecho
+
+    analyzer = EngineAnalyzer(Path(motor), threads=1)
+    # The UCI process has a reader thread that is not a daemon: without a close that runs
+    # *before* the interpreter joins its threads, the measurement hangs after printing.
+    registrar_fecho(analyzer)
+    return lambda: analyzer
+
+
+def _profile_calibrator(path: Path | None, sabotage: str = "") -> Any:
+    """A colour calibrator taken from one profile file for every PDF (C5 measurement), or the
+    default resolver (the profile stored per book) when no path is given.  ``cor_trocada``
+    swaps the white and black samples of whatever calibrator is resolved."""
+    from chess_diagram_ocr.cor_por_livro import CalibradorDeCor, calibrador_do_livro
+
+    fixed = None
+    if path is not None:
+        import json
+
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        fixed = CalibradorDeCor.from_dict(data.get("colour") if "colour" in data else data)
+
+    def resolve(pdf_source: Any) -> Any:
+        calibrador = fixed if fixed is not None else calibrador_do_livro(pdf_source)
+        if calibrador is not None and sabotage == "cor_trocada":
+            return CalibradorDeCor(brancas=calibrador.pretas, pretas=calibrador.brancas,
+                                   diagramas=calibrador.diagramas, medida=calibrador.medida)
+        return calibrador
+
+    return resolve if (path is not None or sabotage == "cor_trocada") else None
+
+
+@contextlib.contextmanager
+def _sabotage(name: str):
+    """C11 sabotage ``lance_vizinho``: every diagram of a page gets the *next* diagram's line
+    of moves (cyclic); a page with one diagram keeps its own.  A next-move signal that still
+    repairs under this feeds on coincidence, and the gate must say so.
+
+    C12 sabotage ``estipulacao_vizinha``: the same rotation for the printed demand -- but the
+    demand of a problem page is usually the page's (``#2`` for all six), so the rotation
+    only bites where captions differ; the report says how many it moved."""
+    if name not in ("lance_vizinho", "estipulacao_vizinha"):
+        yield
+        return
+    import dataclasses
+
+    from chess_diagram_ocr import service as trunk_service
+
+    original = trunk_service.contexts_for_pdf_page
+
+    def rotated(*args: Any, **kwargs: Any) -> Any:
+        contexts = list(original(*args, **kwargs))
+        if len(contexts) < 2:
+            return contexts
+        if name == "estipulacao_vizinha":
+            demands = [getattr(c, "stipulation", None) if c is not None else None for c in contexts]
+            return [
+                None if context is None
+                else dataclasses.replace(context, stipulation=demands[(index + 1) % len(contexts)])
+                for index, context in enumerate(contexts)
+            ]
+        lines = [getattr(c, "first_moves_text", "") if c is not None else "" for c in contexts]
+        numbers = [getattr(c, "first_move_number", None) if c is not None else None for c in contexts]
+        out = []
+        for index, context in enumerate(contexts):
+            source = (index + 1) % len(contexts)
+            if context is None:
+                out.append(None)
+                continue
+            out.append(dataclasses.replace(
+                context, first_moves_text=lines[source], first_move_number=numbers[source]))
+        return out
+
+    trunk_service.contexts_for_pdf_page = rotated
+    try:
+        yield
+    finally:
+        trunk_service.contexts_for_pdf_page = original
+
+
+def _training_pages(root: Path) -> dict[tuple[str, int], int]:
+    """C15: the pages with a `train` sample, the way the trunk's `cvoff-field` computes them
+    (`labels.pages_with_training_samples`).  Without this the report published
+    `contaminated 0` for a field set that has training pages -- the clean number needs it."""
+    from chess_diagram_ocr.labels import LabelStore, pages_with_training_samples
+    from chess_diagram_ocr.splits import load_splits
+
+    labels, splits = root / "data" / "labels.csv", root / "data" / "splits.csv"
+    if not labels.exists() or not splits.exists():
+        return {}
+    return pages_with_training_samples(LabelStore(labels).read(), load_splits(splits))
+
+
+def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path,
+             sabotage: str = "") -> tuple[dict[str, Any], Any]:
     from chess_diagram_ocr.field_eval import evaluate_field
 
     started = time.perf_counter()
-    with _variant(variant):
-        report = evaluate_field(pages, options=options, pdf_dir=pdf_dir)
+    with _variant(variant), _sabotage(sabotage):
+        report = evaluate_field(pages, options=options, pdf_dir=pdf_dir,
+                                training_pages=_training_pages(pdf_dir.parent))
     elapsed = time.perf_counter() - started
     row = _slice(report)
     row["wall_s"] = round(elapsed, 3)
@@ -140,14 +258,30 @@ def run_once(pages: list[Any], options: Any, variant: str, pdf_dir: Path) -> tup
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--variant", action="append", default=[],
-                        choices=("baseline", "recall-pack", "recall-pack+refine"))
+                        choices=("baseline", "raw", "recall-pack", "recall-pack+refine"))
     parser.add_argument("--runs", type=int, default=3)
+    parser.add_argument("--motor", default=None,
+                        help="C12: o binário UCI para mate em 3+ (padrão: as configurações do tronco e "
+                             "`engine.find_engine`; `nenhum` para nunca abrir um processo).")
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--max-boards", type=int, default=12)
     parser.add_argument("--model", type=Path, default=None, help="Checkpoint under test; default is production.")
     parser.add_argument("--corrections", action="store_true", help="Also report with the proven-error overlay.")
     parser.add_argument("--tag", default="")
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "benchmarks" / "reports")
+    parser.add_argument("--sabotar", default="", choices=("", "sem_lance", "lance_vizinho", "sem_cor",
+                                                            "cor_trocada", "sem_evidencia",
+                                                            "sem_estipulacao", "estipulacao_vizinha"),
+                        help="C11: sem_lance desliga o lance seguinte (RecognitionOptions.next_move); "
+                             "lance_vizinho dá a cada diagrama a linha de lances do diagrama vizinho. "
+                             "C12: sem_estipulacao desliga a exigência (RecognitionOptions.stipulation); "
+                             "estipulacao_vizinha dá a cada diagrama a exigência do vizinho. "
+                             "C5: sem_cor desliga o calibrador de cor; cor_trocada troca as amostras "
+                             "brancas pelas pretas no perfil do livro (os protótipos embaralhados). "
+                             "sem_evidencia desliga os dois (o antes da fase 3).")
+    parser.add_argument("--perfil", type=Path, default=None,
+                        help="C5: um perfil de livro (JSON de caissa.ocr.book_profile) a usar em todo "
+                             "PDF da medição, em vez do perfil gravado por livro.")
     args = parser.parse_args(argv)
     variants = args.variant or ["recall-pack"]
     if args.runs < 3:
@@ -175,12 +309,19 @@ def main(argv: list[str] | None = None) -> int:
         options = RecognitionOptions(
             model_path=Path(model), max_boards=args.max_boards, dpi=args.dpi,
             refine_detected_boards=refine,
+            next_move=args.sabotar not in ("sem_lance", "sem_evidencia"),
+            colour=args.sabotar not in ("sem_cor", "sem_evidencia"),
+            colour_calibrator=_profile_calibrator(args.perfil, args.sabotar),
+            # C12: a exigência; `sem_evidencia` continua sendo «o antes da fase 3», e a fase 4
+            # desliga a sua com o interruptor próprio.
+            stipulation=args.sabotar not in ("sem_estipulacao", "sem_evidencia"),
+            stipulation_engine=_stipulation_engine(args.motor),
         )
         for ruler, pages, hit in rulers:
             runs = []
             reports = []
             for _ in range(args.runs):
-                row, report = run_once(pages, options, detection, root / "PDF")
+                row, report = run_once(pages, options, detection, root / "PDF", args.sabotar)
                 runs.append(row)
                 reports.append(report)
             drift = {key for row in runs for key in INVARIANT_KEYS if row[key] != runs[0][key]}
@@ -194,6 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             chosen["wall_s_all"] = [row["wall_s"] for row in runs]
             chosen["runs"] = args.runs
             chosen["variant"] = variant
+            chosen["sabotage"] = args.sabotar
             chosen["ruler"] = ruler
             chosen["model"] = str(model)
             chosen["corrections_applied"] = [
@@ -203,6 +345,9 @@ def main(argv: list[str] | None = None) -> int:
             chosen["per_regime"] = {name: _slice(part) for name, part in sorted(report.per_regime.items())}
             chosen["per_book"] = {name: _slice(part) for name, part in sorted(report.per_book.items())}
             chosen["wrong"] = list(report.wrong)
+            # C17: one row per matched diagram, so any threshold can be re-cut from the JSON
+            # (`benchmarks/model_ruler.py` draws the risk × coverage curve from these).
+            chosen["diagrams"] = list(getattr(report, "diagrams", []))
             results.append(chosen)
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -214,14 +359,27 @@ def main(argv: list[str] | None = None) -> int:
         encoding="utf-8",
     )
 
-    header = f"{'variant':<20}{'ruler':<14}{'recall':>8}{'prec':>7}{'exp':>6}{'cmp':>5}{'ok':>5}{'field_exact':>13}{'s/diag':>9}"
+    header = (f"{'variant':<20}{'ruler':<14}{'recall':>8}{'prec':>7}{'exp':>6}{'cmp':>5}{'ok':>5}"
+              f"{'field_exact':>13}{'clean':>8}{'n_clean':>8}{'s/diag':>9}")
     print("\n" + header)
     print("-" * len(header))
     for row in results:
+        # C15: o número limpo (páginas sem amostra de treino) ao lado do cheio, sempre.
         print(f"{row['variant']:<20}{row['ruler']:<14}{row['detection_recall']:>8.4f}{row['detection_precision']:>7.4f}"
               f"{row['exported']:>6}{row['exported_comparable']:>5}{row['exported_exact']:>5}"
-              f"{row['field_exact']:>13.4f}{row['seconds_per_diagram']:>9.4f}")
+              f"{row['field_exact']:>13.4f}{row.get('field_exact_clean', 0.0):>8.4f}"
+              f"{row.get('clean_exported_comparable', 0):>8}{row['seconds_per_diagram']:>9.4f}")
 
+    c12 = results[-1]
+    print(
+        f"\nC12 estipulação: checked {c12.get('stipulation_checked', 0)} · closed {c12.get('stipulation_closed', 0)}"
+        f" · failed {c12.get('stipulation_failed', 0)} · unverified {c12.get('stipulation_unverified', 0)}"
+        f" · repaired {c12.get('stipulation_repaired', 0)} (exact {c12.get('stipulation_repaired_exact', 0)},"
+        f" wrong {c12.get('stipulation_repaired_wrong', 0)}) · ambiguous {c12.get('stipulation_ambiguous', 0)}"
+        f" · truth closes {c12.get('stipulation_truth_closes', 0)}/{c12.get('stipulation_truth_checked', 0)}"
+    )
+    for item in c12.get("stipulation_truth_failed", []) or []:
+        print("  verdade que não fecha: " + item)
     print("\nper stratum (regime), last variant/ruler shown above:")
     last = results[-1]
     for name, part in last["per_regime"].items():

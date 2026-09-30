@@ -116,7 +116,15 @@ _FALLBACK_FILES: Mapping[str, tuple[str, ...]] = {
     "italic": ("timesi.ttf", "georgiai.ttf", "DejaVuSerif-Italic.ttf", "ariali.ttf"),
     "bolditalic": ("timesbi.ttf", "georgiaz.ttf", "arialbi.ttf"),
     "mono": ("cour.ttf", "consola.ttf", "DejaVuSansMono.ttf"),
+    # OCR_UI_ROADMAP_C2 A6: none of the text faces above has U+2654-265F (the
+    # figurines) nor U+2A71/U+2A72/U+2A01 (the NAG signs); a run that needs
+    # them is broken by face and set with this one. ``seguisym`` covers every
+    # glyph ``NAG_SYMBOLS`` prints; DejaVu Sans lacks only ``⩲ ⩱ ⌓``.
+    "symbol": ("seguisym.ttf", "DejaVuSans.ttf", "NotoSansSymbols2-Regular.ttf"),
 }
+
+_FACE_FALLBACK_ORDER: tuple[str, ...] = ("symbol", "roman", "bold", "italic", "bolditalic", "mono")
+"""Which loaded faces to try, in order, for a character the run's own face lacks."""
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -635,6 +643,8 @@ class PdfExporter(Exporter):
         self.pages: list[tuple[ContentStream, list[Any]]] = []
         self.outline: list[tuple[int, str, int, float]] = []
         self.skipped: dict[str, int] = {}
+        self.missing_glyphs: dict[str, int] = {}
+        self._face_for_char: dict[tuple[str, str], EmbeddedFont | None] = {}
         self.vector_shapes = 0
         self._new_page()
 
@@ -681,6 +691,15 @@ class PdfExporter(Exporter):
             context.note(
                 f"Elementos SVG fora do vocabulario do pintor vetorial foram ignorados: "
                 f"{listed}."
+            )
+        if self.missing_glyphs:
+            listed = ", ".join(
+                f"U+{ord(char):04X} '{char}' ({count})"
+                for char, count in sorted(self.missing_glyphs.items())
+            )
+            context.note(
+                "Caracteres sem glifo em nenhuma fonte embutida foram omitidos do PDF "
+                f"(instale seguisym.ttf ou DejaVuSans.ttf): {listed}."
             )
         context.note(
             f"{len(fonts)} fonte(s) embutida(s) em subconjunto; "
@@ -751,6 +770,98 @@ class PdfExporter(Exporter):
             else "roman"
         )
         return self.faces.get(key) or self.faces["roman"]
+
+    def _face_for(self, char: str, preferred: EmbeddedFont) -> EmbeddedFont | None:
+        """Choose the face that can draw one character.
+
+        The run's own face wins when it has the glyph; otherwise the loaded
+        faces are tried in :data:`_FACE_FALLBACK_ORDER`, ``symbol`` first, so a
+        figurine or a NAG sign inside a Times paragraph is set from Segoe UI
+        Symbol rather than dropped (OCR_UI_ROADMAP_C2 A6).
+
+        Args:
+            char: A single character.
+            preferred: The face the run was measured for.
+
+        Returns:
+            A face with the glyph, or ``None`` when no loaded face has it.
+        """
+        key = (char, preferred.resource_name)
+        try:
+            return self._face_for_char[key]
+        except KeyError:
+            pass
+        found: EmbeddedFont | None = preferred if preferred.has_char(char) else None
+        if found is None:
+            for name in _FACE_FALLBACK_ORDER:
+                face = self.faces.get(name)
+                if face is not None and face is not preferred and face.has_char(char):
+                    found = face
+                    break
+        self._face_for_char[key] = found
+        return found
+
+    def _by_face(self, runs: Sequence[_Run]) -> list[_Run]:
+        """Split runs so every run is drawn by a face that has all its glyphs.
+
+        A character no loaded face can draw is omitted, as before, but never
+        silently: the substitution is on the degradation record and counted for
+        the closing note. The split happens before measuring, so a mixed line
+        is measured with the faces it will actually be set in.
+
+        Args:
+            runs: The runs as the inlines produced them.
+
+        Returns:
+            The same text in face-homogeneous runs, in order.
+        """
+        from dataclasses import replace
+
+        out: list[_Run] = []
+        for run in runs:
+            if not run.text or run.text == "\n":
+                out.append(run)
+                continue
+            current: EmbeddedFont | None = None
+            buffer: list[str] = []
+            for char in run.text:
+                if char.isspace():
+                    # Whitespace stays with the run's own face: ``_split_words``
+                    # turns it into the word gap, and a newline or a tab the face
+                    # has no glyph for is not a lost character.
+                    face: EmbeddedFont | None = run.font
+                else:
+                    face = self._face_for(char, run.font)
+                if face is None:
+                    self._glyph_missing(char)
+                    continue
+                if face is not current and buffer:
+                    out.append(replace(run, text="".join(buffer), font=current))
+                    buffer = []
+                current = face
+                buffer.append(char)
+            if buffer and current is not None:
+                out.append(replace(run, text="".join(buffer), font=current))
+        return out
+
+    def _glyph_missing(self, char: str) -> None:
+        """Record a character that no embedded face can draw.
+
+        Args:
+            char: The character being omitted.
+        """
+        if char not in self.missing_glyphs:
+            self.context.recorder.substituted(
+                prop="font_glyph",
+                path=self.context.path,
+                original=f"U+{ord(char):04X} '{char}'",
+                replacement="omitido",
+                detail=(
+                    "Nenhuma fonte embutida tem o glifo; o caractere foi omitido do PDF. "
+                    "Instale seguisym.ttf, DejaVuSans.ttf ou Noto Sans Symbols 2."
+                ),
+            )
+        self.missing_glyphs[char] = self.missing_glyphs.get(char, 0) + 1
 
     # -- pages -------------------------------------------------------------
 
@@ -1159,7 +1270,7 @@ class PdfExporter(Exporter):
             alignment: How to align each line.
             line_height: Baseline-to-baseline distance in points.
         """
-        words = _split_words(runs)
+        words = _split_words(self._by_face(runs))
         if not words:
             return
         line: list[_Run] = []
@@ -1220,7 +1331,10 @@ class PdfExporter(Exporter):
             y: Baseline in points from the page bottom.
             extra: Additional advance per space, for justification.
         """
-        for run in line:
+        # Runs coming from ``_place`` are already face-homogeneous; the table
+        # cells that call this directly are split here. The ``has_char`` filter
+        # below is then a no-op kept as the last line of defence.
+        for run in self._by_face(line):
             if not run.text:
                 continue
             usable = "".join(char for char in run.text if run.font.has_char(char))
@@ -1375,6 +1489,34 @@ def _measure(run: _Run) -> float:
     return run.font.text_width(usable, run.size) if usable else 0.0
 
 
+def _font_directories() -> list[Path]:
+    """Where text faces are looked for: the fixed list, then the chess-font paths.
+
+    :func:`caissa.typeset.fonts.search_paths` knows the per-user font folder on
+    Windows and ``CAISSA_FONT_PATH``, which is where a packaged build ships a
+    symbol face; it is consulted after the system folders so the choice on a
+    machine with both stays what it was.
+
+    Returns:
+        The directories, without duplicates, in search order.
+    """
+    directories = list(_FONT_SEARCH)
+    try:
+        from caissa.typeset import fonts as chess_fonts
+
+        directories.extend(chess_fonts.search_paths())
+    except Exception:  # noqa: BLE001 - the fixed list is enough to keep working
+        pass
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for directory in directories:
+        if directory in seen:
+            continue
+        seen.add(directory)
+        unique.append(directory)
+    return unique
+
+
 def _find_font(candidates: Sequence[str]) -> Path | None:
     """Find the first of several font files on this machine.
 
@@ -1384,7 +1526,7 @@ def _find_font(candidates: Sequence[str]) -> Path | None:
     Returns:
         The path, or ``None`` when none is installed.
     """
-    for directory in _FONT_SEARCH:
+    for directory in _font_directories():
         if not directory.exists():
             continue
         for name in candidates:

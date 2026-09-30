@@ -58,6 +58,10 @@ class GateThresholds:
     dpi150_strata: tuple[str, ...] = ("scan_degraded_150",)
     #: Rows whose CER is at most this are "correct" for calibration purposes.
     correct_cer: float = 0.02
+    #: An **accepted** row whose CER is above this lost text and went into the book as if it
+    #: were whole -- the count B14 of the cycle 2 exists to bring down (30 in the phase 4
+    #: ``sol.json``: the photo that lost the end of every line, accepted at 0,87).
+    accepted_wrong_cer: float = 0.10
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +120,10 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
     measured = [r for r in rows if not r.get("control")]
     answered = _answered(measured)
     cers = [float(r["cer"]) for r in answered]
+    # B11: the CER over **every** measured item, an abstention costing the whole page (1,0);
+    # and the CER of the text the service withheld, over the abstained items that had any.
+    cers_all = [float(r.get("cer_all", r["cer"] if r.get("answered") else 1.0)) for r in measured]
+    cers_withheld = [float(r["cer_withheld"]) for r in measured if r.get("cer_withheld") is not None]
     truth_moves = sum(int(r.get("moves_truth", 0)) for r in answered)
     kept = sum(int(r.get("moves_kept", 0)) for r in answered)
     invented = sum(int(r.get("moves_invented", 0)) for r in answered)
@@ -127,6 +135,8 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
     reviews = [r for r in measured if r.get("decision") == "review"]
     abstained = [r for r in measured if r.get("decision") == "abstained"]
     silent = [r for r in answered if r.get("below_threshold") and r.get("decision") == "accepted"]
+    accepted_wrong = [r for r in answered if r.get("decision") == "accepted"
+                      and float(r["cer"]) > t.accepted_wrong_cer]
     control_hits = [r for r in controls if r.get("answered") and r.get("hypothesis_chars", 0)]
     reading_orders = [float(r["reading_order"]) for r in answered
                       if r.get("reading_order") is not None]
@@ -143,6 +153,9 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
         "cer_mean": round(cer_mean, 5),
         "cer_ci": [round(cer_lo, 5), round(cer_hi, 5)],
         "cer_median": round(sorted(cers)[len(cers) // 2], 5) if cers else 0.0,
+        "cer_all_mean": round(mean(cers_all), 5) if cers_all else 0.0,
+        "cer_withheld_mean": round(mean(cers_withheld), 5) if cers_withheld else None,
+        "withheld_with_text": len(cers_withheld),
         "wer_mean": round(mean(float(r.get("wer", 0.0)) for r in answered), 5),
         "line_exact_mean": round(mean(float(r.get("line_exact", 0.0)) for r in answered), 4),
         "moves_truth": truth_moves,
@@ -152,6 +165,7 @@ def summarise_rows(rows: Sequence[Row], *, thresholds: GateThresholds | None = N
         "move_accuracy": round(kept / truth_moves, 5) if truth_moves else 1.0,
         "insertion_rate": round(mean(insertions), 5),
         "silent_below_threshold": len(silent),
+        "accepted_wrong": len(accepted_wrong),
         "controls": len(controls),
         "control_false_positives": len(control_hits),
         "reading_order_mean": round(mean(reading_orders), 4) if reading_orders else None,

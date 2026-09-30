@@ -296,3 +296,17 @@ def test_all_twelve_pieces_are_drawable_in_a_verified_family(verified_specs):
         font = load_font(spec)
         missing = [p for p in PIECES if font.piece_outline(p).is_empty()]
         assert not missing, f"{spec.key} marcada VERIFIED mas sem glifo para {missing}"
+
+
+def test_letters_come_from_the_canonical_table_not_a_private_copy():
+    """OCR_UI_ROADMAP_C2 A6 (ADR-0008): one table. The private copy said `К`/`Ко` for the
+    Russian king and knight where `notation_tables` says `Кр`/`К`, and LaTeX printed the
+    copy."""
+    assert not hasattr(fig, "LANGUAGE_LETTERS")
+    assert fig.translate_san("Kd1", "ru") == "Крd1"
+    assert fig.translate_san("Nf3", "ru") == "Кf3"
+    assert fig.language_letter("N", "ru") == "К"
+    assert fig.language_letter("K", "ru") == "Кр"
+    assert fig.language_letter("N", "xx") == "N", "idioma sem tabela cai no ingles"
+    runs = fig.san_to_figurine_runs("Nf3", have_glyph=set(), fallback_language="ru")
+    assert runs[0].content == "К"

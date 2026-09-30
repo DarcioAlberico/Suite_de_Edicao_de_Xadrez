@@ -45,6 +45,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence
 
+from caissa.notation.nag_table import move_suffix_class
+
 __all__ = [
     "CIPHER_SLOT",
     "CipherReport",
@@ -146,10 +148,14 @@ _MAX_PREFIX = 5
 _LINKS = r"x:×\-‐‑‒–—−"
 
 #: The body of a move after the piece letter.  Anchored at the end so that what
-#: sits in front of it is exactly the piece slot.
+#: sits in front of it is exactly the piece slot.  The **tail** it tolerates
+#: after the square is the annotation alphabet of
+#: :mod:`caissa.notation.nag_table` (``±``, ``⩲``, ``!?``, ``²``…, passo A4) --
+#: it is the tail that widens here, never the substitution alphabet of the
+#: cipher, which stays what the page proves.
 _MOVE_BODY = re.compile(
     rf"(?:[a-h]?[1-8]?[{_LINKS}]?[a-h][1-8]"
-    rf"(?:=(?P<promo>[A-Za-z?]))?[+#!?]{{0,3}})$")
+    rf"(?:=(?P<promo>[A-Za-z?]))?[{move_suffix_class()}]{{0,3}})$")
 
 #: A move number glued to the move: ``4.Kd3``, ``1...Nf6``.
 _MOVE_NUMBER = re.compile(r"^\d{1,3}\.{1,3}")

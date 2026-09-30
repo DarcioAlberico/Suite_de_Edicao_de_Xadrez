@@ -1,0 +1,6101 @@
+{
+ "lost": 0.1,
+ "good": 0.02,
+ "strata": [],
+ "calib": {
+  "rows": [
+   {
+    "id": "authored:es:6",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00312,
+    "coverage": 1.0,
+    "letters": 242
+   },
+   {
+    "id": "authored:es:6",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00935,
+    "coverage": 1.0,
+    "letters": 319
+   },
+   {
+    "id": "authored:es:6",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00935,
+    "coverage": 1.0,
+    "letters": 238
+   },
+   {
+    "id": "authored:es:6",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.01869,
+    "coverage": 1.0,
+    "letters": 242
+   },
+   {
+    "id": "authored:es:6",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.03427,
+    "coverage": 1.0,
+    "letters": 236
+   },
+   {
+    "id": "authored:pt:20",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00395,
+    "coverage": 1.0,
+    "letters": 200
+   },
+   {
+    "id": "authored:pt:20",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00791,
+    "coverage": 1.0,
+    "letters": 281
+   },
+   {
+    "id": "authored:pt:20",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00395,
+    "coverage": 1.0,
+    "letters": 191
+   },
+   {
+    "id": "authored:pt:20",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01186,
+    "coverage": 1.0,
+    "letters": 228
+   },
+   {
+    "id": "authored:pt:20",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00395,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "authored:ru:14",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.08846,
+    "coverage": 1.0,
+    "letters": 208
+   },
+   {
+    "id": "authored:ru:14",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.06538,
+    "coverage": 1.0,
+    "letters": 310
+   },
+   {
+    "id": "authored:ru:14",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.39231,
+    "coverage": 0.9,
+    "letters": 200
+   },
+   {
+    "id": "authored:ru:14",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.10769,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "authored:ru:14",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.14231,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:290:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 3
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:305:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00897,
+    "coverage": 1.0,
+    "letters": 184
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:30:144",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 33
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:381:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.05844,
+    "coverage": 0.9587,
+    "letters": 121
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:460:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.02353,
+    "coverage": 1.0,
+    "letters": 68
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:572:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 84
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:255:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 67
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:280:251",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.36364,
+    "coverage": null,
+    "letters": 9
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:294:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 165
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:375:53",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:525:290",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 12
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:222:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:22:25",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:235:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01762,
+    "coverage": 1.0,
+    "letters": 171
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:30:145",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:352:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 26
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:383:253",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 49
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:485:54",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:577:55",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.11765,
+    "coverage": 1.0,
+    "letters": 14
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:105:150",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:219:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.10345,
+    "coverage": 0.95,
+    "letters": 40
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:313:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 65
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:525:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.02128,
+    "coverage": 1.0,
+    "letters": 74
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:216:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00417,
+    "coverage": 1.0,
+    "letters": 188
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:461:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00662,
+    "coverage": 1.0,
+    "letters": 118
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:584:225",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 69
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:119:251",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.26923,
+    "coverage": 1.0,
+    "letters": 15
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:160:222",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 137
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:174:72",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 13
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:187:53",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 35
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:290:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 111
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:475:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 130
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:524:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 63
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:69:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.02206,
+    "coverage": 1.0,
+    "letters": 103
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:121:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 74
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:173:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 45
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:346:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 34
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:357:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.02299,
+    "coverage": 1.0,
+    "letters": 68
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:429:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 69
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:487:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 256
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:58:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00699,
+    "coverage": 1.0,
+    "letters": 113
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:58:24",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0027,
+    "coverage": 1.0,
+    "letters": 283
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:22:372",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:27:143",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:431:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.05109,
+    "coverage": 0.9528,
+    "letters": 106
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:498:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01087,
+    "coverage": 1.0,
+    "letters": 285
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:54:251",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 8
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:129:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01183,
+    "coverage": 1.0,
+    "letters": 138
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:179:53",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 3
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:221:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 33
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:403:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 42
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:457:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0431,
+    "coverage": 1.0,
+    "letters": 87
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:472:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.09091,
+    "coverage": 1.0,
+    "letters": 34
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:506:253",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 5
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:58:24",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 293
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:509:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 235
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:54:221",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01712,
+    "coverage": 1.0,
+    "letters": 217
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:286:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:302:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00532,
+    "coverage": 1.0,
+    "letters": 154
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:30:145",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 33
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:365:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01075,
+    "coverage": 1.0,
+    "letters": 530
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:396:53",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.08108,
+    "coverage": 1.0,
+    "letters": 54
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:493:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 102
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:58:53",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.05797,
+    "coverage": 1.0,
+    "letters": 54
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:119:24",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.04651,
+    "coverage": 1.0,
+    "letters": 25
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:145:24",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01429,
+    "coverage": 1.0,
+    "letters": 51
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:27:144",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 32
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:55:24",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00637,
+    "coverage": 1.0,
+    "letters": 129
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:27:144",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:289:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 516
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:433:59",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 22
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:82:222",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 305
+   },
+   {
+    "id": "real:Melhores Finais de Capab:370:634",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "real:Melhores Finais de Capab:370:634",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "real:Melhores Finais de Capab:370:634",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 279
+   },
+   {
+    "id": "real:Melhores Finais de Capab:370:634",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.01984,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:716:49",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00589,
+    "coverage": 1.0,
+    "letters": 409
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:716:49",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00589,
+    "coverage": 1.0,
+    "letters": 409
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:716:49",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00786,
+    "coverage": 1.0,
+    "letters": 361
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:716:49",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00786,
+    "coverage": 1.0,
+    "letters": 368
+   },
+   {
+    "id": "real:The_Modern_Endgame_Manua:5:90:75",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 70
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:341",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 269
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:341",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 269
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:341",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0119,
+    "coverage": 1.0,
+    "letters": 401
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:341",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.03571,
+    "coverage": 1.0,
+    "letters": 263
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:57",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 239
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:57",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 239
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:57",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 353
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:108:57",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.03367,
+    "coverage": 1.0,
+    "letters": 235
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:339",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 108
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:339",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 108
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:339",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 155
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:339",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.03623,
+    "coverage": 1.0,
+    "letters": 109
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:144:278",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 231
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:144:278",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 231
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:144:278",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 342
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:144:278",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0036,
+    "coverage": 1.0,
+    "letters": 227
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:547",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 162
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:547",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 162
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:547",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 234
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:547",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00478,
+    "coverage": 1.0,
+    "letters": 163
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:160:487",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 137
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:160:487",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 137
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:160:487",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00602,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:160:487",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00602,
+    "coverage": 1.0,
+    "letters": 136
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:176:733",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:176:733",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:176:733",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 118
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:176:733",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.21739,
+    "coverage": 1.0,
+    "letters": 98
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:48:605",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 192
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:48:605",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 192
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:48:605",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00418,
+    "coverage": 1.0,
+    "letters": 284
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:48:605",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00418,
+    "coverage": 1.0,
+    "letters": 189
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:42",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 248
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:42",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 248
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:42",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 374
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:42",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0066,
+    "coverage": 1.0,
+    "letters": 243
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:60:324",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 483
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:60:324",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 482
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:60:324",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00511,
+    "coverage": 1.0,
+    "letters": 706
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:60:324",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.1431,
+    "coverage": 1.0,
+    "letters": 477
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:72:177",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:72:177",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:72:177",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00398,
+    "coverage": 1.0,
+    "letters": 309
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:72:177",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.01195,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :131:12",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 203
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :131:12",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 268
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :131:12",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00376,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :131:12",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00376,
+    "coverage": 1.0,
+    "letters": 228
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :131:12",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :145:14",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 277
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :145:14",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 274
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :145:14",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 271
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :145:14",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 276
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :145:14",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 273
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :180:18",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 249
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :180:18",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01923,
+    "coverage": 1.0,
+    "letters": 300
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :180:18",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00321,
+    "coverage": 1.0,
+    "letters": 231
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :180:18",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00321,
+    "coverage": 1.0,
+    "letters": 245
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :180:18",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.01282,
+    "coverage": 1.0,
+    "letters": 235
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :264:29",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 227
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :264:29",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01672,
+    "coverage": 1.0,
+    "letters": 228
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :264:29",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02676,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :264:29",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00669,
+    "coverage": 1.0,
+    "letters": 227
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :264:29",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.17391,
+    "coverage": 0.8756,
+    "letters": 225
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :47:0",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.01143,
+    "coverage": 1.0,
+    "letters": 258
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :47:0",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01143,
+    "coverage": 1.0,
+    "letters": 331
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :47:0",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00571,
+    "coverage": 1.0,
+    "letters": 261
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :47:0",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00286,
+    "coverage": 1.0,
+    "letters": 302
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :47:0",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.00571,
+    "coverage": 1.0,
+    "letters": 281
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :54:1",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 240
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :54:1",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00301,
+    "coverage": 1.0,
+    "letters": 338
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :54:1",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00301,
+    "coverage": 1.0,
+    "letters": 238
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :54:1",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00301,
+    "coverage": 1.0,
+    "letters": 256
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :54:1",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.10542,
+    "coverage": 1.0,
+    "letters": 242
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :89:6",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00302,
+    "coverage": 1.0,
+    "letters": 251
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :89:6",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00604,
+    "coverage": 1.0,
+    "letters": 335
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :89:6",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 238
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :89:6",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00302,
+    "coverage": 1.0,
+    "letters": 248
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :89:6",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.25076,
+    "coverage": 1.0,
+    "letters": 246
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:116:48",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00262,
+    "coverage": 1.0,
+    "letters": 301
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:116:48",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00787,
+    "coverage": 1.0,
+    "letters": 409
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:116:48",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00525,
+    "coverage": 1.0,
+    "letters": 292
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:116:48",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.021,
+    "coverage": 1.0,
+    "letters": 312
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:116:48",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.03937,
+    "coverage": 1.0,
+    "letters": 293
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:122:49",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00412,
+    "coverage": 1.0,
+    "letters": 194
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:122:49",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01235,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:122:49",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02058,
+    "coverage": 1.0,
+    "letters": 192
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:122:49",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.04527,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:122:49",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.19342,
+    "coverage": 0.8542,
+    "letters": 192
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:125:50",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00662,
+    "coverage": 1.0,
+    "letters": 118
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:125:50",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01987,
+    "coverage": 1.0,
+    "letters": 152
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:125:50",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.04636,
+    "coverage": 1.0,
+    "letters": 118
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:125:50",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01325,
+    "coverage": 1.0,
+    "letters": 133
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:125:50",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.21854,
+    "coverage": 0.8661,
+    "letters": 127
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:155:57",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:155:57",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00388,
+    "coverage": 1.0,
+    "letters": 301
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:155:57",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0155,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:155:57",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.03488,
+    "coverage": 1.0,
+    "letters": 229
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:155:57",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 219
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:158:58",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.01276,
+    "coverage": 1.0,
+    "letters": 304
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:158:58",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.01786,
+    "coverage": 1.0,
+    "letters": 408
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:158:58",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0051,
+    "coverage": 1.0,
+    "letters": 299
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:158:58",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00255,
+    "coverage": 1.0,
+    "letters": 310
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:158:58",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00765,
+    "coverage": 1.0,
+    "letters": 298
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:29:32",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 135
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:29:32",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01754,
+    "coverage": 1.0,
+    "letters": 189
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:29:32",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00585,
+    "coverage": 1.0,
+    "letters": 131
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:29:32",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 150
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:29:32",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.22807,
+    "coverage": 0.7956,
+    "letters": 137
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:32:33",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00806,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:32:33",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01613,
+    "coverage": 1.0,
+    "letters": 255
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:32:33",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.04435,
+    "coverage": 1.0,
+    "letters": 189
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:32:33",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.04435,
+    "coverage": 1.0,
+    "letters": 197
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:32:33",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00403,
+    "coverage": 1.0,
+    "letters": 189
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:68:39",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 167
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:68:39",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 166
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:68:39",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02358,
+    "coverage": 1.0,
+    "letters": 166
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:68:39",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.08962,
+    "coverage": 0.9879,
+    "letters": 165
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:68:39",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 165
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:71:40",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 382
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:71:40",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01446,
+    "coverage": 1.0,
+    "letters": 515
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:71:40",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01033,
+    "coverage": 1.0,
+    "letters": 381
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:71:40",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.0062,
+    "coverage": 1.0,
+    "letters": 449
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:71:40",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.22107,
+    "coverage": 0.8143,
+    "letters": 420
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:80:42",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00476,
+    "coverage": 1.0,
+    "letters": 166
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:80:42",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00952,
+    "coverage": 1.0,
+    "letters": 237
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:80:42",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.03333,
+    "coverage": 1.0,
+    "letters": 159
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:80:42",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01905,
+    "coverage": 1.0,
+    "letters": 181
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:80:42",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00952,
+    "coverage": 1.0,
+    "letters": 169
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:92:44",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:92:44",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00337,
+    "coverage": 1.0,
+    "letters": 230
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:92:44",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01347,
+    "coverage": 1.0,
+    "letters": 225
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:92:44",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00337,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:92:44",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.22222,
+    "coverage": 0.8009,
+    "letters": 226
+   },
+   {
+    "id": "table:2",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 215
+   },
+   {
+    "id": "table:2",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0035,
+    "coverage": 1.0,
+    "letters": 301
+   },
+   {
+    "id": "twocol:a:11",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0496,
+    "coverage": 1.0,
+    "letters": 401
+   },
+   {
+    "id": "twocol:a:11",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.05159,
+    "coverage": 1.0,
+    "letters": 630
+   },
+   {
+    "id": "twocol:d:0",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 504
+   },
+   {
+    "id": "twocol:d:0",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00293,
+    "coverage": 1.0,
+    "letters": 659
+   },
+   {
+    "id": "twocol:d:10",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00162,
+    "coverage": 1.0,
+    "letters": 469
+   },
+   {
+    "id": "twocol:d:10",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00971,
+    "coverage": 1.0,
+    "letters": 637
+   },
+   {
+    "id": "twocol:d:4",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00226,
+    "coverage": 1.0,
+    "letters": 331
+   },
+   {
+    "id": "twocol:d:4",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00905,
+    "coverage": 1.0,
+    "letters": 329
+   }
+  ],
+  "table": [
+   {
+    "floor": 0.7,
+    "flagged": 0,
+    "lost_flagged": 0,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 0,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.75,
+    "flagged": 0,
+    "lost_flagged": 0,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 0,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.8,
+    "flagged": 1,
+    "lost_flagged": 1,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 1,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.85,
+    "flagged": 3,
+    "lost_flagged": 3,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 3,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.88,
+    "flagged": 6,
+    "lost_flagged": 6,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 6,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.9,
+    "flagged": 6,
+    "lost_flagged": 6,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 6,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.92,
+    "flagged": 7,
+    "lost_flagged": 7,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 6,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.94,
+    "flagged": 7,
+    "lost_flagged": 7,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 6,
+    "accepted_lost_total": 8
+   },
+   {
+    "floor": 0.96,
+    "flagged": 10,
+    "lost_flagged": 8,
+    "lost_total": 16,
+    "good_flagged": 0,
+    "good_total": 182,
+    "accepted_lost_flagged": 6,
+    "accepted_lost_total": 8
+   }
+  ]
+ },
+ "dev": {
+  "rows": [
+   {
+    "id": "authored:de:0",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00282,
+    "coverage": 1.0,
+    "letters": 278
+   },
+   {
+    "id": "authored:de:0",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00845,
+    "coverage": 1.0,
+    "letters": 388
+   },
+   {
+    "id": "authored:de:0",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00282,
+    "coverage": 1.0,
+    "letters": 269
+   },
+   {
+    "id": "authored:de:0",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00282,
+    "coverage": 1.0,
+    "letters": 324
+   },
+   {
+    "id": "authored:de:0",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.18592,
+    "coverage": 0.8278,
+    "letters": 273
+   },
+   {
+    "id": "authored:de:1",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 246
+   },
+   {
+    "id": "authored:de:1",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00338,
+    "coverage": 1.0,
+    "letters": 318
+   },
+   {
+    "id": "authored:de:1",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 233
+   },
+   {
+    "id": "authored:de:1",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.13851,
+    "coverage": 0.9637,
+    "letters": 248
+   },
+   {
+    "id": "authored:de:1",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00338,
+    "coverage": 1.0,
+    "letters": 236
+   },
+   {
+    "id": "authored:de:4",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "authored:de:4",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 271
+   },
+   {
+    "id": "authored:de:4",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 191
+   },
+   {
+    "id": "authored:de:4",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.05078,
+    "coverage": 0.9701,
+    "letters": 201
+   },
+   {
+    "id": "authored:de:4",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.23047,
+    "coverage": 0.7846,
+    "letters": 195
+   },
+   {
+    "id": "authored:en:21",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 215
+   },
+   {
+    "id": "authored:en:21",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00352,
+    "coverage": 1.0,
+    "letters": 279
+   },
+   {
+    "id": "authored:en:21",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00704,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "authored:en:21",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.20423,
+    "coverage": 0.8694,
+    "letters": 222
+   },
+   {
+    "id": "authored:en:21",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.01408,
+    "coverage": 1.0,
+    "letters": 210
+   },
+   {
+    "id": "authored:en:23",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "authored:en:23",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 285
+   },
+   {
+    "id": "authored:en:23",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00369,
+    "coverage": 1.0,
+    "letters": 210
+   },
+   {
+    "id": "authored:en:23",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 251
+   },
+   {
+    "id": "authored:en:23",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.21771,
+    "coverage": 0.8333,
+    "letters": 234
+   },
+   {
+    "id": "authored:es:10",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "authored:es:10",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00372,
+    "coverage": 1.0,
+    "letters": 297
+   },
+   {
+    "id": "authored:es:10",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 202
+   },
+   {
+    "id": "authored:es:10",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.01487,
+    "coverage": 1.0,
+    "letters": 225
+   },
+   {
+    "id": "authored:es:10",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "authored:es:11",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "authored:es:11",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01172,
+    "coverage": 1.0,
+    "letters": 254
+   },
+   {
+    "id": "authored:es:11",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00781,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "authored:es:11",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.02734,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "authored:es:11",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.19922,
+    "coverage": 0.82,
+    "letters": 200
+   },
+   {
+    "id": "authored:es:7",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00368,
+    "coverage": 1.0,
+    "letters": 210
+   },
+   {
+    "id": "authored:es:7",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00368,
+    "coverage": 1.0,
+    "letters": 214
+   },
+   {
+    "id": "authored:es:7",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 208
+   },
+   {
+    "id": "authored:es:7",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01838,
+    "coverage": 1.0,
+    "letters": 210
+   },
+   {
+    "id": "authored:es:7",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.17647,
+    "coverage": 0.8804,
+    "letters": 209
+   },
+   {
+    "id": "authored:es:8",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 173
+   },
+   {
+    "id": "authored:es:8",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00437,
+    "coverage": 1.0,
+    "letters": 231
+   },
+   {
+    "id": "authored:es:8",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 177
+   },
+   {
+    "id": "authored:es:8",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00873,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "authored:es:8",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.26638,
+    "coverage": 0.8021,
+    "letters": 187
+   },
+   {
+    "id": "authored:es:9",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 214
+   },
+   {
+    "id": "authored:es:9",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 299
+   },
+   {
+    "id": "authored:es:9",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.11364,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "authored:es:9",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00379,
+    "coverage": 1.0,
+    "letters": 215
+   },
+   {
+    "id": "authored:es:9",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.20833,
+    "coverage": 0.8465,
+    "letters": 215
+   },
+   {
+    "id": "authored:pt:18",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00323,
+    "coverage": 1.0,
+    "letters": 236
+   },
+   {
+    "id": "authored:pt:18",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.01935,
+    "coverage": 1.0,
+    "letters": 317
+   },
+   {
+    "id": "authored:pt:18",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0129,
+    "coverage": 1.0,
+    "letters": 236
+   },
+   {
+    "id": "authored:pt:18",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00645,
+    "coverage": 1.0,
+    "letters": 267
+   },
+   {
+    "id": "authored:pt:18",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.29032,
+    "coverage": 0.7823,
+    "letters": 248
+   },
+   {
+    "id": "authored:pt:19",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "authored:pt:19",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 296
+   },
+   {
+    "id": "authored:pt:19",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00373,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "authored:pt:19",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "authored:pt:19",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "authored:ru:15",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.02066,
+    "coverage": 1.0,
+    "letters": 202
+   },
+   {
+    "id": "authored:ru:15",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.02066,
+    "coverage": 1.0,
+    "letters": 317
+   },
+   {
+    "id": "authored:ru:15",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00826,
+    "coverage": 1.0,
+    "letters": 192
+   },
+   {
+    "id": "authored:ru:15",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.05785,
+    "coverage": 1.0,
+    "letters": 247
+   },
+   {
+    "id": "authored:ru:15",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.02066,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "authored:ru:17",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.068,
+    "coverage": 1.0,
+    "letters": 212
+   },
+   {
+    "id": "authored:ru:17",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.064,
+    "coverage": 1.0,
+    "letters": 210
+   },
+   {
+    "id": "authored:ru:17",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.244,
+    "coverage": 0.7921,
+    "letters": 202
+   },
+   {
+    "id": "authored:ru:17",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.312,
+    "coverage": 0.7608,
+    "letters": 209
+   },
+   {
+    "id": "authored:ru:17",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.064,
+    "coverage": 1.0,
+    "letters": 205
+   },
+   {
+    "id": "problem:0",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0137,
+    "coverage": 1.0,
+    "letters": 47
+   },
+   {
+    "id": "problem:0",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0274,
+    "coverage": 1.0,
+    "letters": 69
+   },
+   {
+    "id": "problem:5",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.01351,
+    "coverage": 1.0,
+    "letters": 51
+   },
+   {
+    "id": "problem:5",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01351,
+    "coverage": 1.0,
+    "letters": 74
+   },
+   {
+    "id": "problem:6",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 51
+   },
+   {
+    "id": "problem:6",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 0.9733,
+    "letters": 75
+   },
+   {
+    "id": "problem:7",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 32
+   },
+   {
+    "id": "problem:7",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 41
+   },
+   {
+    "id": "real:AAGAARD - Practical Ches:232:518",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 202
+   },
+   {
+    "id": "real:AAGAARD - Practical Ches:232:518",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 202
+   },
+   {
+    "id": "real:AAGAARD - Practical Ches:232:518",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00722,
+    "coverage": 1.0,
+    "letters": 166
+   },
+   {
+    "id": "real:AAGAARD - Practical Ches:232:518",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 131
+   },
+   {
+    "id": "real:Dvoretsky - Dvoretsky's :229:41",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 330
+   },
+   {
+    "id": "real:Dvoretsky - Dvoretsky's :229:41",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 330
+   },
+   {
+    "id": "real:Dvoretsky - Dvoretsky's :229:41",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 443
+   },
+   {
+    "id": "real:Dvoretsky - Dvoretsky's :229:41",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0073,
+    "coverage": 1.0,
+    "letters": 328
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:224:24",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01761,
+    "coverage": 1.0,
+    "letters": 222
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:252:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 60
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:273:152",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:339:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 56
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:438:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 13
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:446:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 3
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:467:78",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 25
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:10:572:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00885,
+    "coverage": 1.0,
+    "letters": 90
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:136:53",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:150:53",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 7
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:164:53",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.09524,
+    "coverage": 1.0,
+    "letters": 16
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:165:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01031,
+    "coverage": 1.0,
+    "letters": 159
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:192:27",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 37
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:226:251",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 11
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:22:373",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:240:251",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:262:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 280
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:27:143",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 33
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:368:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 8
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:382:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 9
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:54:52",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 9
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:55:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01754,
+    "coverage": 1.0,
+    "letters": 260
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:567:53",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 11
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:11:82:52",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 37
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:277:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00415,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:310:253",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.03226,
+    "coverage": 1.0,
+    "letters": 24
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:352:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00529,
+    "coverage": 1.0,
+    "letters": 137
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:429:54",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:443:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.05,
+    "coverage": 1.0,
+    "letters": 50
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:499:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 103
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:578:154",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:58:73",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 13
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:12:72:53",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 35
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:133:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.04167,
+    "coverage": 1.0,
+    "letters": 68
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:170:52",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0625,
+    "coverage": null,
+    "letters": 8
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:198:26",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 26
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:258:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 49
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:278:52",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 38
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:335:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 147
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:339:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 153
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:401:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01105,
+    "coverage": 1.0,
+    "letters": 295
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:517:68",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:550:252",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 18
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:13:592:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 9
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:187:252",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 18
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:196:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:23:25",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:248:74",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 13
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:289:253",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.17647,
+    "coverage": null,
+    "letters": 11
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:30:144",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:344:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01639,
+    "coverage": 1.0,
+    "letters": 43
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:371:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:448:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 298
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:565:289",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": null,
+    "letters": 11
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:57:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 47
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:58:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 26
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:14:84:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 150
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:222:251",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 3
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:22:373",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:236:222",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 48
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:276:251",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:557:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01307,
+    "coverage": 1.0,
+    "letters": 122
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:15:55:251",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 5
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:167:24",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01293,
+    "coverage": 1.0,
+    "letters": 373
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:213:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:228:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.1,
+    "coverage": 1.0,
+    "letters": 37
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:22:24",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:253:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:268:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00943,
+    "coverage": 1.0,
+    "letters": 81
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:305:252",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 20
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:30:144",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:316:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 20
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:342:54",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 5
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:372:253",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:394:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.08264,
+    "coverage": 0.9451,
+    "letters": 91
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:469:268",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.09091,
+    "coverage": 1.0,
+    "letters": 19
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:489:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0102,
+    "coverage": 1.0,
+    "letters": 80
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:526:54",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.09375,
+    "coverage": 1.0,
+    "letters": 21
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:568:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 20
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:16:597:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 33
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:141:27",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 219
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:401:52",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.05128,
+    "coverage": 1.0,
+    "letters": 110
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:483:252",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:55:27",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00707,
+    "coverage": 1.0,
+    "letters": 238
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:17:69:222",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00165,
+    "coverage": 1.0,
+    "letters": 950
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:179:252",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 18
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:307:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 51
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:388:54",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 5
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:429:54",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 19
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:566:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 27
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:18:57:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.01695,
+    "coverage": 1.0,
+    "letters": 41
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:110:27",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 24
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:22:372",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:27:143",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 31
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:449:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 444
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:68:52",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 10
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:82:52",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 5
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:19:96:52",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 11
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:128:25",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00231,
+    "coverage": 1.0,
+    "letters": 703
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:382:54",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 0
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:542:54",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.03125,
+    "coverage": 1.0,
+    "letters": 24
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:560:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 139
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:57:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00901,
+    "coverage": 1.0,
+    "letters": 85
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:585:27",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0375,
+    "coverage": 1.0,
+    "letters": 61
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:20:96:252",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.41667,
+    "coverage": null,
+    "letters": 10
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:104:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.05263,
+    "coverage": 1.0,
+    "letters": 12
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:166:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00259,
+    "coverage": 1.0,
+    "letters": 305
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:224:24",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.15842,
+    "coverage": 0.9726,
+    "letters": 73
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:291:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.02349,
+    "coverage": 1.0,
+    "letters": 233
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:390:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 6
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:406:224",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 166
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:468:253",
+    "stratum": "native",
+    "decision": "abstained",
+    "cer": null,
+    "coverage": null,
+    "letters": 4
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:480:24",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01887,
+    "coverage": 1.0,
+    "letters": 85
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:483:224",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00484,
+    "coverage": 1.0,
+    "letters": 312
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:533:25",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.00377,
+    "coverage": 1.0,
+    "letters": 215
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:21:55:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 294
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:191:223",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 249
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:250:26",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 473
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:451:26",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 456
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:471:223",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 48
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:508:234",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 53
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:546:275",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 23
+   },
+   {
+    "id": "real:Dvoretsky,_Mark_&_Yusupo:9:56:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 49
+   },
+   {
+    "id": "real:Euwe, Kramer - Das Mitte:82:352",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.03302,
+    "coverage": 1.0,
+    "letters": 336
+   },
+   {
+    "id": "real:Euwe, Kramer - Das Mitte:82:352",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.03066,
+    "coverage": 1.0,
+    "letters": 337
+   },
+   {
+    "id": "real:Euwe, Kramer - Das Mitte:82:352",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.03302,
+    "coverage": 0.991,
+    "letters": 335
+   },
+   {
+    "id": "real:Euwe, Kramer - Das Mitte:82:352",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.07075,
+    "coverage": 1.0,
+    "letters": 321
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:820:551",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00735,
+    "coverage": 1.0,
+    "letters": 108
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:820:551",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00735,
+    "coverage": 1.0,
+    "letters": 108
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:820:551",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00735,
+    "coverage": 1.0,
+    "letters": 88
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:820:551",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00735,
+    "coverage": 1.0,
+    "letters": 100
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:872:249",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.02268,
+    "coverage": 1.0,
+    "letters": 379
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:872:249",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.02268,
+    "coverage": 1.0,
+    "letters": 379
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:872:249",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.06804,
+    "coverage": 0.9613,
+    "letters": 310
+   },
+   {
+    "id": "real:Secrets of Chess Trainin:872:249",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01856,
+    "coverage": 1.0,
+    "letters": 329
+   },
+   {
+    "id": "real:The_Modern_Endgame_Manua:5:104:72",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 240
+   },
+   {
+    "id": "real:The_Modern_Endgame_Manua:5:272:72",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 690
+   },
+   {
+    "id": "real:The_Modern_Endgame_Manua:5:445:72",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00142,
+    "coverage": 1.0,
+    "letters": 581
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:104:72",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 81
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:104:72",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 81
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:104:72",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 116
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:104:72",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.06863,
+    "coverage": 1.0,
+    "letters": 82
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:120:398",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 124
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:120:398",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 124
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:120:398",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 182
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:120:398",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.13636,
+    "coverage": 1.0,
+    "letters": 123
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:414",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 111
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:414",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 111
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:414",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00725,
+    "coverage": 1.0,
+    "letters": 167
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:128:414",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.04348,
+    "coverage": 1.0,
+    "letters": 113
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:398",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00781,
+    "coverage": 1.0,
+    "letters": 100
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:398",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 100
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:398",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 141
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:152:398",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0625,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:266",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 106
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:266",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 106
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:266",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00709,
+    "coverage": 1.0,
+    "letters": 156
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:266",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.42553,
+    "coverage": 0.9346,
+    "letters": 107
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:490",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00143,
+    "coverage": 1.0,
+    "letters": 575
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:490",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00143,
+    "coverage": 1.0,
+    "letters": 575
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:490",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00286,
+    "coverage": 1.0,
+    "letters": 910
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:156:490",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02289,
+    "coverage": 1.0,
+    "letters": 571
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:441",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 155
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:441",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 155
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:441",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 218
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:441",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0567,
+    "coverage": 1.0,
+    "letters": 155
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:577",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 253
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:577",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 253
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:577",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00929,
+    "coverage": 1.0,
+    "letters": 385
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:172:577",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02786,
+    "coverage": 1.0,
+    "letters": 245
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:28:696",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 112
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:28:696",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 112
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:28:696",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 169
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:28:696",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.04138,
+    "coverage": 1.0,
+    "letters": 110
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:222",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 111
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:222",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 111
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:222",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 161
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:222",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.07407,
+    "coverage": 1.0,
+    "letters": 112
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:446",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.00602,
+    "coverage": 1.0,
+    "letters": 125
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:446",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 125
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:446",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 190
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:32:446",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.04819,
+    "coverage": 1.0,
+    "letters": 127
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:563",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 110
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:563",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 110
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:563",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0073,
+    "coverage": 1.0,
+    "letters": 152
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:563",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0365,
+    "coverage": 1.0,
+    "letters": 109
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:75",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 86
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:75",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 86
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:75",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 126
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:52:75",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.23585,
+    "coverage": 1.0,
+    "letters": 87
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:515",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 165
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:515",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 165
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:515",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01852,
+    "coverage": 1.0,
+    "letters": 237
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:56:515",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00463,
+    "coverage": 1.0,
+    "letters": 163
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:64:539",
+    "stratum": "native",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:64:539",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:64:539",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00702,
+    "coverage": 0.9968,
+    "letters": 312
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:64:539",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02456,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:68:42",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 495
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:68:42",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 495
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:68:42",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00323,
+    "coverage": 1.0,
+    "letters": 738
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:68:42",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.05323,
+    "coverage": 1.0,
+    "letters": 488
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:467",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:467",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:467",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01916,
+    "coverage": 1.0,
+    "letters": 318
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:467",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01916,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:565",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 127
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:565",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 127
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:565",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 183
+   },
+   {
+    "id": "real:Xadrez Vitorioso - Finai:88:565",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.03636,
+    "coverage": 1.0,
+    "letters": 126
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:155:56",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 298
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:155:56",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 298
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:155:56",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 259
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:155:56",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0288,
+    "coverage": 1.0,
+    "letters": 246
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:180:134",
+    "stratum": "native",
+    "decision": "accepted",
+    "cer": 0.01533,
+    "coverage": 1.0,
+    "letters": 191
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:180:134",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.01533,
+    "coverage": 1.0,
+    "letters": 190
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:180:134",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.02299,
+    "coverage": 1.0,
+    "letters": 163
+   },
+   {
+    "id": "real:📚Nunn J. Secrets of Mino:180:134",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.10345,
+    "coverage": 1.0,
+    "letters": 152
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :103:8",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 243
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :103:8",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00328,
+    "coverage": 1.0,
+    "letters": 292
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :103:8",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 218
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :103:8",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00984,
+    "coverage": 1.0,
+    "letters": 244
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :103:8",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.32131,
+    "coverage": 1.0,
+    "letters": 225
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :110:9",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00735,
+    "coverage": 1.0,
+    "letters": 104
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :110:9",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.02206,
+    "coverage": 1.0,
+    "letters": 102
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :110:9",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 103
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :110:9",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.02206,
+    "coverage": 1.0,
+    "letters": 104
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :110:9",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 103
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :117:10",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00852,
+    "coverage": 1.0,
+    "letters": 258
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :117:10",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01136,
+    "coverage": 1.0,
+    "letters": 335
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :117:10",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00568,
+    "coverage": 1.0,
+    "letters": 263
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :117:10",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00284,
+    "coverage": 1.0,
+    "letters": 304
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :117:10",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00284,
+    "coverage": 1.0,
+    "letters": 285
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :138:13",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00302,
+    "coverage": 1.0,
+    "letters": 264
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :138:13",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00302,
+    "coverage": 1.0,
+    "letters": 327
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :138:13",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00906,
+    "coverage": 1.0,
+    "letters": 244
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :138:13",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01208,
+    "coverage": 1.0,
+    "letters": 256
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :138:13",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.00604,
+    "coverage": 1.0,
+    "letters": 248
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :166:16",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 193
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :166:16",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 242
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :166:16",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0037,
+    "coverage": 1.0,
+    "letters": 184
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :166:16",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00741,
+    "coverage": 1.0,
+    "letters": 198
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :166:16",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 188
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :173:17",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.02059,
+    "coverage": 1.0,
+    "letters": 230
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :173:17",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00294,
+    "coverage": 1.0,
+    "letters": 293
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :173:17",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 217
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :173:17",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00588,
+    "coverage": 1.0,
+    "letters": 267
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :173:17",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.01176,
+    "coverage": 1.0,
+    "letters": 229
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :201:21",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :201:21",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00714,
+    "coverage": 1.0,
+    "letters": 291
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :201:21",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.00714,
+    "coverage": 1.0,
+    "letters": 199
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :201:21",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.01429,
+    "coverage": 1.0,
+    "letters": 212
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :201:21",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.78571,
+    "coverage": 0.2153,
+    "letters": 209
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :215:23",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00576,
+    "coverage": 1.0,
+    "letters": 270
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :215:23",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00288,
+    "coverage": 1.0,
+    "letters": 320
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :215:23",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01729,
+    "coverage": 1.0,
+    "letters": 246
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :215:23",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00576,
+    "coverage": 1.0,
+    "letters": 265
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :215:23",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00288,
+    "coverage": 1.0,
+    "letters": 254
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :222:24",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00275,
+    "coverage": 1.0,
+    "letters": 280
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :222:24",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00824,
+    "coverage": 1.0,
+    "letters": 281
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :222:24",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 278
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :222:24",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00275,
+    "coverage": 1.0,
+    "letters": 278
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :222:24",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.00275,
+    "coverage": 1.0,
+    "letters": 278
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :229:25",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00373,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :229:25",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 276
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :229:25",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.04478,
+    "coverage": 1.0,
+    "letters": 202
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :229:25",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.19403,
+    "coverage": 0.887,
+    "letters": 230
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :229:25",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 218
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :243:27",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00306,
+    "coverage": 1.0,
+    "letters": 235
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :243:27",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01529,
+    "coverage": 1.0,
+    "letters": 309
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :243:27",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 226
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :243:27",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00917,
+    "coverage": 1.0,
+    "letters": 271
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :243:27",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00917,
+    "coverage": 1.0,
+    "letters": 245
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :250:28",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.01939,
+    "coverage": 1.0,
+    "letters": 281
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :250:28",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00554,
+    "coverage": 1.0,
+    "letters": 354
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :250:28",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01108,
+    "coverage": 1.0,
+    "letters": 261
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :250:28",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.02216,
+    "coverage": 1.0,
+    "letters": 286
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :250:28",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.02216,
+    "coverage": 1.0,
+    "letters": 266
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :61:2",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.01481,
+    "coverage": 1.0,
+    "letters": 98
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :61:2",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00741,
+    "coverage": 1.0,
+    "letters": 131
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :61:2",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 96
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :61:2",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.00741,
+    "coverage": 1.0,
+    "letters": 113
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :61:2",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.00741,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :75:4",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 200
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :75:4",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00362,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :75:4",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.22101,
+    "coverage": 0.9388,
+    "letters": 196
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :75:4",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.18841,
+    "coverage": 0.8442,
+    "letters": 199
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :75:4",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 196
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :82:5",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.01027,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :82:5",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0137,
+    "coverage": 1.0,
+    "letters": 253
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :82:5",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :82:5",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.0137,
+    "coverage": 1.0,
+    "letters": 235
+   },
+   {
+    "id": "synth:Dvoretsky - Dvoretsky's :82:5",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.00342,
+    "coverage": 1.0,
+    "letters": 224
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:110:46",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00882,
+    "coverage": 1.0,
+    "letters": 417
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:110:46",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00705,
+    "coverage": 1.0,
+    "letters": 594
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:110:46",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01411,
+    "coverage": 1.0,
+    "letters": 408
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:110:46",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.04762,
+    "coverage": 1.0,
+    "letters": 429
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:110:46",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.20106,
+    "coverage": 0.8246,
+    "letters": 422
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:128:51",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00725,
+    "coverage": 1.0,
+    "letters": 104
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:128:51",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.02174,
+    "coverage": 1.0,
+    "letters": 142
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:128:51",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 103
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:128:51",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.02174,
+    "coverage": 1.0,
+    "letters": 108
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:128:51",
+    "stratum": "photo",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 105
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:131:52",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.01974,
+    "coverage": 1.0,
+    "letters": 118
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:131:52",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00658,
+    "coverage": 1.0,
+    "letters": 163
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:131:52",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00658,
+    "coverage": 1.0,
+    "letters": 117
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:131:52",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.05263,
+    "coverage": 1.0,
+    "letters": 128
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:131:52",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.24342,
+    "coverage": 0.7886,
+    "letters": 123
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:134:53",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00294,
+    "coverage": 1.0,
+    "letters": 268
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:134:53",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 359
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:134:53",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.00294,
+    "coverage": 1.0,
+    "letters": 265
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:134:53",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00588,
+    "coverage": 1.0,
+    "letters": 272
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:134:53",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.17059,
+    "coverage": 0.8697,
+    "letters": 261
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:137:54",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00375,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:137:54",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00749,
+    "coverage": 1.0,
+    "letters": 197
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:137:54",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02247,
+    "coverage": 1.0,
+    "letters": 201
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:137:54",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.18727,
+    "coverage": 0.8756,
+    "letters": 201
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:137:54",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 200
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:149:55",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 101
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:149:55",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 143
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:149:55",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 107
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:149:55",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.00769,
+    "coverage": 1.0,
+    "letters": 117
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:149:55",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 117
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:23:30",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 94
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:23:30",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 124
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:23:30",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 95
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:23:30",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.05785,
+    "coverage": 1.0,
+    "letters": 107
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:23:30",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 97
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:26:31",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 154
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:26:31",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 222
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:26:31",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.0049,
+    "coverage": 1.0,
+    "letters": 150
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:26:31",
+    "stratum": "fax_dither",
+    "decision": "review",
+    "cer": 0.02941,
+    "coverage": 1.0,
+    "letters": 162
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:26:31",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 154
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:35:34",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:35:34",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00377,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:35:34",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.01132,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:35:34",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.01132,
+    "coverage": 1.0,
+    "letters": 207
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:35:34",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 206
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:44:35",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 215
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:44:35",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01434,
+    "coverage": 1.0,
+    "letters": 300
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:44:35",
+    "stratum": "shadow_curl_bleed",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 213
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:44:35",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.05735,
+    "coverage": 1.0,
+    "letters": 254
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:44:35",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.20789,
+    "coverage": 0.8205,
+    "letters": 234
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:53:36",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00592,
+    "coverage": 1.0,
+    "letters": 132
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:53:36",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00592,
+    "coverage": 1.0,
+    "letters": 187
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:53:36",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.08876,
+    "coverage": 1.0,
+    "letters": 130
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:53:36",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.05325,
+    "coverage": 1.0,
+    "letters": 133
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:53:36",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.2426,
+    "coverage": 0.8372,
+    "letters": 129
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:56:37",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 164
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:56:37",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01852,
+    "coverage": 1.0,
+    "letters": 225
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:56:37",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.02778,
+    "coverage": 1.0,
+    "letters": 156
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:56:37",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.02315,
+    "coverage": 1.0,
+    "letters": 180
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:56:37",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.00463,
+    "coverage": 1.0,
+    "letters": 164
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:74:41",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00717,
+    "coverage": 1.0,
+    "letters": 209
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:74:41",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00358,
+    "coverage": 1.0,
+    "letters": 291
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:74:41",
+    "stratum": "shadow_curl_bleed",
+    "decision": "accepted",
+    "cer": 0.04301,
+    "coverage": 1.0,
+    "letters": 204
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:74:41",
+    "stratum": "fax_dither",
+    "decision": "accepted",
+    "cer": 0.04659,
+    "coverage": 1.0,
+    "letters": 214
+   },
+   {
+    "id": "synth:Xadrez Vitorioso - Finai:74:41",
+    "stratum": "photo",
+    "decision": "accepted",
+    "cer": 0.19713,
+    "coverage": 0.8502,
+    "letters": 207
+   },
+   {
+    "id": "table:3",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.01384,
+    "coverage": 1.0,
+    "letters": 230
+   },
+   {
+    "id": "table:3",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0173,
+    "coverage": 1.0,
+    "letters": 285
+   },
+   {
+    "id": "table:4",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 211
+   },
+   {
+    "id": "table:4",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00364,
+    "coverage": 1.0,
+    "letters": 213
+   },
+   {
+    "id": "table:5",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 199
+   },
+   {
+    "id": "table:5",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00755,
+    "coverage": 1.0,
+    "letters": 247
+   },
+   {
+    "id": "table:6",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 200
+   },
+   {
+    "id": "table:6",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 274
+   },
+   {
+    "id": "table:7",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 182
+   },
+   {
+    "id": "table:7",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 260
+   },
+   {
+    "id": "twocol:a:0",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00307,
+    "coverage": 1.0,
+    "letters": 507
+   },
+   {
+    "id": "twocol:a:0",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0138,
+    "coverage": 1.0,
+    "letters": 685
+   },
+   {
+    "id": "twocol:a:10",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.05765,
+    "coverage": 1.0,
+    "letters": 411
+   },
+   {
+    "id": "twocol:a:10",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.0497,
+    "coverage": 1.0,
+    "letters": 570
+   },
+   {
+    "id": "twocol:a:2",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 435
+   },
+   {
+    "id": "twocol:a:2",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00901,
+    "coverage": 1.0,
+    "letters": 598
+   },
+   {
+    "id": "twocol:a:4",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00169,
+    "coverage": 1.0,
+    "letters": 452
+   },
+   {
+    "id": "twocol:a:4",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00675,
+    "coverage": 1.0,
+    "letters": 457
+   },
+   {
+    "id": "twocol:a:5",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 385
+   },
+   {
+    "id": "twocol:a:5",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0259,
+    "coverage": 1.0,
+    "letters": 512
+   },
+   {
+    "id": "twocol:a:6",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 419
+   },
+   {
+    "id": "twocol:a:6",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 595
+   },
+   {
+    "id": "twocol:a:9",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.05123,
+    "coverage": 1.0,
+    "letters": 398
+   },
+   {
+    "id": "twocol:a:9",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.04508,
+    "coverage": 1.0,
+    "letters": 400
+   },
+   {
+    "id": "twocol:d:1",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0068,
+    "coverage": 1.0,
+    "letters": 330
+   },
+   {
+    "id": "twocol:d:1",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.01361,
+    "coverage": 1.0,
+    "letters": 419
+   },
+   {
+    "id": "twocol:d:11",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00149,
+    "coverage": 1.0,
+    "letters": 470
+   },
+   {
+    "id": "twocol:d:11",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00149,
+    "coverage": 1.0,
+    "letters": 625
+   },
+   {
+    "id": "twocol:d:12",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00158,
+    "coverage": 1.0,
+    "letters": 480
+   },
+   {
+    "id": "twocol:d:12",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00474,
+    "coverage": 1.0,
+    "letters": 680
+   },
+   {
+    "id": "twocol:d:13",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.01014,
+    "coverage": 1.0,
+    "letters": 380
+   },
+   {
+    "id": "twocol:d:13",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01014,
+    "coverage": 1.0,
+    "letters": 464
+   },
+   {
+    "id": "twocol:d:14",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00151,
+    "coverage": 1.0,
+    "letters": 502
+   },
+   {
+    "id": "twocol:d:14",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.0121,
+    "coverage": 1.0,
+    "letters": 507
+   },
+   {
+    "id": "twocol:d:16",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00238,
+    "coverage": 1.0,
+    "letters": 323
+   },
+   {
+    "id": "twocol:d:16",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00476,
+    "coverage": 1.0,
+    "letters": 459
+   },
+   {
+    "id": "twocol:d:17",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 429
+   },
+   {
+    "id": "twocol:d:17",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01101,
+    "coverage": 1.0,
+    "letters": 627
+   },
+   {
+    "id": "twocol:d:18",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.00259,
+    "coverage": 1.0,
+    "letters": 298
+   },
+   {
+    "id": "twocol:d:18",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.01554,
+    "coverage": 0.9952,
+    "letters": 387
+   },
+   {
+    "id": "twocol:d:19",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 387
+   },
+   {
+    "id": "twocol:d:19",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.01212,
+    "coverage": 1.0,
+    "letters": 398
+   },
+   {
+    "id": "twocol:d:3",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00454,
+    "coverage": 1.0,
+    "letters": 524
+   },
+   {
+    "id": "twocol:d:3",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.02269,
+    "coverage": 1.0,
+    "letters": 642
+   },
+   {
+    "id": "twocol:d:5",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00528,
+    "coverage": 1.0,
+    "letters": 409
+   },
+   {
+    "id": "twocol:d:5",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00704,
+    "coverage": 1.0,
+    "letters": 531
+   },
+   {
+    "id": "twocol:d:6",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00334,
+    "coverage": 1.0,
+    "letters": 451
+   },
+   {
+    "id": "twocol:d:6",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00502,
+    "coverage": 1.0,
+    "letters": 600
+   },
+   {
+    "id": "twocol:d:7",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00156,
+    "coverage": 1.0,
+    "letters": 472
+   },
+   {
+    "id": "twocol:d:7",
+    "stratum": "scan_degraded_150",
+    "decision": "review",
+    "cer": 0.00624,
+    "coverage": 1.0,
+    "letters": 626
+   },
+   {
+    "id": "twocol:d:8",
+    "stratum": "scan_clean_300",
+    "decision": "review",
+    "cer": 0.00818,
+    "coverage": 1.0,
+    "letters": 458
+   },
+   {
+    "id": "twocol:d:8",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00164,
+    "coverage": 1.0,
+    "letters": 511
+   },
+   {
+    "id": "twocol:d:9",
+    "stratum": "scan_clean_300",
+    "decision": "accepted",
+    "cer": 0.0,
+    "coverage": 1.0,
+    "letters": 456
+   },
+   {
+    "id": "twocol:d:9",
+    "stratum": "scan_degraded_150",
+    "decision": "accepted",
+    "cer": 0.00668,
+    "coverage": 1.0,
+    "letters": 459
+   }
+  ],
+  "table": [
+   {
+    "floor": 0.7,
+    "flagged": 1,
+    "lost_flagged": 1,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 1,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.75,
+    "flagged": 1,
+    "lost_flagged": 1,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 1,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.8,
+    "flagged": 6,
+    "lost_flagged": 6,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 4,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.85,
+    "flagged": 15,
+    "lost_flagged": 15,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 11,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.88,
+    "flagged": 19,
+    "lost_flagged": 19,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 15,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.9,
+    "flagged": 21,
+    "lost_flagged": 21,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 17,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.92,
+    "flagged": 21,
+    "lost_flagged": 21,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 17,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.94,
+    "flagged": 23,
+    "lost_flagged": 23,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 19,
+    "accepted_lost_total": 21
+   },
+   {
+    "floor": 0.96,
+    "flagged": 24,
+    "lost_flagged": 23,
+    "lost_total": 30,
+    "good_flagged": 0,
+    "good_total": 359,
+    "accepted_lost_flagged": 19,
+    "accepted_lost_total": 21
+   }
+  ]
+ }
+}

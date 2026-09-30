@@ -935,6 +935,40 @@ produto tiver um terceiro estado de tinta (um "somente leitura", digamos), a dis
 aqui e o portão a cobra sem que ninguém precise lembrar."""
 
 
+def pares_pintados_da_suite(*, cromo_escuro: bool) -> list[Par]:
+    """Os pares que as abas da suíte pintam por `setStyleSheet`/`QPainter` (passo C9).
+
+    **Não estavam em portão nenhum.** A folha do tronco não os contém, porque as views da
+    suíte escreviam a cor no widget -- e na Foco (padrão) o `#6b7280` do contexto do cartão
+    sobre `#1f2124` e o `#b45309` do motivo sobre escuro nunca foram medidos
+    (`OCR_UI_ANALISE_C2.md` §6.7). Hoje cada cor das views é um papel de
+    :mod:`caissa.ui.theme.pele`, resolvido para o token do tronco no cromo pedido, e a tabela
+    :data:`caissa.ui.theme.pele.PARES` diz que frente vai sobre que fundo: um papel novo
+    entra aqui por existir lá. Texto contra o piso de texto; a caixa sobre a página contra o
+    piso gráfico, como as marcações do tronco.
+    """
+    from caissa.ui.theme import pele
+
+    pares: list[Par] = []
+    for frente, fundo, frase in pele.PARES:
+        a, b = pele.cor(frente, escuro=cromo_escuro), pele.cor(fundo, escuro=cromo_escuro)
+        grafico = frente.startswith("regiao")
+        pares.append(
+            Par(
+                onde=f"suíte: {frente} sobre {fundo}",
+                frente=a,
+                fundo=b,
+                razao=_razao(a, b),
+                piso=PISO[GRAFICO if grafico else TEXTO],
+                especie=GRAFICO if grafico else TEXTO,
+                portao=True,
+                origem="suite",
+                nota=frase,
+            )
+        )
+    return pares
+
+
 def pares_de_estado(*, cromo_escuro: bool) -> list[Par]:
     """A distância vivo ↔ morto, como par próprio e com piso de 3,0:1 (F9-C10).
 
@@ -1087,11 +1121,37 @@ class Pele:
         return not self.reprovados()
 
 
-def medir(*, caminho_do_tronco: Path = TRONCO, densidades: Iterable[str] = ()) -> dict[str, Any]:
-    """Mede as duas peles inteiras e devolve o relatório. É o que o teste e o CLI chamam."""
+SABOTAGEM_ESCURA = "#787d85"
+"""`TEXTO_SECUNDARIO` a **3,90:1** sobre a superfície padrão do cromo escuro (`#1f2124`).
+
+É a sabotagem do passo 16 da OCR_UI: um par de texto abaixo do piso AA de 4,5:1, plantado só
+na pele escura. O portão tem de acusar exatamente um par a mais na escura e nenhum na clara;
+se não acusar, ele não está lendo a folha da Foco."""
+
+
+def medir(
+    *, caminho_do_tronco: Path = TRONCO, densidades: Iterable[str] = (), sabotar: bool = False
+) -> dict[str, Any]:
+    """Mede as duas peles inteiras e devolve o relatório. É o que o teste e o CLI chamam.
+
+    `sabotar` troca `TEXTO_SECUNDARIO` do cromo escuro por `SABOTAGEM_ESCURA` só durante a
+    medição -- a tabela de tokens é restaurada antes de devolver, porque um portão que deixa o
+    produto sabotado é pior que um que não mede.
+    """
     _preparar(caminho_do_tronco)
     from chess_diagram_ocr.ui import folha_de_estilo as folha_pura
     from chess_diagram_ocr.ui import pele as peles
+    from chess_diagram_ocr.ui import tokens as tokens_do_tronco
+
+    if sabotar:
+        original = tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO]
+        tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO] = SABOTAGEM_ESCURA
+        try:
+            relatorio = medir(caminho_do_tronco=caminho_do_tronco, densidades=densidades)
+        finally:
+            tokens_do_tronco.NO_CROMO_ESCURO[tokens_do_tronco.TEXTO_SECUNDARIO] = original
+        relatorio["sabotagem"] = f"TEXTO_SECUNDARIO do cromo escuro = {SABOTAGEM_ESCURA} (3,90:1)"
+        return relatorio
 
     lista = list(densidades) or [peles.CONFORTAVEL, peles.COMPACTA]
     resultados: list[Pele] = []
@@ -1114,6 +1174,7 @@ def medir(*, caminho_do_tronco: Path = TRONCO, densidades: Iterable[str] = ()) -
         pele.pares += pares_da_paleta(cromo_escuro=cromo_escuro, folha=folhas[0])
         pele.pares += pares_pintados(cromo_escuro=cromo_escuro)
         pele.pares += pares_de_estado(cromo_escuro=cromo_escuro)
+        pele.pares += pares_pintados_da_suite(cromo_escuro=cromo_escuro)  # C9
         resultados.append(pele)
 
     reprovados = {pele.nome: [asdict(par) for par in pele.reprovados()] for pele in resultados}
@@ -1217,16 +1278,21 @@ def main(argv: list[str] | None = None) -> int:
         help="onde gravar o relatorio. Obrigatorio: este portao nao escolhe pasta por voce.",
     )
     parser.add_argument("--todos", action="store_true", help="lista todos os pares, não só os reprovados")
+    parser.add_argument(
+        "--sabotar",
+        action="store_true",
+        help="planta um par de texto a 3,9:1 na pele escura; o portao tem de acusar exatamente ele",
+    )
     args = parser.parse_args(argv)
 
-    relatorio = medir(caminho_do_tronco=args.tronco)
+    relatorio = medir(caminho_do_tronco=args.tronco, sabotar=args.sabotar)
     args.saida.mkdir(parents=True, exist_ok=True)
     # **Carimbado, e o motivo é uma perda de evidência real.** `contraste.json` era um nome
     # fixo: rodar o portão apagava a medição do ciclo anterior sem aviso. O crítico do ciclo 5
     # caiu nisso na sessão dele e declarou; o mesmo defeito, na família de instrumentos que
     # grava PNG, já tinha destruído 17 capturas em dois ciclos. `bloqueio_*.json`,
     # `fps_*.json` e `progresso_*.json` sempre carimbaram -- este passou a carimbar também.
-    alvo = args.saida / f"contraste_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
+    alvo = args.saida / f"contraste_{'sabotagem_' if args.sabotar else ''}{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
     alvo.write_text(json.dumps(relatorio, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(tabela(relatorio))

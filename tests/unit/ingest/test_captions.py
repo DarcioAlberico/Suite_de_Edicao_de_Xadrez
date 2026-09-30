@@ -340,3 +340,77 @@ def test_bare_integers_of_a_page():
         [_line("(41)", (0, 0, 10, 10)), _line("4-10", (0, 20, 10, 30)), _line("7", (0, 40, 5, 50))]
     )
     assert [v for v, _ in bare_integers(page)] == [41, 7]
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI ciclo 2, C12: the printed demand ("mate in 2") is read, and read the
+# same way the trunk reads it
+# --------------------------------------------------------------------------- #
+
+STIPULATION_CASES = [
+    "#2", "2.2 Combinations #2 (451-3514)", "3±", "3+", "4‡", "3 #", "Mate in two",
+    "White to play and mate in 3", "Matt in 2 Zügen", "mate em 2 lances", "Mat en 2 coups",
+    "Mat in twee zetten", "мат в 3 хода", "Mate en dos", "h#2", "s#3", "problem #2", "No. #3",
+    "Black to move", "19...Qxe5 #2.5", "#7", "1.e4 e5 2.Nf3", "", "Zwarte Bristol", "3+ 4",
+    "Brancas jogam e ganham", "mate in the end", "White wins",
+]
+
+
+def test_parse_stipulation_reads_the_collections_forms_and_refuses_the_rest():
+    from caissa.ingest.pdf.captions import parse_stipulation
+
+    read = {t: parse_stipulation(t) for t in STIPULATION_CASES}
+    assert read["#2"] is not None and read["#2"].moves == 2
+    assert read["2.2 Combinations #2 (451-3514)"].moves == 2
+    assert read["3±"].moves == 3 and read["3±"].label == "#3" and read["3±"].description == "Mate em 3"
+    assert read["Matt in 2 Zügen"].moves == 2
+    assert read["мат в 3 хода"].moves == 3
+    for refused in ("h#2", "s#3", "problem #2", "No. #3", "Black to move", "19...Qxe5 #2.5", "#7",
+                    "", "Zwarte Bristol", "Brancas jogam e ganham", "White wins"):
+        assert read[refused] is None, refused
+
+
+def test_the_grammar_agrees_with_the_trunk():
+    """Two grammars for the same caption would be the divergence the analysis names; the
+    trunk's ``estipulacao.parse_estipulacao`` is the reference and this one must match it
+    case by case -- moves and the refusal alike."""
+    from caissa.ingest.pdf.captions import parse_stipulation
+
+    try:
+        from caissa.vision.classify.cvoff import ensure_cvoff_on_path
+
+        ensure_cvoff_on_path()
+        from chess_diagram_ocr.estipulacao import parse_estipulacao
+    except Exception as exc:  # noqa: BLE001 - the trunk is optional at this boundary
+        pytest.skip(f"tronco indisponível: {exc}")
+    for text in STIPULATION_CASES:
+        ours, theirs = parse_stipulation(text), parse_estipulacao(text)
+        assert (ours is None) == (theirs is None), text
+        if ours is not None:
+            assert ours.moves == theirs.lances, text
+
+
+def test_the_demand_comes_from_the_caption_or_from_the_page_band():
+    from caissa.ingest.pdf.captions import page_stipulation
+
+    lines = [
+        _line("2.2 Combinations #2 (451-3514)", (72, 30, 400, 42), block=0),
+        _line("1699", (180, 305, 220, 317), block=1),
+        _line("1700  Mate in three", (400, 305, 560, 317), block=2),
+    ]
+    boards = [(100.0, 100.0, 300.0, 300.0), (350.0, 100.0, 550.0, 300.0)]
+    page = _page(lines)
+    band = page_stipulation(page)
+    assert band is not None and band.moves == 2 and band.origin == "page"
+    contexts, _consumed = page_contexts(page, boards)
+    assert contexts[0].stipulation is not None
+    assert (contexts[0].stipulation.moves, contexts[0].stipulation.origin) == (2, "page")
+    assert contexts[1].stipulation is not None
+    assert (contexts[1].stipulation.moves, contexts[1].stipulation.origin) == (3, "caption")
+
+
+def test_two_demands_in_the_band_cancel_each_other():
+    from caissa.ingest.pdf.captions import page_stipulation
+
+    page = _page([_line("Mate in two", (72, 30, 300, 42)), _line("#3", (72, 760, 300, 772))])
+    assert page_stipulation(page) is None

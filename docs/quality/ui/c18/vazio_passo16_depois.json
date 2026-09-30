@@ -1,0 +1,415 @@
+{
+  "portao": "OCR_UI passo 16 -- maior vazio de painel a 4K <= 200 kpx em todo painel, nas tres peles",
+  "quando": "2026-09-16T07:07:20+00:00",
+  "metodo": {
+    "capturas": "benchmarks\\reports\\ui\\c18",
+    "marca": "depois16",
+    "bloco_px": 4,
+    "tolerancia": 6,
+    "painel": "esquerdo: da margem ao divisor, abaixo das abas, acima do rodape (c5_vazios.py)",
+    "algoritmo": "maior retangulo em histograma sobre a mascara de blocos sem tinta (exato)"
+  },
+  "paineis": [
+    {
+      "captura": "depois16_claro_3840x2160_dataset.png",
+      "pele": "claro",
+      "aba": "dataset",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1596,
+      "vazio_altura": 92,
+      "vazio_kpx": 146.8,
+      "vazio_em": [
+        554,
+        2031
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_estudo.png",
+      "pele": "claro",
+      "aba": "estudo",
+      "largura_do_painel": 2126,
+      "altura_do_painel": 2071,
+      "vazio_largura": 900,
+      "vazio_altura": 1712,
+      "vazio_kpx": 1540.8,
+      "vazio_em": [
+        1234,
+        247
+      ],
+      "fundo": "#f8f9fb"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_galeria.png",
+      "pele": "claro",
+      "aba": "galeria",
+      "largura_do_painel": 1861,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1860,
+      "vazio_altura": 820,
+      "vazio_kpx": 1525.2,
+      "vazio_em": [
+        10,
+        87
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_resultado.png",
+      "pele": "claro",
+      "aba": "resultado",
+      "largura_do_painel": 1913,
+      "altura_do_painel": 2071,
+      "vazio_largura": 208,
+      "vazio_altura": 208,
+      "vazio_kpx": 43.3,
+      "vazio_em": [
+        662,
+        103
+      ],
+      "fundo": "#b58863"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_revisao de texto.png",
+      "pele": "claro",
+      "aba": "revisao de texto",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1196,
+      "vazio_altura": 1576,
+      "vazio_kpx": 1884.9,
+      "vazio_em": [
+        962,
+        519
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_revisao.png",
+      "pele": "claro",
+      "aba": "revisao",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2132,
+      "vazio_altura": 1456,
+      "vazio_kpx": 3104.2,
+      "vazio_em": [
+        18,
+        603
+      ],
+      "fundo": "#f8f9fb"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_rotulagem.png",
+      "pele": "claro",
+      "aba": "rotulagem",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 724,
+      "vazio_altura": 1060,
+      "vazio_kpx": 767.4,
+      "vazio_em": [
+        10,
+        159
+      ],
+      "fundo": "#3f3f46"
+    },
+    {
+      "captura": "depois16_claro_3840x2160_texto.png",
+      "pele": "claro",
+      "aba": "texto",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2136,
+      "vazio_altura": 960,
+      "vazio_kpx": 2050.6,
+      "vazio_em": [
+        14,
+        99
+      ],
+      "fundo": "#f8f9fb"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_dataset.png",
+      "pele": "escuro",
+      "aba": "dataset",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1596,
+      "vazio_altura": 92,
+      "vazio_kpx": 146.8,
+      "vazio_em": [
+        554,
+        2031
+      ],
+      "fundo": "#1f2124"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_estudo.png",
+      "pele": "escuro",
+      "aba": "estudo",
+      "largura_do_painel": 2126,
+      "altura_do_painel": 2071,
+      "vazio_largura": 900,
+      "vazio_altura": 1680,
+      "vazio_kpx": 1512.0,
+      "vazio_em": [
+        1234,
+        279
+      ],
+      "fundo": "#15171a"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_galeria.png",
+      "pele": "escuro",
+      "aba": "galeria",
+      "largura_do_painel": 1861,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1860,
+      "vazio_altura": 800,
+      "vazio_kpx": 1488.0,
+      "vazio_em": [
+        10,
+        123
+      ],
+      "fundo": "#1f2124"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_resultado.png",
+      "pele": "escuro",
+      "aba": "resultado",
+      "largura_do_painel": 1913,
+      "altura_do_painel": 2071,
+      "vazio_largura": 204,
+      "vazio_altura": 204,
+      "vazio_kpx": 41.6,
+      "vazio_em": [
+        650,
+        547
+      ],
+      "fundo": "#b58863"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_revisao de texto.png",
+      "pele": "escuro",
+      "aba": "revisao de texto",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1196,
+      "vazio_altura": 1540,
+      "vazio_kpx": 1841.8,
+      "vazio_em": [
+        962,
+        555
+      ],
+      "fundo": "#1f2124"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_revisao.png",
+      "pele": "escuro",
+      "aba": "revisao",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2132,
+      "vazio_altura": 1424,
+      "vazio_kpx": 3036.0,
+      "vazio_em": [
+        18,
+        635
+      ],
+      "fundo": "#15171a"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_rotulagem.png",
+      "pele": "escuro",
+      "aba": "rotulagem",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 724,
+      "vazio_altura": 1044,
+      "vazio_kpx": 755.9,
+      "vazio_em": [
+        10,
+        191
+      ],
+      "fundo": "#3f3f46"
+    },
+    {
+      "captura": "depois16_escuro_3840x2160_texto.png",
+      "pele": "escuro",
+      "aba": "texto",
+      "largura_do_painel": 2143,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2136,
+      "vazio_altura": 944,
+      "vazio_kpx": 2016.4,
+      "vazio_em": [
+        14,
+        131
+      ],
+      "fundo": "#15171a"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_dataset.png",
+      "pele": "fita",
+      "aba": "dataset",
+      "largura_do_painel": 2146,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1604,
+      "vazio_altura": 72,
+      "vazio_kpx": 115.5,
+      "vazio_em": [
+        550,
+        2051
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_estudo.png",
+      "pele": "fita",
+      "aba": "estudo",
+      "largura_do_painel": 2134,
+      "altura_do_painel": 2071,
+      "vazio_largura": 896,
+      "vazio_altura": 1700,
+      "vazio_kpx": 1523.2,
+      "vazio_em": [
+        1246,
+        279
+      ],
+      "fundo": "#f8f9fb"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_galeria.png",
+      "pele": "fita",
+      "aba": "galeria",
+      "largura_do_painel": 1871,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1868,
+      "vazio_altura": 808,
+      "vazio_kpx": 1509.3,
+      "vazio_em": [
+        10,
+        139
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_resultado.png",
+      "pele": "fita",
+      "aba": "resultado",
+      "largura_do_painel": 1932,
+      "altura_do_painel": 2071,
+      "vazio_largura": 204,
+      "vazio_altura": 204,
+      "vazio_kpx": 41.6,
+      "vazio_em": [
+        30,
+        155
+      ],
+      "fundo": "#f0d9b5"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_revisao de texto.png",
+      "pele": "fita",
+      "aba": "revisao de texto",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 1196,
+      "vazio_altura": 1528,
+      "vazio_kpx": 1827.5,
+      "vazio_em": [
+        962,
+        571
+      ],
+      "fundo": "#f0f0f0"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_revisao.png",
+      "pele": "fita",
+      "aba": "revisao",
+      "largura_do_painel": 2146,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2144,
+      "vazio_altura": 1420,
+      "vazio_kpx": 3044.5,
+      "vazio_em": [
+        10,
+        647
+      ],
+      "fundo": "#f8f9fb"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_rotulagem.png",
+      "pele": "fita",
+      "aba": "rotulagem",
+      "largura_do_painel": 2149,
+      "altura_do_painel": 2071,
+      "vazio_largura": 724,
+      "vazio_altura": 1032,
+      "vazio_kpx": 747.2,
+      "vazio_em": [
+        10,
+        211
+      ],
+      "fundo": "#3f3f46"
+    },
+    {
+      "captura": "depois16_fita_3840x2160_texto.png",
+      "pele": "fita",
+      "aba": "texto",
+      "largura_do_painel": 2146,
+      "altura_do_painel": 2071,
+      "vazio_largura": 2144,
+      "vazio_altura": 944,
+      "vazio_kpx": 2023.9,
+      "vazio_em": [
+        10,
+        147
+      ],
+      "fundo": "#f8f9fb"
+    }
+  ],
+  "por_pele": {
+    "claro": {
+      "paineis": 8,
+      "acima": 6,
+      "pior_kpx": 3104.2,
+      "pior_aba": "revisao"
+    },
+    "escuro": {
+      "paineis": 8,
+      "acima": 6,
+      "pior_kpx": 3036.0,
+      "pior_aba": "revisao"
+    },
+    "fita": {
+      "paineis": 8,
+      "acima": 6,
+      "pior_kpx": 3044.5,
+      "pior_aba": "revisao"
+    }
+  },
+  "violam_o_portao": [
+    "claro/estudo: 1540.8 kpx",
+    "claro/galeria: 1525.2 kpx",
+    "claro/revisao de texto: 1884.9 kpx",
+    "claro/revisao: 3104.2 kpx",
+    "claro/rotulagem: 767.4 kpx",
+    "claro/texto: 2050.6 kpx",
+    "escuro/estudo: 1512.0 kpx",
+    "escuro/galeria: 1488.0 kpx",
+    "escuro/revisao de texto: 1841.8 kpx",
+    "escuro/revisao: 3036.0 kpx",
+    "escuro/rotulagem: 755.9 kpx",
+    "escuro/texto: 2016.4 kpx",
+    "fita/estudo: 1523.2 kpx",
+    "fita/galeria: 1509.3 kpx",
+    "fita/revisao de texto: 1827.5 kpx",
+    "fita/revisao: 3044.5 kpx",
+    "fita/rotulagem: 747.2 kpx",
+    "fita/texto: 2023.9 kpx"
+  ],
+  "veredito": "REPROVOU"
+}

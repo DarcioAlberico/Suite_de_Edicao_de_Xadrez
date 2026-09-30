@@ -1,0 +1,89 @@
+{
+  "portao": "OCR_UI passo 13 -- corrigir uma casa errada (casa no recorte → peça → aplicar) em <= 3 acoes, sem zoom na pagina",
+  "quando": "2026-09-16T11:56:37+00:00",
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+    "pagina": 80
+  },
+  "sabotagem": "sem_sincronia",
+  "preparacao": [
+    {
+      "numero": 1,
+      "nome": "abrir o livro",
+      "comando": "abrir_pdf",
+      "espera_ms": 797.0984999992652,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "ir para a página 80",
+      "comando": "ir_para_pagina",
+      "espera_ms": 748.4867999883136,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "abrir o primeiro diagrama da página (lê a página)",
+      "comando": "clicar_na_caixa",
+      "espera_ms": 3116.047499992419,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "acoes": [
+    {
+      "numero": 1,
+      "nome": "clicar a casa e2 no recorte",
+      "comando": "clicar_no_recorte",
+      "espera_ms": 0.000800006091594696,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "clicar a casa e2 no tabuleiro (o recorte não a selecionou)",
+      "comando": "clicar_no_tabuleiro",
+      "espera_ms": 0.0045000051613897085,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "escolher dama preta na paleta",
+      "comando": "pincel",
+      "espera_ms": 0.0012999953469261527,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 4,
+      "nome": "aplicar dama preta em e2",
+      "comando": "aplicar",
+      "espera_ms": 0.02439999661874026,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "detalhes": {
+    "diagrama": 1,
+    "casa": "e2",
+    "lida": "dama branca",
+    "para": "dama preta",
+    "margem": 0.997,
+    "casas_ambar": 0,
+    "zoom_antes": 0.4023372287145242,
+    "selecionada_pelo_recorte": false,
+    "zoom_depois": 0.4023372287145242,
+    "enquadramento": "enquadramento_largura",
+    "sem_zoom": true,
+    "corrigida": true,
+    "caixa_marcada_corrigida": "corrigido",
+    "recorte_focavel": true
+  },
+  "notas": [
+    "sabotagem: o clique do recorte não chega ao tabuleiro (ligar_recorte(False))"
+  ],
+  "veredito": "REPROVOU"
+}

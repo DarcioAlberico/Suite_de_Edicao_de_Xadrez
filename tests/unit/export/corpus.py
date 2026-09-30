@@ -7,9 +7,6 @@ name.
 
 from __future__ import annotations
 
-import os
-import shutil
-import subprocess
 from pathlib import Path
 
 CORPUS_SEED = 0x0F8
@@ -31,64 +28,25 @@ SIDECAR_FORMATS = ("pdf", "latex")
 def epubcheck_jar() -> Path | None:
     """Locate an EPUBCheck jar, if this machine has one.
 
-    ``CAISSA_EPUBCHECK`` wins when set; otherwise the temporary directory is
-    searched, which is where the F8 work unpacked it.
-
-    Returns:
-        The jar path, or ``None`` when EPUBCheck is not installed.
+    OCR_UI ciclo 2, A12: the locator moved to :mod:`caissa.export.epubcheck`,
+    where the product (``percurso --fluxo livro``) shares it -- ``CAISSA_EPUBCHECK``
+    wins, then ``tools/epubcheck-*/`` in the repository, then the machine.
     """
-    named = os.environ.get("CAISSA_EPUBCHECK")
-    if named and Path(named).exists():
-        return Path(named)
-    roots = [Path(os.environ.get("TEMP", "/tmp")), Path.home()]
-    for root in roots:
-        if not root.exists():
-            continue
-        try:
-            for candidate in root.glob("**/epubcheck*/epubcheck.jar"):
-                return candidate
-        except OSError:
-            continue
-    return None
+    from caissa.export.epubcheck import find_epubcheck_jar
+
+    return find_epubcheck_jar()
 
 
 def java_available() -> bool:
-    """Whether a Java runtime is on this machine.
+    """Whether a Java runtime is on this machine."""
+    from caissa.export.epubcheck import java_available as _java_available
 
-    Returns:
-        ``True`` when ``java -version`` runs.
-    """
-    if shutil.which("java") is None:
-        return False
-    try:
-        subprocess.run(["java", "-version"], capture_output=True, timeout=60, check=False)
-    except (OSError, subprocess.SubprocessError):
-        return False
-    return True
+    return _java_available()
 
 
 def run_epubcheck(jar: Path, package: Path) -> tuple[int, str]:
-    """Validate one EPUB package.
+    """Validate one EPUB package; ``(error count, full output)``."""
+    from caissa.export.epubcheck import run_epubcheck as _run
 
-    Args:
-        jar: The EPUBCheck jar.
-        package: The ``.epub`` to check.
-
-    Returns:
-        ``(error count, full output)``. The count is parsed from EPUBCheck's own
-        summary line, which it prints in the JVM's locale, so both the English
-        and the Portuguese wordings are accepted.
-    """
-    import re
-
-    result = subprocess.run(
-        ["java", "-jar", str(jar), str(package)],
-        capture_output=True,
-        timeout=600,
-        check=False,
-    )
-    output = (result.stdout + result.stderr).decode("utf-8", "replace")
-    match = re.search(r"/\s*(\d+)\s+(?:erros?|errors?)\s*/", output)
-    if match:
-        return int(match.group(1)), output
-    return (0 if result.returncode == 0 else 1), output
+    result = _run(jar, package)
+    return (result.errors if result.errors >= 0 else 1), result.output

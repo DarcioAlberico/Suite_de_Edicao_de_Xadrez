@@ -1,0 +1,72 @@
+{
+  "portao": "OCR_UI passo 17 -- abrir → primeira duvidosa → corrigir → exportar em <= 6 acoes; cancelar a 30 % devolve 30 % das paginas",
+  "quando": "2026-09-16T07:42:02+00:00",
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\AAGAARD - Practical Chess Defence.pdf",
+    "paginas": "31-38"
+  },
+  "acoes": [
+    {
+      "numero": 1,
+      "nome": "abrir o livro",
+      "comando": "abrir_pdf",
+      "espera_ms": 390.67749999958323,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "importar o livro",
+      "comando": "importar_livro",
+      "espera_ms": 31960.713399996166,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "ir à primeira página duvidosa",
+      "comando": "primeira_duvidosa",
+      "espera_ms": 75.03420000284677,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 4,
+      "nome": "abrir o primeiro diagrama da página",
+      "comando": "clicar_na_caixa",
+      "espera_ms": 1074.0081000039936,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 5,
+      "nome": "gravar a correção",
+      "comando": "salvar",
+      "espera_ms": 0.0007999988156370819,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 6,
+      "nome": "exportar o livro",
+      "comando": "exportar_epub",
+      "espera_ms": 3444.135300000198,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "cancelamento": {
+    "pedidas": 8,
+    "cancelada_apos_montar": 2,
+    "montadas_no_documento": 3,
+    "canceled": true,
+    "fracao": 0.38,
+    "paginas_do_trilho_montadas": 3,
+    "ok": true
+  },
+  "exportado": "percurso.epub (1062424 bytes)",
+  "notas": [
+    "296 página(s) com estado no trilho; duvidosas: [30, 31, 32, 34, 35]"
+  ],
+  "veredito": "PASSOU"
+}

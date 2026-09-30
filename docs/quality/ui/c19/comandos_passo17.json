@@ -1,0 +1,20 @@
+{
+  "arranjo": "foco/?",
+  "recursos": {
+    "motor": false
+  },
+  "desligado": "",
+  "religados": [],
+  "medidos": 127,
+  "por_superficie": {
+    "fila": 4,
+    "menu": 123
+  },
+  "habilitados": 124,
+  "soltos": 0,
+  "prometem": 0,
+  "cinzas_sem_motivo": 0,
+  "nao_perguntados": 0,
+  "defeitos": [],
+  "veredito": "PASSOU"
+}

@@ -42,11 +42,15 @@ pays for it.
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
+
 import html
 import os
 import re
 import shutil
 import subprocess
+import threading
 import sys
 import tempfile
 import time
@@ -210,6 +214,15 @@ class TesseractConfig:
     #: region gets the plain configuration.
     use_profiles: bool = True
     profiles: ProfileConfig = field(default_factory=ProfileConfig)
+    #: OCR_UI_ROADMAP_C2 passo B9: ``OMP_THREAD_LIMIT`` for the child.  The
+    #: service runs the candidates of a region in parallel, and four
+    #: Tesseracts each spawning four OpenMP threads oversubscribe the
+    #: machine; one thread per child is what the parallelism is made of.
+    #: ``None`` leaves the environment alone.
+    omp_thread_limit: int | None = 1
+    #: How often the runner looks at the cancellation hook while the child
+    #: runs (passo B9); the child is killed when the hook says so.
+    cancel_poll_s: float = 0.1
 
 
 # --------------------------------------------------------------------------- #
@@ -491,7 +504,10 @@ class TesseractEngine(OcrEngineBase):
 
     def __init__(self, config: TesseractConfig | None = None) -> None:
         self._profile_files = ProfileFiles((config or TesseractConfig()).profiles)
-        self._forced_profile: TesseractProfile | None = None
+        # Per thread: the service reads a region's candidates in parallel
+        # (passo B9), and a forced profile on the instance would leak from
+        # one thread's strict reading into another's prose.
+        self._forced = threading.local()
         super().__init__()
         self.config = config or TesseractConfig()
         self._binary: str | None = None
@@ -613,32 +629,69 @@ class TesseractEngine(OcrEngineBase):
             return getattr(subprocess, "CREATE_NO_WINDOW", 0)
         return 0
 
+    def _child_env(self) -> dict[str, str] | None:
+        limit = self.config.omp_thread_limit
+        if limit is None:
+            return None
+        return {**os.environ, "OMP_THREAD_LIMIT": str(int(limit))}
+
     def _run(self, cmd: list[str], *, timeout: float,
              cwd: str | None = None) -> subprocess.CompletedProcess[str]:
+        """Run the child, polling the cancellation hook while it works.
+
+        OCR_UI_ROADMAP_C2 passo B9: a ``subprocess.run`` with a 180 s timeout
+        could not be interrupted, and the importer only looked at its hook
+        between pages.  The child is now waited on in short ticks; when the
+        hook says stop it is killed and :class:`OcrCanceled` is raised —
+        past every ``except Exception`` on the way up, to the importer.
+        """
+        from ..cancel import OcrCanceled, should_cancel
+
         try:
-            return subprocess.run(
+            proc = subprocess.Popen(  # noqa: S603 - the command is built here, not from input
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=timeout,
                 cwd=cwd,
+                env=self._child_env(),
                 creationflags=self._creation_flags(),
-                check=False,
             )
-        except subprocess.TimeoutExpired as exc:
-            raise OcrError(
-                self.name,
-                f"O Tesseract excedeu o tempo limite de {timeout:.0f}s.",
-                detail=str(exc),
-            ) from exc
         except OSError as exc:
             raise OcrError(
                 self.name,
                 f"Não foi possível executar o Tesseract: {exc}",
                 detail=str(exc),
             ) from exc
+        deadline = time.monotonic() + timeout
+        tick = max(0.02, float(self.config.cancel_poll_s))
+        try:
+            while True:
+                try:
+                    stdout, stderr = proc.communicate(timeout=tick)
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
+                if should_cancel():
+                    proc.kill()
+                    proc.communicate()
+                    raise OcrCanceled("OCR cancelado durante o Tesseract.")
+                if time.monotonic() >= deadline:
+                    proc.kill()
+                    proc.communicate()
+                    raise OcrError(
+                        self.name,
+                        f"O Tesseract excedeu o tempo limite de {timeout:.0f}s.",
+                        detail=" ".join(cmd[:3]),
+                    )
+        except BaseException:
+            if proc.poll() is None:
+                proc.kill()
+                proc.communicate()
+            raise
+        return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
 
     # -- recognition ------------------------------------------------------- #
 
@@ -650,8 +703,9 @@ class TesseractEngine(OcrEngineBase):
                "-l", lang, "--psm", str(psm), "--oem", str(self.config.oem)]
         if self.config.tessdata_dir:
             cmd += ["--tessdata-dir", os.path.abspath(self.config.tessdata_dir)]
-        if self.config.dpi:
-            cmd += ["--dpi", str(int(self.config.dpi))]
+        dpi = self._effective_dpi()
+        if dpi:
+            cmd += ["--dpi", str(dpi)]
         if self.config.want_char_boxes:
             cmd += ["-c", "hocr_char_boxes=1"]
         params = dict(self.config.extra_config)
@@ -671,16 +725,38 @@ class TesseractEngine(OcrEngineBase):
             return self.config.box_file_fallback
         return self._box_fallback_armed
 
+    @contextlib.contextmanager
+    def with_dpi(self, dpi: float) -> Iterator[None]:
+        """Recognise at ``dpi`` for the duration of the block (OCR_UI ciclo 2, B12).
+
+        The portfolio's upscale variant hands the engine a 450 DPI image while
+        ``config.dpi`` says 300: Tesseract's font-size estimate is off by 1,5×
+        and its line segmentation pays for it.  Thread-local, like the forced
+        profile, so two pages read in parallel do not swap resolutions.
+        """
+        previous = getattr(self._forced, "dpi", None)
+        self._forced.dpi = int(round(float(dpi))) if dpi else None
+        try:
+            yield
+        finally:
+            self._forced.dpi = previous
+
+    def _effective_dpi(self) -> int | None:
+        forced = getattr(self._forced, "dpi", None)
+        if forced:
+            return int(forced)
+        return int(self.config.dpi) if self.config.dpi else None
+
     def recognize_with_profile(self, image: NDArray[np.uint8], *, lang: str,
                                psm_hint: RegionKind,
                                profile: TesseractProfile) -> OcrResult:
         """Recognise with an explicit profile — the strict movetext candidate
         the service adds for token fusion (Sol §SOL-7)."""
-        self._forced_profile = profile
+        self._forced.profile = profile
         try:
             return self.recognize(image, lang=lang, psm_hint=psm_hint)
         finally:
-            self._forced_profile = None
+            self._forced.profile = None
 
     def _recognize(
         self,
@@ -696,7 +772,7 @@ class TesseractEngine(OcrEngineBase):
         warnings: list[str] = []
         profile: TesseractProfile | None = None
         if self.config.use_profiles:
-            profile = self._forced_profile or profile_for(psm_hint)
+            profile = getattr(self._forced, "profile", None) or profile_for(psm_hint)
 
         known = self.languages()
         requested = [p for p in lang.split("+") if p]
@@ -717,8 +793,9 @@ class TesseractEngine(OcrEngineBase):
             out_base = tmp_path / "out"
             pil = Image.fromarray(gray)
             save_kwargs: dict[str, object] = {}
-            if self.config.dpi:
-                save_kwargs["dpi"] = (int(self.config.dpi), int(self.config.dpi))
+            dpi = self._effective_dpi()
+            if dpi:
+                save_kwargs["dpi"] = (dpi, dpi)
             pil.save(image_path, format="PNG", **save_kwargs)
 
             cmd = self._build_command(image_path, out_base,

@@ -74,9 +74,112 @@ def test_the_table_round_trips_and_refuses_another_books_fingerprint(tmp_path: P
     assert not table.dirty
     again = BookCipher.load(path, fingerprint="abc")
     assert again is not None and again.proven() == {"W": "Q"}
-    assert again.entries["W"].examples[0] == (3, "Wd5", "Qd5")
+    assert again.entries["W"].examples[0] == (3, "Wd5", "Qd5", 0.0)
     assert BookCipher.load(path, fingerprint="other") is None
     assert BookCipher.load(tmp_path / "missing.json") is None
+
+
+def test_a_version_one_file_loads_with_its_evidence(tmp_path: Path):
+    """The tables the corpus already has (``models/tessdata/livros/*/cipher.json``,
+    version 1) keep their rows: first piece with its sources, disputed pieces
+    counted as visual evidence against it."""
+    import json
+
+    old = {"version": 1, "fingerprint": "abc", "document": "livro", "min_support": 5,
+           "updated_at": "", "entries": {
+               "W": {"piece": "Q", "support": 139, "contradictions": 1,
+                     "examples": [[17, "Wc7!", "♕c7!"]], "disputed": {"K": 1},
+                     "by_source": {"glyph": 139}},
+               "8": {"piece": "K", "support": 1, "contradictions": 5,
+                     "examples": [[5, "8a8", "♔a8"]], "disputed": {"R": 1, "Q": 3, "B": 1},
+                     "by_source": {"glyph": 1}}}}
+    path = tmp_path / "cipher.json"
+    path.write_text(json.dumps(old), encoding="utf-8")
+    table = BookCipher.load(path, fingerprint="abc")
+    assert table is not None
+    assert table.entries["W"].support == 139 and table.entries["W"].disputed == {"K": 1}
+    assert table.entries["W"].examples == [(17, "Wc7!", "♕c7!", 0.0)]
+    assert table.proven() == {"W": "Q"}
+    # The majority rule: ``8`` was fixed on K by its first swap; Q has 3 of 6.
+    assert table.entries["8"].piece == "Q" and table.entries["8"].contradictions == 3
+    assert "8" not in table.proven()
+    assert table.as_dict()["version"] == 2
+
+
+# --------------------------------------------------------------------------- #
+# B10: majority, style and window
+# --------------------------------------------------------------------------- #
+
+
+def test_the_piece_of_a_row_is_the_majority_not_the_first_swap():
+    """``'it`` → Q ×3 then K ×26 on the corpus: the first version could never
+    prove K.  The row's piece follows the evidence."""
+    table = BookCipher()
+    for _ in range(3):
+        table.observe("'it", "Q", source="glyph", page=1)
+    assert table.entries["'it"].piece == "Q"
+    for _ in range(26):
+        table.observe("'it", "K", source="glyph", page=2)
+    entry = table.entries["'it"]
+    assert entry.piece == "K" and entry.support == 26 and entry.disputed == {"Q": 3}
+    assert "'it" not in table.proven(window=0), "3 in 29 is above the 2 % share"
+    for page in range(3, 9):
+        for _ in range(5):
+            table.observe("'it", "K", source="glyph", page=page)
+    assert table.proven(window=0) == {}, "the whole row still carries 3 against 56"
+    assert table.proven()["'it"] == "K", "six agreeing pages outlive the early mistake"
+    assert "'it" not in table.proven(majority=False), "the version-1 rule judges the first swap (Q)"
+    assert entry.first_piece == "Q"
+
+
+def test_a_window_is_pages_not_tokens():
+    """One page of swaps is one burst: it never proves by itself, however many."""
+    table = BookCipher()
+    table.observe("W", "K", source="glyph", page=1)
+    for _ in range(40):
+        table.observe("W", "Q", source="glyph", page=2)
+    assert "W" not in table.proven(), "one recent page with 40 tokens is not a window"
+    for _ in range(3):
+        table.observe("W", "Q", source="glyph", page=3)
+    assert "W" not in table.proven(), "pages 2 and 3 agree, but page 1 is inside a window of six"
+    table.observe("W", "K", source="glyph", page=9)
+    for page in range(10, 16):
+        for _ in range(2):
+            table.observe("W", "Q", source="glyph", page=page)
+    assert table.proven()["W"] == "Q", "the last six pages (10–15) agree: the K of page 9 is outside"
+    assert "W" not in table.proven(window=0)
+
+
+def test_a_symbol_proves_per_style_when_the_faces_disagree():
+    """A look-alike the main line uses for one figurine and the small-type
+    variations for another: counted together it never proves; per style it does."""
+    table = BookCipher()
+    for _ in range(12):
+        table.observe("&", "B", source="glyph", style="r", page=1)
+    for _ in range(12):
+        table.observe("&", "K", source="glyph", style="s", page=1)
+    assert "&" not in table.proven(style=None), "12 against 12 is no majority"
+    assert table.proven(style="r")["&"] == "B"
+    assert table.proven(style="s")["&"] == "K"
+    assert "&" not in table.proven(style="l"), "a style with no evidence falls back to the row"
+    assert "&" not in table.proven(style=""), "and the style-less row is contradicted"
+
+
+def test_size_class_and_body_size():
+    from caissa.ocr.notation.book_cipher import body_size_of, size_class
+
+    assert body_size_of([10.0, 12.0, 11.0, 0.0]) == 11.0
+    assert body_size_of([]) == 0.0
+    assert size_class(11.0, 11.0) == "r"
+    assert size_class(8.0, 11.0) == "s"
+    assert size_class(16.0, 11.0) == "l"
+    assert size_class(8.0, 0.0) == "" and size_class(0.0, 11.0) == ""
+
+
+def test_examples_keep_the_confidence_of_the_swap():
+    table = BookCipher()
+    table.observe("H", "R", source="glyph", raw="Hea!", san="♖e8!", confidence=0.93, page=4)
+    assert table.entries["H"].examples == [(4, "Hea!", "♖e8!", 0.93)]
 
 
 # --------------------------------------------------------------------------- #

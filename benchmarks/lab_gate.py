@@ -35,9 +35,10 @@ from caissa.vision.classify.cvoff import cvoff_root, ensure_cvoff_on_path  # noq
 ensure_cvoff_on_path()
 
 
-def evaluate(model_path: Path, split: str, *, constrained: bool) -> dict[str, Any]:
+def evaluate(model_path: Path, split: str, *, constrained: bool, rules: str = "c11") -> dict[str, Any]:
     from chess_diagram_ocr.checkpoint import load_checkpoint
     from chess_diagram_ocr.dataset import BoardFenDataset
+    from chess_diagram_ocr.decode import CLASSIC_RULES, DEFAULT_RULES
     from chess_diagram_ocr.evaluation import evaluate_dataset
     from chess_diagram_ocr.inference import load_model
     from chess_diagram_ocr.model import DEFAULT_ARCH, ArchConfig
@@ -56,12 +57,14 @@ def evaluate(model_path: Path, split: str, *, constrained: bool) -> dict[str, An
     )
     started = time.perf_counter()
     report = evaluate_dataset(
-        dataset, model, device, split_name=split, model_path=model_path, constrained=constrained
+        dataset, model, device, split_name=split, model_path=model_path, constrained=constrained,
+        rules=CLASSIC_RULES if rules == "classic" else DEFAULT_RULES,
     )
     return {
         "model": str(model_path),
         "split": split,
         "constrained": constrained,
+        "rules": rules if constrained else "",
         "boards": report.board_count,
         "squares": report.square_count,
         "square_correct": report.square_correct,
@@ -82,6 +85,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--split", default="test", choices=("test", "val"))
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--unconstrained", action="store_true", help="Also report raw argmax, without the solver.")
+    parser.add_argument("--rules", default="c11", choices=("c11", "classic"),
+                        help="C11 (ciclo 2): the decoder's rules -- 'classic' is the pre-C11 solver "
+                             "(no bishop-colour promotion count, no adjacent-kings rule), the sabotage.")
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "benchmarks" / "reports")
     parser.add_argument("--tag", default="")
     args = parser.parse_args(argv)
@@ -100,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     rows: list[dict[str, Any]] = []
     for name, path in models:
         for constrained in modes:
-            runs = [evaluate(path, args.split, constrained=constrained) for _ in range(args.runs)]
+            runs = [evaluate(path, args.split, constrained=constrained, rules=args.rules) for _ in range(args.runs)]
             invariant = ("square_correct", "boards_exact", "boards_within_one", "illegal_predictions")
             drift = {k for r in runs for k in invariant if r[k] != runs[0][k]}
             if drift:
@@ -117,14 +123,16 @@ def main(argv: list[str] | None = None) -> int:
     destination.write_text(json.dumps({"generated_at": datetime.now().isoformat(timespec="seconds"), "rows": rows},
                                       indent=2), encoding="utf-8")
 
-    header = f"{'model':<26}{'dec':>5}{'boards':>8}{'square_acc':>13}{'board_exact':>13}{'<=1':>6}{'illegal':>9}"
+    header = (f"{'model':<26}{'dec':>5}{'rules':>8}{'boards':>8}{'square_acc':>13}{'board_exact':>13}"
+              f"{'<=1':>6}{'illegal':>9}{'helped':>8}{'hurt':>6}")
     print("\n" + header)
     print("-" * len(header))
     baseline = None
     for row in rows:
-        print(f"{row['name']:<26}{'yes' if row['constrained'] else 'no':>5}{row['boards']:>8}"
+        print(f"{row['name']:<26}{'yes' if row['constrained'] else 'no':>5}{row.get('rules', ''):>8}{row['boards']:>8}"
               f"{row['square_accuracy']:>13.6f}{row['board_exact_accuracy']:>13.4f}"
-              f"{row['boards_within_one']:>6}{row['illegal_predictions']:>9}")
+              f"{row['boards_within_one']:>6}{row['illegal_predictions']:>9}"
+              f"{row['decoder_helped']:>8}{row['decoder_hurt']:>6}")
         if row["name"] == "production" and row["constrained"]:
             baseline = row
     if baseline is not None:

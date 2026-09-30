@@ -31,10 +31,14 @@ An abstained page (or region) is imported as an image with the reason in its
 provenance; ``enable_ocr=False`` skips all of it for a fast import.  Nothing
 here ever emits text the verdict called garbage.
 
-**Diagrams are positions, not pictures** (SPEC 5.3).  The default finder is the
-vector detector (F3-A): exact reads from chess-font glyphs, no model, about
-two milliseconds a page.  A caller with the raster pipeline (F3 vias B and C,
-F4) plugs it in as ``diagram_finder`` and gets the same IR shape.  Every
+**Diagrams are positions, not pictures** (SPEC 5.3).  The default finder is
+every route (:func:`caissa.ingest.pdf.finders.combined_finder`, OCR_UI ciclo 2
+passo A2): the vector detector (F3-A) first -- exact reads from chess-font
+glyphs, no model, about two milliseconds a page --, then the unknown-font
+lattice and the raster pipeline (F3 vias B and C, F4) for the books that are
+scans or carry raster diagrams.  ``detect_raster_diagrams=False`` keeps the
+vector route alone; a caller with its own finder plugs it in as
+``diagram_finder`` and gets the same IR shape.  Every
 diagram carries its page rectangle, the caption the text placed next to it,
 and -- when the caption says so -- the side to move, which is where the
 trunk's ``0 of 3.244 labels with Black to move`` came from.
@@ -51,7 +55,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
-from caissa.core.chess.notation_tables import FIGURINE_BLACK, FIGURINE_WHITE, PieceType
+from caissa.core.chess.notation_tables import FIGURINE_BLACK, FIGURINE_WHITE, FigurineSet, PieceType
 from caissa.core.model import (
     Block,
     ConfidenceBand,
@@ -59,14 +63,17 @@ from caissa.core.model import (
     DiagramSource,
     Document,
     DocumentMetadata,
+    FenCandidate,
     Figure,
     FontWeight,
+    GameScore,
     Heading,
     ImageBlock,
     ImageInline,
     Inline,
     Measure,
     MetadataEntry,
+    MoveNode,
     Orientation,
     Paragraph,
     ParagraphProps,
@@ -80,6 +87,7 @@ from caissa.core.model import (
     ResourceKind,
     RunProps,
     SourceKind,
+    SquareRepair,
     StyleSheet,
     Text,
     VerticalAlign,
@@ -103,6 +111,9 @@ from caissa.ingest.pdf.paragraphs import (
     layout_page,
 )
 from caissa.ingest.pdf.textlayer import (
+    CIPHER_ORIGIN,
+    FIGURINE_MODEL_ORIGIN,
+    GLYPH_ORIGIN,
     FigurineMapper,
     ImagePlacement,
     PageText,
@@ -110,6 +121,7 @@ from caissa.ingest.pdf.textlayer import (
     extract_page_text,
     stroke_bold_fonts,
 )
+from caissa.ocr.cancel import OcrCanceled, cancellable
 from caissa.ocr.engines.pdf_text_layer import (
     PdfTextLayerEngine,
     TextLayerThresholds,
@@ -124,12 +136,15 @@ __all__ = [
     "ImportCanceled",
     "ImportReport",
     "ImportResult",
+    "OcrAttempt",
     "OcrProvider",
     "PageReport",
     "PdfImportOptions",
     "PdfImporter",
     "ReviewItem",
     "import_pdf",
+    "square_confidences_from_holes",
+    "square_index",
     "vector_diagram_finder",
 ]
 
@@ -141,6 +156,8 @@ _IMAGE_PLACEHOLDER: Final = "￼"
 _EMPTY_BOARD: Final = "8/8/8/8/8/8/8/8 w - - 0 1"
 _CONFIDENT: Final = 0.90
 _DOUBTFUL: Final = 0.60
+_FILES: Final = 8
+_SQUARES: Final = 64
 
 _PIECE_OF_GLYPH: Final[Mapping[str, PieceType]] = {
     **{glyph: piece for piece, glyph in FIGURINE_WHITE.items()},
@@ -149,7 +166,13 @@ _PIECE_OF_GLYPH: Final[Mapping[str, PieceType]] = {
 
 
 class ImportCanceled(RuntimeError):  # noqa: N818 - matches ExportCanceled next door
-    """The import was stopped on request.  The partial document is discarded."""
+    """The import was stopped on request and the partial document was discarded.
+
+    Raised only when :attr:`PdfImportOptions.keep_partial` is off.  With it on
+    (OCR_UI_ROADMAP passo 17, R3.5 -- *the long operation is cancelable, with
+    real progress and a usable partial result*) ``run()`` returns the pages
+    built so far instead, and :attr:`ImportReport.canceled` says so.
+    """
 
 
 # --------------------------------------------------------------------------- #
@@ -185,6 +208,27 @@ class DiagramHit:
     #: the extractor), so the combined finder asks the classifier.
     holes: tuple[tuple[int, int], ...] = ()
     cells_box: RectT | None = None
+    #: OCR_UI ciclo 2, passo C1 (contract §1.2): the per-square signal that
+    #: used to die at this boundary.  Sixty-four confidences indexed from
+    #: ``a1`` (0) to ``h8`` (63) -- the order of
+    #: :attr:`~caissa.core.model.RecognitionResult.per_square_confidence`,
+    #: **not** the trunk's reading order (``a8`` first; convert with
+    #: ``fen_utils.square_from_reading_index``).  The vector route fills 1,0
+    #: per square and 0,0 on its ``holes``; empty when nothing was read.
+    square_confidences: tuple[float, ...] = ()
+    #: Squares the legality decoder changed (``decode.changed_squares``).
+    repairs: tuple[SquareRepair, ...] = ()
+    #: Runner-up readings worth showing (the discarded orientation when the
+    #: choice was ambiguous; the runner-up piece on the least certain
+    #: squares).  May be empty.
+    alternatives: tuple[FenCandidate, ...] = ()
+    #: Fingerprint of the classifier weights that produced the read.
+    model_hash: str = ""
+    #: The orientation policy could not decide with confidence
+    #: (``OrientedPrediction.ambiguous``) -- worth a human eye.
+    orientation_ambiguous: bool = False
+    #: Why this orientation won, in pt-BR (``OrientedPrediction.reason``).
+    orientation_reason: str = ""
 
 
 #: ``(raw page, frame, page text) -> hits``.  Called with the document lock held.
@@ -214,6 +258,7 @@ def vector_diagram_finder(page: Any, frame: PageFrame, _text: PageText) -> list[
             if ch == "~"
         )
         cells = getattr(evidence, "cells_rect_pdf", None)
+        white_bottom = bool(getattr(board.orientation, "white_at_bottom", True))
         hits.append(
             DiagramHit(
                 box=(float(x0), float(y0), float(x1), float(y1)),
@@ -221,12 +266,39 @@ def vector_diagram_finder(page: Any, frame: PageFrame, _text: PageText) -> list[
                 confidence=float(board.confidence),
                 path=RecognitionPath.VECTOR,
                 method=str(board.method),
-                orientation_white=bool(getattr(board.orientation, "white_at_bottom", True)),
+                orientation_white=white_bottom,
                 holes=holes,
                 cells_box=tuple(float(v) for v in cells) if cells else None,
+                # Passo C1: an exact read is 1,0 everywhere the font spoke and
+                # 0,0 where it was silent -- the holes are the doubtful squares.
+                square_confidences=square_confidences_from_holes(holes, white_bottom)
+                if board.fen
+                else (),
             )
         )
     return hits
+
+
+def square_index(rank: int, file: int) -> int:
+    """``a1`` order: rank ``0`` is the first rank, file ``0`` is the a-file."""
+    return rank * 8 + file
+
+
+def square_confidences_from_holes(
+    holes: Sequence[tuple[int, int]], white_bottom: bool, *, hole_value: float = 0.0
+) -> tuple[float, ...]:
+    """Sixty-four confidences for an exact read: 1,0 per square, ``hole_value`` on the holes.
+
+    ``holes`` are ``(row, col)`` in lattice order (top row first, as printed);
+    with Black at the bottom the lattice is the board turned around, which is
+    the same mapping :func:`caissa.ingest.pdf.finders.fill_holes` applies.
+    """
+    confidences = [1.0] * _SQUARES
+    for row, col in holes:
+        r, c = (row, col) if white_bottom else (_FILES - 1 - row, _FILES - 1 - col)
+        if 0 <= r < _FILES and 0 <= c < _FILES:
+            confidences[square_index(_FILES - 1 - r, c)] = hole_value
+    return tuple(confidences)
 
 
 # --------------------------------------------------------------------------- #
@@ -245,6 +317,14 @@ class PdfImportOptions:
     #: Locate (and, when possible, read) chess diagrams.
     detect_diagrams: bool = True
     diagram_finder: DiagramFinder | None = None
+    #: OCR_UI ciclo 2, passo A2: with no ``diagram_finder`` given, the product
+    #: finds diagrams by every route -- vector (exact), unknown-font lattice
+    #: and raster (the trunk's detector plus the square classifier,
+    #: :func:`caissa.ingest.pdf.finders.combined_finder`).  Before this the
+    #: default was the vector route alone and a raster book (the Aagaard) came
+    #: out with 0 diagrams and "nada para rever".  ``False`` keeps the vector
+    #: route only: two milliseconds a page, no model, no ``torch``.
+    detect_raster_diagrams: bool = True
     #: OCR_UI_ROADMAP passo 2: a page whose text layer was *kept* for its
     #: prose while its notation is mangled (``TextLayerVerdict.notation_damaged``,
     #: the 0,55 verdict of F5-C2) goes to the OCR service anyway.  There the
@@ -262,6 +342,13 @@ class PdfImportOptions:
     #: (:mod:`caissa.ocr.notation.book_cipher`).  ``False`` neither reads nor
     #: writes it.
     book_cipher: bool = True
+    #: OCR_UI ciclo 2, passo B10: field overrides for the
+    #: :class:`~caissa.ingest.pdf.ocr_service.OcrServiceConfig` the importer
+    #: builds (``{"cipher_style": False}``, ``{"workers": 1}``), the same
+    #: flat dict ``bench_sol``'s ``SOL_CONFIG`` takes, for the benchmarks that
+    #: go through the importer to switch one mechanism off.  ``None`` is the
+    #: production config.
+    ocr_config: Mapping[str, Any] | None = None
     #: OCR_UI_ROADMAP passo 11: a ``Movetext`` paragraph that follows a read
     #: diagram is replayed from its position and, when the main line chains,
     #: becomes a :class:`GameScore` with provenance per move
@@ -273,6 +360,19 @@ class PdfImportOptions:
     #: ``verified_by_human``, edited ones carry the reviewer's text, regions
     #: kept as image are abstained.  ``None`` applies nothing.
     review_decisions: Any | None = None
+    #: OCR_UI ciclo 2, passo A3: the positions the reviewer corrected in the
+    #: window (:class:`caissa.ocr.diagram_decisions.DiagramDecisions`),
+    #: matched to the detected boxes by IoU ≥ 0,5 -- the ``Diagram`` gets the
+    #: decision's FEN and ``verified_by_human``; ``recognition.fen`` keeps
+    #: the machine's reading.  ``None`` applies nothing (``export_book``
+    #: loads the book's file when the caller passed none).
+    diagram_decisions: Any | None = None
+    #: OCR_UI ciclo 2, C12: a printed demand ("mate in 2", ``#2``) is played
+    #: against the reading through the trunk's ``estipulacao`` (exhaustive
+    #: search for mate in 1-2, the UCI engine for 3+ when the machine has one).
+    #: The ``Diagram`` says the demand, carries the key as ``solution`` when it
+    #: closes and warns when it does not.  Off is the before.
+    verify_stipulations: bool = True
     #: Run OCR on pages whose text layer is absent or rejected (Sol §SOL-1).
     #: Off, such pages import as images -- the fast path for a book whose
     #: text will be read another day.
@@ -305,6 +405,14 @@ class PdfImportOptions:
     paragraphs: ParagraphConfig = field(default_factory=ParagraphConfig)
     progress: Callable[[int, int], None] | None = None
     should_cancel: Callable[[], bool] | None = None
+    #: OCR_UI_ROADMAP passo 17 (R3.5): on cancel, return the document built so
+    #: far -- the pages already assembled, in reading order, with the report
+    #: marked ``canceled`` -- instead of raising :class:`ImportCanceled` and
+    #: throwing the work away.  A cancel during the survey pass (before any
+    #: page is built) returns an empty document, marked the same way.  Off by
+    #: default so the CLIs that catch ``ImportCanceled`` keep their contract;
+    #: the window turns it on.
+    keep_partial: bool = False
 
 
 @dataclass(slots=True)
@@ -361,6 +469,41 @@ class ReviewItem:
     alternatives: tuple[tuple[str, str], ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class OcrAttempt:
+    """What one call to the OCR provider produced -- including nothing (passo A8).
+
+    ``docs/OCR_UI_ANALISE_C2.md`` §7.2: ``_try_ocr`` answered ``None`` for
+    "no provider", "the provider raised" and "the provider read nothing"
+    alike, and the contested-layer branch took every ``None`` as "keep the
+    layer at its own confidence" -- a page whose notation the verdict had
+    called damaged came out as ``text-layer`` at 0,98.  The state now travels
+    with the result, and the caller decides with it.
+
+    Attributes:
+        text: The page text the provider returned, when it returned one.
+        confidence: Its confidence (a character-weighted mean of the lines).
+        attempted: A provider existed and was called.
+        failed: The provider raised.
+        reason: Why there is no text, in Portuguese; empty on success.
+    """
+
+    text: PageText | None = None
+    confidence: float = 0.0
+    attempted: bool = False
+    failed: bool = False
+    reason: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.text is not None
+
+    @property
+    def came_back_empty(self) -> bool:
+        """The OCR ran and had nothing to say -- the case that used to pass as the layer."""
+        return self.attempted and self.text is None
+
+
 @dataclass(slots=True)
 class ImportReport:
     """Everything measured during an import, for the UI and for the record."""
@@ -386,10 +529,20 @@ class ImportReport:
     prose_lang_reason: str = ""
     notation_lang: str = ""
     notation_lang_reason: str = ""
+    #: OCR_UI_ROADMAP passo 17: the import was canceled and this is a partial
+    #: result.  ``pages_planned`` is how many pages were asked for; the pages
+    #: actually built are ``len(pages)``.
+    canceled: bool = False
+    pages_planned: int = 0
 
     @property
     def pages_by_source(self) -> dict[str, int]:
         return dict(Counter(p.source for p in self.pages))
+
+    @property
+    def pages_built(self) -> int:
+        """How many pages made it into the document (all of them unless canceled)."""
+        return len(self.pages)
 
     def describe_pt(self) -> str:
         c = self.counters
@@ -472,6 +625,7 @@ class PdfImporter:
         self._resources: list[Resource] = []
         self._asset_counter = 0
         self._page_reports: dict[int, PageReport] = {}
+        self._partial_entries: list[_Entry] = []
         self._ocr_service: Any = None
         self._ocr_unavailable = False
         #: The language the verdicts and the OCR use: the option, or what the
@@ -483,6 +637,9 @@ class PdfImporter:
         #: Abstained OCR regions of the page being built, as figure entries.
         self._abstained_figures: list[_FigureEntry] = []
         self._decisions_applied = 0
+        self._diagram_decisions_applied = 0
+        self._stipulations_checked = 0
+        self._stipulations_failed = 0
 
     # -- driver ------------------------------------------------------------ #
 
@@ -496,8 +653,26 @@ class PdfImporter:
     def run(self) -> ImportResult:
         started = time.perf_counter()
         indices = self.page_indices
-        self._survey(indices)
-        entries = self._build(indices)
+        self.report.pages_planned = len(indices)
+        try:
+            # Passo B9: the hook reaches inside the page -- every Tesseract
+            # child of this import polls it (:mod:`caissa.ocr.cancel`).
+            with cancellable(self.options.should_cancel):
+                self._survey(indices)
+                entries = self._build(indices)
+        except ImportCanceled:
+            if not self.options.keep_partial:
+                raise
+            # Passo 17: the pages built before the cancel are the result.  The
+            # survey pass builds nothing, so a cancel there yields an empty
+            # document -- still marked canceled, so nobody mistakes it for a
+            # book with no pages.
+            self.report.canceled = True
+            entries = list(self._partial_entries)
+            self.report.notes.append(
+                f"Importação cancelada: {len(self.report.pages)} de "
+                f"{len(indices)} página(s) montadas ficaram no documento."
+            )
         blocks = [e for e in entries if isinstance(e, BlockDraft)]
         figure_pages = Counter(
             e.page_index for e in entries if isinstance(e, (_FigureEntry, _DiagramEntry))
@@ -547,6 +722,12 @@ class PdfImporter:
         self.report.figurines_mapped = self._mapper.count
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))
         document = self._to_ir(entries)
+        # Counted while the nodes were built (passo A3): the reviewer's positions.
+        self.report.counters["diagram_decisions_applied"] = self._diagram_decisions_applied
+        # C12: how many printed demands were played against a reading, and how many
+        # the reading did not meet -- the diagrams the review should look at first.
+        self.report.counters["stipulations_checked"] = self._stipulations_checked
+        self.report.counters["stipulations_failed"] = self._stipulations_failed
         self._save_book_cipher()
         self.report.duration_s = time.perf_counter() - started
         if self.options.asset_dir is not None and self.report.ocr_traces:
@@ -645,24 +826,55 @@ class PdfImporter:
         entries: list[_Entry] = []
         builder = ParagraphBuilder(self.options.paragraphs, self.report.body_size)
         total = len(indices)
-        finder = self.options.diagram_finder or (
-            vector_diagram_finder if self.options.detect_diagrams else None
-        )
+        finder = self._finder()
         for n, index in enumerate(indices):
-            self._check_cancel()
-            started = time.perf_counter()
-            page_report, page_entries = self._build_page(index, builder, finder)
+            try:
+                self._check_cancel()
+                started = time.perf_counter()
+                page_report, page_entries = self._build_page(index, builder, finder)
+            except (ImportCanceled, OcrCanceled) as exc:
+                # Passo 17: close the paragraph in progress so the partial
+                # document ends on a whole block, then hand the entries over.
+                # Passo B9: a cancellation that reached inside the page's OCR
+                # arrives here as ``OcrCanceled`` and is the same event.
+                tail = builder.flush()
+                if tail is not None:
+                    entries.append(tail)
+                self._partial_entries = entries
+                if isinstance(exc, OcrCanceled):
+                    raise ImportCanceled(
+                        "Importação cancelada durante o OCR de uma página. "
+                        "O documento parcial foi descartado.") from exc
+                raise
             page_report.duration_ms = (time.perf_counter() - started) * 1000.0
             self.report.pages.append(page_report)
             self._page_reports[index] = page_report
             entries.extend(page_entries)
-            if n % 10 == 0:
-                self._progress(total + n, 2 * total)
+            # Passo 17: every page, not every tenth -- the rail follows the import.
+            self._progress(total + n + 1, 2 * total)
         tail = builder.flush()
         if tail is not None:
             entries.append(tail)
         self._progress(2 * total, 2 * total)
         return entries
+
+    def _finder(self) -> DiagramFinder | None:
+        """The diagram finder of this import: the caller's, or the product's default.
+
+        Passo A2: the default is every route (:func:`~caissa.ingest.pdf.finders.combined_finder`,
+        imported here and not at module level because it pulls the trunk, ``cv2``
+        and, on the first page with a board, the classifier); ``detect_raster_diagrams=False``
+        is the vector route alone, and ``detect_diagrams=False`` is none.
+        """
+        if self.options.diagram_finder is not None:
+            return self.options.diagram_finder
+        if not self.options.detect_diagrams:
+            return None
+        if not self.options.detect_raster_diagrams:
+            return vector_diagram_finder
+        from caissa.ingest.pdf.finders import combined_finder
+
+        return combined_finder()
 
     def _build_page(
         self, index: int, builder: ParagraphBuilder, finder: DiagramFinder | None
@@ -761,21 +973,74 @@ class PdfImporter:
                     text,
                 )
             ocr = self._try_ocr(page, frame, verdict)
-            if ocr is not None:
-                return "ocr", reason, ocr[1], ocr[0]
+            if ocr.text is not None:
+                return "ocr", reason, ocr.confidence, ocr.text
+            self._failed_for_review(frame, ocr)
             if text.is_empty and not text.images:
                 return "blank", reason, 0.0, text
             return "image-only", reason, 0.0, text
         if not verdict.accepted:
             ocr = self._try_ocr(page, frame, verdict)
-            if ocr is not None:
-                return "ocr", verdict.reason, ocr[1], ocr[0]
+            if ocr.text is not None:
+                return "ocr", verdict.reason, ocr.confidence, ocr.text
+            self._failed_for_review(frame, ocr)
             return "rejected", verdict.describe_pt(), 0.0, text
         if verdict.notation_damaged and self.options.ocr_contests_text_layer:
             ocr = self._try_ocr(page, frame, verdict)
-            if ocr is not None:
-                return "text-layer+ocr", verdict.reason, ocr[1], ocr[0]
+            if ocr.text is not None:
+                return "text-layer+ocr", verdict.reason, ocr.confidence, ocr.text
+            if ocr.came_back_empty:
+                # Passo A8: the layer was accused and the OCR could not answer.
+                # The prose is kept -- it is what the verdict kept it for --
+                # but the page is for review, at a doubtful confidence, and the
+                # report names it.  Never the layer's own 0,98 again.
+                return self._contested_without_answer(frame, verdict, text, ocr)
         return "text-layer", verdict.reason, verdict.confidence, text
+
+    def _failed_for_review(self, frame: PageFrame, ocr: OcrAttempt) -> None:
+        """The page whose OCR raised is listed for review, not only in the notes.
+
+        Crítico da fase 5, ciclo 5: a ``MemoryError`` in the middle of a page left «OCR falhou na
+        página 165» in the report's notes and nothing in the review queue -- the page was gone
+        from the one list someone reads page by page.
+        """
+        if not ocr.failed:
+            return
+        self.report.review_items.append(
+            ReviewItem(
+                page_index=frame.index,
+                rect=(0.0, 0.0, float(frame.width), float(frame.height)),
+                kind="page",
+                decision="abstained",
+                reasons=(f"O OCR falhou nesta página ({ocr.reason}): ela não foi lida.",),
+            )
+        )
+
+    def _contested_without_answer(
+        self, frame: PageFrame, verdict: TextLayerVerdict, text: PageText, ocr: OcrAttempt
+    ) -> tuple[str, str, float, PageText]:
+        """The contested page whose OCR returned nothing: kept, doubtful, listed for review."""
+        reason = (
+            f"{verdict.reason} OCR de contestação sem resultado ({ocr.reason}): "
+            "a página fica para revisão."
+        )
+        self.report.notes.append(
+            f"página {frame.index + 1}: camada acusada de notação danificada e OCR de "
+            f"contestação sem resultado ({ocr.reason}); página marcada para revisão."
+        )
+        self.report.review_items.append(
+            ReviewItem(
+                page_index=frame.index,
+                rect=(0.0, 0.0, float(frame.width), float(frame.height)),
+                kind="page",
+                decision="review",
+                reasons=(
+                    "camada de texto acusada: notação danificada",
+                    f"OCR de contestação sem resultado: {ocr.reason}",
+                ),
+            )
+        )
+        return "text-layer/review", reason, min(float(verdict.confidence), _DOUBTFUL), text
 
     def _ocr_provider(self) -> OcrProvider | None:
         """The configured provider, or the default service built once."""
@@ -813,6 +1078,19 @@ class PdfImporter:
             self.report.notes.append(table.describe_pt() + f" (lida de {path})")
         return table
 
+    def _book_profile(self) -> Any:
+        """The book's stored profile (C5/X3), or ``None``; a broken file is a note, not a stop."""
+        if self.document.path is None:
+            return None
+        try:
+            from caissa.ocr.book_profile import BookProfile, profile_path
+
+            path = profile_path(self.document.path)
+            return BookProfile.load(path, fingerprint=self.document.content_hash)
+        except Exception as exc:  # noqa: BLE001 - a broken profile must not stop an import
+            self.report.notes.append(f"perfil do livro ilegível: {exc}")
+            return None
+
     def _book_cipher_path(self) -> Path | None:
         if self.document.path is None:
             return None
@@ -843,6 +1121,20 @@ class PdfImporter:
         from caissa.ingest.pdf.ocr_service import OcrServiceConfig
 
         config = OcrServiceConfig()
+        # C5/X3: the book's stored profile first (its settings are the book's), the
+        # caller's explicit overrides on top.
+        overrides: dict[str, Any] = {}
+        if self.options.book_models and self.document.path is not None:
+            profile = self._book_profile()
+            if profile is not None:
+                overrides.update(profile.ocr_config)
+                self.report.notes.append(profile.describe_pt())
+                self.report.counters["book_profile_closures"] = profile.closures
+        overrides.update(dict(self.options.ocr_config or {}))
+        for name, value in overrides.items():
+            if not hasattr(config, name):
+                raise ValueError(f"ocr_config: OcrServiceConfig não tem o campo {name!r}")
+            setattr(config, name, value)
         if not self.options.book_models or self.document.path is None:
             return config
         try:
@@ -859,23 +1151,24 @@ class PdfImporter:
             self.report.notes.append(book.describe())
         return config
 
-    def _try_ocr(
-        self, page: Any, frame: PageFrame, verdict: TextLayerVerdict | None
-    ) -> tuple[PageText, float] | None:
+    def _try_ocr(self, page: Any, frame: PageFrame, verdict: TextLayerVerdict | None) -> OcrAttempt:
+        """Run the OCR provider on the page; the outcome says whether and why it has no text."""
         provider = self._ocr_provider()
         if provider is None:
-            return None
+            return OcrAttempt(reason="sem provedor de OCR")
         stub = verdict or TextLayerVerdict(False, "a página não contém texto.", 0.0, {}, (), True)
         started = time.perf_counter()
         try:
             result = provider(page, frame, stub)
         except Exception as exc:  # noqa: BLE001 - OCR failing must not lose the book
             self.report.notes.append(f"OCR falhou na página {frame.index}: {exc}")
-            return None
+            return OcrAttempt(attempted=True, failed=True, reason=f"o provedor falhou: {exc}")
         result = self._apply_review_decisions(frame, provider, result)
         self._record_ocr(frame, provider, (time.perf_counter() - started) * 1000.0)
-        if result is None or result.is_empty:
-            return None
+        if result is None:
+            return OcrAttempt(attempted=True, reason="o provedor não emitiu texto")
+        if result.is_empty:
+            return OcrAttempt(attempted=True, reason="o provedor devolveu texto vazio")
         self._adapt_language(result)
         # Sol §SOL-10: the page number is a summary, not a cap.  Each block
         # keeps its own spans' confidence; the worst line of the page must not
@@ -883,7 +1176,7 @@ class PdfImporter:
         weights = [(line.confidence, max(1, len(line.text.strip()))) for line in result.lines]
         total = sum(w for _, w in weights)
         confidence = sum(c * w for c, w in weights) / total if total else 0.0
-        return result, confidence
+        return OcrAttempt(text=result, confidence=confidence, attempted=True)
 
     def _apply_review_decisions(self, frame: PageFrame, provider: Any, result: Any) -> Any:
         """The reviewer's decisions on this page, applied to the service's regions.
@@ -1214,6 +1507,19 @@ class PdfImporter:
     def _inlines(self, draft: BlockDraft) -> tuple[Inline, ...]:
         out: list[Inline] = []
         images = list(draft.inline_images)
+        page = draft.first_page
+        report = self._page_reports.get(page)
+        ocr_page = report is not None and report.source in ("ocr", "text-layer+ocr")
+
+        def glyph_provenance(span: TextSpan, note: str) -> Provenance:
+            # B10/G7: the figurine's own provenance -- who read it (or inferred
+            # it) and how sure -- so the review tells a glyph read at 0,99 from
+            # one the cipher inferred.
+            kind = SourceKind.OCR if (span.engine or ocr_page) else SourceKind.PDF_TEXT_LAYER
+            return self._provenance(page, draft.boxes.get(page), float(span.confidence),
+                                    kind=kind, note=note, engine=span.engine or None,
+                                    verified=span.verified)
+
         for span in draft.spans:
             if span.text == _IMAGE_PLACEHOLDER:
                 if images:
@@ -1221,7 +1527,7 @@ class PdfImporter:
                     if node is not None:
                         out.append(node)
                 continue
-            out.extend(_span_inlines(span))
+            out.extend(_span_inlines(span, glyph_provenance))
         return tuple(out)
 
     def _diagram_node(self, entry: _DiagramEntry) -> Diagram:
@@ -1230,13 +1536,37 @@ class PdfImporter:
         if context.side_to_move is not None and hit.fen:
             fen = _with_side(fen, context.side_to_move)
         warnings: list[str] = []
-        if not hit.fen:
+        # Passo A3: what the reviewer settled for this box wins over the machine
+        # and over the caption -- and says so.  `recognition.fen` below keeps
+        # the machine's reading, which is what makes the correction reviewable.
+        decision = None
+        decisions = self.options.diagram_decisions
+        if decisions is not None:
+            decision = decisions.match(entry.page_index, hit.box)
+        if decision is not None:
+            fen = decision.fen
+            self._diagram_decisions_applied += 1
+            who = f" ({decision.reviewer})" if decision.reviewer else ""
+            when = decision.decided_at or "data desconhecida"
+            warnings.append(f"corrigido pelo revisor{who} em {when}")
+        if not hit.fen and decision is None:
             warnings.append(
                 "posição não lida: o diagrama foi localizado mas o conteúdo exige a via B/C "
                 "(raster); a FEN é um tabuleiro vazio provisório."
             )
         if context.side_to_move is not None:
             warnings.append(f"lado a jogar pela legenda: «{context.side_to_move_evidence}»")
+        # Passo C1: the per-square signal crosses the boundary and is said out loud.
+        if hit.orientation_ambiguous:
+            reason = hit.orientation_reason or "sem motivo registrado"
+            warnings.append(f"orientação ambígua: {reason}")
+        if hit.repairs:
+            warnings.append(
+                f"reparado em {len(hit.repairs)} casa(s) pela legalidade: "
+                + ", ".join(
+                    f"{r.square} ({r.recognised or '·'}→{r.repaired or '·'})" for r in hit.repairs
+                )
+            )
         caption = tuple(_caption_inlines(context))
         crop = self._asset_crop(entry.page_index, hit.box, f"diagrama-p{entry.page_index + 1}")
         source = DiagramSource(
@@ -1249,6 +1579,26 @@ class PdfImporter:
             extractor=_EXTRACTOR,
             extractor_version=_EXTRACTOR_VERSION,
         )
+        stipulation = None
+        side_known = context.side_to_move is not None or decision is not None
+        if side_known:
+            white_to_move = decision.side == "w" if decision is not None else context.side_to_move
+            stipulation = "Brancas jogam" if white_to_move else "Pretas jogam"
+        # C12: the printed demand is what the SPEC §6.4 stipulation field is
+        # for ("Mate em 2"), and it is verifiable -- the verdict goes to the
+        # warnings and the key to ``solution``.  A demand that does not close
+        # never erases the reading: it is said, for the review to look.
+        solution: GameScore | None = None
+        if context.stipulation is not None:
+            stipulation = context.stipulation.description
+            if self.options.verify_stipulations and hit.fen:
+                closes, keys, reason = _verify_stipulation(fen, context.stipulation)
+                warnings.append(f"exigência {context.stipulation.label}: {reason}")
+                if closes is True and len(keys) == 1:
+                    solution = _solution_score(fen, keys[0])
+                self._stipulations_checked += 1
+                if closes is False:
+                    self._stipulations_failed += 1
         recognition = RecognitionResult(
             fen=hit.fen or "",
             overall_confidence=hit.confidence if hit.fen else 0.0,
@@ -1262,12 +1612,23 @@ class PdfImporter:
             ),
             path=hit.path,
             model_name=hit.method or None,
+            model_hash=hit.model_hash or None,
+            per_square_confidence=tuple(hit.square_confidences) if hit.fen else (),
+            # A rule decided the orientation, or the tie-break did (`ambiguous`):
+            # 1,0 says "decided", 0,5 says "worth a human eye", None says the
+            # route does not measure it (an exact vector read).
+            orientation_confidence=(
+                (0.5 if hit.orientation_ambiguous else 1.0) if hit.orientation_reason else None
+            ),
+            alternatives=tuple(hit.alternatives),
+            repairs=tuple(hit.repairs),
             recognised_at=datetime.now(UTC),
             warnings=tuple(warnings),
         )
-        stipulation = None
-        if context.side_to_move is not None:
-            stipulation = "Brancas jogam" if context.side_to_move else "Pretas jogam"
+        note = None if crop is None else f"recorte em {crop.key}"
+        if decision is not None:
+            note = f"{note}; " if note else ""
+            note += f"posição corrigida pelo revisor ({decision.source})"
         return Diagram(
             fen=fen,
             orientation=Orientation.WHITE if hit.orientation_white else Orientation.BLACK,
@@ -1277,16 +1638,20 @@ class PdfImporter:
             number=context.exercise_number,
             label=context.label,
             stipulation=stipulation,
-            side_to_move_indicator=context.side_to_move is not None,
+            solution=solution,
+            side_to_move_indicator=side_known,
             alt_text=(crop.description if crop else None),
             provenance=self._provenance(
                 entry.page_index,
                 hit.box,
-                hit.confidence if hit.fen else 0.0,
-                kind=SourceKind.PDF_VECTOR
+                1.0 if decision is not None else (hit.confidence if hit.fen else 0.0),
+                kind=SourceKind.HUMAN
+                if decision is not None
+                else SourceKind.PDF_VECTOR
                 if hit.path is RecognitionPath.VECTOR
                 else SourceKind.VISION,
-                note=None if crop is None else f"recorte em {crop.key}",
+                note=note,
+                verified=decision is not None,
             ),
         )
 
@@ -1502,18 +1867,43 @@ def _run_props(span: TextSpan) -> RunProps:
     )
 
 
-def _span_inlines(span: TextSpan) -> list[Inline]:
+_WHITE_GLYPHS: Final[frozenset[str]] = frozenset(FIGURINE_WHITE.values())
+#: The origins whose figurine is a *reading* of the page, and the one whose
+#: figurine is an inference (``TextSpan.figurine_origin``).
+_FIGURINE_NOTES: Final[Mapping[str, str]] = {
+    GLYPH_ORIGIN: "figurina lida pelo leitor de glifos",
+    FIGURINE_MODEL_ORIGIN: "figurina lida pelo modelo de figurinas do livro",
+    CIPHER_ORIGIN: "figurina inferida pela cifra do livro (não lida na página)",
+}
+
+
+def _span_inlines(span: TextSpan,
+                  provenance: Callable[[TextSpan, str], Provenance | None] | None = None,
+                  ) -> list[Inline]:
     """A span as IR inlines: text runs, with figurines as :class:`PieceGlyph`.
 
     A Unicode chess symbol is a piece whichever font drew it -- the Chernev
     sets ``♕`` in MS Gothic next to Cambria text -- so every U+2654-U+265F
     becomes a glyph node, not only the letters a figurine font mapped.
+
+    OCR_UI ciclo 2, B10/G7: the glyph keeps the **set** it was printed in --
+    ``♕`` is the outline set, ``♛`` the solid one -- so the DOCX/EPUB prints
+    the piece the page shows (before, every glyph fell to the solid default
+    and an outline queen came out solid); and it carries a provenance of its
+    own, from ``provenance(span, note)``, that says whether the figurine was
+    read (glyph reader, figurine model, the region's OCR, text layer) or
+    inferred by the cipher -- ``span.figurine_origin``, or the span's engine
+    when the region's own OCR read it.
     """
     props = _run_props(span)
     if not span.figurine and not any(ch in _PIECE_OF_GLYPH for ch in span.text):
         return [Text(content=span.text, props=props)]
     out: list[Inline] = []
     buffer: list[str] = []
+    origin = span.figurine_origin or span.engine
+    note = _FIGURINE_NOTES.get(origin, "figurina da camada de texto" if not origin
+                               else f"figurina lida por {origin}")
+    glyph_provenance = provenance(span, note) if provenance is not None else None
     for ch in span.text:
         piece = _PIECE_OF_GLYPH.get(ch)
         if piece is None:
@@ -1522,7 +1912,10 @@ def _span_inlines(span: TextSpan) -> list[Inline]:
         if buffer:
             out.append(Text(content="".join(buffer), props=props))
             buffer = []
-        out.append(PieceGlyph(piece=piece, font_family=span.font or None, props=props))
+        out.append(PieceGlyph(
+            piece=piece,
+            figurine_set=FigurineSet.WHITE if ch in _WHITE_GLYPHS else FigurineSet.BLACK,
+            font_family=span.font or None, props=props, provenance=glyph_provenance))
     if buffer:
         out.append(Text(content="".join(buffer), props=props))
     return out
@@ -1541,6 +1934,61 @@ def _caption_inlines(context: DiagramContext) -> list[Inline]:
             parts.append(where)
     text = " · ".join(parts)
     return [Text(content=text)] if text else []
+
+
+def _verify_stipulation(fen: str, demand: Any) -> tuple[bool | None, tuple[str, ...], str]:
+    """The demand played against ``fen`` through the trunk's ``estipulacao`` (C12).
+
+    Returns ``(closes, keys, reason)``: ``closes`` is ``True``/``False``/``None``
+    (not verifiable -- no engine for mate in 3+, illegal position, trunk
+    absent), ``keys`` the SAN of the key(s) found, ``reason`` the sentence in
+    pt-BR that the warning carries.  Never raises: a verifier that crashes an
+    import would cost the book to say "mate in 2 does not close".
+    """
+    try:
+        import chess
+
+        from caissa.vision.classify.cvoff import ensure_cvoff_on_path
+
+        ensure_cvoff_on_path()
+        from chess_diagram_ocr.estipulacao import (  # type: ignore[import-not-found]
+            LANCES_DA_BUSCA,
+            Estipulacao,
+            motor_padrao,
+            verificar,
+        )
+    except Exception as exc:  # noqa: BLE001 - the trunk is optional at this boundary
+        return None, (), f"não verificada (verificador indisponível: {exc})"
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        return None, (), "não verificada (FEN inválida)"
+    demand_t = Estipulacao(int(demand.moves), texto=str(demand.text))
+    try:
+        motor = motor_padrao() if demand_t.lances > LANCES_DA_BUSCA else None
+        verdict = verificar(board.board_fen(), board.turn, demand_t, motor=motor)
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning("Verificação da exigência falhou: %s", exc)
+        return None, (), f"não verificada ({exc})"
+    return verdict.fecha, tuple(verdict.chaves), verdict.motivo
+
+
+def _solution_score(fen: str, key_san: str) -> GameScore | None:
+    """The key move as a one-move :class:`GameScore` from ``fen`` (C12)."""
+    try:
+        import chess
+
+        board = chess.Board(fen)
+        move = board.parse_san(key_san)
+        san = board.san(move)
+        board.push(move)
+        after = board.fen()
+    except (ValueError, AssertionError):
+        return None
+    return GameScore(
+        initial_fen=fen,
+        children=(MoveNode(san=san, ply=1, position_before=fen, position_after=after, emphasis=True),),
+    )
 
 
 def _with_side(fen: str, white: bool) -> str:

@@ -22,7 +22,11 @@
       "diagram": 0,
       "from": "rr4k1/4R2p/p2p2p1/3P4/6n1/1P6/5PPP/R5K1",
       "to": "rr4k1/4R2p/b2p2p1/3P4/6n1/1P6/5BBP/R5K1",
-      "squares": ["a6 p->b", "f2 P->B", "g2 P->B"],
+      "squares": [
+        "a6 p->b",
+        "f2 P->B",
+        "g2 P->B"
+      ],
       "evidence": [
         "The book's own move text, extracted from page 40 of the PDF with PyMuPDF, prints the",
         "moves that follow this diagram (Stellung 58, after 32...Sh6xg4):",
@@ -44,6 +48,33 @@
         "correction, material is level (R+R+B+B+3P against R+R+B+N+3P)."
       ],
       "verified_by": "F4 field report, 2026-09-10"
+    },
+    {
+      "pdf": "Niemeijer - Zwarte Magie 100 zwarte dame‑problemen (1945).pdf",
+      "page": 20,
+      "diagram": 2,
+      "from": "1K6/p7/p1PkppN1/R4Bp1/7P/5Qp1/1B3bp1/6qR",
+      "to": "1K6/p7/p1PkppN1/R4Bp1/7P/5Qp1/1B3bp1/6qr",
+      "squares": [
+        "h1 R->r"
+      ],
+      "evidence": [
+        "Found by the C12 gate of OCR_UI cycle 2 (phase 4): the printed stipulation is '3+' (mate in",
+        "3) and the book prints its own key under the diagram, No. 63, G. H. Drese, 1ste prijs",
+        "Tournooi Ruy Lopez 1935: '1. Kb7. 4 interferenties bij voorbaat van de z. dame door de z.",
+        "loper' (extracted from page 20 of the PDF with PyMuPDF).",
+        "",
+        "With the annotation as written (white rook on h1), Stockfish 18 ('go mate 3', 5 s) finds",
+        "no mate in 3 after 1.Kb7 (it is mate in 5) and the shortest mate is the crude 1.Rxg1 Bxg1",
+        "2.Ba3+ Bc5 3.Bxc5# -- a queen capture as key, which no prize problem has. With h1 a BLACK",
+        "rook, 1.Kb7 is the unique mate in 3 (1.Kb7 Be3 2.Qe4 Rxh4 3.Qxe6#), exactly as the book",
+        "prints. The production model reads h1 as 'r' at 0.805.",
+        "",
+        "Glyph: rendered from the PDF at 8x, the h1 rook is a solid dark body on a light square,",
+        "the same fill as the black bishop f2 and the black queen g1 beside it; the white rook a5",
+        "is an outline with the brick pattern on a hatched square. The two fills do not overlap."
+      ],
+      "verified_by": "OCR_UI cycle 2 phase 4, C12, 2026-09-21"
     }
   ]
 }

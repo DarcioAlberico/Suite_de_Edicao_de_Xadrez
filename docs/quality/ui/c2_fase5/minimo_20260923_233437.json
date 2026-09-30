@@ -1,0 +1,483 @@
+{
+  "gerado_em": "2026-09-23T23:34:37+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "",
+  "suite": {
+    "caminho": "C:\\Python-Chess2\\Suite_de_Edicao_de_Xadrez",
+    "commit": "b6978ec9ea325a0b9e50b7dd87899177835c26cd",
+    "fora_do_commit": []
+  },
+  "tronco": {
+    "caminho": "C:\\Python-Chess2\\_f5c4_tronco",
+    "commit": "7a78367aee4ba73da4c2744155033daa70d61fcd",
+    "fora_do_commit": []
+  },
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        606
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            976,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 43,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 17,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            606
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 272,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 272,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 390,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 390,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": true
+    },
+    {
+      "pele": "foco",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1248,
+        640
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            976,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QWidget < QSplitter",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 43,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 24,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1248,
+            640
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 272,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 272,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 390,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 390,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": true
+    },
+    {
+      "pele": "fita",
+      "pdf": "C:\\Python-Chess2\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+      "sabotagem": "",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        1246,
+        629
+      ],
+      "ficou": [
+        1366,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            958,
+            35
+          ],
+          "cadeia": "RodapeDaJanela < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 65,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [],
+          "alcancaveis_pela_barra": 33,
+          "linha_reposta": 0,
+          "fora_da_linha_do_arnes": []
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            1246,
+            629
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 288,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 288,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        },
+        {
+          "tamanho": [
+            1366,
+            728
+          ],
+          "nomes": [
+            {
+              "nome": "Gaprindashvili, Paata - Imagination in Chess. How To Think C",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 408,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            },
+            {
+              "nome": "Karpov A - Chess Combinations -World Champions-2 (2011).pdf",
+              "voltas": 6,
+              "linha_reposta": 0,
+              "linha_do_arnes": true,
+              "mensagem_px": 320,
+              "documento_px": 408,
+              "dispositivos_px": 135,
+              "ocupacao_px": 171,
+              "barra_px": 120,
+              "cortadas": [],
+              "espremidos": []
+            }
+          ]
+        }
+      ],
+      "cabe": true,
+      "a_vista": true
+    }
+  ],
+  "passou": true
+}

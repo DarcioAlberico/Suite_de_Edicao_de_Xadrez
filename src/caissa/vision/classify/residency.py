@@ -16,6 +16,7 @@ eviction candidate; this is the other end of that same ordering.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -29,6 +30,7 @@ __all__ = [
     "SQUARE_CLASSIFIER_VRAM_BYTES",
     "acquire_square_classifier",
     "register_square_classifier",
+    "shared_square_classifier",
 ]
 
 SQUARE_CLASSIFIER = "square-classifier"
@@ -70,7 +72,17 @@ def register_square_classifier(
 
         ensure_cvoff_on_path()
         model, resolved = load_model(path, device=device)
-        return BatchedClassifier(model, resolved, **classifier_kwargs)
+        classifier = BatchedClassifier(model, resolved, **classifier_kwargs)
+        # OCR_UI ciclo 2, passo C1: the weights' fingerprint travels with the
+        # classifier, so every read it produces can say which model it was
+        # (`DiagramHit.model_hash`).  Best effort: an unreadable file gives "".
+        try:
+            from chess_diagram_ocr.checkpoint import checkpoint_fingerprint
+
+            classifier.model_hash = checkpoint_fingerprint(path)
+        except Exception:  # noqa: BLE001 - identity is a courtesy, never a failure to load
+            classifier.model_hash = ""
+        return classifier
 
     manager.register(
         ModelSpec(
@@ -103,3 +115,26 @@ def acquire_square_classifier(manager: Any = None, **kwargs: Any) -> Iterator[Ba
         register_square_classifier(manager, **kwargs)
     with manager.acquire(SQUARE_CLASSIFIER) as lease:
         yield lease.model
+
+
+_shared: BatchedClassifier | None = None
+_shared_lock = threading.Lock()
+
+
+def shared_square_classifier(manager: Any = None, **kwargs: Any) -> BatchedClassifier:
+    """The one classifier of this process, loaded on first use under the shared budget.
+
+    OCR_UI ciclo 2, passo A2: the product's import (``combined_finder``) runs
+    in a thread next to the window's own reads, and a finder that loaded its
+    own copy per call -- or per book -- would pay eight seconds and 620 MiB
+    each time.  The classifier is registered ``pinned`` (never evicted), so
+    the reference kept here stays valid after the lease of
+    :func:`acquire_square_classifier` is returned; the first call loads it
+    through the residency manager like any other borrower, the rest share it.
+    """
+    global _shared  # noqa: PLW0603 - one classifier per process is the point
+    with _shared_lock:
+        if _shared is None:
+            with acquire_square_classifier(manager, **kwargs) as classifier:
+                _shared = classifier
+        return _shared

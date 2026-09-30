@@ -19,7 +19,9 @@ caixa só aparece quando a exportação **falha** — porque aí há uma decisã
 
 from __future__ import annotations
 
+import logging
 import threading
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.export.book import (
     BOOK_FORMATS,
     BookExportResult,
@@ -52,6 +55,8 @@ from caissa.export.book import (
     parse_page_range,
 )
 from caissa.ingest.pdf import ImportCanceled
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["DialogoDeExportacao", "EscolhaDeExportacao", "ExportadorDeLivro"]
 
@@ -115,7 +120,7 @@ class DialogoDeExportacao(QDialog):
 
     # -- layout ------------------------------------------------------------- #
 
-    def _montar(self, formato: str, pagina_atual: int) -> None:  # noqa: PLR0915 - one form, top to bottom
+    def _montar(self, formato: str, pagina_atual: int) -> None:
         raiz = QVBoxLayout(self)
         raiz.addWidget(QLabel(f"<b>{self.pdf_path.name}</b> · {self.page_count} página(s)", self))
 
@@ -191,7 +196,7 @@ class DialogoDeExportacao(QDialog):
         raiz.addWidget(self.ocr)
 
         self.aviso = QLabel("", self)
-        self.aviso.setStyleSheet("color:#b91c1c;")
+        self.aviso.setStyleSheet(f"color:{pele.cor('aviso')};")
         self.aviso.setWordWrap(True)
         raiz.addWidget(self.aviso)
 
@@ -326,6 +331,7 @@ class ExportadorDeLivro(QObject):
         super().__init__(pai)
         self._pai = pai
         self._cancelar: threading.Event | None = None
+        self._documento: Any = None
         self._rodando = False
         self._acabou.connect(self._concluiu)
         self._falhou.connect(self._deu_errado)
@@ -342,8 +348,14 @@ class ExportadorDeLivro(QObject):
         *,
         formato: str = "epub",
         pagina_atual: int = 0,
+        documento_para: Callable[[Sequence[int] | None], Any] | None = None,
     ) -> bool:
-        """Pergunta e começa. ``False`` se não havia PDF, já rodava, ou a pessoa desistiu."""
+        """Pergunta e começa. ``False`` se não havia PDF, já rodava, ou a pessoa desistiu.
+
+        ``documento_para(paginas)`` (A3) devolve o ``ImportResult`` que o trilho já tem
+        quando cobre as páginas pedidas -- a exportação reaproveita-o em vez de reimportar
+        (minutos de OCR) -- ou ``None``, e aí importa como sempre.
+        """
         if pdf_path is None:
             self.estado.emit("Abra um PDF antes de exportar o livro.")
             return False
@@ -356,11 +368,31 @@ class ExportadorDeLivro(QObject):
         if dialogo.exec() != QDialog.DialogCode.Accepted:
             return False
         escolha = dialogo.escolha()
-        self.iniciar(pdf_path, escolha)
+        self.iniciar(pdf_path, escolha, documento_para=documento_para)
         return True
 
-    def iniciar(self, pdf_path: Path, escolha: EscolhaDeExportacao) -> None:
+    def iniciar(
+        self,
+        pdf_path: Path,
+        escolha: EscolhaDeExportacao,
+        *,
+        documento_para: Callable[[Sequence[int] | None], Any] | None = None,
+    ) -> None:
         """Começa sem perguntar — para quem já tem a escolha (testes, macros)."""
+        documento = None
+        if documento_para is not None:
+            try:
+                documento = documento_para(escolha.paginas)
+            except Exception as exc:  # noqa: BLE001 - um trilho sem importação não impede exportar
+                # Dito no rodapé e no log, nunca engolido: a exportação segue, mas
+                # reimportando o livro -- minutos de OCR que o trilho já tinha pago.
+                logger.exception("documento_para falhou; a exportação reimporta o livro.")
+                self.estado.emit(
+                    f"A importação já feita não pôde ser reaproveitada ({exc}); o livro será "
+                    "importado de novo para exportar."
+                )
+                documento = None
+        self._documento = documento
         self._rodando = True
         self._cancelar = threading.Event()
         self.controles.emit(False)
@@ -387,15 +419,25 @@ class ExportadorDeLivro(QObject):
                 escolha.formato,
                 pages=escolha.paginas,
                 enable_ocr=escolha.ocr,
+                document=self._documento,
                 progress=lambda fase, feito, total: self._avancou.emit(fase, feito, total),
                 should_cancel=cancelar.is_set,
             )
         except ImportCanceled as exc:
             self._falhou.emit(f"cancelada: {exc}")
             return
-        except Exception as exc:  # noqa: BLE001 - a thread não pode derrubar a janela
+        except Exception as exc:
             self._falhou.emit(str(exc))
             return
+        if self._documento is not None and getattr(resultado, "import_report", None) is not getattr(
+            self._documento, "report", None
+        ):
+            # `export_book` recusou o documento em mãos (páginas diferentes das pedidas, ou
+            # imagens fora do disco) e importou de novo -- dito, não só no log.
+            self.estado.emit(
+                "A importação já feita não serviu a esta exportação (páginas ou imagens "
+                "diferentes): o livro foi importado de novo."
+            )
         self._acabou.emit(resultado)
 
     def _mostrar_progresso(self, fase: str, feito: int, total: int) -> None:

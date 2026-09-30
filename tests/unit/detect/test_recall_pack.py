@@ -1,17 +1,16 @@
-"""The three recall recoveries: each one on the failure shape it was built for.
+"""The three recall recoveries, seen from the suite: the trunk's default and the harness.
 
-``caissa.vision.detect.recall`` is an adapter over the trunk's contour detector, and its
-whole claim is that it **adds** findings without changing any gate.  Two things therefore
-have to be tested and not argued:
+Since OCR_UI cycle 2 step A1 the recoveries live in the trunk (``RecallOptions``, on by
+default) and ``caissa.vision.detect.recall`` is a wrapper: ``recall_pack()`` with the
+defaults only checks that the trunk ships the pack, and with a *variant* it is the benchmark
+harness that forces that variant on the trunk's two entry points.  What is pinned here:
 
-* that the trunk comes back exactly as it was when the context manager exits, and
-* that the score the adapter computes for a rescued quad is the trunk's own formula, so the
-  pooled list is ordered by one ruler and not two.
-
-The recovery tests use synthesised pages rather than the corpus, so they run in under a
-second and fail for one reason.  Each page is built to reproduce **the shape** of a measured
-failure -- a caption fused to the board, a hatched dark square -- and each asserts the same
-pair: the trunk alone finds nothing, and the pack finds the board where it actually is.
+* the trunk's default **is** the pack, so the product gets it by calling ``detect_diagrams``;
+* the harness puts the trunk back exactly as it was, even when the body raises;
+* the recoveries still do what they were built for (the trunk's own tests cover them
+  candidate by candidate in ``tests/test_board_detection_recall.py``; here the synthetic
+  pages assert the pair once more through the suite's names: raw finds nothing, the pack
+  finds the board where it is).
 
 The corpus regressions at the end pin the measured numbers themselves.  They skip when
 ``ChessVisionOFF_Puro`` is not on the machine; the synthetic ones never skip.
@@ -37,15 +36,20 @@ pytestmark = pytest.mark.skipif(CVOFF_ROOT is None, reason="tronco ChessVisionOF
 
 if CVOFF_ROOT is not None:
     from chess_diagram_ocr import board_detection as bd
+    from chess_diagram_ocr.board_detection import _score_quad
+    from chess_diagram_ocr.config import DEFAULT_RECALL, RecallOptions
 
     from caissa.vision.detect.recall import (
         SQUARE_MIN_ELONGATION,
-        _score_quad,
         embedded_checker_floor,
         multiscale_search,
         recall_pack,
         square_anchors,
+        trunk_default_is_the_pack,
     )
+
+    RAW = None
+    NO_EMBEDDED_FLOOR = RecallOptions(embedded_floor=None)
 
 CORPUS = CVOFF_ROOT / "PDF" if CVOFF_ROOT is not None else None
 needs_corpus = pytest.mark.skipif(
@@ -93,8 +97,10 @@ def board_page(
     return image, (x0, y0, side, side)
 
 
-def boxes_of(image: np.ndarray) -> list[tuple[int, int, int, int]]:
-    return [bd._bbox_from_quad(quad) for _, quad in bd.detect_boards(image, max_boards=6) if quad is not None]
+def boxes_of(image: np.ndarray, recall: object = "default") -> list[tuple[int, int, int, int]]:
+    kwargs = {} if recall == "default" else {"recall": recall}
+    found = bd.detect_boards(image, max_boards=6, **kwargs)  # type: ignore[arg-type]
+    return [bd._bbox_from_quad(quad) for _, quad in found if quad is not None]
 
 
 def best_iou(boxes: list[tuple[int, int, int, int]], target: tuple[int, int, int, int]) -> float:
@@ -102,28 +108,63 @@ def best_iou(boxes: list[tuple[int, int, int, int]], target: tuple[int, int, int
 
 
 # --------------------------------------------------------------------------
-# The adapter must not leave a mark
+# The trunk ships the pack; the harness must not leave a mark
 # --------------------------------------------------------------------------
 
 
-def test_the_pack_puts_the_trunk_back() -> None:
+def test_the_trunk_default_is_the_pack() -> None:
+    """The point of A1: the product gets the recoveries by calling the trunk, unpatched."""
+    assert trunk_default_is_the_pack()
+    assert DEFAULT_RECALL == RecallOptions(scales=(0.5,), rescue_squares=True, embedded_floor=0.0)
+
+
+def test_the_default_pack_touches_nothing_and_yields_the_trunk_default() -> None:
     from chess_diagram_ocr.detection import hybrid
 
     before_quads = bd._extract_candidate_quads
-    before_embedded = hybrid.candidates_from_embedded_images
-    with recall_pack():
-        assert bd._extract_candidate_quads is not before_quads
-        assert hybrid.candidates_from_embedded_images is not before_embedded
-    assert bd._extract_candidate_quads is before_quads
-    assert hybrid.candidates_from_embedded_images is before_embedded
+    before_diagrams = hybrid.detect_diagrams
+    with recall_pack() as options:
+        assert options == DEFAULT_RECALL
+        assert bd._extract_candidate_quads is before_quads
+        assert hybrid.detect_diagrams is before_diagrams
 
 
-def test_the_pack_puts_the_trunk_back_even_when_the_body_raises() -> None:
-    before = bd._extract_candidate_quads
+def test_a_variant_is_forced_for_the_duration_and_the_trunk_comes_back() -> None:
+    """The variant travels by a ``ContextVar``, never by swapping a module attribute."""
+    from chess_diagram_ocr.config import recall_em_vigor
+    from chess_diagram_ocr.detection import hybrid
+
+    before_quads = bd._extract_candidate_quads
+    before_diagrams = hybrid.detect_diagrams
+    assert recall_em_vigor(DEFAULT_RECALL) == DEFAULT_RECALL
+    with recall_pack(scales=(), rescue_squares=False) as options:
+        assert options == RecallOptions(scales=(), rescue_squares=False)
+        assert recall_em_vigor(DEFAULT_RECALL) == options, "the trunk sees the variant"
+        assert bd._extract_candidate_quads is before_quads, "no attribute was swapped"
+        assert hybrid.detect_diagrams is before_diagrams
+    assert recall_em_vigor(DEFAULT_RECALL) == DEFAULT_RECALL
+
+
+def test_another_thread_never_sees_the_variant() -> None:
+    import threading
+
+    from chess_diagram_ocr.config import recall_em_vigor
+
+    seen: list[object] = []
+    with recall_pack(scales=(), rescue_squares=False):
+        thread = threading.Thread(target=lambda: seen.append(recall_em_vigor(DEFAULT_RECALL)))
+        thread.start()
+        thread.join()
+    assert seen == [DEFAULT_RECALL], "a ContextVar is per thread; the product path is untouched"
+
+
+def test_the_harness_puts_the_trunk_back_even_when_the_body_raises() -> None:
+    from chess_diagram_ocr.config import recall_em_vigor
+
     with pytest.raises(RuntimeError):
-        with recall_pack():
+        with recall_pack(scales=()):
             raise RuntimeError("boom")
-    assert bd._extract_candidate_quads is before
+    assert recall_em_vigor(DEFAULT_RECALL) == DEFAULT_RECALL
 
 
 def test_an_out_of_range_scale_is_refused() -> None:
@@ -138,16 +179,15 @@ def test_an_out_of_range_scale_is_refused() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_the_adapter_scores_a_quad_exactly_as_the_trunk_does() -> None:
-    """A rescued candidate competes with trunk candidates, so it must be measured alike.
+def test_the_rescue_scores_a_quad_exactly_as_the_raw_pass_does() -> None:
+    """A rescued candidate competes with raw candidates, so it must be measured alike.
 
-    The trunk gives no way to ask "what would you score this quad?", so the adapter repeats
-    the formula. If the two ever drift, the pooled list is sorted by two different rulers
-    and the wrong candidate wins -- silently. This pins them together on the trunk's own
-    output, where the answer is known.
+    ``_score_quad`` repeats the formula of ``_contour_candidates``; if the two ever drift,
+    the pooled list is sorted by two different rulers and the wrong candidate wins --
+    silently. This pins them together on the raw pass's own output, where the answer is known.
     """
     image, _ = board_page()
-    trunk = bd._extract_candidate_quads(image)
+    trunk = bd._contour_candidates(image)
     assert trunk, "a pagina sintetica precisa produzir candidatos"
     area = float(image.shape[0] * image.shape[1])
     for quad, score, _ in trunk:
@@ -156,11 +196,10 @@ def test_the_adapter_scores_a_quad_exactly_as_the_trunk_does() -> None:
         assert measured[0] == pytest.approx(score, rel=1e-9, abs=1e-9)
 
 
-def test_the_pack_never_drops_what_the_trunk_found() -> None:
+def test_the_pack_never_drops_what_the_raw_pass_found() -> None:
     image, target = board_page()
-    trunk = boxes_of(image)
-    with recall_pack(embedded_floor=None):
-        packed = boxes_of(image)
+    trunk = boxes_of(image, RAW)
+    packed = boxes_of(image, NO_EMBEDDED_FLOOR)
     assert best_iou(trunk, target) > 0.9
     for box in trunk:
         assert best_iou(packed, box) > 0.9, f"o pacote perdeu {box}, que o tronco achava"
@@ -194,16 +233,15 @@ def test_a_caption_welded_to_the_board_is_recovered_as_a_square() -> None:
     offers it the largest square inside that crop and the **same** guard accepts it.
     """
     image, target = board_page(caption_height=90)
-    trunk = boxes_of(image)
-    assert trunk == [], f"o tronco deveria falhar nesta pagina, devolveu {trunk}"
+    trunk = boxes_of(image, RAW)
+    assert trunk == [], f"o tronco cru deveria falhar nesta pagina, devolveu {trunk}"
 
     rejected: list[object] = []
-    bd.detect_boards(image, max_boards=6, rejected=rejected)
+    bd.detect_boards(image, max_boards=6, rejected=rejected, recall=None)
     reasons = {item.reason for item in rejected}  # type: ignore[attr-defined]
     assert "sem-contraste-de-casa" in reasons
 
-    with recall_pack(embedded_floor=None):
-        packed = boxes_of(image)
+    packed = boxes_of(image, NO_EMBEDDED_FLOOR)
     assert best_iou(packed, target) > 0.95, f"esperado {target}, veio {packed}"
 
 
@@ -219,8 +257,7 @@ def test_the_rescue_leaves_an_already_square_rejection_alone() -> None:
     noise = rng.integers(0, 255, (300, 300, 3), dtype=np.uint8)
     image[80:380, 90:390] = cv2.GaussianBlur(noise, (9, 9), 0)
     cv2.rectangle(image, (90, 80), (390, 380), (0, 0, 0), 3)
-    with recall_pack(embedded_floor=None):
-        packed = boxes_of(image)
+    packed = boxes_of(image, NO_EMBEDDED_FLOOR)
     assert best_iou(packed, (90, 80, 300, 300)) < 0.5, f"ruido quadrado virou tabuleiro: {packed}"
 
 
@@ -243,16 +280,26 @@ def test_a_hatched_board_is_found_by_the_half_scale_pass() -> None:
     component. ``INTER_AREA`` at half scale averages the strokes into flat grey first.
     """
     image, target = board_page(hatch_step=5)
-    assert boxes_of(image) == [], "o tronco deveria falhar na pagina hachurada"
-    with multiscale_search(rescue_squares=False):
-        packed = boxes_of(image)
+    assert boxes_of(image, RAW) == [], "o tronco cru deveria falhar na pagina hachurada"
+    with multiscale_search(rescue_squares=False) as options:
+        packed = boxes_of(image, options)
     assert best_iou(packed, target) > 0.9, f"esperado {target}, veio {packed}"
 
 
-def test_turning_the_scales_off_gives_the_trunk_back() -> None:
+def test_turning_the_scales_off_gives_the_raw_pass_back() -> None:
     image, _ = board_page(hatch_step=5)
-    with multiscale_search(scales=(), rescue_squares=False):
-        assert boxes_of(image) == []
+    with multiscale_search(scales=(), rescue_squares=False) as options:
+        assert boxes_of(image, options) == []
+
+
+def test_the_harness_forces_the_variant_on_the_trunk_entry_point() -> None:
+    """``validate_detection.py --variant multiscale`` goes through ``field_eval``, which has
+    no ``recall=`` to pass: the harness has to reach the default call."""
+    image, _ = board_page(hatch_step=5)
+    assert boxes_of(image) != [], "o padrao do tronco acha a pagina hachurada"
+    with recall_pack(scales=(), rescue_squares=False):
+        assert boxes_of(image) == [], "o arnes tem de forcar a variante na chamada padrao"
+    assert boxes_of(image) != []
 
 
 # --------------------------------------------------------------------------
@@ -302,11 +349,24 @@ def test_the_embedded_floor_keeps_a_board_and_drops_a_photograph() -> None:
         doc = _pdf_with_image(bitmap)
         try:
             page = doc[0]  # type: ignore[index]
+            rgb = _render(page)
             assert len(hybrid.candidates_from_embedded_images(page)) == 1
-            with embedded_checker_floor():
-                assert len(hybrid.candidates_from_embedded_images(page)) == expected
+            raw = [c for c in hybrid.detect_diagrams(page, rgb, recall=None) if c.source == "embedded"]
+            assert len(raw) == 1
+            with embedded_checker_floor() as options:
+                floored = [c for c in hybrid.detect_diagrams(page, rgb, recall=options) if c.source == "embedded"]
+            assert len(floored) == expected
+            by_default = [c for c in hybrid.detect_diagrams(page, rgb) if c.source == "embedded"]
+            assert len(by_default) == expected
         finally:
             doc.close()  # type: ignore[attr-defined]
+
+
+def _render(page: object, dpi: int = 220) -> np.ndarray:
+    import pymupdf
+
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi / 72.0, dpi / 72.0), alpha=False)  # type: ignore[attr-defined]
+    return np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)[:, :, :3].copy()
 
 
 # --------------------------------------------------------------------------
@@ -331,8 +391,6 @@ FALSE_POSITIVE_PAGES = [
 
 
 def _detect(pdf_name: str, page_index: int, *, packed: bool) -> list[tuple[float, float, float, float]]:
-    import contextlib
-
     import pymupdf
 
     from chess_diagram_ocr.detection.hybrid import detect_diagrams
@@ -344,8 +402,8 @@ def _detect(pdf_name: str, page_index: int, *, packed: bool) -> list[tuple[float
         pytest.skip(f"livro ausente: {pdf_name}")
     image = render_pdf_page(path, page_index, dpi=220)
     with pymupdf.open(path) as doc:
-        with (recall_pack() if packed else contextlib.nullcontext()):
-            return [c.bbox_pdf for c in detect_diagrams(doc[page_index], image, max_boards=12)]
+        recall = DEFAULT_RECALL if packed else None
+        return [c.bbox_pdf for c in detect_diagrams(doc[page_index], image, max_boards=12, recall=recall)]
 
 
 @needs_corpus

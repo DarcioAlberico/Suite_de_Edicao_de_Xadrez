@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from caissa.ui.audit import bloqueio, capture, contraste, progresso, quadros, teclado
+from caissa.ui.audit import bloqueio, capture, contraste, progresso, quadros, teclado, vazio
 
 # ------------------------------------------------------------------- o tempo de quadro
 
@@ -178,6 +178,24 @@ class TestResumo:
         travas = [bloqueio.Travamento(duracao_ms=v, quando_s=0.0) for v in (5.0, 90.0, 30.0)]
         assert [t.duracao_ms for t in bloqueio.piores(travas, 2)] == [90.0, 30.0]
 
+    def test_a_referencia_e_publicada_mas_nao_decide_o_veredito(self) -> None:
+        """`render_pdf_page` chamado direto mede a thread de trabalho, e não a da interface.
+
+        Desde o passo 15 da OCR_UI o produto nunca rasteriza na thread da janela; a linha continua
+        no relatório -- é quanto custa a conta que o filho paga -- e sai de `viola`. Qualquer outra
+        operação com o mesmo número continua violando: a exceção é nominal, e só uma.
+        """
+        pesada = bloqueio.Medicao(operacao=bloqueio.REFERENCIA, resumo=bloqueio.resumir([60.0], piso_ms=16.0))
+        linha = bloqueio._consolidar(bloqueio.REFERENCIA, [pesada], 16.0)
+        assert linha["referencia"] is True
+        assert linha["viola"] is False
+        assert linha["pior_ms"] == pytest.approx(60.0)
+
+        outra = bloqueio.Medicao(operacao="abrir PDF", resumo=bloqueio.resumir([60.0], piso_ms=16.0))
+        linha = bloqueio._consolidar("abrir PDF", [outra], 16.0)
+        assert linha["referencia"] is False
+        assert linha["viola"] is True
+
     def test_o_relato_de_uma_falha_traz_numero_e_pilha(self) -> None:
         """Quem lê a falha é o pytest, e um número sem nome manda alguém procurar."""
         medicao = bloqueio.Medicao(operacao="abrir PDF")
@@ -217,6 +235,43 @@ class TestTeclado:
             classe="QRadioButton", papel="RadioButton", alcancado_pelo_tab=False, por_seta=True
         )
         assert controle.alcancavel()
+
+    def test_um_botao_num_qbuttongroup_esta_em_grupo_mesmo_sem_autoexclusive(self) -> None:
+        """A regra do próprio Qt (`fixFocusPolicy`: `if (!group && !autoExclusive) return;`): um
+        botão marcável num `QButtonGroup` **não** é `autoExclusive`, e mesmo assim vira um ponto
+        de parada só com os outros do grupo, com as setas entre eles. A régua antiga só olhava o
+        grupo depois de `autoExclusive()` dizer sim, e acusou três modos da aba `Livro` que as
+        setas alcançam (OCR_UI passo 17, tarefa 3). Medido em PyQt6 6.11 (offscreen): depois do
+        foco, os outros botões do grupo perdem `TabFocus` e `Right` marca e foca o vizinho."""
+
+        class Grupo:
+            pass
+
+        class Botao:
+            def __init__(self, grupo: object | None, auto_exclusivo: bool) -> None:
+                self._grupo, self._auto = grupo, auto_exclusivo
+
+            def group(self) -> object | None:
+                return self._grupo
+
+            def autoExclusive(self) -> bool:  # noqa: N802 - assinatura do Qt
+                return self._auto
+
+            def parentWidget(self) -> object:  # noqa: N802 - assinatura do Qt
+                return self
+
+        grupo = Grupo()
+        no_grupo = [Botao(grupo, auto_exclusivo=False) for _ in range(3)]
+        identidades = {teclado._grupo_exclusivo(botao) for botao in no_grupo}
+        assert identidades == {id(grupo)}, "os três respondem a mesma identidade: a do grupo"
+        solto = Botao(None, auto_exclusivo=False)
+        assert teclado._grupo_exclusivo(solto) is None
+        radio_sem_grupo = Botao(None, auto_exclusivo=True)
+        assert teclado._grupo_exclusivo(radio_sem_grupo) == id(radio_sem_grupo), "o pai é o grupo"
+        # E a pergunta que o portão faz: um membro fora do Tab está alcançado se **algum** membro
+        # do grupo dele foi visitado pela volta.
+        assert teclado._por_seta(no_grupo[1], {id(grupo)})
+        assert not teclado._por_seta(no_grupo[1], set())
 
     def test_texto_selecionavel_so_por_ponteiro_nao_e_defeito(self) -> None:
         controle = self._controle(
@@ -1318,3 +1373,48 @@ class TestUmSeparadorSo:
             for arquivo in self.modulos_de_interface(raiz_do_tronco)
         )
         assert usos >= 10, f"o separador declarado quase sumiu da interface: {usos} usos"
+
+
+# ------------------------------------------------------------------- o vazio de painel a 4K
+
+
+class TestVazio:
+    """O maior retângulo sem tinta, exato -- a régua do passo 16 da OCR_UI sem abrir janela."""
+
+    def test_o_maior_retangulo_e_o_maximo_e_nao_um_chute(self) -> None:
+        import numpy as np
+
+        m = np.zeros((6, 8), dtype=bool)
+        m[1:5, 2:7] = True  # 4 x 5 = 20 blocos
+        m[0, :] = True  # uma linha inteira por cima: 8 blocos sozinha...
+        # ...mas com ela o bloco central cresce uma linha: 5 x 5 = 25, e é isso que o exato acha
+        # onde uma busca gulosa por linha ficaria nos 20.
+        area, x0, y0, x1, y1 = vazio.maior_retangulo(m)
+        assert area == 25
+        assert (x0, y0, x1, y1) == (2, 0, 7, 5)
+        m[0, :] = False
+        assert vazio.maior_retangulo(m)[0] == 20
+
+    def test_a_mascara_le_tinta_pelo_fundo_dominante_e_pela_tolerancia(self) -> None:
+        import numpy as np
+
+        a = np.full((16, 16, 3), 30, dtype=np.uint8)
+        a[4:8, 4:8] = 200  # um quadrado de tinta de 4 x 4 px = um bloco
+        a[0, 0] = 33  # ruído dentro da tolerância: continua fundo
+        mascara, fundo = vazio.mascara_vazia(a, 0, 0, 16, 16)
+        assert fundo == "#1e1e1e"
+        assert mascara.shape == (4, 4)
+        assert not mascara[1, 1], "o bloco com o quadrado é tinta"
+        assert mascara.sum() == 15
+
+    def test_um_painel_todo_vazio_a_4k_reprova_e_um_com_tinta_a_cada_linha_passa(self) -> None:
+        import numpy as np
+
+        liso = np.ones((500, 500), dtype=bool)
+        area, *_ = vazio.maior_retangulo(liso)
+        assert area * vazio.BLOCO * vazio.BLOCO / 1000 > vazio.TETO_KPX
+        pautado = np.ones((500, 500), dtype=bool)
+        pautado[::7, :] = False  # um traço a cada 28 px
+        area, *_ = vazio.maior_retangulo(pautado)
+        assert area * vazio.BLOCO * vazio.BLOCO / 1000 <= vazio.TETO_KPX
+

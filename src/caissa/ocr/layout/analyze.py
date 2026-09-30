@@ -266,8 +266,10 @@ def lines_from_result(result: OcrResult) -> tuple[LayoutLine, ...]:
 
 def lines_from_pdf_page(page: Any, *, scale: float = 1.0) -> tuple[LayoutLine, ...]:
     """Layout input straight from a PyMuPDF page, bypassing OCR."""
+    from ..engines.normalize import text_layer_flags
+
     out: list[LayoutLine] = []
-    data = page.get_text("dict")
+    data = page.get_text("dict", flags=text_layer_flags("dict"))   # A14: ligatures expanded
     for block in data.get("blocks", []):
         if block.get("type") != 0:
             continue

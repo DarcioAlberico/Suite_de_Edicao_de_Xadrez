@@ -44,7 +44,7 @@ import inspect
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Any
 
@@ -179,6 +179,37 @@ DEFAULT_CALIBRATIONS: dict[str, EngineCalibration] = {
 #: Used for an engine with no entry above — neutral.
 FALLBACK_CALIBRATION = EngineCalibration()
 
+#: Engine name -> the engine whose scale its raw confidences are on, and so
+#: whose calibration (reputation and SOL-4 table) it borrows.  The movetext
+#: strips of passo B2 are Tesseract readings under a name of their own (the
+#: name keeps them from anchoring a region); scored or fused under their own
+#: name they stayed raw while the anchor was calibrated -- the mismatch B6
+#: exists to remove (crítico Codex, fase 2 ciclo 1).
+SCALE_OF: dict[str, str] = {"tesseract_strips": "tesseract"}
+
+#: The page segmentation modes in which the engine cuts the image into blocks
+#: of its own (``--psm 1``/``3``) -- the only readings whose block order can put
+#: a table's columns one after the other (passo B13).  Every other PSM reads one
+#: block, a line or a word, and a result without ``psm`` is not Tesseract's.
+_SEGMENTING_PSMS = frozenset({1, 3})
+
+
+def _engine_order(result: OcrResult) -> str:
+    """The reading in the order its engine gave it -- before the B13 read its tables by rows.
+
+    The agreement between engines asks whether they read the same text, and the B13 only moves
+    the lines of one of them: measured on the moved lines, it decided the winner (crítico da
+    fase 5, ciclo 4).  On the Nunn p. 288, as a scanned book, the B13 read Tesseract's index
+    right -- CER 0,0193 --, and the moved lines raised the agreement of RapidOCR's reading of it,
+    interleaved line by line (0,7516), from 0,1822 to 0,2936: RapidOCR won, 0,5854 against
+    0,5797, and the page came out worse than with the B13 off (0,3212).  Measuring both
+    directions of ``difflib`` (its junk heuristic makes the two differ on long texts) gave the
+    Nunn back and was measured and dropped: it moved the winner on pages the B13 does not touch
+    -- the Karpov 2 pp. 267/272 and the Vladimirov p. 380 went to RapidOCR's interleaved order
+    (``OCR_UI_REPORT_C2_FASE5.md`` §0.7).
+    """
+    return str(result.meta.get("engine_order_text", result.text))
+
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -226,12 +257,22 @@ class ArbiterConfig:
     #: engine budget.  Counting it did: on a scanned page level 0 came back
     #: empty, Tesseract ran, and the third slot Surya needed was gone.
     count_empty_in_budget: bool = False
+    #: OCR_UI ciclo 2, B13: a reading from an automatic page segmentation
+    #: (PSM 1/3) has its table groups read row by row
+    #: (:func:`caissa.ocr.layout.rows.rows_of_tables`).  ``False`` is the before;
+    #: the service keeps it in step with ``OcrServiceConfig.table_rows``.
+    table_rows: bool = True
 
     def threshold_for(self, level: int) -> float:
         return self.accept_threshold_by_level.get(level, self.accept_threshold)
 
     def calibration_for(self, engine: str,
                         key: FacetKey | None = None) -> EngineCalibration:
+        """The calibration of ``engine`` on the facet ``key`` — of the engine
+        whose scale it borrows (:data:`SCALE_OF`) when it has one."""
+        engine = SCALE_OF.get(engine, engine)
+        if key is not None and key.engine != engine:
+            key = replace(key, engine=engine)
         base = self.calibrations.get(engine, FALLBACK_CALIBRATION)
         if base.table is not None:
             return base
@@ -264,6 +305,11 @@ class RegionTask:
     clip: BBox | None = None
     #: PDF points to image pixels, i.e. ``dpi / 72``.
     scale: float = 1.0
+    #: OCR_UI ciclo 2, B12: the resolution of ``image`` as rendered -- the
+    #: variant's, not the page's, when the portfolio upscaled it.  An engine
+    #: that takes a resolution hint (``with_dpi``) gets it; ``None`` lets each
+    #: engine's own default stand.
+    dpi: float | None = None
     region_id: str = ""
     #: A verdict already computed for this region, handed to a level-0 engine
     #: that accepts one.  The page runner supplies it so that a region too
@@ -425,12 +471,13 @@ class Arbiter:
                    others: Sequence[OcrResult]) -> tuple[float, bool]:
         """Best similarity against any other engine's output.
 
-        ``difflib`` rather than an edit distance: it is C-backed, it is a
-        similarity in 0..1 already, and the difference between the two measures
-        is far smaller than the noise in what is being compared.
+        ``difflib`` rather than an edit distance: it is a similarity in 0..1
+        already, and the difference between the two measures is far smaller
+        than the noise in what is being compared.  Each reading is compared in
+        the order its engine read it (:func:`_engine_order`).
         """
-        text = " ".join(result.text.split())
-        candidates = [" ".join(o.text.split()) for o in others
+        text = " ".join(_engine_order(result).split())
+        candidates = [" ".join(_engine_order(o).split()) for o in others
                       if o.engine != result.engine and o.text.strip()]
         if not text or not candidates:
             return 0.0, False
@@ -525,6 +572,12 @@ class Arbiter:
                 scale=task.scale, psm_hint=task.region_kind, **extra)
             return page_result
         assert task.image is not None
+        with_dpi = getattr(engine, "with_dpi", None)
+        if task.dpi and callable(with_dpi):
+            # B12: the engine is told the resolution it is really looking at.
+            with with_dpi(task.dpi):
+                return engine.recognize(task.image, lang=task.lang,
+                                        psm_hint=task.region_kind)
         return engine.recognize(task.image, lang=task.lang,
                                 psm_hint=task.region_kind)
 
@@ -564,6 +617,20 @@ class Arbiter:
                 continue
 
             result = self._invoke(engine, task)
+            if cfg.table_rows and result.meta.get("psm") in _SEGMENTING_PSMS:
+                # B13: the engine's own page segmentation cut a table (or a
+                # move list) into column blocks; read it row by row -- the
+                # order the reader gets, and the one confidence and
+                # plausibility judge.  The agreement with the other engines
+                # stays on the engine's own order (``engine_order_text``, see
+                # :func:`_engine_order`): the reordering must not decide which
+                # engine wins.
+                from caissa.ocr.layout.rows import rows_of_tables
+
+                reordered = rows_of_tables(result)
+                if reordered is not result:
+                    reordered = reordered.with_meta(engine_order_text=result.text)
+                result = reordered
             results.append(result)
             engines_run.append(engine.name)
 

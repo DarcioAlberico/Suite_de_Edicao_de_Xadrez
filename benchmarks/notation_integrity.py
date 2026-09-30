@@ -74,7 +74,14 @@ _SRC = Path(__file__).resolve().parents[1] / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from caissa.notation.nag_table import move_suffix_class  # noqa: E402
 from caissa.ocr.lexicon import mangled_move_ratio, normalise_lang  # noqa: E402
+
+#: The annotation tail a move may carry (``Nf6±``, ``Rad8⩲``): one alphabet,
+#: :data:`caissa.notation.nag_table.MOVE_SUFFIX_CHARS`, shared with the readers
+#: it measures (OCR_UI_ROADMAP_C2 passo A4) -- an instrument that stopped at
+#: ``!?`` could not see a move the page annotated.
+_SUFFIX = move_suffix_class()
 
 #: CORPUS.md §0.  Copyrighted material; it never leaves this machine.
 CORPUS_DIR = Path(__import__("os").environ.get(
@@ -290,7 +297,7 @@ def report_verdicts() -> dict[str, Any]:
 #: Deliberately permissive about the promotion letter, because an engine that
 #: mangles the piece glyph mangles the promotion glyph the same way.
 _MOVE_TAIL = re.compile(
-    r"(?:[a-h]?[1-8]?[x:×-]?[a-h][1-8](?:=[A-Za-z])?[+#!?]{0,3})$")
+    rf"(?:[a-h]?[1-8]?[x:×-]?[a-h][1-8](?:=[A-Za-z])?[{_SUFFIX}]{{0,3}})$")
 
 #: A move number glued to the move — ``4.Kd3``, ``1...Nf6``.  Not part of the
 #: piece glyph, and counting it would penalise both engines for nothing.
@@ -416,7 +423,7 @@ CONTEST_PAGES: list[tuple[str, str, str, list[int], bool]] = [
 ]
 
 _PIECE_MOVE = re.compile(r"^(?:\d{1,3}\.{1,3})?([KQRBNP♔♕♖♗♘♙])([a-h]?[1-8]?[x:×]?[a-h][1-8])"
-                         r"(?:=[A-Za-z])?[+#!?]{0,3}$")
+                         rf"(?:=[A-Za-z])?[{_SUFFIX}]{{0,3}}$")
 
 
 def _piece_moves(text: str) -> Counter[str]:
@@ -460,12 +467,23 @@ def _prose_cer(reference: str, hypothesis: str) -> float:
     return float(score_text(ref, hyp).cer)
 
 
-def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool) -> dict[int, str]:
+#: ``--sabotar`` for ``--what contest`` (ciclo 2, B10): each switches one
+#: mechanism of the book cipher off through ``PdfImportOptions.ocr_config``.
+CONTEST_SABOTAGES: dict[str, dict[str, Any]] = {
+    "cifra_estilo": {"cipher_style": False},
+    "cifra_janela": {"cipher_window": 0},
+    "cifra_primeira": {"cipher_majority": False},
+    "cifra_plana": {"cipher_style": False, "cipher_window": 0, "cipher_majority": False},
+}
+
+
+def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool,
+                ocr_config: dict[str, Any] | None = None) -> dict[int, str]:
     from caissa.core.model import Heading, Paragraph, plain_text
     from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
 
     options = PdfImportOptions(pages=pages, lang=lang, detect_diagrams=False,
-                               ocr_contests_text_layer=contest)
+                               ocr_contests_text_layer=contest, ocr_config=ocr_config)
     result = import_pdf(path, options)
     texts: dict[int, list[str]] = {p: [] for p in pages}
     for block in result.document.body:
@@ -478,12 +496,18 @@ def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool) -> di
     return {p: "\n".join(t) for p, t in texts.items()}, sources
 
 
-def report_contest() -> dict[str, Any]:
+def report_contest(sabotage: str = "") -> dict[str, Any]:
     from caissa.ocr.engines.tesseract import TesseractEngine
 
     if not TesseractEngine().available():
         print("Tesseract indisponível")
         return {}
+    ocr_config = CONTEST_SABOTAGES.get(sabotage)
+    if sabotage and ocr_config is None:
+        raise SystemExit(f"--sabotar {sabotage} não vale para --what contest "
+                         f"(vale: {', '.join(CONTEST_SABOTAGES)})")
+    if ocr_config:
+        print(f"SABOTAGEM {sabotage}: ocr_config={ocr_config}")
     out: dict[str, Any] = {}
     print(f"{'livro':30s} {'pág.':>5s} {'fonte':16s} {'lances c/ peça':>14s} "
           f"{'peça certa':>11s} {'só sem':>6s} {'só com':>6s} {'chars Δ':>8s} {'CER prosa':>9s}")
@@ -492,8 +516,8 @@ def report_contest() -> dict[str, Any]:
         if not path.is_file():
             print(f"{label:30s}  AUSENTE")
             continue
-        before, _ = _page_texts(path, pages, lang, contest=False)
-        after, sources = _page_texts(path, pages, lang, contest=True)
+        before, _ = _page_texts(path, pages, lang, contest=False, ocr_config=ocr_config)
+        after, sources = _page_texts(path, pages, lang, contest=True, ocr_config=ocr_config)
         totals = {"moves_before": 0, "correct_before": 0, "moves_after": 0,
                   "correct_after": 0, "only_before": 0, "only_after": 0, "chars_changed": 0,
                   "contested": 0, "prose_cer_sum": 0.0}
@@ -642,12 +666,115 @@ def report_decode() -> dict[str, Any]:
     return out
 
 
+#: Fixed pages per book for ``--what nags`` (OCR_UI_ROADMAP_C2 passo B3): the
+#: pinned pages of the Dvoretsky (the DEM prints ``²``/``³``/``±`` after
+#: moves in the Thinkers/Quality symbol convention) and of the Aagaard.
+NAG_PAGES: list[tuple[str, str, str, list[int]]] = [
+    ("Dvoretsky E1", PINNED["dvoretsky"][0], "eng", list(PINNED["dvoretsky"][1])),
+    ("Aagaard E1", PINNED["aagaard"][0], "eng", list(PINNED["aagaard"][1])),
+]
+
+
+def _nag_tokens(text: str) -> int:
+    """Move tokens on the page whose annotation tail carries a NAG."""
+    from caissa.notation.legality_repair import split_tail
+    from caissa.notation.nag_table import nags_from_suffix
+    from caissa.ocr.lexicon import is_move_token
+
+    count = 0
+    for token in text.split():
+        core, suffix = split_tail(token)
+        if suffix and is_move_token(core.strip("+#")) and nags_from_suffix(suffix):
+            count += 1
+    return count
+
+
+def _walk_nags(node: Any) -> tuple[int, int, list[int]]:
+    """``(moves, moves with NAGs, the codes)`` under a move node."""
+    moves = nags = 0
+    found: list[int] = []
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        moves += 1
+        nags += 1 if current.nags else 0
+        found.extend(current.nags)
+        stack.extend(current.children)
+    return moves, nags, found
+
+
+def report_nags(*, sabotage: str = "") -> dict[str, Any]:
+    """**OCR_UI_ROADMAP_C2 passo B3 — do the book's NAGs reach the GameScore?**
+
+    Every ``MoveNode.nags`` used to come out empty on the PDF path: the
+    repairer stripped the annotation tail and nothing read it.  The pinned
+    pages are imported with diagrams on (a game needs its anchor), the tokens
+    with a NAG tail are counted in the imported text, and the nodes with
+    NAGs are counted in the games.  ``--sabotar nags`` erases the symbols
+    from the text the games are built from: the tokens stay, the nodes' NAGs
+    have to drop to zero, and the gate reproves.
+    """
+    from caissa.core.model import GameScore, Heading, Paragraph, plain_text
+    from caissa.ingest.pdf import games as games_module
+    from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
+    from caissa.notation.nag_table import BOOK_SYMBOL_ALIASES, SYMBOLIC_GLYPHS
+
+    erase = str.maketrans({ch: "" for ch in "".join(SYMBOLIC_GLYPHS) + "".join(BOOK_SYMBOL_ALIASES)
+                           + "!?" if ch not in "+#"})
+    original = games_module.plain_text
+    if sabotage == "nags":
+        games_module.plain_text = lambda content: original(content).translate(erase)  # type: ignore[assignment]
+    out: dict[str, Any] = {}
+    try:
+        print(f"{'livro':20s} {'págs':>5s} {'lances c/ NAG no texto':>22s} {'partidas':>8s} "
+              f"{'nós':>6s} {'nós c/ NAG':>10s}")
+        for label, name, lang, pages in NAG_PAGES:
+            path = CORPUS_DIR / name
+            if not path.is_file():
+                print(f"{label:20s}  AUSENTE")
+                continue
+            result = import_pdf(path, PdfImportOptions(pages=pages, lang=lang))
+            text_tokens = games_scores = nodes = nodes_with = 0
+            codes: Counter[int] = Counter()
+            for block in result.document.body:
+                if isinstance(block, (Paragraph, Heading)):
+                    text_tokens += _nag_tokens(plain_text(block.content))
+                elif isinstance(block, GameScore):
+                    games_scores += 1
+                    for child in block.children:
+                        m, n, found = _walk_nags(child)
+                        nodes += m
+                        nodes_with += n
+                        codes.update(found)
+            print(f"{label:20s} {len(pages):5d} {text_tokens:22d} {games_scores:8d} "
+                  f"{nodes:6d} {nodes_with:10d}   "
+                  + " ".join(f"${c}×{n}" for c, n in sorted(codes.items())))
+            out[label] = {"pages": pages, "nag_tokens_in_text": text_tokens,
+                          "games": games_scores, "nodes": nodes, "nodes_with_nags": nodes_with,
+                          "codes": {f"${c}": n for c, n in sorted(codes.items())}}
+    finally:
+        games_module.plain_text = original  # type: ignore[assignment]
+    total_with = sum(v["nodes_with_nags"] for v in out.values())
+    total_games = sum(v["games"] for v in out.values())
+    passed = total_games > 0 and total_with > 0
+    print(f"\nportão B3: {'PASSOU' if passed else 'REPROVOU'} — {total_with} nó(s) com NAG em "
+          f"{total_games} partida(s)" + (f" (sabotagem: {sabotage})" if sabotage else ""))
+    out["gate"] = {"passed": passed, "nodes_with_nags": total_with, "games": total_games,
+                   "sabotage": sabotage}
+    return out
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__ and __doc__.split("\n")[0])
     parser.add_argument(
         "--what",
-        choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "all"),
+        choices=("books", "sweep", "verdicts", "recovery", "decode", "contest", "nags", "all"),
         default="books")
+    parser.add_argument("--sabotar", default="", choices=("", "nags", *CONTEST_SABOTAGES),
+                        help="--what nags: apaga os símbolos do texto de onde as partidas nascem; "
+                             "--what contest: cifra_estilo / cifra_janela / cifra_primeira / "
+                             "cifra_plana desligam o estilo, a janela, a maioria ou os três na "
+                             "cifra do livro (B10)")
     parser.add_argument("--cap", type=int, default=60,
                         help="máximo de páginas amostradas por livro")
     parser.add_argument("--json", type=Path, default=None,
@@ -685,7 +812,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     if args.what in ("contest", "all"):
         if results:
             print()
-        results["contest"] = report_contest()
+        results["contest"] = report_contest(sabotage=args.sabotar if args.sabotar != "nags" else "")
+    if args.what in ("nags", "all"):
+        if results:
+            print()
+        results["nags"] = report_nags(sabotage=args.sabotar if args.sabotar == "nags" else "")
 
     print(f"\n{time.perf_counter() - started:.1f} s")
     if args.json is not None:

@@ -246,6 +246,69 @@ def test_disagreement_leaves_agreement_low(region):
         assert score.agreement < 0.60, score.describe_pt()
 
 
+INDEX_LEFT = ["Pogosiants R352, 441, P29, 205,", "217, 239, 244, 247, 323, 368,", "Polak P251",
+              "Polgar, J. P305", "Polugaevsky R296", "Ponziani R7, P93", "Popovic R125",
+              "Portisch, L. R137, M27, 237", "Pospisil P425", "Prokes R177, 181, P137,",
+              "Prokop P139, 171, 209,", "Psakhis M61, 79", "Purtov M9"]
+INDEX_RIGHT = ["Ruge M30", "Rumiantsev P121, 390", "Ruszcynski P119", "Sackmann P60, 113",
+               "Salov R279, P83", "Salvio R179", "Salwe R93, 497", "Saren M89",
+               "Schlechter R3, 11", "Schmid P240", "Seirawan M12", "Short M200, 201",
+               "Smyslov R44"]
+
+
+def test_the_agreement_is_measured_in_the_order_each_engine_read():
+    """Crítico da fase 5, ciclo 4: on the Nunn p. 288 the B13 moved Tesseract's lines into the
+    book's order, and the moved lines raised the agreement of RapidOCR's reading of the index,
+    interleaved, past Tesseract's own score: RapidOCR won.  The lines the B13 moved keep the
+    engine's order (``engine_order_text``), and the agreement is measured on it.  The shape:
+    two lists read by columns, and by rows."""
+    by_columns = " ".join(INDEX_LEFT + INDEX_RIGHT)
+    by_rows = " ".join(entry for pair in zip(INDEX_LEFT, INDEX_RIGHT, strict=True)
+                        for entry in pair)
+    tesseract = make_result("tesseract", by_columns, 0.9)
+    moved = make_result("tesseract", by_rows, 0.9).with_meta(engine_order_text=by_columns)
+    rapid = make_result("rapidocr", by_rows, 0.9)
+    assert Arbiter._agreement(moved, [rapid]) == Arbiter._agreement(tesseract, [rapid])
+    assert Arbiter._agreement(rapid, [moved]) == Arbiter._agreement(rapid, [tesseract])
+    # the sabotage: measured on the moved lines, RapidOCR's reading agrees with them entirely
+    plain = make_result("tesseract", by_rows, 0.9)
+    assert Arbiter._agreement(rapid, [plain])[0] > Arbiter._agreement(rapid, [tesseract])[0]
+
+
+def test_the_rows_move_the_readers_lines_and_never_the_agreement(region, monkeypatch):
+    """The B13 moves the lines of a reading the engine segmented itself (``psm`` 1/3), before it
+    is scored: the reader gets the moved lines, and confidence and plausibility judge them.
+    The agreement among the engines stays the one of their own orders -- with the B13 on it is
+    the agreement with it off.  ``rows_of_tables`` is replaced by a stand-in that reverses the
+    words; the sabotage measures the agreement on the moved lines."""
+    import caissa.ocr.arbiter as arbiter_module
+    import caissa.ocr.layout.rows as rows_module
+
+    class Segmenting(MockEngine):
+        def recognize(self, image, *, lang: str = "eng",
+                      psm_hint: RegionKind = RegionKind.PARAGRAPH) -> OcrResult:
+            return super().recognize(image, lang=lang, psm_hint=psm_hint).with_meta(psm=3)
+
+    def reversed_rows(result: OcrResult, *, config=None) -> OcrResult:
+        words = " ".join(reversed(result.text.split()))
+        return make_result(result.engine, words, 0.5).with_meta(**dict(result.meta), table_rows=1)
+
+    monkeypatch.setattr(rows_module, "rows_of_tables", reversed_rows)
+
+    def run(table_rows: bool):
+        engines = [Segmenting("a", EngineLevel.TESSERACT, CLEAN, 0.50),
+                   MockEngine("b", EngineLevel.PADDLE, CLEAN, 0.50)]
+        return Arbiter(engines, identity_config(table_rows=table_rows)).run(region)
+
+    on, off = run(True), run(False)
+    moved = next(r for r in on.candidates if r.engine == "a")
+    assert moved.text == " ".join(reversed(CLEAN.split())), "the reader gets the moved lines"
+    assert [s.agreement for s in on.scores] == [s.agreement for s in off.scores]
+    monkeypatch.setattr(arbiter_module, "_engine_order", lambda result: result.text)
+    sabotaged = run(True)
+    assert [s.agreement for s in sabotaged.scores] != [s.agreement for s in off.scores]
+
+
 # --------------------------------------------------------------------------- #
 # Level 0 is held to a higher bar
 # --------------------------------------------------------------------------- #

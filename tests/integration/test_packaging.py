@@ -529,8 +529,12 @@ class TestBundle:
         # `logs/` sao do usuario e crescem com o uso -- somar o que ele baixou ao que o build
         # gerou faria o teste reprovar toda instalacao que alguem chegou a usar. `runtime/`
         # entrou nesta lista no ciclo 2 e e a maior de todas: com o torch cu128 instalado ela
-        # sozinha passa de 4 GB, contra 295 MB do bundle inteiro.
-        do_usuario = {"runtime", "models", "data", "PDF", "PGN", "logs"}
+        # sozinha passa de 4 GB, contra 295 MB do bundle inteiro. A lista e a do build
+        # (`PASTAS_GUARDADAS`, que inclui `rotulagem/`): e o que ele exclui ao medir, e uma
+        # segunda lista aqui divergiria no primeiro nome que alguem acrescentasse la.
+        import build_windows
+
+        do_usuario = set(build_windows.PASTAS_GUARDADAS)
         real = sum(
             f.stat().st_size
             for f in bundle.rglob("*")

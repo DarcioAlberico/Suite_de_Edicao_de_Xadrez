@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from caissa.core.model import (
+    ConfidenceBand,
     Diagram,
     Heading,
     ImageBlock,
@@ -141,6 +142,66 @@ def test_page_selection_progress_and_cancel(pdf_file):
         import_pdf(path, PdfImportOptions(pages=[99]))
 
 
+def test_a_cancel_at_thirty_percent_keeps_thirty_percent_of_the_pages(pdf_file):
+    """OCR_UI_ROADMAP passo 17 (R3.5): the partial result is the pages built so far.
+
+    Ten pages; the cancel flag rises after the third page is built (progress in the build
+    pass is ``total + n + 1`` of ``2 * total``).  The document must carry exactly the three
+    pages, the report must say it was canceled and how many were planned.  The sabotage the
+    roadmap names -- "a cancel that throws the partial away" -- is the ``keep_partial=False``
+    default, asserted right below as an empty result raising ``ImportCanceled``.
+    """
+    pages = [
+        PageSpec().text(f"Página {i} com texto suficiente para contar.", 72, 100)
+        for i in range(10)
+    ]
+    path = pdf_file(pages)
+    built: list[int] = []
+
+    def progress(done: int, total: int) -> None:
+        if done > total // 2:
+            built.append(done - total // 2)
+
+    result = import_pdf(
+        path,
+        PdfImportOptions(
+            progress=progress,
+            should_cancel=lambda: len(built) >= 3,
+            keep_partial=True,
+        ),
+    )
+    assert result.report.canceled is True
+    assert result.report.pages_planned == 10
+    assert [p.index for p in result.report.pages] == [0, 1, 2]
+    assert result.report.pages_built == 3
+    assert any("cancelada" in note for note in result.report.notes)
+
+    # The complete import of the same book, for the denominator: the partial document is
+    # the head of the whole one -- three of ten pages of text, block for block.
+    whole = import_pdf(path, PdfImportOptions())
+    assert whole.report.canceled is False
+    assert [p.index for p in whole.report.pages][:3] == [0, 1, 2]
+    assert 0 < len(result.document.body) < len(whole.document.body)
+    assert [type(b).__name__ for b in result.document.body] == [
+        type(b).__name__ for b in whole.document.body[: len(result.document.body)]
+    ]
+    assert len(result.document.body) * 10 // len(whole.document.body) == 3
+
+    # The sabotage: without ``keep_partial`` the same cancel discards everything.
+    built.clear()
+    with pytest.raises(ImportCanceled):
+        import_pdf(path, PdfImportOptions(progress=progress, should_cancel=lambda: len(built) >= 3))
+
+
+def test_a_cancel_during_the_survey_returns_an_empty_document_marked_canceled(pdf_file):
+    pages = [PageSpec().text(f"Página {i}.", 72, 100) for i in range(4)]
+    path = pdf_file(pages)
+    result = import_pdf(path, PdfImportOptions(should_cancel=lambda: True, keep_partial=True))
+    assert result.report.canceled is True
+    assert result.report.pages_built == 0
+    assert result.report.pages_planned == 4
+
+
 # --------------------------------------------------------------------------- #
 # Scans, OCR, images
 # --------------------------------------------------------------------------- #
@@ -190,16 +251,28 @@ def test_an_ocr_provider_takes_over_a_page_without_text(pdf_file):
     assert block.provenance.confidence == pytest.approx(0.7)
 
 
-def test_a_failing_ocr_provider_does_not_lose_the_book(pdf_file):
+def test_a_failing_ocr_provider_does_not_lose_the_book(pdf_file, monkeypatch):
+    """And the page it failed on is in the review queue, not only in the notes (crítico da fase 5,
+    ciclo 5: a ``MemoryError`` left «OCR falhou na página 165» in the notes and no review item --
+    the page was gone from the list someone reads page by page).  The sabotage: the page is not
+    listed."""
     spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
     path = pdf_file([spec])
 
     def broken(*_args):
-        raise RuntimeError("motor caiu")
+        raise MemoryError("bad allocation")
 
     result = import_pdf(path, PdfImportOptions(ocr=broken))
     assert result.report.pages[0].source == "image-only"
-    assert any("motor caiu" in note for note in result.report.notes)
+    assert any("bad allocation" in note for note in result.report.notes)
+    review = [i for i in result.report.review_items if i.page_index == 0]
+    assert len(review) == 1, review
+    assert review[0].kind == "page" and review[0].decision == "abstained"
+    assert "O OCR falhou nesta página" in review[0].reasons[0]
+    assert "bad allocation" in review[0].reasons[0]
+    monkeypatch.setattr(PdfImporter, "_failed_for_review", lambda self, frame, ocr: None)
+    sabotaged = import_pdf(path, PdfImportOptions(ocr=broken))
+    assert sabotaged.report.review_items == []
 
 
 def test_figures_and_inline_images_are_placed_and_written(pdf_file, tmp_path):
@@ -445,6 +518,69 @@ def test_the_contest_is_off_by_option_and_absent_on_a_healthy_layer(pdf_file, mo
     assert calls == [] and result.report.pages[0].source == "text-layer"
 
 
+def _accepted_text_blocks(result) -> list:
+    """Text blocks on pages nothing marked for review -- what the rail calls clean."""
+    flagged = {item.page_index for item in result.report.review_items}
+    return [
+        b for b in result.document.body
+        if isinstance(b, Paragraph) and b.provenance is not None
+        and b.provenance.page_index not in flagged
+    ]
+
+
+@pytest.mark.parametrize(
+    ("shape", "fragment"),
+    [
+        ("raises", "o provedor falhou"),
+        ("none", "não emitiu texto"),
+        ("empty", "texto vazio"),
+    ],
+)
+def test_a_contested_layer_whose_ocr_says_nothing_is_never_the_layer_again(
+    pdf_file, monkeypatch, shape: str, fragment: str
+) -> None:
+    """OCR_UI ciclo 2, passo A8 (análise §7.2): an accused layer whose contest came back
+    empty used to return as ``text-layer`` at the layer's own confidence.  Now the page
+    keeps its prose but goes to review, at a doubtful confidence, and the report names it.
+    """
+    # A verdict that kept the layer at its full confidence while accusing the notation:
+    # what used to come back untouched when the contest had nothing to say.
+    path, _, _ = _contest_fixture(pdf_file, monkeypatch, _damaged_verdict(confidence=0.98))
+    baseline = import_pdf(path, PdfImportOptions(ocr=lambda *a: None, detect_diagrams=False,
+                                                 ocr_contests_text_layer=False))
+    assert baseline.report.pages[0].source == "text-layer"
+    assert baseline.report.pages[0].confidence == 0.98
+    accepted_before = _accepted_text_blocks(baseline)
+    assert accepted_before, "the normal round accepts the layer's text"
+
+    def provider(_page, frame, _verdict):
+        if shape == "raises":
+            raise RuntimeError("motor caiu")
+        if shape == "none":
+            return None
+        return PageText(frame=frame, lines=(), source="tesseract")
+
+    result = import_pdf(path, PdfImportOptions(ocr=provider, detect_diagrams=False))
+    page = result.report.pages[0]
+    assert page.source == "text-layer/review"
+    assert page.confidence <= 0.6
+    assert fragment in page.verdict
+    assert len(_accepted_text_blocks(result)) < len(accepted_before), (
+        "the sabotaged round must not accept as much text as the normal one"
+    )
+    assert any("página 1" in n and "para revisão" in n for n in result.report.notes)
+    review = [i for i in result.report.review_items if i.page_index == 0]
+    assert review
+    assert review[0].decision == "review"
+    assert any(fragment in r for r in review[0].reasons)
+    # The prose is still there -- doubtful, not dropped.
+    assert any(isinstance(b, Paragraph) for b in result.document.body)
+    assert all(
+        b.provenance.band in (ConfidenceBand.DOUBTFUL, ConfidenceBand.UNRELIABLE)
+        for b in result.document.body if isinstance(b, Paragraph) and b.provenance is not None
+    )
+
+
 def test_the_importer_keeps_the_book_cipher_next_to_the_books_models(pdf_file, monkeypatch,
                                                                      tmp_path):
     """OCR_UI_ROADMAP passo 3: the table is read from and written to
@@ -528,6 +664,155 @@ class _ServiceLikeOcr:
             region(1, 1200.0, "a clean line", Decision.ACCEPTED),
         ], portfolio=None, notes=[], duration_s=0.1, whole_page=False, engines={})
         return self.last.to_page_text(frame)
+
+
+class _WholePageOcr(_ServiceLikeOcr):
+    """The page read again after an OCR that raised: one region over the whole page, for review --
+    the Gallagher p. 54 of the critic (fase 5, ciclo 6), whose region the arbiter sent to review for
+    moves it suspected were invented."""
+
+    def __call__(self, _page, frame, _verdict):
+        from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+        from caissa.ocr.decision import Decision, RegionDecision
+        from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+        box = BBox(0.0, 0.0, frame.width * 300.0 / 72.0, frame.height * 300.0 / 72.0)
+        words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                      for w in ("1", "e4", "e5", "2", "e4", "e5"))
+        result = OcrResult(engine="tesseract", lang="eng", lines=(
+            OcrLine(words=words, box=box, kind=RegionKind.PARAGRAPH),))
+        self.last = PageRecognition(page_index=frame.index, dpi=300.0, regions=[RegionRecognition(
+            reading_order=0, kind=RegionKind.PARAGRAPH, box_px=box, result=result,
+            decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                    ("sequência de lances repetida: suspeita de invenção",)),
+            engine="tesseract", variant="base", score=0.6)],
+            portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+        return self.last.to_page_text(frame)
+
+
+def test_an_accept_of_the_page_nobody_read_accepts_nothing_on_the_next_import(
+        pdf_file, monkeypatch):
+    """Crítico da fase 5, ciclo 6: the OCR raised on the page, the page item went to the review
+    queue with no reading, and the Enter on its empty truth recorded an accept over the whole page;
+    the next import applied it to the reading that came then -- «aceita pelo revisor», verified, out
+    of the queue.  The window refuses the accept, and an accept written anyway (an older window, a
+    script) settles nothing: the page is still for review.  The sabotage: the accept of nothing
+    counts, and the page leaves the queue accepted."""
+    from caissa.ocr import review
+    from caissa.ocr.review import Action, ReviewQueue
+
+    spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
+    path = pdf_file([spec])
+
+    def broken(*_args):
+        raise MemoryError("bad allocation")
+
+    failed = import_pdf(path, PdfImportOptions(ocr=broken, detect_diagrams=False))
+    queue = ReviewQueue.from_import(failed.report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind == "page"
+    assert item.text == ""
+    assert queue.refusal(item.key, Action.ACCEPT).startswith("o OCR não leu esta página")
+    queue.decide(item.key, Action.ACCEPT)
+    written = review.ReviewDecisions(entries=(
+        review.Decided(item.page_index, item.rect, Action.ACCEPT, reviewer="ana"),))
+
+    for decisions in (queue.decisions(), written):
+        provider = _WholePageOcr()
+        again = import_pdf(path, PdfImportOptions(
+            ocr=provider, detect_diagrams=False, review_decisions=decisions))
+        assert again.report.counters["review_decisions_applied"] == 0
+        assert [i.page_index for i in again.report.review_items] == [0]
+        (region,) = provider.last.regions
+        assert not region.verified
+        assert "aceita pelo revisor" not in region.decision.reasons_pt
+
+    monkeypatch.setattr(review, "accepts_nothing", lambda action, reading: False)
+    provider = _WholePageOcr()
+    sabotaged = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=written))
+    assert sabotaged.report.counters["review_decisions_applied"] == 1
+    assert sabotaged.report.review_items == []
+    (region,) = provider.last.regions
+    assert region.verified
+    assert "aceita pelo revisor" in region.decision.reasons_pt
+
+
+class _PageRegionOcr(_ServiceLikeOcr):
+    """A page the OCR reads with no division of the layout: one region of kind PAGE over the whole
+    page, with the reading, for review -- the Gallagher p. 54 of the critic (fase 5, ciclo 8)."""
+
+    def __call__(self, _page, frame, _verdict):
+        from caissa.ingest.pdf.ocr_service import PageRecognition, RegionRecognition
+        from caissa.ocr.decision import Decision, RegionDecision
+        from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord, RegionKind
+
+        box = BBox(0.0, 0.0, frame.width * 300.0 / 72.0, frame.height * 300.0 / 72.0)
+        words = tuple(OcrWord(text=w, box=box, confidence=0.6)
+                      for w in ("1", "e4", "e5", "2", "e4", "e5"))
+        result = OcrResult(engine="tesseract", lang="eng", lines=(
+            OcrLine(words=words, box=box, kind=RegionKind.PAGE),))
+        self.last = PageRecognition(page_index=frame.index, dpi=300.0, regions=[RegionRecognition(
+            reading_order=0, kind=RegionKind.PAGE, box_px=box, result=result,
+            decision=RegionDecision(Decision.REVIEW, 0.6, 0.78, 0.55,
+                                    ("sequência de lances repetida: suspeita de invenção",)),
+            engine="tesseract", variant="base", score=0.6)],
+            portfolio=None, notes=[], duration_s=0.1, whole_page=True, engines={})
+        return self.last.to_page_text(frame)
+
+
+@pytest.mark.parametrize("action", ["accept", "edit", "keep_image"])
+def test_a_decision_on_a_page_the_ocr_read_in_one_region_reaches_the_book(
+        pdf_file, monkeypatch, action):
+    """Crítico da fase 5, ciclo 8: the page the OCR read with no division of the layout is one
+    region of kind PAGE, and its review item is of kind «page» with the reading and the engine; the
+    rule of cycle 8 refused the three decisions on it (the page pending for ever).  Through the
+    importer: the item of the page read, the decision taken on the queue, and the next import
+    applies it -- the accept verified, the edit's text in the book, the page kept as an image.
+    The sabotage: the rule of cycle 8 -- refused, and the next import leaves the page in review."""
+    from caissa.ocr import review
+    from caissa.ocr.decision import Decision
+    from caissa.ocr.review import Action, ReviewQueue
+
+    acao = Action(action)
+    texto = "1 e4 e5 2 Nf3 Nc6" if acao is Action.EDIT else None
+    spec = PageSpec(images=[(0.0, 0.0, 612.0, 792.0, 200, 260)])
+    path = pdf_file([spec])
+    first = import_pdf(path, PdfImportOptions(ocr=_PageRegionOcr(), detect_diagrams=False))
+    queue = ReviewQueue.from_import(first.report, document="livro", reviewer="ana")
+    (item,) = queue.items
+    assert item.kind == "page"
+    assert item.text.strip()
+    assert item.engine
+    assert queue.refusal(item.key, acao) == ""
+    queue.decide(item.key, acao, text=texto)
+    provider = _PageRegionOcr()
+    again = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=queue.decisions()))
+    assert again.report.counters["review_decisions_applied"] == 1
+    if acao is Action.KEEP_IMAGE:  # listed as abstained by the reviewer, as any region kept so
+        (restante,) = again.report.review_items
+        assert "mantida como imagem pelo revisor" in restante.reasons
+    else:
+        assert again.report.review_items == []
+    (region,) = provider.last.regions
+    assert region.verified
+    esperada = Decision.ABSTAINED if acao is Action.KEEP_IMAGE else Decision.ACCEPTED
+    assert region.decision.decision is esperada
+    if acao is Action.EDIT:
+        (paragrafo,) = [b for b in again.document.body if isinstance(b, Paragraph)]
+        assert plain_text(paragrafo.content) == texto
+
+    monkeypatch.setattr(review, "unread_page", lambda item: item.kind == "page")
+    sabotada = ReviewQueue.from_import(first.report, document="livro", reviewer="ana")
+    (item,) = sabotada.items
+    assert sabotada.refusal(item.key, acao).startswith("o OCR não leu esta página")
+    sabotada.decide(item.key, acao, text=texto)
+    provider = _PageRegionOcr()
+    sabotaged = import_pdf(path, PdfImportOptions(
+        ocr=provider, detect_diagrams=False, review_decisions=sabotada.decisions()))
+    assert sabotaged.report.counters["review_decisions_applied"] == 0
+    assert [i.kind for i in sabotaged.report.review_items] == ["page"]
 
 
 def test_review_decisions_settle_the_region_on_import(pdf_file):

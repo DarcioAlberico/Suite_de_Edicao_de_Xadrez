@@ -1,0 +1,117 @@
+inicio 03:59:26 suite=ac2ff04 src=[0] tronco=646c84f [0] labeling=2026-09-15 05:49:26.192952500 -0300
+### sem_livro 03:59:26
+exit 0 sem_livro 03:59:39
+### livro 03:59:39
+exit 0 livro 03:59:54
+### sabotagem_aperto 03:59:54
+exit 1 sabotagem_aperto 04:00:05
+### sabotagem_rodape 04:00:05
+exit 1 sabotagem_rodape 04:00:17
+### sabotagem_corte 04:00:17
+exit 1 sabotagem_corte 04:00:29
+### sabotagem_mensagem 04:00:29
+exit 1 sabotagem_mensagem 04:00:41
+### sabotagem_reserva 04:00:41
+exit 1 sabotagem_reserva 04:01:03
+### sabotagem_linha 04:01:04
+exit 1 sabotagem_linha 04:01:45
+### teclado teclado_foco_1280x800 04:01:45
+exit 0 teclado teclado_foco_1280x800 04:02:45
+### teclado teclado_foco_1248x640 04:02:45
+exit 0 teclado teclado_foco_1248x640 04:03:41
+### teclado teclado_foco_1280x641 04:03:41
+exit 0 teclado teclado_foco_1280x641 04:04:35
+### teclado teclado_classica_1280x800 04:04:36
+exit 0 teclado teclado_classica_1280x800 04:05:33
+### teclado teclado_classica_1248x640 04:05:34
+exit 0 teclado teclado_classica_1248x640 04:06:30
+### teclado teclado_classica_1280x641 04:06:30
+exit 0 teclado teclado_classica_1280x641 04:07:28
+### teclado teclado_fita_1280x800 04:07:28
+exit 0 teclado teclado_fita_1280x800 04:08:27
+### teclado teclado_fita_1248x640 04:08:28
+exit 0 teclado teclado_fita_1248x640 04:09:24
+### teclado teclado_fita_1280x641 04:09:24
+exit 0 teclado teclado_fita_1280x641 04:10:15
+TECLADODONE 04:10:15
+### teclado_sabotagem foco_foco 04:10:15
+exit 1 teclado_sabotagem foco_foco 04:11:27
+### teclado_sabotagem tabela_foco 04:11:27
+exit 1 teclado_sabotagem tabela_foco 04:13:13
+### teclado_sabotagem clique_foco 04:13:13
+exit 1 teclado_sabotagem clique_foco 04:14:03
+### teclado_sabotagem guarda_foco 04:14:03
+exit 1 teclado_sabotagem guarda_foco 04:14:53
+### teclado_sabotagem ponteiro_foco 04:14:53
+exit 0 teclado_sabotagem ponteiro_foco 04:15:43
+### teclado_sabotagem soltar_foco 04:15:43
+exit 1 teclado_sabotagem soltar_foco 04:16:33
+### teclado_sabotagem foco_classica 04:16:33
+exit 1 teclado_sabotagem foco_classica 04:17:22
+### teclado_sabotagem tabela_classica 04:17:23
+exit 1 teclado_sabotagem tabela_classica 04:18:15
+### teclado_sabotagem clique_classica 04:18:15
+exit 1 teclado_sabotagem clique_classica 04:19:04
+### teclado_sabotagem guarda_classica 04:19:04
+exit 1 teclado_sabotagem guarda_classica 04:19:54
+### teclado_sabotagem ponteiro_classica 04:19:54
+exit 1 teclado_sabotagem ponteiro_classica 04:20:44
+### teclado_sabotagem soltar_classica 04:20:44
+exit 1 teclado_sabotagem soltar_classica 04:21:34
+### teclado_sabotagem foco_fita 04:21:34
+exit 1 teclado_sabotagem foco_fita 04:22:20
+### teclado_sabotagem tabela_fita 04:22:20
+exit 1 teclado_sabotagem tabela_fita 04:23:08
+### teclado_sabotagem clique_fita 04:23:08
+exit 1 teclado_sabotagem clique_fita 04:23:54
+### teclado_sabotagem guarda_fita 04:23:54
+exit 1 teclado_sabotagem guarda_fita 04:24:42
+### teclado_sabotagem ponteiro_fita 04:24:42
+exit 0 teclado_sabotagem ponteiro_fita 04:25:28
+### teclado_sabotagem soltar_fita 04:25:28
+exit 1 teclado_sabotagem soltar_fita 04:26:14
+SABOTAGENSDONE 04:26:14
+### teclado_gal51 teclado_foco_1280x641 04:26:14
+exit 0 teclado_gal51 teclado_foco_1280x641 04:26:34
+### teclado_gal51_sabotagem ancora_foco 04:26:34
+exit 1 teclado_gal51_sabotagem ancora_foco 04:26:49
+### teclado_gal51_alta teclado_foco_1280x1700 04:26:49
+exit 0 teclado_gal51_alta teclado_foco_1280x1700 04:27:17
+### teclado_gal51_sabotagem folga_foco 04:27:17
+exit 1 teclado_gal51_sabotagem folga_foco 04:27:45
+### teclado_gal51_alta teclado_foco_1280x2400 04:27:45
+exit 0 teclado_gal51_alta teclado_foco_1280x2400 04:28:15
+### teclado_gal51_sabotagem piso_foco 04:28:15
+exit 1 teclado_gal51_sabotagem piso_foco 04:28:45
+### teclado_gal51 teclado_classica_1280x641 04:28:45
+exit 0 teclado_gal51 teclado_classica_1280x641 04:29:05
+### teclado_gal51_sabotagem ancora_classica 04:29:05
+exit 1 teclado_gal51_sabotagem ancora_classica 04:29:24
+### teclado_gal51_alta teclado_classica_1280x1700 04:29:24
+exit 0 teclado_gal51_alta teclado_classica_1280x1700 04:29:52
+### teclado_gal51_sabotagem folga_classica 04:29:52
+exit 1 teclado_gal51_sabotagem folga_classica 04:30:20
+### teclado_gal51_alta teclado_classica_1280x2400 04:30:20
+exit 0 teclado_gal51_alta teclado_classica_1280x2400 04:30:50
+### teclado_gal51_sabotagem piso_classica 04:30:50
+exit 1 teclado_gal51_sabotagem piso_classica 04:31:20
+### teclado_gal51 teclado_fita_1280x641 04:31:20
+exit 0 teclado_gal51 teclado_fita_1280x641 04:31:37
+### teclado_gal51_sabotagem ancora_fita 04:31:37
+exit 1 teclado_gal51_sabotagem ancora_fita 04:31:53
+### teclado_gal51_alta teclado_fita_1280x1700 04:31:53
+exit 0 teclado_gal51_alta teclado_fita_1280x1700 04:32:21
+### teclado_gal51_sabotagem folga_fita 04:32:21
+exit 0 teclado_gal51_sabotagem folga_fita 04:32:48
+### teclado_gal51_alta teclado_fita_1280x2400 04:32:48
+exit 0 teclado_gal51_alta teclado_fita_1280x2400 04:33:20
+### teclado_gal51_sabotagem piso_fita 04:33:20
+exit 1 teclado_gal51_sabotagem piso_fita 04:33:51
+### teclado_gal51_alta teclado_fita_1280x1800 04:33:51
+exit 0 teclado_gal51_alta teclado_fita_1280x1800 04:34:21
+### teclado_gal51_sabotagem folga_fita_1800 04:34:21
+exit 1 teclado_gal51_sabotagem folga_fita_1800 04:34:50
+fim dos portões 04:34:50 suite=ac2ff04 src=[0] tronco=646c84f [0] labeling=2026-09-15 05:49:26.192952500 -0300
+PORTOESDONE
+TESTESDONE
+MEDEDONE 05:47:10 suite=ac2ff04 src=[0] tronco=646c84f [0] labeling=2026-09-15 05:49:26.192952500 -0300

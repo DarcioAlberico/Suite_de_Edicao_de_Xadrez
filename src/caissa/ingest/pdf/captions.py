@@ -58,6 +58,7 @@ __all__ = [
     "DiagramContext",
     "NearbyLine",
     "PageScope",
+    "Stipulation",
     "Placement",
     "apply_page_scope",
     "assign_lines_to_diagrams",
@@ -205,6 +206,104 @@ _COMPOUND_LABEL: Final = re.compile(r"^(\d{1,3}[-–/]\d{1,4})(?:\s|$)")
 #: ``W?`` / ``B`` (Dvoretsky), optionally with the stipulation mark.
 _SIDE_SHORTHAND: Final = re.compile(r"^([WB])[?+=#!]?$")
 
+# --------------------------------------------------------------------------- #
+# Stipulation grammar (OCR_UI ciclo 2, C12) -- the same table as the trunk's
+# ``estipulacao.py``, held together by ``test_captions_stipulation``'s parity
+# test: two grammars that drift are the "gramáticas divergentes" the cycle-2
+# analysis names.  Direct mate only; helpmate ``h#``, selfmate ``s#`` and
+# reflex ``r#`` are refused on purpose (other rules).
+# --------------------------------------------------------------------------- #
+
+_STIPULATION_MAX_MOVES: Final = 6
+_STIPULATION_NUMBERS: Final[Mapping[str, int]] = {
+    "1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6,
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "quatro": 4, "cinco": 5, "seis": 6,
+    "uno": 1, "una": 1, "dos": 2, "cuatro": 4,
+    "un": 1, "une": 1, "deux": 2, "trois": 3, "quatre": 4, "cinq": 5,
+    "een": 1, "twee": 2, "drie": 3, "vier": 4, "vijf": 5, "zes": 6,
+    "einem": 1, "ein": 1, "zwei": 2, "drei": 3, "funf": 5, "sechs": 6,
+}  # fmt: skip
+_STIPULATION_WORDS: Final = "|".join(sorted(_STIPULATION_NUMBERS, key=len, reverse=True))
+#: ``#2`` / ``# 2`` / ``‡2`` as a token; not ``h#2`` (``h`` is a word character), not ``#2.5``.
+_STIPULATION_TOKEN: Final = re.compile(r"(?<![\w#])[#‡]\s?([1-6])(?!\d)(?![.,:/-]\d)")
+#: ``problem #2`` / ``No. #3``: a problem number, not a demand.
+_STIPULATION_NUMBER_BEFORE: Final = re.compile(
+    r"(?:\b(?:no|nr|num|numero|number|problem|problema|exercicio|exercise|ejercicio|aufgabe|diagram|diagrama)\.?\s*)$"
+)
+#: ``3#`` / ``3‡`` / ``3±`` / ``3+`` as the whole line -- the Dutch/German problem-book form
+#: (the Niemeijer prints ``3‡``; the scan's text layer gives ``3±`` or ``3+``).
+_STIPULATION_LINE: Final = re.compile(r"^\s*([1-6])\s?[#‡±+]\s*$")
+#: «mate in two», «mate em 2 lances», «mate en 2», «mat en 2 coups», «mat in 2 zetten»,
+#: «Matt in 3 Zügen», «mates in 2».
+_STIPULATION_PHRASE: Final = re.compile(
+    r"\b(?:mates?|mat|matt|xeque-?mate)\s+(?:in|em|en)\s+(" + _STIPULATION_WORDS + r")\b"
+)
+_STIPULATION_PHRASE_RU: Final = re.compile(r"\bмат\s+в\s+([1-6])\b")
+
+
+@dataclass(frozen=True, slots=True)
+class Stipulation:
+    """The printed demand: direct mate in ``moves`` (C12).
+
+    Attributes:
+        moves: N of "mate in N", 1 ≤ N ≤ 6.
+        text: The fragment that declared it, as the book wrote it.
+        origin: ``"caption"`` (the diagram's own lines) or ``"page"`` (the
+            margin band spoke for the whole page).
+    """
+
+    moves: int
+    text: str = ""
+    origin: str = "caption"
+
+    @property
+    def label(self) -> str:
+        """The canonical, PGN-style form: ``#2``."""
+        return f"#{self.moves}"
+
+    @property
+    def description(self) -> str:
+        """What :attr:`~caissa.core.model.Diagram.stipulation` carries: ``Mate em 2``."""
+        return f"Mate em {self.moves}"
+
+
+def parse_stipulation(text: str) -> Stipulation | None:
+    """The demand declared on one line, or ``None``.  Never invents."""
+    if not text or not text.strip():
+        return None
+    raw = text.strip()
+    line = _STIPULATION_LINE.match(raw)
+    if line is not None:
+        return Stipulation(int(line.group(1)), text=raw)
+    for match in _STIPULATION_TOKEN.finditer(raw):
+        if _STIPULATION_NUMBER_BEFORE.search(fold(raw[: match.start()])):
+            continue
+        return Stipulation(int(match.group(1)), text=match.group(0).strip())
+    folded = fold(raw)
+    phrase = _STIPULATION_PHRASE.search(folded)
+    if phrase is not None:
+        moves = _STIPULATION_NUMBERS.get(phrase.group(1).strip())
+        if moves is not None and 1 <= moves <= _STIPULATION_MAX_MOVES:
+            return Stipulation(moves, text=phrase.group(0))
+    russian = _STIPULATION_PHRASE_RU.search(raw.lower())
+    if russian is not None:
+        return Stipulation(int(russian.group(1)), text=russian.group(0))
+    return None
+
+
+def page_stipulation(page: PageText) -> Stipulation | None:
+    """The demand the margin band declares for the whole page (the Polgar's
+    ``2.2 Combinations #2 (451-3514)`` header), or ``None``.  Two different
+    demands in the band yield ``None``: the page is saying both things."""
+    found = [
+        item for line in caption_lines(page, margin=True)
+        if (item := parse_stipulation(line.text)) is not None
+    ]
+    if not found or len({item.moves for item in found}) > 1:
+        return None
+    return Stipulation(found[0].moves, text=found[0].text, origin="page")
+
 
 # --------------------------------------------------------------------------- #
 # Data
@@ -291,6 +390,10 @@ class DiagramContext:
     players: tuple[str, str] | None = None
     event: str | None = None
     year: int | None = None
+    #: OCR_UI ciclo 2, C12: the printed demand ("mate in 2"), from the caption
+    #: or from the page's margin band.  ``None`` when the page demands nothing
+    #: verifiable.
+    stipulation: Stipulation | None = None
 
     @property
     def is_empty(self) -> bool:
@@ -990,6 +1093,14 @@ def _parse_lines(
             label = match.group(1)
             break
 
+    # C12: only a caption-like line declares a demand -- in prose, "mate in 2"
+    # is a claim about a variation, not a demand on the diagram.
+    stipulation: Stipulation | None = None
+    for text in captions:
+        stipulation = parse_stipulation(text)
+        if stipulation is not None:
+            break
+
     return DiagramContext(
         caption="\n".join(item.text for item in lines),
         caption_primary="\n".join(item.text for item in primary if item.caption_like),
@@ -1004,6 +1115,7 @@ def _parse_lines(
         players=players,
         event=event,
         year=year,
+        stipulation=stipulation,
     )
 
 
@@ -1090,6 +1202,13 @@ def apply_page_scope(context: DiagramContext, scope: PageScope | None) -> Diagra
     )
 
 
+def apply_page_stipulation(context: DiagramContext, demand: Stipulation | None) -> DiagramContext:
+    """The page's demand fills only the diagrams whose caption demands nothing (C12)."""
+    if demand is None or context.stipulation is not None:
+        return context
+    return replace(context, stipulation=demand)
+
+
 def page_contexts(
     page: PageText,
     boxes: Sequence[RectT],
@@ -1110,10 +1229,14 @@ def page_contexts(
     lines = caption_lines(page)
     buckets = assign_lines_to_diagrams(lines, boxes, radius_pt=radius_pt)
     scope = page_scope_declaration(page)
+    demand = page_stipulation(page)
     contexts = [
-        apply_page_scope(
-            _with_numbering_below(context_from_lines(bucket, page_number=page_number), lines, box),
-            scope,
+        apply_page_stipulation(
+            apply_page_scope(
+                _with_numbering_below(context_from_lines(bucket, page_number=page_number), lines, box),
+                scope,
+            ),
+            demand,
         )
         for bucket, box in zip(buckets, boxes, strict=True)
     ]

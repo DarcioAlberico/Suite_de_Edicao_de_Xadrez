@@ -1,0 +1,75 @@
+{
+  "portao": "Comandos: todo item habilitado e visivel tem implementacao alcancavel, e nenhum promete um recurso que esta sessao nao tem.",
+  "quando": "2026-09-16T11:52:53+00:00",
+  "desligado": "",
+  "religados": [],
+  "com_motor": false,
+  "arranjos": {
+    "foco": {
+      "arranjo": "foco/?",
+      "recursos": {
+        "motor": false
+      },
+      "desligado": "",
+      "religados": [],
+      "medidos": 127,
+      "por_superficie": {
+        "fila": 4,
+        "menu": 123
+      },
+      "habilitados": 124,
+      "soltos": 0,
+      "prometem": 0,
+      "cinzas_sem_motivo": 0,
+      "nao_perguntados": 0,
+      "defeitos": [],
+      "veredito": "PASSOU"
+    },
+    "classica": {
+      "arranjo": "classica/?",
+      "recursos": {
+        "motor": false
+      },
+      "desligado": "",
+      "religados": [],
+      "medidos": 123,
+      "por_superficie": {
+        "menu": 123
+      },
+      "habilitados": 120,
+      "soltos": 0,
+      "prometem": 0,
+      "cinzas_sem_motivo": 0,
+      "nao_perguntados": 0,
+      "defeitos": [],
+      "veredito": "PASSOU"
+    },
+    "fita": {
+      "arranjo": "fita/?",
+      "recursos": {
+        "motor": false
+      },
+      "desligado": "",
+      "religados": [],
+      "medidos": 147,
+      "por_superficie": {
+        "fita": 24,
+        "menu": 123
+      },
+      "habilitados": 144,
+      "soltos": 0,
+      "prometem": 0,
+      "cinzas_sem_motivo": 0,
+      "nao_perguntados": 0,
+      "defeitos": [],
+      "veredito": "PASSOU"
+    }
+  },
+  "medidos": 397,
+  "habilitados": 388,
+  "soltos": 0,
+  "prometem": 0,
+  "cinzas_sem_motivo": 0,
+  "nao_perguntados": 0,
+  "veredito": "PASSOU"
+}

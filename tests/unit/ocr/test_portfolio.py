@@ -161,3 +161,34 @@ def test_degradation_reasons_are_the_variants_the_portfolio_builds(clean_page):
         assert set(names) <= set(planned), (planned, names)
     assert degradation_reasons(detect_signals(clean_page, dpi=300), dpi=300) == ()
     assert degradation_reasons(detect_signals(noisy, dpi=300), dpi=300) != ()
+
+
+# --------------------------------------------------------------------------- #
+# OCR_UI ciclo 2, B11: the x-height is physical, not 5 % of the image
+# --------------------------------------------------------------------------- #
+
+
+@requires_font
+def test_a_paragraph_alone_and_on_a_sheet_measure_the_same_xheight():
+    """The benchmark's items are short crops; the product's pages are sheets.
+    With the relative cap the crop read ~5 px (dots and commas) and was routed
+    as small print; with the physical cap both read the letters."""
+    paragraph, _ = render_text_page(font_size=44, wrap=44, height=382, repeat=1)
+    sheet = np.full((3300, 2550), 255, dtype=np.uint8)
+    sheet[200:200 + paragraph.shape[0], 200:200 + paragraph.shape[1]] = paragraph
+
+    alone = detect_signals(paragraph, dpi=300).xheight_px
+    on_sheet = detect_signals(sheet, dpi=300).xheight_px
+    assert alone > 8.0, alone
+    assert abs(alone - on_sheet) <= 1.0, (alone, on_sheet)
+
+    # The sabotage: the old rule, as `SOL_CONFIG='{"portfolio": {"xheight_relative": true}}'`.
+    # On the crop the 5 % cap (19 px) throws the 20 px letters away: what is
+    # left is too few components to measure (0,0 here; dots and commas, 5 px,
+    # on the corpus items) -- either way not what the sheet measures.
+    old = PortfolioConfig(xheight_relative=True)
+    alone_old = detect_signals(paragraph, dpi=300, config=old).xheight_px
+    on_sheet_old = detect_signals(sheet, dpi=300, config=old).xheight_px
+    assert abs(on_sheet_old - on_sheet) <= 1.0, "a full sheet measures the same under both rules"
+    assert alone_old < on_sheet_old - 5.0, (alone_old, on_sheet_old)
+    assert build_portfolio(paragraph, dpi=300).names == build_portfolio(sheet, dpi=300).names

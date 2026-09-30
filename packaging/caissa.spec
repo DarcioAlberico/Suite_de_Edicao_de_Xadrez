@@ -267,6 +267,7 @@ if _MEDICAO.exists():
 # porque os subsistemas se resolvem por registro de plugin, nao por import direto.
 hiddenimports = [
     "caissa_modelos",
+    "caissa_dados",
     "caissa_torch",
     "caissa_primeira_execucao",
     "doctor",

@@ -245,10 +245,10 @@ contradições) → aplicada`; uma contradição posterior **rebaixa** a entrada
 |---|---|---|---|
 | Q1 | Qual segundo motor instalar primeiro — RapidOCR (ONNX, worker isolado, latino) ou Surya (torch, cirílico, VRAM partilhada)? | passo 1 | medir os dois no `bench_sol.py` por estrato e idioma; instalar o que fechar 150 DPI sem regressão nos limpos; Surya exige medir VRAM com a visão ativa (R1.9) |
 | Q2 | Quantas horas de rotulagem humana por semana, e quem? Inclui o **passo 0** (preencher `start_fen` nas 13 páginas já rotuladas). | passo 0; passo 5; os portões vermelhos de Sol; os portões dos passos 7 e 11 | passo 0 já (curto); a fila por valor de rótulo (passo 5) antes de rotular mais; então ≥ 20 páginas para a revisão cega, 200 para a meta |
-| Q3 | Foco (escura) ou Fita como padrão de fábrica em vez da Clássica? | passo 16 | Foco, com as três peles mantidas em *Ver ▸ Aparência* até o crítico visual aprovar (R3.6) |
-| Q4 | Refazer o fluxo principal sem abas (trilho do livro)? Muda a janela medida em 16 ciclos. | passo 17 | confirmar antes; se sim, é o último passo e reroda os cinco portões da F9 |
+| Q3 | Foco (escura) ou Fita como padrão de fábrica em vez da Clássica? | passo 16 | **Respondida pelo usuário em 2026-09-16: Foco** (`ui/pele.PADRAO`), com as três peles mantidas em *Ver ▸ Aparência* (R3.6); o crítico visual às cegas continua devido |
+| Q4 | Refazer o fluxo principal sem abas (trilho do livro)? Muda a janela medida em 16 ciclos. | passo 17 | **Respondida pelo usuário em 2026-09-16: sim, em ramo próprio** — só se funde com os portões e o `AUDIT.percurso` verdes |
 | Q5 | Piso N de evidência da cifra por livro | passo 3 | **respondida pela medição**: 5 provas legais e 0 contradições **ou** 10 provas visuais com contradições ≤ 2 % — a contagem da tarefa 0 deu zero provas legais no acervo (posições em outras páginas) e a fonte visual foi acrescentada (`OCR_UI_REPORT_C1.md` §3.1) |
-| Q6 | O portão `bloqueio` está **reprovado** hoje (7 operações > 16 ms). R3.1 diz "tela nova não fecha sem os cinco". Qual vale para os passos 13 e 14, antes de o 15 fechar o visor? | passos 13, 14 | regra: 13 e 14 não podem **aumentar** o número de operações > 16 ms nem a mediana de abrir PDF; quem fecha o `bloqueio` é o 15, e até lá o item continua declarado aberto |
+| Q6 | O portão `bloqueio` está **reprovado** hoje (7 operações > 16 ms). R3.1 diz "tela nova não fecha sem os cinco". Qual vale para os passos 13 e 14, antes de o 15 fechar o visor? | passos 13, 14 | **Sem objeto desde 2026-09-16: o passo 15 fechou o `bloqueio` (3 × PASSOU, pior 6,6 ms)**; a regra transitória (13 e 14 não aumentam o número de operações > 16 ms) valeu até lá |
 
 ---
 

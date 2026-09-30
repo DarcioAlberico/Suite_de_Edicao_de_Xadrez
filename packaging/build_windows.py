@@ -64,6 +64,12 @@ do `installer.iss` apaga `_internal` exatamente por isso, deixando estas quatro 
 manda olhar quando a janela nao abre, e uma pasta que so existe depois do problema e uma
 instrucao que nao se pode seguir."""
 
+PASTAS_GUARDADAS = (*PASTAS_DO_USUARIO, "rotulagem")
+"""O que **nao e o bundle** dentro de `dist/Caissa/`: o build nao toca nestas pastas
+(`instalar_bundle` troca so `PARTES_DO_BUNDLE`) e a medicao de tamanho as exclui. Na maquina
+de quem desenvolve a `dist/` e a instalacao de trabalho -- 5 GB de dataset, o `runtime/` com
+a roda de torch, o projeto de rotulagem -- e reconstruir o bundle nao pode custar nada disso."""
+
 FOLGA_MINIMA_GB = 6.0
 """Quanto o build precisa de folga para comecar. Nao e o tamanho do bundle: o PyInstaller
 grava `build/` (analise, arquivos intermediarios) e `dist/` ao mesmo tempo, e a soma
@@ -82,12 +88,12 @@ logger = logging.getLogger("caissa.build")
 # --------------------------------------------------------------------------- #
 # medicao
 # --------------------------------------------------------------------------- #
-def medir_pasta(pasta: Path) -> tuple[float, int]:
-    """MB e numero de arquivos."""
+def medir_pasta(pasta: Path, *, excluir: tuple[str, ...] = ()) -> tuple[float, int]:
+    """MB e numero de arquivos. `excluir`: pastas de primeiro nivel que nao contam."""
     total = 0
     quantos = 0
     for arquivo in pasta.rglob("*"):
-        if arquivo.is_file():
+        if arquivo.is_file() and arquivo.relative_to(pasta).parts[0] not in excluir:
             total += arquivo.stat().st_size
             quantos += 1
     return total / (1024 * 1024), quantos
@@ -204,6 +210,68 @@ def medir_modulos(tronco: Path) -> int:
 # --------------------------------------------------------------------------- #
 # build
 # --------------------------------------------------------------------------- #
+class ProgramaAbertoError(RuntimeError):
+    """O `Caissa.exe` da `dist/` esta rodando: nada pode ser movido ou apagado debaixo dele."""
+
+
+def programa_aberto(saida: Path) -> bool:
+    """Ha um processo com o executavel desta `dist/` em execucao?
+
+    `Get-Process` pelo PowerShell, porque o `wmic` saiu do Windows 11; a comparacao e pelo
+    caminho do executavel, para um `Caissa.exe` instalado em outro lugar nao bloquear o build
+    desta pasta.
+    """
+    if os.name != "nt":
+        return False
+    powershell = shutil.which("powershell") or shutil.which("pwsh")
+    if powershell is None:
+        return False
+    try:
+        saida_bruta = subprocess.run(  # noqa: S603 - executavel resolvido por `which`, argumentos fixos
+            [powershell, "-NoProfile", "-Command",
+             "(Get-Process -Name Caissa -ErrorAction SilentlyContinue).Path"],
+            capture_output=True, text=True, check=False, timeout=30,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+    alvo = str(saida.resolve()).lower()
+    return any(alvo in linha.strip().lower() for linha in saida_bruta.splitlines())
+
+
+PASTA_DE_MONTAGEM = "_build"
+"""`dist/_build/`: onde o PyInstaller grava, para nunca escrever em cima da `dist/Caissa/`."""
+
+PARTES_DO_BUNDLE = ("_internal", "Caissa.exe", "CaissaPrimeiraExecucao.exe")
+"""O que o build **substitui** na instalacao. Tudo o mais em `dist/Caissa/` e do usuario."""
+
+
+def instalar_bundle(novo: Path, saida: Path) -> None:
+    """Poe o bundle recem-montado em `saida` trocando so as `PARTES_DO_BUNDLE`.
+
+    **O build nunca move as pastas do usuario.** A versao anterior guardava `data/`, `models/`
+    e `runtime/` em `dist/_guardado/` enquanto o PyInstaller apagava a `dist/` inteira -- e um
+    `rename` de `data/` falha sempre que um Explorer ou o VS Code segura a pasta, o que na
+    maquina de desenvolvimento e o estado normal. Montar em `dist/_build/` e trocar so o
+    `_internal/` e os dois `.exe` e o mesmo contrato do `[InstallDelete]` do `installer.iss`:
+    reinstalar substitui o programa e deixa o resto em paz.
+    """
+    saida.mkdir(parents=True, exist_ok=True)
+    for nome in PARTES_DO_BUNDLE:
+        origem = novo / nome
+        if not origem.exists():
+            continue
+        alvo = saida / nome
+        if alvo.is_dir():
+            shutil.rmtree(alvo)
+        elif alvo.exists():
+            alvo.unlink()
+        origem.rename(alvo)
+    sobras = [item.name for item in novo.iterdir()]
+    if sobras:
+        logger.warning("O PyInstaller gerou partes fora de PARTES_DO_BUNDLE, ignoradas: %s", sobras)
+    shutil.rmtree(novo.parent, ignore_errors=True)
+
+
 def preparar_pastas_do_usuario(saida: Path) -> None:
     """Cria as pastas gravaveis e um `LEIA-ME.txt` em `models/` explicando o vazio."""
     for nome in PASTAS_DO_USUARIO:
@@ -599,22 +667,36 @@ def build(  # noqa: PLR0911 - oito saidas, e cada uma e um portao com motivo pro
     ambiente["CAISSA_COM_TORCH"] = "1" if com_torch else "0"
     ambiente["CAISSA_TRONCO"] = str(tronco)
 
-    comando = [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm"]
+    montagem = PROJETO / "dist" / PASTA_DE_MONTAGEM
+    comando = [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm",
+               "--distpath", str(montagem)]
     if limpar:
         comando.append("--clean")
     logger.info(
         "Rodando: %s (CAISSA_COM_TORCH=%s)", " ".join(comando), ambiente["CAISSA_COM_TORCH"]
     )
 
+    nome = "Caissa-com-torch" if com_torch else "Caissa"
+    saida = PROJETO / "dist" / nome
+    if programa_aberto(saida):
+        logger.error(
+            "%s esta aberto. Feche o programa antes de reconstruir: o build troca o _internal/ "
+            "e os .exe que ele esta usando.", saida / "Caissa.exe",
+        )
+        return 2, None
+    shutil.rmtree(montagem, ignore_errors=True)
+
     resultado = subprocess.run(comando, cwd=str(PROJETO), env=ambiente, check=False)  # noqa: S603
     if resultado.returncode != 0:
         logger.error("PyInstaller falhou com codigo %d.", resultado.returncode)
         return resultado.returncode, None
 
-    saida = PROJETO / "dist" / ("Caissa-com-torch" if com_torch else "Caissa")
-    if not saida.exists():
-        logger.error("O build terminou sem erro mas %s nao existe.", saida)
+    novo = montagem / nome
+    if not novo.exists():
+        logger.error("O build terminou sem erro mas %s nao existe.", novo)
         return 1, None
+    instalar_bundle(novo, saida)
+    logger.info("Bundle instalado em %s (so %s trocados).", saida, ", ".join(PARTES_DO_BUNDLE))
 
     codigo = conferir_extensoes_nativas(saida)
     if codigo != 0:
@@ -724,8 +806,13 @@ def compilar_instalador(saida: Path, *, com_torch: bool) -> dict[str, Any]:
 def gravar_metricas(
     saida: Path, *, com_torch: bool, instalador: dict[str, Any], livre_antes: float
 ) -> dict[str, Any]:
-    """Grava `packaging/bundle.json`. Cada numero saiu do disco nesta execucao."""
-    mb, arquivos = medir_pasta(saida)
+    """Grava `packaging/bundle.json`. Cada numero saiu do disco nesta execucao.
+
+    Mede o que **se distribui**: as pastas do usuario (dataset, runtime, pesos) voltam para a
+    `dist/` no fim do build e nao sao o bundle -- sem excluir, um build na maquina de
+    desenvolvimento mediria 10 GB onde o instalador leva 297 MB.
+    """
+    mb, arquivos = medir_pasta(saida, excluir=PASTAS_GUARDADAS)
     dados = {
         "variante": "com-torch" if com_torch else "padrao",
         "nome": saida.name,

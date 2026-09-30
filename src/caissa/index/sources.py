@@ -651,11 +651,15 @@ class PdfTextSource:
     def units(self, *, start: int = 0) -> Iterator[IndexUnit]:
         import pymupdf
 
+        from caissa.ocr.engines.normalize import text_layer_flags
+
         self._read_calls += 1
         with pymupdf.open(self.path) as document:
             last = len(document) if self.max_pages is None else min(len(document), self.max_pages)
             for number in range(start, last):
-                text = document[number].get_text("text")
+                # A14: the letters of a ligature, not U+FB01 -- a search for
+                # "first" must find the page that prints "ﬁrst".
+                text = document[number].get_text("text", flags=text_layer_flags("text"))
                 if not text.strip():
                     continue
                 yield IndexUnit(text=text, scope=Scope.ALL, page=number + 1, cursor=number + 1)

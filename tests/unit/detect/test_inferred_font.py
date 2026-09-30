@@ -90,11 +90,11 @@ def test_the_inferred_finder_reads_through_the_classifier_with_a_capped_confiden
         # The catalogued book is untouched: the finder yields nothing.
         catalogued = finders.inferred_font_finder(classifier=object())
         assert catalogued(page, SimpleNamespace(index=0), None) == []
-        # Without a classifier the board is located and left unread.
-        def no_weights():
-            raise RuntimeError("sem pesos")
-
-        monkeypatch.setattr("caissa.vision.classify.batched.load_classifier", no_weights)
+        # Without a classifier the board is located and left unread.  Since OCR_UI
+        # ciclo 2 passo A2 the finders ask `finders.shared_classifier` (one model per
+        # process, through the residency manager), so that is what a machine without
+        # weights answers `None` from -- whatever another test loaded before.
+        monkeypatch.setattr(finders, "shared_classifier", lambda: None)
         unread = finders.inferred_font_finder(lookup=_hide_merida)
         located = unread(page, SimpleNamespace(index=0), None)
         assert len(located) == 1

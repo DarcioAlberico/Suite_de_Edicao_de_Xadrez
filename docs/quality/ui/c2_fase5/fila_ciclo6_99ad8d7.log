@@ -1,0 +1,49 @@
+inicio 00:22:38 suite=99ad8d7 src=[0] tronco=6e68315 [0]
+### sem_livro 00:22:38
+exit 0 sem_livro 00:22:49
+### livro 00:22:49
+exit 0 livro 00:23:02
+### sabotagem_aperto 00:23:02
+exit 1 sabotagem_aperto 00:23:12
+### sabotagem_rodape 00:23:13
+exit 1 sabotagem_rodape 00:23:23
+### sabotagem_corte 00:23:23
+exit 1 sabotagem_corte 00:23:33
+### sabotagem_mensagem 00:23:33
+exit 1 sabotagem_mensagem 00:23:44
+### sabotagem_reserva 00:23:44
+exit 1 sabotagem_reserva 00:23:54
+### sabotagem_linha 00:23:54
+exit 1 sabotagem_linha 00:24:13
+### teclado foco 1280x800 00:24:13
+exit 1 teclado foco 1280x800 00:24:40
+### teclado foco 1248x640 00:24:40
+exit 1 teclado foco 1248x640 00:25:08
+### teclado foco 1280x641 00:25:08
+exit 1 teclado foco 1280x641 00:25:35
+### teclado classica 1280x800 00:25:35
+exit 1 teclado classica 1280x800 00:26:02
+### teclado classica 1248x640 00:26:02
+exit 1 teclado classica 1248x640 00:26:29
+### teclado classica 1280x641 00:26:29
+exit 1 teclado classica 1280x641 00:26:57
+### teclado fita 1280x800 00:26:57
+exit 1 teclado fita 1280x800 00:27:24
+### teclado fita 1248x640 00:27:24
+exit 1 teclado fita 1248x640 00:27:50
+### teclado fita 1280x641 00:27:50
+exit 1 teclado fita 1280x641 00:28:16
+JANELADONE 00:28:16
+### teclado sabotagem foco foco 1280x641 00:28:16
+exit 1 teclado sabotagem foco foco 00:28:42
+### teclado sabotagem tabela foco 1280x641 00:28:42
+exit 1 teclado sabotagem tabela foco 00:29:08
+### teclado sabotagem foco classica 1280x641 00:29:08
+exit 1 teclado sabotagem foco classica 00:29:32
+### teclado sabotagem tabela classica 1280x641 00:29:32
+exit 1 teclado sabotagem tabela classica 00:30:03
+### teclado sabotagem foco fita 1280x641 00:30:03
+exit 1 teclado sabotagem foco fita 00:30:41
+### teclado sabotagem tabela fita 1280x641 00:30:41
+exit 1 teclado sabotagem tabela fita 00:31:20
+SABOTAGENSDONE 00:31:20

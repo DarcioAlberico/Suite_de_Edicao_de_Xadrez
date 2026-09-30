@@ -80,6 +80,16 @@ class DiagramSignals:
     side_flip: bool
     orientation_ambiguous: bool
     vector_route: bool
+    #: OCR_UI ciclo 2, C11: whether the first move printed under the board
+    #: replays on the position (``True``), fails even after the runner-up
+    #: swaps (``False``) or was not there to try (``None``).  **Not** in the
+    #: feature vector: the field set that fits the weights has two boards with
+    #: a move line under them, so a fit would learn nothing from it; it rides
+    #: along for the queue and the report, and the fit stays reproducible.
+    next_move_replays: bool | None = None
+    #: The squares the next move or the ink (C5) changed, by external
+    #: evidence -- same reason as above.
+    external_repairs: int = 0
 
     @classmethod
     def from_recognized(cls, diagram: Any) -> DiagramSignals:
@@ -109,6 +119,8 @@ class DiagramSignals:
             side_flip=side_flip,
             orientation_ambiguous=bool(getattr(diagram, "orientation_ambiguous", False)),
             vector_route="vector" in source.lower() or "font" in source.lower(),
+            next_move_replays=getattr(diagram, "next_move_replays", None),
+            external_repairs=len(getattr(diagram, "external_repairs", None) or ()),
         )
 
     def vector(self) -> np.ndarray:
@@ -120,7 +132,10 @@ class DiagramSignals:
         ], dtype=float)
 
     def as_dict(self) -> dict[str, Any]:
-        return dict(zip(FEATURE_NAMES, self.vector().tolist(), strict=True))
+        out: dict[str, Any] = dict(zip(FEATURE_NAMES, self.vector().tolist(), strict=True))
+        out["next_move_replays"] = self.next_move_replays
+        out["external_repairs"] = self.external_repairs
+        return out
 
 
 # --------------------------------------------------------------------------- #

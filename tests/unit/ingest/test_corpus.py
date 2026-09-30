@@ -94,8 +94,19 @@ def test_a_scan_without_a_text_layer_imports_as_pictures_when_ocr_is_off():
     result = import_pdf(open_pdf(path), PdfImportOptions(pages=[100, 101], enable_ocr=False))
     assert [p.source for p in result.report.pages] == ["image-only", "image-only"]
     kinds = [type(b).__name__ for b in result.document.body]
-    assert kinds == ["ImageBlock", "ImageBlock"]
+    # OCR_UI ciclo 2, passo A2: the raster route is the default, so the scanned
+    # pages come with their diagrams as positions -- the pictures stay.
+    assert kinds.count("ImageBlock") == 2
+    assert "Diagram" in kinds, "um scan de livro de xadrez tem diagramas, e a via raster os acha"
     assert result.report.counters["scanned_pages"] == 2
+    assert result.report.counters["diagrams"] >= 1
+    # The vector route alone is what the import used to be: pictures only.
+    vector_only = import_pdf(
+        open_pdf(path),
+        PdfImportOptions(pages=[100, 101], enable_ocr=False, detect_raster_diagrams=False),
+    )
+    assert [type(b).__name__ for b in vector_only.document.body] == ["ImageBlock", "ImageBlock"]
+    assert vector_only.report.counters["diagrams"] == 0
 
 
 def test_a_scan_without_a_text_layer_is_read_by_default():
@@ -165,21 +176,27 @@ def test_chernev_tabular_moves_and_flush_paragraphs():
     Checked against the printed page 121 (index 120): each ``21 ♖f1-d1`` row
     is one move block, ``Agora que...`` and ``Capablanca, é claro...`` are two
     paragraphs, and the last row's ``22`` is a move number, not a folio.
+
+    OCR_UI ciclo 2, passo A2: the page's diagram (the position after
+    ``20 … Qd7-c7``, a raster image of 234 × 246 pt) is now found by the
+    product's default finder, and ``Villegas`` -- the line the caption logic
+    attaches to it -- leaves the prose for the diagram's caption.
     """
     path = corpus_file("Melhores Finais de Capablanca - Irving Chernev pt-br - Copia.pdf")
     result = import_pdf(open_pdf(path), PdfImportOptions(pages=range(118, 124), lang="por"))
-    page = [
-        b
-        for b in result.document.body
-        if isinstance(b, (Paragraph, Heading))
-        and b.provenance is not None
-        and b.provenance.page_index == 120
+    on_page = [
+        b for b in result.document.body
+        if b.provenance is not None and b.provenance.page_index == 120
     ]
+    diagrams = [b for b in on_page if isinstance(b, Diagram)]
+    assert len(diagrams) == 1, "a página tem um diagrama, e a via raster o acha"
+    assert plain_text(diagrams[0].caption) == "Villegas"
+    assert diagrams[0].recognition.path.value == "neural"
+    page = [b for b in on_page if isinstance(b, (Paragraph, Heading))]
     texts = [" ".join(plain_text(b.content).split()) for b in page]
     assert [t[:22] for t in texts] == [
         "Final 20",
         "Posição após 20 … Qd7-",
-        "Villegas",
         "Capablanca joga",
         "A vantagem posicional ",
         "O plano de Capablanca ",

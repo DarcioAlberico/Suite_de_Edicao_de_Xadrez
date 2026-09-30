@@ -54,6 +54,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from caissa.notation.nag_table import MOVE_SUFFIX_CHARS, move_suffix_class
+
 if TYPE_CHECKING:
     from .hunspell import HunspellDictionary
 
@@ -80,8 +82,10 @@ __all__ = [
     "implausible_char_ratio",
     "nonword_ratio",
     "NOTATION_ALPHABET",
+    "PIECE_LETTERS_BY_LANG",
     "is_move_token",
     "is_mangled_move",
+    "is_unsupported_move",
     "mangled_move_ratio",
 ]
 
@@ -375,18 +379,34 @@ _TOKEN = re.compile(r"[^\W_]+(?:[-'’][^\W_]+)*|[^\s\w]+", re.UNICODE)
 #: twelfth blind gate this project found (docs/ROADMAP.md).
 _PIECE_LETTERS = ("KQRBNPCDTSAFLGVWМКФЛСКПРrdtcafgpb"
                   + "".join(chr(c) for c in range(0x2654, 0x2660)))
+_FIGURINE_LETTERS = "".join(chr(c) for c in range(0x2654, 0x2660))
+#: Piece letters per Tesseract language, as the books of that language print
+#: them (OCR_UI_ROADMAP_C2 passo B4; the table the fusion kept).  With a
+#: language in hand, :func:`is_move_token` accepts only these letters, the
+#: English ones (a book of any language may print international SAN) and the
+#: figurines in the piece slot -- ``De2`` is a queen move in a Portuguese book
+#: and a look-alike of ♕ in an English one.
+PIECE_LETTERS_BY_LANG: dict[str, str] = {
+    "eng": "KQRBN", "por": "RDTBC", "spa": "RDTAC", "deu": "KDTLS", "fra": "RDTFC",
+    "ita": "RDTAC", "nld": "KDTLP", "ron": "RDTNC", "rus": "КФЛСКП",
+}
 #: Piece letters a pawn may promote to — no king, no pawn.
 _PROMOTION_LETTERS = "KQRBNCDTSAFLGVW"
 _FILES = "a-h"
 _RANKS = "1-8"
-#: Capture and move-link marks.  ``:`` is German/Russian capture.  The ``-``
-#: is last so the string stays safe to interpolate into a character class.
-_LINK_MARKS = "x:×-"
+#: Capture and move-link marks.  ``:`` is German/Russian capture; the dashes
+#: are what Tesseract reads the hyphen of ``b2-b4`` as (passo B4: ``b2—b4``
+#: was not a move, so the fusion traded it for a truncated ``b4``).  The
+#: ``-`` is last so the string stays safe to interpolate into a character class.
+_LINK_MARKS = "x:×–—‒−-"
 #: Promotion is written ``=Q``; the ``=`` is part of notation's alphabet.
 _PROMOTION_MARK = "="
 #: Annotation marks.  They only ever *trail* a move, which is what makes a
 #: leading ``!`` in ``!txg7`` evidence of damage rather than of annotation.
-_ANNOTATION_MARKS = "+#!?"
+#: The alphabet is :data:`caissa.notation.nag_table.MOVE_SUFFIX_CHARS` --
+#: ``Nf6±`` and ``Rad8⩲`` are moves (OCR_UI_ROADMAP_C2 passo A4).
+_ANNOTATION_MARKS = MOVE_SUFFIX_CHARS
+_ANNOTATION_CLASS = move_suffix_class()
 
 #: SAN / LAN / figurine notation in the eight supported languages, plus move
 #: numbers, castling, results and evaluation symbols.  Anything matching this
@@ -394,8 +414,8 @@ _ANNOTATION_MARKS = "+#!?"
 _NOTATION = re.compile(
     rf"""^(?:
         [{_PIECE_LETTERS}]?[{_FILES}]?[{_RANKS}]?[{_LINK_MARKS}]?[{_FILES}][{_RANKS}]
-            (?:{_PROMOTION_MARK}[{_PROMOTION_LETTERS}])?[{_ANNOTATION_MARKS}]{{0,2}}
-      | [OO0]-[OO0](?:-[OO0])?[{_ANNOTATION_MARKS}]{{0,2}}
+            (?:{_PROMOTION_MARK}[{_PROMOTION_LETTERS}])?[{_ANNOTATION_CLASS}]{{0,3}}
+      | [OO0]-[OO0](?:-[OO0])?[{_ANNOTATION_CLASS}]{{0,3}}
       | \d{{1,3}}\.{{1,3}}
       | 1-0 | 0-1 | 1/2-1/2 | ½-½
       | [+=−±∓+-]{{1,2}}
@@ -595,18 +615,54 @@ _COMPOUND_SPLIT = re.compile(r"[-'’]")
 _CASTLING = frozenset({"O-O", "O-O-O", "0-0", "0-0-0"})
 
 
-def is_move_token(token: str) -> bool:
+#: What stands before the destination square, for the language check of
+#: :func:`is_move_token`.  A pawn move first (``b2-b4``: the ``b`` is a file,
+#: not the lowercase bishop of the multilingual union), then a piece move.
+_PAWN_HEAD = re.compile(
+    rf"^(?P<file>[{_FILES}])?(?P<rank>[{_RANKS}])?[{_LINK_MARKS}]?[{_FILES}][{_RANKS}]"
+)
+_PIECE_HEAD = re.compile(
+    rf"^(?P<piece>[{_PIECE_LETTERS}])[{_FILES}]?[{_RANKS}]?[{_LINK_MARKS}]?[{_FILES}][{_RANKS}]"
+)
+
+
+def _piece_slot_is_of_the_language(token: str, langs: tuple[str, ...]) -> bool:
+    """With a language, the slot before the square must hold a piece letter of
+    that language (or English, or a figurine) -- and a rank alone is not one.
+
+    ``8c4``, ``2c7``, ``4a4`` pass the multilingual shape (``[peça]?[coluna]?
+    [fila]?casa``) and are what Tesseract makes of a figurine: a bare rank
+    disambiguator needs a piece in front of it.  ``R8c4`` keeps its rank.
+    """
+    if not langs:
+        return True
+    pawn = _PAWN_HEAD.match(token)
+    if pawn is not None:
+        return not (pawn.group("rank") and not pawn.group("file"))
+    piece = _PIECE_HEAD.match(token)
+    if piece is None:
+        return True
+    allowed = PIECE_LETTERS_BY_LANG.get(langs[0], "") + "KQRBN" + _FIGURINE_LETTERS
+    return piece.group("piece") in allowed
+
+
+def is_move_token(token: str, langs: tuple[str, ...] = ()) -> bool:
     """True for notation that actually names a move — a square or a castle.
 
     Narrower than :func:`is_chess_notation`, which also accepts move numbers,
     results and evaluation symbols.  Those are not moves and must not pad the
     denominator of :func:`mangled_move_ratio`: a page of bare move numbers and
     results would otherwise look like a page of healthy notation.
+
+    ``langs`` (the OCR language tuple) narrows the piece slot to the letters
+    of that language -- see :func:`_piece_slot_is_of_the_language`.  Empty
+    keeps the multilingual union, which is what the page-level verdicts
+    measure with.
     """
     if not token or not is_chess_notation(token):
         return False
     if _SQUARE.search(token):
-        return True
+        return _piece_slot_is_of_the_language(token, langs)
     return _TRAILING_MARKS.sub("", token).upper() in _CASTLING
 
 
@@ -653,6 +709,23 @@ def is_mangled_move(token: str, langs: tuple[str, ...] = ()) -> bool:
         return False
     core = _TRAILING_MARKS.sub("", token)
     return any(c not in NOTATION_ALPHABET for c in core)
+
+
+def is_unsupported_move(token: str, langs: tuple[str, ...]) -> bool:
+    """True for a token with the *shape* of a move whose piece slot the
+    page's language cannot produce (passo B4): ``8c4``, ``2c7`` (a rank with
+    no piece before it), ``De2`` or ``Sf3`` on an English page.
+
+    These are what Tesseract makes of a figurine; the multilingual shape
+    test calls them moves, and a fusion that counted them as support never
+    replaced them.  Kept apart from :func:`is_mangled_move`, whose promise --
+    correct notation in *any* of the eight languages scores zero -- the page
+    verdicts rely on; :func:`caissa.ocr.decision.measure_evidence` counts
+    both.  Without ``langs`` nothing is unsupported.
+    """
+    if not token or not langs or not is_chess_notation(token):
+        return False
+    return _SQUARE.search(token) is not None and not is_move_token(token, langs)
 
 
 def mangled_move_ratio(text: str,

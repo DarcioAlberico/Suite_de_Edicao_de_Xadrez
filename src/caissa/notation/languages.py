@@ -275,8 +275,10 @@ LOCALES: Final[Mapping[str, NotationLocale]] = MappingProxyType(
                 knight="N",
                 pawn="P",
                 castling_aliases=("0-0", "0-0-0", "OO", "OOO", "castles"),
-                check_aliases=("ch",),
-                mate_aliases=("mate", "++"),
+                # ``†``/``‡``: the dagger marks of the older English (and
+                # German) books, ``Qxe4†`` -- input only, like ``ch``.
+                check_aliases=("ch", "†"),
+                mate_aliases=("mate", "++", "‡"),
                 lexicon=(
                     "white",
                     "black",

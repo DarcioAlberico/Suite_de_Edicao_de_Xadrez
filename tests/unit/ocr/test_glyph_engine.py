@@ -494,3 +494,64 @@ def test_the_glyph_swaps_feed_the_book_cipher_as_visual_evidence():
     assert ("H", "R", 2) in observed and ("E", "R", 1) in observed and ("2", "B", 1) in observed
     assert "N" not in table.entries, "a printed N is a letter, not a symbol"
     assert table.proven() == {}, "two swaps are far from the ten a visual row needs"
+
+
+class MockTwoFaces(MockRaster):
+    """Two lines: the first in the body size, the second in small type (B10)."""
+
+    def recognize(self, image, *, lang: str, psm_hint: RegionKind) -> OcrResult:
+        first, second = self.text.split("|")
+        lines = []
+        for index, (text, size, y) in enumerate(((first, 18.0, 8.0), (second, 12.0, 40.0))):
+            words = tuple(OcrWord(text=token, box=BBox(10.0 + 60.0 * i, y, 50.0, size),
+                                  confidence=self.confidence, word_index=i, line_index=index)
+                          for i, token in enumerate(text.split()))
+            lines.append(OcrLine(words=words, box=BBox(10.0, y, 600.0, size), line_index=index,
+                                 font_size=size))
+        return OcrResult(engine=self.name, lang=lang, lines=tuple(lines), region_kind=psm_hint)
+
+
+class FakeGlyphTwoFaces(FakeGlyph):
+    """Answers at the boxes of :class:`MockTwoFaces` (the ``|`` splits the lines)."""
+
+    def recognize_lines(self, image, strips, *, lang: str, psm_hint: RegionKind) -> OcrResult:
+        self.strips_seen.append(len(strips))
+        answered = "|".join(" ".join(self.answers[token] for token in part.split())
+                            for part in self.text.split("|"))
+        result = MockTwoFaces(text=answered, confidence=0.99).recognize(
+            image, lang=lang, psm_hint=psm_hint)
+        return OcrResult(engine=self.name, lang=lang, lines=result.lines, region_kind=psm_hint)
+
+
+def test_the_glyph_swaps_carry_the_style_of_their_line_and_the_swaps_confidence():
+    """B10: a symbol seen on a body line and on a small-type line is two rows
+    of evidence, and the example keeps how sure the glyph reader was."""
+    from caissa.ocr.notation.book_cipher import BookCipher
+
+    text = "36... Hea! 37 Exd5 Hb6|38 2g5 Hb8 Sf1"
+    answers = {"36...": "36...", "Hea!": "♖e8!", "37": "37", "Exd5": "♖xd5", "Hb6": "♖b6",
+               "38": "38", "2g5": "♗g5", "Hb8": "♔b8", "Sf1": "♔f1"}
+    glyph = FakeGlyphTwoFaces(answers)
+    glyph.text = text
+    service = OcrService([MockTwoFaces(text=text, confidence=0.75)],
+                         OcrServiceConfig(use_portfolio=False, movetext_candidates=False),
+                         lang="eng", glyph_engine=glyph)
+    table = BookCipher(fingerprint="x")
+    service.book_cipher = table
+    image = inked_page()
+    image[40:52, ::3] = 10
+    service.recognize_image(image, dpi=300.0, lang="eng")
+    entry = table.entries["H"]
+    # 18 px against a body of 15 (the median of 18 and 12) is regular; 12 is small.
+    assert entry.by_style == {"r": {"R": 2}, "s": {"K": 1}}, entry.by_style
+    assert entry.piece == "R" and entry.disputed == {"K": 1}
+    assert all(example[3] > 0.0 for example in entry.examples), entry.examples
+
+    # The sabotage: styles off, every observation on the style-less row.
+    plain = OcrService([MockTwoFaces(text=text, confidence=0.75)],
+                       OcrServiceConfig(use_portfolio=False, movetext_candidates=False,
+                                        cipher_style=False),
+                       lang="eng", glyph_engine=glyph)
+    plain.book_cipher = BookCipher(fingerprint="x")
+    plain.recognize_image(image, dpi=300.0, lang="eng")
+    assert plain.book_cipher.entries["H"].by_style == {"": {"R": 2, "K": 1}}

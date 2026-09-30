@@ -174,7 +174,7 @@ def build_diagram_pdf(
     rotation: int = 0,
     cropbox: tuple[float, float, float, float] | None = None,
     extra_text: Sequence[tuple[str, float, float, float, str | None]] = (),
-    coordinates: bool = False,
+    coordinates: bool | str = False,
 ) -> object:
     """A one-page PDF whose only content is the diagram (plus what you add).
 
@@ -191,12 +191,15 @@ def build_diagram_pdf(
             pymupdf.Point(x, y + i * size), row, fontsize=size, fontname="CHESS"
         )
     if coordinates:
-        for i, letter in enumerate("abcdefgh"):
+        # ``True``: White's point of view; ``"black"``: h..a below, 1..8 down
+        # the left (passo C10).
+        files, ranks = ("hgfedcba", "12345678") if coordinates == "black" else ("abcdefgh", "87654321")
+        for i, letter in enumerate(files):
             page.insert_text(
                 pymupdf.Point(x + i * size + size * 0.35, y + 8 * size + size * 0.55),
                 letter, fontsize=size * 0.45, fontname="helv",
             )
-        for i, digit in enumerate("87654321"):
+        for i, digit in enumerate(ranks):
             page.insert_text(
                 pymupdf.Point(x - size * 0.55, y + i * size - size * 0.25),
                 digit, fontsize=size * 0.45, fontname="helv",

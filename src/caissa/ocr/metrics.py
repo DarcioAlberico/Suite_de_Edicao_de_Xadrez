@@ -31,6 +31,8 @@ from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
+from caissa.notation.nag_table import MOVE_SUFFIX_CHARS
+
 from .quality import levenshtein
 
 __all__ = [
@@ -70,14 +72,25 @@ _FOLD: tuple[tuple[str, str], ...] = (
 _ZERO_CASTLE_LONG = re.compile(r"(?<![\w])0-0-0(?![\w])")
 _ZERO_CASTLE = re.compile(r"(?<![\w])0-0(?![\w])")
 
+#: Annotation glyphs that are *word characters* to the regex engine (``μ``,
+#: ``ƒ``, ``Δ``, ``²``…): a move followed by one of them is still a move.
+#: Drawn from :data:`caissa.notation.nag_table.MOVE_SUFFIX_CHARS` so this
+#: instrument and the readers agree on what may trail a move (passo A4).
+_WORDLIKE_SUFFIX = "".join(
+    re.escape(ch) for ch in MOVE_SUFFIX_CHARS if re.match(r"\w", ch))
+
 #: A move token in any of the notations the corpus prints: SAN with the
 #: piece letters of English, Portuguese, German, Spanish and Russian, an
-#: optional figurine, promotion and check marks, or castling.
+#: optional figurine, promotion and check marks, or castling.  The token
+#: ends at the check mark; the evaluation that may follow (``±``, ``!?``)
+#: is not part of the token, so that the accounting stays what it was --
+#: it must only not *hide* the move when the glyph is a word character.
 MOVE_TOKEN = re.compile(
     r"(?<![\w])(?:O-O(?:-O)?|"
     r"[KQRBNPDTCSAFLГЛСКФП♔-♟]?"
     r"[a-h]?[1-8]?x?[a-h][1-8]"
-    r"(?:=?[QRBNDTCSAFL♔-♟])?[+#]?)(?![\w])(?!-?[A-Za-z]{2})"
+    r"(?:=?[QRBNDTCSAFL♔-♟])?[+#]?)"
+    rf"(?!(?![{_WORDLIKE_SUFFIX}])[\w])(?!-?[A-Za-z]{{2}})"
 )
 
 

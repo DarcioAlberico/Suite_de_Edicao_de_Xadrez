@@ -1,0 +1,79 @@
+{
+  "portao": "OCR_UI passo 13 -- corrigir uma casa errada (casa no recorte → peça → aplicar) em <= 3 acoes, sem zoom na pagina",
+  "quando": "2026-09-16T11:56:08+00:00",
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\AAGAARD - Practical Chess Defence.pdf",
+    "pagina": 31
+  },
+  "sabotagem": "",
+  "preparacao": [
+    {
+      "numero": 1,
+      "nome": "abrir o livro",
+      "comando": "abrir_pdf",
+      "espera_ms": 406.67399999802,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "ir para a página 31",
+      "comando": "ir_para_pagina",
+      "espera_ms": 195.44460000179242,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "abrir o primeiro diagrama da página (lê a página)",
+      "comando": "clicar_na_caixa",
+      "espera_ms": 2482.402200010256,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "acoes": [
+    {
+      "numero": 1,
+      "nome": "clicar a casa f1 no recorte",
+      "comando": "clicar_no_recorte",
+      "espera_ms": 0.000400003045797348,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "escolher bispo branco na paleta",
+      "comando": "pincel",
+      "espera_ms": 0.000500003807246685,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "aplicar bispo branco em f1",
+      "comando": "aplicar",
+      "espera_ms": 0.02200000744778663,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "detalhes": {
+    "diagrama": 1,
+    "casa": "f1",
+    "lida": "torre branca",
+    "para": "bispo branco",
+    "margem": 1.0,
+    "casas_ambar": 0,
+    "zoom_antes": 0.3777429467084639,
+    "selecionada_pelo_recorte": true,
+    "zoom_depois": 0.3777429467084639,
+    "enquadramento": "enquadramento_largura",
+    "sem_zoom": true,
+    "corrigida": true,
+    "caixa_marcada_corrigida": "corrigido",
+    "recorte_focavel": true
+  },
+  "notas": [],
+  "veredito": "PASSOU"
+}

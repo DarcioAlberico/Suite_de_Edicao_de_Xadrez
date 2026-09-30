@@ -17,8 +17,16 @@ Sabotage (``--sabotar fen``): every diagram's position is replaced by another
 legal position of the same book before the games pass; the chaining must fall
 under 30 % — a legal move by chance does not sustain a sequence.
 
+Sabotage (``--sabotar ancora``, OCR_UI_ROADMAP_C2 passo A5 / X1): on every
+page the FENs of the first two readable diagrams are swapped with each other
+(a page with one diagram takes the other legal position of the book), so every
+diagram anchor is a *wrong* board.  Zero games may then be anchored on a
+diagram: a chain accepted from the wrong board is the plausible, displaced
+game the pass exists to refuse.
+
     .venv\Scripts\python.exe benchmarks\games_gate.py
     .venv\Scripts\python.exe benchmarks\games_gate.py --sabotar fen     # must fail
+    .venv\Scripts\python.exe benchmarks\games_gate.py --sabotar ancora  # 0 anchored games
 """
 
 from __future__ import annotations
@@ -37,7 +45,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from caissa.core.model import GameScore, Paragraph  # noqa: E402
+from dataclasses import replace  # noqa: E402
+
+from caissa.core.model import Diagram, GameScore, Paragraph  # noqa: E402
 from caissa.core.model.inline import plain_text  # noqa: E402
 from caissa.core.model.visitor import walk  # noqa: E402
 from caissa.ingest.pdf import games as games_module  # noqa: E402
@@ -88,6 +98,50 @@ def _games_on(document: Any) -> list[list[str]]:
     return out
 
 
+def _anchored_games(document: Any) -> int:
+    """Games that start from a diagram (``initial_fen`` set), not from move one."""
+    return sum(
+        1 for _path, node in walk(document)
+        if isinstance(node, GameScore) and node.children and node.initial_fen
+    )
+
+
+#: Pages on which ``--sabotar ancora`` swapped at least one diagram's FEN.
+_SWAPPED_PAGES: set[int] = set()
+
+
+def _swap_anchors(blocks: list[Any], page: int) -> list[Any]:
+    """``--sabotar ancora``: the first two readable diagrams exchange FENs; a
+    lone diagram takes :data:`OTHER_POSITION`.  Every diagram anchor of the
+    page is then a legal position that is not the one over the column."""
+    readable = [i for i, b in enumerate(blocks)
+                if isinstance(b, Diagram) and games_module._usable_fen(b)]
+    if not readable:
+        return blocks
+    swapped = list(blocks)
+    if len(readable) >= 2:
+        a, b = readable[0], readable[1]
+        swapped[a] = replace(blocks[a], fen=blocks[b].fen)
+        swapped[b] = replace(blocks[b], fen=blocks[a].fen)
+        for i in readable[2:]:
+            swapped[i] = replace(blocks[i], fen=OTHER_POSITION)
+    else:
+        swapped[readable[0]] = replace(blocks[readable[0]], fen=OTHER_POSITION)
+    _SWAPPED_PAGES.add(page)
+    return swapped
+
+
+def _install_anchor_sabotage() -> None:
+    original = games_module.attach_games
+
+    def attach_games(blocks: list[Any], **kwargs: Any) -> list[Any]:
+        page = next((getattr(getattr(b, "provenance", None), "page_index", -1)
+                     for b in blocks if isinstance(b, Diagram)), -1)
+        return original(_swap_anchors(blocks, page), **kwargs)
+
+    games_module.attach_games = attach_games  # type: ignore[assignment]
+
+
 def _movetext_tokens(document: Any) -> list[str]:
     tokens: list[str] = []
     for _path, node in walk(document):
@@ -119,6 +173,7 @@ def measure_nunn() -> list[dict[str, Any]]:
             {
                 "page": page,
                 "games": len(games),
+                "anchored": _anchored_games(result.document),
                 "chained": sum(len(g) for g in games),
                 "tokens": len(_movetext_tokens(result.document)),
                 "lines": [" ".join(g) for g in games],
@@ -185,6 +240,7 @@ def measure_sfc4(project: LabelProject) -> list[dict[str, Any]]:
                 "found": found,
                 "coverage": (found / len(truth)) if truth else None,
                 "games": [" ".join(g) for g in games],
+                "anchored": _anchored_games(result.document),
                 "invented": invented,
             }
         )
@@ -199,12 +255,14 @@ def measure_sfc4(project: LabelProject) -> list[dict[str, Any]]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--runs", type=int, default=1)
-    parser.add_argument("--sabotar", choices=("fen",), default=None)
+    parser.add_argument("--sabotar", choices=("fen", "ancora"), default=None)
     parser.add_argument("--project", type=Path, default=ROOT / "labeling")
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
     if args.sabotar == "fen":
         games_module._usable_fen = lambda _diagram: OTHER_POSITION  # type: ignore[assignment]
+    if args.sabotar == "ancora":
+        _install_anchor_sabotage()
     started = time.perf_counter()
     nunn = measure_nunn()
     sfc4 = measure_sfc4(LabelProject.load(args.project))
@@ -215,14 +273,20 @@ def main(argv: list[str] | None = None) -> int:
         (sum(r["found"] for r in covered) / sum(r["truth_n"] for r in covered)) if covered else 0.0
     )
     invented = sum(len(r["invented"]) for r in sfc4)
+    anchored = sum(r["anchored"] for r in nunn) + sum(r["anchored"] for r in sfc4)
     nunn_ok = chained >= NUNN_FLOOR
     cov_ok = coverage >= COVERAGE_FLOOR and invented == 0
     passed = nunn_ok and cov_ok
-    sabotage_note = (
-        f"  (sabotagem: fen — a cobertura tem de ficar < {SABOTAGE_CEILING})"
-        if args.sabotar
-        else ""
-    )
+    sabotage_note = ""
+    if args.sabotar == "fen":
+        sabotage_note = f"  (sabotagem: fen — a cobertura tem de ficar < {SABOTAGE_CEILING})"
+    elif args.sabotar == "ancora":
+        passed = anchored == 0
+        sabotage_note = (
+            f"  (sabotagem: ancora — {anchored} partida(s) ancoradas num diagrama trocado em "
+            f"{len(_SWAPPED_PAGES)} página(s); tem de ser 0 → "
+            f"{'PASSOU' if passed else 'REPROVOU'})"
+        )
     print(
         f"portão: Nunn {chained} lances encadeados em {tokens} tokens (≥ {NUNN_FLOOR}) "
         f"{'✓' if nunn_ok else '✗'} · SFC4 cobertura {coverage:.2f} (≥ {COVERAGE_FLOOR}) e "
@@ -243,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
                 "sfc4": sfc4,
                 "sfc4_coverage": coverage,
                 "sfc4_invented": invented,
+                "anchored_games": anchored,
+                "swapped_pages": sorted(_SWAPPED_PAGES),
                 "passed": passed,
                 "seconds": round(time.perf_counter() - started, 1),
             },

@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Iterable, Literal, Mapping, Sequence
 
 from .board_svg import Arrow, CircleMark, DiagramStyle, FrameStyle, Mark, SquareHighlight
-from .figurine import LANGUAGE_LETTERS, parse_san
+from .figurine import language_letter, parse_san
 
 __all__ = [
     "CompileResult",
@@ -651,10 +651,9 @@ def typeset_move(
         base = CASTLING_LONG_TEX if move.castle == "O-O-O" else CASTLING_SHORT_TEX
         return base + suffix(move.suffix)
 
-    table = LANGUAGE_LETTERS.get(language, LANGUAGE_LETTERS["en"])
     out = ""
     if move.piece:
-        out += figurine_symbol(move.piece) if figurine else table.get(move.piece, move.piece)
+        out += figurine_symbol(move.piece) if figurine else language_letter(move.piece, language)
     out += move.disambiguation
     if move.capture:
         out += "x"  # lower case, as on the SVG side
@@ -663,7 +662,7 @@ def typeset_move(
         out += "="
         out += (
             figurine_symbol(move.promotion) if figurine
-            else table.get(move.promotion, move.promotion)
+            else language_letter(move.promotion, language)
         )
     return out + suffix(move.suffix)
 

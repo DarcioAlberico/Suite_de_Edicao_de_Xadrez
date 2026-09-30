@@ -66,6 +66,7 @@ from .orientation import (
     orientation_from_labels,
     placement_from_matrix,
     unknown_orientation,
+    rotate_placement,
 )
 from .piece_shapes import mask_from_samples, match_mask
 
@@ -680,7 +681,22 @@ def _board_from_lattice(
         lattice.x0 + lattice.pitch_x * 7.5,
         lattice.y_top + lattice.pitch_y * 7.15,
     )
-    orientation = _orientation_for(page, write_rect, placement)
+    # The coordinates are read around the glyph cells' own box, in the space
+    # ``page.get_text("words")`` reports (passo C10): the write-space rectangle
+    # of the lattice is half a cell off the ink on the x axis and turns with
+    # the page, so the label reader used to look in the wrong place and fall
+    # back to the heuristic every time.
+    present = [g for row in lattice.cells for g in row if g is not None]
+    cells_rect = from_write_space(page, (
+        min(g.bbox[0] for g in present), min(g.bbox[1] for g in present),
+        max(g.bbox[2] for g in present), max(g.bbox[3] for g in present)))
+    orientation = _orientation_for(page, cells_rect, placement)
+    # Passo C10: the lattice reads the rows as printed; from Black's side
+    # the printed top row is rank 1, so the canonical placement is the
+    # rotated one.  The renderer turns the board again for display
+    # (``Orientation.BLACK``); the FEN in the PGN/EPUB must be the position.
+    if not orientation.white_at_bottom:
+        placement = rotate_placement(placement)
 
     confidence = 1.0
     details: list[str] = []
@@ -715,10 +731,6 @@ def _board_from_lattice(
         f"({font_name or 'sem nome'}, {size:.1f} pt): 8x8 glifos com passo de "
         f"{lattice.pitch_x:.2f} pt e xadrezado consistente."
     )
-    present = [g for row in lattice.cells for g in row if g is not None]
-    cells_rect = from_write_space(page, (
-        min(g.bbox[0] for g in present), min(g.bbox[1] for g in present),
-        max(g.bbox[2] for g in present), max(g.bbox[3] for g in present)))
     evidence = Evidence(
         summary=summary,
         method="font-glyph-lattice",
@@ -746,9 +758,10 @@ def _board_from_lattice(
     )
 
 
-def _orientation_for(page: Any, write_rect: Rect, placement: str) -> BoardOrientation:
-    labels = _short_labels(page, write_rect)
-    from_labels = orientation_from_labels(labels, write_rect)
+def _orientation_for(page: Any, board_pdf: Rect, placement: str) -> BoardOrientation:
+    """``board_pdf`` in the space of ``page.get_text("words")`` (the visible page)."""
+    labels = _short_labels(page, board_pdf)
+    from_labels = orientation_from_labels(labels, board_pdf)
     if from_labels is not None:
         return from_labels
     try:
@@ -1065,10 +1078,12 @@ def _board_from_grid(
 
     placement_or_none = placement if any(c != "." for row in matrix for c in row) else None
     orientation = (
-        _orientation_for(page, board_rect, placement)
+        _orientation_for(page, from_write_space(page, board_rect), placement)
         if placement_or_none
         else unknown_orientation()
     )
+    if placement_or_none and not orientation.white_at_bottom:
+        placement = placement_or_none = rotate_placement(placement)   # passo C10
     return VectorBoard(
         fen=f"{placement} w - - 0 1" if placement_or_none else None,
         piece_placement=placement_or_none,

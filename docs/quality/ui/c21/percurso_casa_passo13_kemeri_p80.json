@@ -1,0 +1,79 @@
+{
+  "portao": "OCR_UI passo 13 -- corrigir uma casa errada (casa no recorte → peça → aplicar) em <= 3 acoes, sem zoom na pagina",
+  "quando": "2026-09-16T11:56:28+00:00",
+  "amostra": {
+    "pdf": "..\\ChessVisionOFF_Puro\\PDF\\1937 Kemeri.pdf",
+    "pagina": 80
+  },
+  "sabotagem": "",
+  "preparacao": [
+    {
+      "numero": 1,
+      "nome": "abrir o livro",
+      "comando": "abrir_pdf",
+      "espera_ms": 686.2137999996776,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "ir para a página 80",
+      "comando": "ir_para_pagina",
+      "espera_ms": 700.08890000463,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "abrir o primeiro diagrama da página (lê a página)",
+      "comando": "clicar_na_caixa",
+      "espera_ms": 2141.413899997133,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "acoes": [
+    {
+      "numero": 1,
+      "nome": "clicar a casa e2 no recorte",
+      "comando": "clicar_no_recorte",
+      "espera_ms": 0.000900006853044033,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 2,
+      "nome": "escolher dama preta na paleta",
+      "comando": "pincel",
+      "espera_ms": 0.0006999907782301307,
+      "resultado": "",
+      "ok": true
+    },
+    {
+      "numero": 3,
+      "nome": "aplicar dama preta em e2",
+      "comando": "aplicar",
+      "espera_ms": 0.03340000694151968,
+      "resultado": "",
+      "ok": true
+    }
+  ],
+  "detalhes": {
+    "diagrama": 1,
+    "casa": "e2",
+    "lida": "dama branca",
+    "para": "dama preta",
+    "margem": 0.997,
+    "casas_ambar": 0,
+    "zoom_antes": 0.4023372287145242,
+    "selecionada_pelo_recorte": true,
+    "zoom_depois": 0.4023372287145242,
+    "enquadramento": "enquadramento_largura",
+    "sem_zoom": true,
+    "corrigida": true,
+    "caixa_marcada_corrigida": "corrigido",
+    "recorte_focavel": true
+  },
+  "notas": [],
+  "veredito": "PASSOU"
+}

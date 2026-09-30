@@ -1,0 +1,95 @@
+inicio 21:50:58 suite=d186ba3 src=[0] tronco=0ed4f8a [0] labeling=2026-09-15 05:49:26.192952500 -0300
+### sem_livro 21:50:58
+exit 0 sem_livro 21:51:11
+### livro 21:51:11
+exit 0 livro 21:51:27
+### sabotagem_aperto 21:51:27
+exit 1 sabotagem_aperto 21:51:40
+### sabotagem_rodape 21:51:40
+exit 1 sabotagem_rodape 21:51:53
+### sabotagem_corte 21:51:53
+exit 1 sabotagem_corte 21:52:05
+### sabotagem_mensagem 21:52:05
+exit 1 sabotagem_mensagem 21:52:23
+### sabotagem_reserva 21:52:23
+exit 1 sabotagem_reserva 21:52:45
+### sabotagem_linha 21:52:45
+exit 1 sabotagem_linha 21:53:25
+### teclado foco 1280x800 21:53:25
+exit 0 teclado foco 1280x800 21:54:12
+### teclado foco 1248x640 21:54:12
+exit 0 teclado foco 1248x640 21:54:52
+### teclado foco 1280x641 21:54:52
+exit 0 teclado foco 1280x641 21:55:32
+### teclado classica 1280x800 21:55:32
+exit 0 teclado classica 1280x800 21:56:13
+### teclado classica 1248x640 21:56:13
+exit 0 teclado classica 1248x640 21:56:59
+### teclado classica 1280x641 21:56:59
+exit 0 teclado classica 1280x641 21:57:45
+### teclado fita 1280x800 21:57:45
+exit 0 teclado fita 1280x800 21:58:32
+### teclado fita 1248x640 21:58:32
+exit 0 teclado fita 1248x640 21:59:17
+### teclado fita 1280x641 21:59:17
+exit 0 teclado fita 1280x641 22:00:04
+TECLADODONE 22:00:04
+### teclado sabotagem foco foco 1280x641 22:00:04
+exit 1 teclado sabotagem foco foco 22:00:46
+### teclado sabotagem tabela foco 1280x641 22:00:46
+exit 1 teclado sabotagem tabela foco 22:01:35
+### teclado sabotagem clique foco 1280x641 22:01:35
+exit 1 teclado sabotagem clique foco 22:02:19
+### teclado sabotagem guarda foco 1280x641 22:02:19
+exit 1 teclado sabotagem guarda foco 22:03:14
+### teclado sabotagem ponteiro foco 1280x641 22:03:14
+exit 0 teclado sabotagem ponteiro foco 22:04:02
+### teclado sabotagem soltar foco 1280x641 22:04:02
+exit 1 teclado sabotagem soltar foco 22:04:45
+### teclado sabotagem foco classica 1280x641 22:04:45
+exit 1 teclado sabotagem foco classica 22:05:21
+### teclado sabotagem tabela classica 1280x641 22:05:21
+exit 1 teclado sabotagem tabela classica 22:05:59
+### teclado sabotagem clique classica 1280x641 22:05:59
+exit 1 teclado sabotagem clique classica 22:06:35
+### teclado sabotagem guarda classica 1280x641 22:06:35
+exit 1 teclado sabotagem guarda classica 22:07:11
+### teclado sabotagem ponteiro classica 1280x641 22:07:11
+exit 1 teclado sabotagem ponteiro classica 22:07:46
+### teclado sabotagem soltar classica 1280x641 22:07:46
+exit 1 teclado sabotagem soltar classica 22:08:23
+### teclado sabotagem foco fita 1280x641 22:08:23
+exit 1 teclado sabotagem foco fita 22:08:58
+### teclado sabotagem tabela fita 1280x641 22:08:58
+exit 1 teclado sabotagem tabela fita 22:09:36
+### teclado sabotagem clique fita 1280x641 22:09:36
+exit 1 teclado sabotagem clique fita 22:10:11
+### teclado sabotagem guarda fita 1280x641 22:10:11
+exit 1 teclado sabotagem guarda fita 22:10:47
+### teclado sabotagem ponteiro fita 1280x641 22:10:47
+exit 0 teclado sabotagem ponteiro fita 22:11:23
+### teclado sabotagem soltar fita 1280x641 22:11:23
+exit 1 teclado sabotagem soltar fita 22:12:00
+SABOTAGENSDONE 22:12:00
+### teclado gallagher p51 foco 1280x641 22:12:00
+exit 0 teclado gallagher p51 foco 22:12:15
+### teclado gallagher p51 sabotagem ancora foco 1280x641 22:12:15
+exit 1 teclado gallagher p51 sabotagem ancora foco 22:12:30
+### teclado sabotagem ancora (Kemeri) foco 1280x641 22:12:30
+exit 0 teclado sabotagem ancora (Kemeri) foco 22:13:06
+### teclado gallagher p51 classica 1280x641 22:13:06
+exit 0 teclado gallagher p51 classica 22:13:20
+### teclado gallagher p51 sabotagem ancora classica 1280x641 22:13:20
+exit 1 teclado gallagher p51 sabotagem ancora classica 22:13:36
+### teclado sabotagem ancora (Kemeri) classica 1280x641 22:13:36
+exit 0 teclado sabotagem ancora (Kemeri) classica 22:14:11
+### teclado gallagher p51 fita 1280x641 22:14:11
+exit 0 teclado gallagher p51 fita 22:14:26
+### teclado gallagher p51 sabotagem ancora fita 1280x641 22:14:26
+exit 1 teclado gallagher p51 sabotagem ancora fita 22:14:41
+### teclado sabotagem ancora (Kemeri) fita 1280x641 22:14:41
+exit 0 teclado sabotagem ancora (Kemeri) fita 22:15:16
+fim dos portões 22:15:16 suite=d186ba3 src=[0] tronco=0ed4f8a [0] labeling=2026-09-15 05:49:26.192952500 -0300
+PORTOESDONE
+TESTESDONE
+MEDEDONE 22:50:17 suite=d186ba3 src=[0] tronco=0ed4f8a [0] labeling=2026-09-15 05:49:26.192952500 -0300

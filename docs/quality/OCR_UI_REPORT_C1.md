@@ -1252,3 +1252,746 @@ vazia, contador). `tests/unit/ui/test_revisao_de_texto_view.py` (novo, 5: HTML d
 monta e lista N e só N; decide, anda, grava sozinha e retoma; página cega com a frase e a
 sabotagem; importação em thread). Tronco: `test_qt_janela.py` (oitava aba), `test_packaging.py`
 (catraca 1905 com o motivo).
+
+---
+
+## §14 — Passo 15, tarefa 0: o «antes» do visor por ladrilhos (2026-09-15)
+
+Medido com as abas da suíte na janela (receita de §13.0), livro `1937 Kemeri.pdf`:
+
+- **`quadros` (3×): PASSOU.** zoom **75,3 / 81,8 / 78,3 fps @ p95** (piso 70), pan 790 / 745 /
+  770, juntos 101,9 / 100,8 / 103,7. O D19 do ciclo 1 (59 fps mediana, 2026-09-07) está
+  ultrapassado: o reescalonamento só quando o zoom muda (`pagina_escalada`) já dá a folga.
+- **`bloqueio`: REPROVOU, 7 operações** (as mesmas do C16; `bloqueio_20260915_083111.json`):
+  abrir PDF **170 ms** (PyMuPDF 41 %, disco 30 % — `games_cache.open_store` da Galeria,
+  builtins 24 %), virar página **~70 ms** (rasterizar a 300 DPI = 45 ms + `mostrar_pagina`),
+  aba Dataset 70 ms, aba Galeria 23 ms, rasterizar 46 ms. Nenhuma é do zoom ou do pan.
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages& .venv\Scripts\python.exe -m caissa.ui.audit.quadros --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # fps_20260915_085705/085707/085709.json
+... -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # bloqueio_20260915_083111.json
+```
+
+**O que o «antes» diz sobre o passo.** O portão do passo 15 («0 operações > 16 ms; abrir PDF
+≤ 16 ms») não é um portão do visor: das 7 operações, 5 são rasterização e E/S **fora** dele
+(`painel_do_pdf.desenhar_pagina` rasteriza na thread de UI e devolve `True` só com a imagem
+pronta — é o contrato de quem chama o OCR; `painel_da_galeria.load_pdf` abre o SQLite; a aba
+Dataset carrega as amostras ao aparecer). Ladrilhos em worker resolvem o zoom, que já passa.
+O que falta é render e E/S fora da thread em `qt/painel_do_pdf.py`, `qt/painel_da_galeria.py`,
+`qt/painel_do_dataset.py` — e os três, mais `qt/visor.py` e `ui/viewport.py`, carregam
+**1.267 linhas não commitadas de outra sessão** (desde 2026-09-14 02:26). Pela regra deste
+trabalho (commit só por caminho, em arquivo limpo) o passo fica **suspenso** até essa sessão
+commitar ou guardar o que tem; o precedente do passo 12 (pares reaplicáveis em
+`docs/quality/ui/c17/tronco_passo12.py`) vale para mudanças pequenas, não para esta.
+
+---
+
+## §15 — Passo 15: render e E/S fora da thread da janela (2026-09-16)
+
+(O roadmap previa este relatório em `OCR_UI_REPORT_C2.md` §5; os passos executados continuam
+num só arquivo, como os anteriores. O «antes» é o §14.)
+
+### 15.0 Em uma tela
+
+- **O `bloqueio` passa pela primeira vez** — 3 invocações, 3 × PASSOU; nenhuma operação acima
+  de **6,6 ms** (piso 16). Era 7 operações reprovadas com 170 ms na pior (§14).
+- **O que faltava não era ladrilho: era o GIL.** Rasterizar numa `QThread` tirou a conta da
+  thread da janela só no nome — o `get_pixmap` do PyMuPDF 1.28 segura o interpretador os 43–49 ms
+  inteiros, e a janela ficou parada **51 ms** por página numa thread. A leitura do `labels.csv`
+  (5.431 FENs conferidas em Python) e a detecção de fundo têm a mesma doença. A solução é um
+  **processo filho** (`chess_diagram_ocr/processo_de_trabalho.py`): o pai só espera, e esperar
+  um `Pipe` solta o GIL.
+- `quadros` sobe de 75–82 para **346–415 fps @ p95** no zoom: a redução ao zoom novo roda ao
+  fundo (`cv2.resize`, que solta o GIL) e a folha anterior é esticada pelo pintor até a nítida
+  chegar (quadro provisório).
+- **Bandeira** `qt/painel_do_pdf.RASTERIZAR_AO_FUNDO` (padrão `True`; desfazer = `False`). A
+  suíte do tronco a desliga uma vez no `conftest`; o caminho ao fundo tem testes próprios.
+- Tronco: `8b61a3e` guarda o WIP da outra sessão (86 arquivos, a pedido do usuário); o passo vem
+  por cima em commit próprio. Suíte do tronco: 4.507 passaram; 3 falhas pré-existentes de
+  módulos da outra sessão (`biblioteca.py`, `cortina.py`, `selecao_de_area.py`,
+  `substituicao.py` fora de `SEM_TKINTER`/acentos; `test_field_eval` pede remedição de campo
+  desde o passo 7) e nenhuma nova.
+
+### 15.1 O que foi medido antes de escrever código
+
+A tarefa 0 (§14) dizia que 5 das 7 operações eram render e E/S fora do visor. Dividindo cada
+operação em partes (`scratchpad/perfil15*.py`, Kemeri, janela 1280×800, offscreen):
+
+| parte | ms | onde |
+|---|---:|---|
+| `get_pdf_page_count` (disco frio) | 19,5 | thread da janela |
+| `galeria.load_pdf` → `open_store` (SQLite, frio) | 67,6 | thread da janela |
+| `render_pdf_page` 220 DPI | 68 (frio) / 45 | thread da janela |
+| `visor.mostrar_pagina` (array → `QPixmap` + reescala) | 5,7 | thread da janela |
+| aba Dataset, 1.ª vez | **57,7** no 1.º `processEvents`; 4,4 com `_stale=False` | `_reler_agora` |
+| aba Dataset, quente | 14 ms de Qt (69 widgets + `QTreeWidget` de 200 linhas), 1,3 ms de Python | — |
+
+O 57,7 da aba Dataset **não era a aba**: era o CSV lendo numa thread e revezando o GIL com os
+442 `eventFilter` que uma troca de aba dispara. Com `sys.setswitchinterval` em 0,5 ms cai para
+7,8; em 0,1 ms para 6,0 (`perfil15g.py`); a leitura fica 20 % mais lenta (678 → 816 ms).
+
+**Faixas não resolvem o PyMuPDF.** Rasterizar em cinco `get_pixmap(clip=)` de 512 px custa
+110 ms no total e a pior faixa 30 ms — o scan embutido é decodificado inteiro a cada faixa — e
+a pior espera da thread principal fica em 33 ms. O `displaylist` não muda nada. Medido em
+`perfil15b/c`; é a razão de o passo não ter ficado em «ladrilhos em worker».
+
+**`QImage.scaled` também segura o GIL** (11,4 ms de espera numa thread, 24 ms no total);
+`cv2.resize` INTER_AREA custa 15 ms e a espera é 2,9 ms. Por isso `qt/imagens.reduzir_rgb`.
+
+### 15.2 O que foi construído (tronco)
+
+| onde | o quê |
+|---|---|
+| `processo_de_trabalho.py` (novo) | `ProcessoDeTrabalho`: um `ProcessPoolExecutor(spawn, 1)` preguiçoso; `executar(funcao, *args)`, `rasterizar`, `aquecer`, `encerrar`; recria o filho uma vez se ele morrer e cai para a linha com aviso se nem isso der; `em_processo=False` roda em linha |
+| `qt/trabalho.py` | `ceder_a_interface()` na primeira `Tarefa`: `sys.setswitchinterval` → 0,1 ms (tabela medida no docstring) |
+| `qt/painel_do_pdf.py` | `load_pdf` conta as páginas ao fundo e só aponta para o livro em `_livro_abriu` (S-123 mantida); `desenhar_pagina` pede a folha ao fundo (`_rasterizar` → filho → `preparar_folha`), a anterior fica na tela; `FolhaRasterizada` com a chave `(livro, página, dpi)` recusa folha atrasada; `aguardar_pagina()` para testes e arnês; bandeira `RASTERIZAR_AO_FUNDO` |
+| `qt/visor.py` | `_pagina` vira o tamanho; a página inteira mora só no array; `FolhaPreparada`/`preparar_folha` (prevê o zoom do enquadramento); reescala ao fundo com quadro provisório esticado; geração para descartar reescala de página que saiu |
+| `qt/imagens.py` | `reduzir_rgb` (OpenCV) |
+| `qt/painel_da_galeria.py` | `_abrir_cache_de_posicoes(ao_fundo=True)` na abertura do livro; a busca por posição espera a abertura em vez de abrir outra |
+| `games_cache.py` | `open_store(de_outra_thread=True)` → `check_same_thread=False` |
+| `qt/marcas.py` | `ler_marcas_e_treino` (uma passada pelo CSV, no filho, para marcas **e** amostras de treino); `amostras_de_treino_guardadas` só devolve o que já está guardado |
+| `qt/janela.py` | bandeira repassada; `_aviso_de_treino` não lê mais na thread da janela; detecção de fundo no filho (`detect_diagrams_rendering_page`, que rasteriza de novo em vez de receber 26 MB) |
+| `qt/painel_do_dataset.py` | `load_rows` no filho, atravessando como tuplas (7,8 → 3,0 ms de `pickle.loads`) |
+| `qt/campo.py` | conjunto de campo guardado por `(tamanho, mtime)` |
+| `qt/tabela.py` | alinhamento resolvido uma vez por coluna |
+| `ui/busy.py` | as três threads novas declaradas em `FORA_DO_REGISTRO` com o motivo |
+| `detection/hybrid.py` | `detect_diagrams_rendering_page` |
+
+Suíte (`caissa`): `ui/audit/capture.aguardar_a_folha` e o uso dela em `bloqueio`, `quadros`,
+`capture`, `comandos`, `execucao`, `fita`, `teclado`, `texto_pintado`; `bloqueio --sabotar`;
+a operação `rasterizar pagina a 300 DPI (render_pdf_page)` vira **referência** (medida e
+publicada, fora de `viola` — ver 15.4).
+
+### 15.3 Portão
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # 3x
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c17 --sabotar
+.venv\Scripts\python.exe -m caissa.ui.audit.quadros  --pdf "%PDF%" --saida benchmarks\reports\ui\c17   # 3x
+```
+
+`bloqueio` — `bloqueio_20260916_060952/061002/061012.json`, **PASSOU × 3**. Pior travamento por
+operação nas três invocações (ms; o «frio» é a 1.ª execução):
+
+| operação | pior | frio | §14 |
+|---|---|---|---:|
+| abrir PDF (load_pdf, 1.ª página) | 3,6 / 5,9 / 4,8 | 2,9 / 5,9 / 4,8 | 170 |
+| virar para a página 41 | 1,9 / 1,7 / 2,3 | 1,9 / 1,7 / 1,1 | ~70 |
+| virar para a página 42 | 2,8 / 2,5 / 4,0 | 0,7 / 1,9 / 1,4 | ~70 |
+| virar para a página 121 | 4,1 / 2,0 / 2,3 | 1,6 / 2,0 / 2,3 | ~70 |
+| aba Dataset: mostrar e carregar | 6,3 / 6,6 / 5,6 | 2,0 / 2,3 / 4,4 | 70 |
+| aba Galeria: mostrar | 3,6 / 2,6 / 4,0 | 0,2 / 2,6 / 4,0 | 23 |
+| carregar índice da Galeria | 0,0 | 0,0 | 1 |
+| ajustar a página | 0,0 | 0,0 | 0 |
+| contar páginas | 0,0 | 0,0 | 0 |
+| *referência:* rasterizar 300 DPI direto | 57,9 / 55,2 / 61,2 | — | 46 |
+
+**Sabotagem** (`--sabotar` = `rasterizar_ao_fundo=False`, tudo na thread da janela):
+`bloqueio_sabotagem_20260916_054722.json`, **REPROVOU, 7 operações** — abrir 143 ms, virar
+99–112 ms, Galeria 47,6/35,5, Dataset 31,2. O portão acusa.
+
+`quadros` — `fps_20260916_054955/054957/055000.json` (mais `061026`, a última): zoom
+**414,9 / 346,1 / 365,6 fps @ p95** (piso 70), pan 629,6 / 550,4 / 563,4, juntos 441,7 / 388,4 /
+399,7. Era 75–82 (§14). O quadro medido é o provisório quando o zoom acaba de mudar; a nítida
+chega por sinal ~15 ms depois (uma redução por passo, só o último zoom espera).
+
+Também rerodados sem regressão: `teclado` (PASSOU em todos os arranjos,
+`teclado_20260916_061059.json`), `comandos` (PASSOU, `comandos_20260916_061108.json`).
+
+Cópias dos relatórios do portão (os três `bloqueio`, a sabotagem e o `fps` final) em
+`docs/quality/ui/c17/*passo15*.json`; `benchmarks/reports/` não é versionado.
+
+### 15.4 O que mudou no portão, e por quê
+
+A operação *«rasterizar pagina a 300 DPI (render_pdf_page)»* chamava `render_pdf_page` **direto
+na thread da janela**: era o custo bruto, posto na lista no ciclo 1 para atribuir a virada de
+página. O produto não a chama mais nessa thread — e um portão da thread da interface que
+reprovasse por uma função que a interface não chama estaria medindo outra coisa. Ela continua
+medida e publicada (`referencia: true`, coluna «ref» na tabela) porque é o que o filho paga; sai
+de `viola` e de `violam_o_portao`. Teste em `tests/unit/ui/test_medicao.py`.
+
+`bloqueio` e as demais auditorias esperam a folha (`aguardar_a_folha`) **sob o vigia**: sem isso
+«virar página» mediria só o pedido (2 ms) e a chegada da folha cairia na operação seguinte.
+
+### 15.5 Achados que ficam
+
+1. **Uma `QThread` não é «fora da thread da interface» em Python.** Só é quando o que roda nela
+   solta o GIL — numpy e OpenCV soltam, PyMuPDF e o `csv`+python-chess não. Toda medição de
+   bloqueio deste projeto que atribuiu custo a «Qt (toolkit)» ou «builtins (C)» dentro de
+   `processEvents` precisa ser lida com isso em mente: parte daquele tempo era espera pelo GIL.
+2. **O intervalo de troca do interpretador é um parâmetro de interface.** 5 ms (padrão) é bom
+   para lote; 0,1 ms custa nada de vazão medível aqui e tira 50 ms de travamento.
+3. **A folha de estilo não é o custo da aba Dataset** (13,8 → 13,2 ms sem as regras de
+   `::item`; 9,5 sem folha nenhuma). Os ~14 ms de Qt para mostrar a aba com a tabela cheia são o
+   `QTreeWidget` (2,6 ms sem ele) — cabeçalho pintado 6× por troca (3 pares hide/show) e a pintura
+   das células. Fica abaixo do piso com 0 Python concorrente; é o item que sobra para quem quiser
+   margem (item aberto, não bloqueante).
+4. **`spawn` reimporta o `__main__`**: todo script que construa `JanelaPrincipal` com a bandeira
+   ligada precisa do `if __name__ == "__main__"` — sem ele o filho abre outra janela e outro filho
+   (aconteceu no primeiro roteiro de perfil). Os arnês e o `app_pyqt` já o têm; o bundle tem
+   `mp.freeze_support()`. **O bundle não foi reconstruído neste passo** — conferir na próxima
+   construção que o filho nasce dentro do `.exe`.
+5. O item C16 «`bloqueio` reprovado» fecha; Q6 da SPEC (o que vale para 13 e 14 até o 15 fechar)
+   deixa de ter objeto.
+
+### 15.6 Testes
+
+Tronco (Python 3.10, `.venv` do tronco): `tests/test_processo_de_trabalho.py` (novo, 6: em linha;
+no filho de verdade — resultado volta, PID difere, a página do filho é igual à de
+`render_pdf_page`, **150 ms de Python no filho não param a thread principal por mais de 40 ms**;
+sem `spawn` possível cai para a linha), `tests/test_qt_painel_do_pdf.py::RasterizacaoAoFundoTests`
+(5: volta antes da folha e a folha chega por sinal; a anterior fica na tela; virar duas vezes
+mostra só a última; PDF quebrado não troca o livro; em linha a folha está ao voltar),
+`tests/test_app_pyqt.py::VisorTests` (+4: em linha nítida na hora; quadro provisório até a nítida;
+zoom que passou é descartado; `preparar_folha` prevê o enquadramento),
+`tests/test_qt_trabalho.py::CederAInterfaceTests`. `conftest.trabalho_em_linha` (sessão).
+Catraca de `qt/janela.py` 1.905 → 1.944 com o motivo em `test_packaging`. Suíte inteira:
+**4.507 passed**, 3 falhas pré-existentes (15.0). Suíte da `caissa`: `tests/unit/ui/test_medicao.py`
++1 (a referência não decide o veredito).
+
+### 15.7 Saída
+
+Tronco: `8d9b02f` sobre `8b61a3e` (os 25 caminhos de 15.2). Suíte: este §15, a linha do
+roadmap, `caissa/ui/audit/*` e `test_medicao.py`; relatórios em `benchmarks/reports/ui/c17/`.
+**Desfazer:** `qt/painel_do_pdf.RASTERIZAR_AO_FUNDO = False` (o visor volta ao que era: tudo em
+linha) — o `bloqueio` volta a reprovar nas 7, que é a sabotagem.
+
+---
+
+## §16 — Passo 16: Foco como padrão e polimento (Q3) (2026-09-16)
+
+(O roadmap previa este relatório em `OCR_UI_REPORT_C3.md` §1; segue no arquivo único.)
+
+### 16.0 Em uma tela
+
+- **Foco é a pele de fábrica** (`ui/pele.PADRAO = FOCO`, decisão Q3 do usuário em 2026-09-16).
+  As três continuam em *Ver ▸ Aparência* (R3.6); Clássica passa a segunda. A escura é
+  **projetada**, como a SPEC §10.2 pede: `ui/tokens.NO_CROMO_ESCURO` tem valor próprio por papel
+  de cromo, matiz preservada ao grau, elevação invertida — conferido, não refeito.
+- **A janela voltou a caber em 1366×768, nas três peles.** Achado do passo: o piso da janela
+  estava em **827 px na Foco** (793 na Clássica, 743 na Fita) — acima dos 768 que a F9-C2 tinha
+  devolvido ao produto — por duas colunas: os dez cabeçalhos do PGN empilhados na Galeria
+  (531 px) e o cartão da Rotulagem (496 px). Ambas rolam agora; piso **674 / 640 / 640**. Com
+  a Foco como padrão, era o defeito que mais gente veria.
+- `contraste` PASSOU nas duas polaridades (0 reprovados em 220 pares sob portão × 2), sabotagem
+  acusa; `teclado` PASSOU em todos os arranjos; `texto_pintado` PASSOU.
+- **`vazio` a 4K REPROVOU: 6 de 8 painéis acima de 200 kpx, antes e depois, nas três peles.**
+  O instrumento é novo (`caissa.ui.audit.vazio`, régua do crítico do ciclo 5/9 promovida ao
+  arnês) e o número reproduz o do ciclo 15 (Revisão 3 104,2 kpx). O que ele mede é a ausência
+  de dados, não o leiaute — ver 16.4. Fica vermelho e declarado.
+- Polimento: contadores tabulares (`tnum`, propriedade `tipografia.PROPRIEDADE_TABULAR` em
+  página / total / zoom / rodapé), contorno neutro na página do visor e no recorte da Galeria,
+  legenda da Galeria com 3–8 linhas em vez de 8 cravadas. Raio concêntrico e foco visível já
+  estavam na folha (F9-C2: `raio - 1` no indicador, `:focus` 2 px) — conferidos.
+- **O crítico visual às cegas (SPEC §11.4) não foi feito**: é papel do crítico, e o material
+  está pronto — 96 retratos `depois16_*` (3 peles × 4 tamanhos × 8 abas) e as pranchas de
+  controles (`amostrario_*.png`, `estados_*.png`) em `benchmarks/reports/ui/c18/`.
+
+### 16.1 Padrão de fábrica
+
+`ui/pele.py`: `PADRAO = FOCO`; `valida` e `escolhida` caem nele; `PELES` reordenada (Foco,
+Clássica, Fita) porque a regra 1 da tabela é "a primeira é o padrão". `AppState.skin` continua
+vazio para "nunca escolhida" — o padrão mora num lugar só. Testes: `test_ui_pele.py` (padrão =
+Foco, primeira = padrão, inválida cai no padrão, Clássica continua registrada),
+`test_qt_janela.py` (o menu abre com o padrão marcado; os dois testes da Clássica pedem-na por
+nome). `test_qt_menu.py` e `test_strings.py` sem mudança.
+
+### 16.2 O piso de 768, medido
+
+`scratchpad/minalt*.py` (janela Foco a 1366×768, `minimumSizeHint` por aba):
+
+| aba | antes | depois | o que mudou |
+|---|---:|---:|---|
+| Galeria | 674 | **516** | a lateral «Cabeçalhos do PGN» (10 campos + 5 botões = 531 px) entra numa `QScrollArea` de largura fixa; a legenda passa de 8 linhas cravadas a mínimo 3 / máximo 8 (`LINHAS_MINIMAS_DA_LEGENDA`) |
+| Rotulagem (suíte) | 702 | **266** | cartão + botões + tabela numa `QScrollArea` dentro do divisor vertical |
+| Resultado | 549 | 549 | passa a ser a mais alta |
+| Revisão de texto | 501 | 501 | — |
+| janela Foco / Clássica / Fita | 827 / 793 / 743 | **674 / 640 / 640** | `capture` deixou de avisar «pediu 1366x768, ficou …» nas 96 capturas |
+
+As duas áreas de rolagem têm `NoFocus`: sem isso o `teclado` contou um focável sem nome nem papel
+em cada aba (medido e corrigido antes do PASSOU).
+
+### 16.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c18            # contraste_20260916_064651.json
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c18 --sabotar  # contraste_sabotagem_20260916_063027.json
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado --pdf "%PDF%" --saida benchmarks\reports\ui\c18        # teclado_20260916_065028.json
+.venv\Scripts\python.exe -m caissa.ui.audit.texto_pintado --pdf "%PDF%" --saida benchmarks\reports\ui\c18  # texto_pintado_20260916_064740.json
+.venv\Scripts\python.exe -m caissa.ui.audit.capture --saida benchmarks\reports\ui\c18 --marca depois16 --pdf "%PDF%"   # 96 PNG
+.venv\Scripts\python.exe -m caissa.ui.audit.vazio --capturas benchmarks\reports\ui\c18 --marca depois16 --saida benchmarks\reports\ui\c18
+.venv\Scripts\python.exe -m caissa.ui.audit.amostrario --saida benchmarks\reports\ui\c18 [--estados]
+```
+
+| portão | resultado |
+|---|---|
+| `contraste` | claro 300 pares / 220 sob portão / **0 reprovados**; escuro idem; menor folga 3,03:1 (polegar da barra, piso 3,0). **PASSOU** |
+| `contraste --sabotar` | `TEXTO_SECUNDARIO` do cromo escuro a **3,90:1** (`#787d85`): escuro **12 reprovados**, todos do token plantado (a dica de campo em 12 lugares); claro 0. Acusa. O roadmap dizia «acusar 1»: um token são doze pares, e o portão acusa os doze |
+| `teclado` | **PASSOU** em todos os arranjos (3 peles × 2 densidades, 8 abas + 13 diálogos) |
+| `texto_pintado` | **PASSOU** |
+| `vazio` (novo) | **REPROVOU** — 6 de 8 acima de 200 kpx em cada pele, antes (3 104,2 Revisão) e depois (3 036,0). Dataset e Resultado passam |
+| `quadros` / `bloqueio` | do passo 15, sem mudança de visor além do contorno |
+
+Cópias em `docs/quality/ui/c18/` (`*_passo16*.json`, um retrato por pele a 1366×768).
+
+### 16.4 O que o `vazio` mede — e por que fica vermelho
+
+Os seis painéis acima do teto são **áreas de conteúdo sem dados**: a tabela da Revisão com 27
+linhas num viewport de 2 071 px, a coluna de lances do Estudo vazia, a Galeria sem varredura, o
+Texto sem OCR, a Rotulagem e a Revisão de texto sem livro importado. A 3840×2160 **a 100 %** (a
+captura não escala; um monitor 4K real corre a 150–200 %) qualquer área de dados vazia com mais
+de ~100 px de altura passa de 200 kpx. Os dois que passam (Dataset 146,8; Resultado 43,3) passam
+porque têm dados: 5.431 linhas e um tabuleiro.
+
+Fechar o número exigiria pautar as áreas vazias (traços a cada linha, como uma folha de
+planilha) — decisão de produto que este passo não toma. O que o passo entrega é a régua
+(instrumento no arnês, testado em `test_medicao.py::TestVazio`), o número antes/depois e esta
+leitura; a proposta para o crítico do C3 é medir a 200 % ou excluir do teto a área de dados
+declaradamente vazia (com `EstadoVazio` desenhado). Fica **aberto e declarado**, como desde o C16.
+
+### 16.5 Polimento entregue (tronco)
+
+| onde | o quê |
+|---|---|
+| `ui/tipografia.py` | `PROPRIEDADE_TABULAR` (decisão: quem conta); `qt/tema.tabular` (o `tnum`); `qt/escala.aplicar_escala` aplica-o na varredura |
+| `qt/painel_do_pdf.py`, `qt/rodape.py` | página, total, zoom e documento do rodapé declarados tabulares. **Medido: a Segoe UI já tem algarismos tabulares** (`1111` = `0000` = 28,0 px a 10 pt); o recurso vale para a família de reserva |
+| `qt/visor.py` | `_desenhar_contorno`: fio de 1 px `CONTORNO_DE_CROMO` sobre o pixel externo da folha (não fora dela: crescer a folha deslocaria caixas e cliques) |
+| `qt/tema.pintar_varios`, `qt/painel_da_galeria.py` | recorte da Galeria com fundo **e** contorno (dois `pintar` no mesmo widget deixavam só o segundo) |
+| `qt/painel_da_galeria.py`, `ui/galeria_declarada.py` | lateral em rolagem; `LINHAS_MINIMAS_DA_LEGENDA = 3` |
+| suíte `caissa/ui/views/rotulagem.py` | cartão em rolagem |
+
+Testes: `test_qt_tema.py::PolimentoDoPasso16Tests` (3: o contador ganha `tnum` e a prosa não; os
+contadores do produto estão declarados; `pintar_varios` declara as duas propriedades),
+`test_medicao.py::TestVazio` (3). Suíte do tronco: **4.511 passed**, as mesmas 3 falhas
+pré-existentes de §15.0. Suíte `caissa` `tests/unit/ui`: 282 passed no venv puro
+(`test_revisao_de_texto_view` continua exigindo o `.venv-pack`, como desde o passo 14).
+
+### 16.6 Saída
+
+Tronco: `a3bf4c5` sobre `8d9b02f`. Suíte: `caissa/ui/audit/vazio.py` (novo), `contraste
+--sabotar`, `views/rotulagem.py`, este §16, a linha do roadmap. **Desfazer:** `ui/pele.PADRAO =
+CLASSICA` e a ordem de `PELES` (o polimento e a rolagem ficam: são independentes da pele).
+
+---
+
+## §17 — Passo 17: o livro como unidade — trilho de páginas, importação cancelável, percurso (2026-09-16)
+
+(Previsto em `OCR_UI_REPORT_C3.md` §2; segue no arquivo único. **Em ramo próprio do tronco:
+`passo-17-trilho`**, como Q4 pediu; a suíte recebe as partes que não mudam a janela.)
+
+### 17.0 Em uma tela
+
+- **O percurso principal fecha em 6 ações, medido**: abrir o livro → importar → primeira
+  página duvidosa → abrir o diagrama → gravar → exportar (`AUDIT.percurso`, novo; PASSOU sobre
+  `AAGAARD - Practical Chess Defence.pdf` p. 31–38, que tem 5 páginas duvidosas). Sobre o
+  Kemeri a mesma corrida dá **3 ações** porque não há dúvida a resolver (camada de texto limpa,
+  sem diagramas vetoriais) — o relatório o diz em vez de contar passos que não aconteceram.
+- **Cancelar a importação a 30 % devolve o documento com 30 % das páginas** (R3.5):
+  `PdfImportOptions.keep_partial`; pedidas 8, cancelada após 2 montadas, **3 no documento**
+  (as duas e a que estava no meio), `report.canceled=True`, o trilho com 3 páginas acesas. A
+  sabotagem do roadmap — «cancelamento que descarta o parcial» — é o comportamento antigo
+  (`keep_partial=False`, que os CLIs mantêm) e o teste a acusa: `ImportCanceled` e nada.
+- **O trilho de páginas** (`qt/trilho.py`): uma miniatura por página a 18 DPI (processo de
+  trabalho, as visíveis primeiro), número e três marcas — ▣ lidos/achados, ¶ texto, ✓ revisada
+  — com a cor da linha dizendo se há trabalho (⚠ N). Clicar vai à página; a página exibida está
+  marcada; «Primeira duvidosa» e «Exportar o livro para EPUB…» sob a lista; a importação com
+  barra e «Cancelar» no lugar de «Importar o livro». Interruptor *Ver ▸ Trilho de páginas*.
+- **Tarefa 3 (abas de diagrama → modos do painel principal), na segunda entrega do ramo**
+  (`faf0b1a`): a faixa de abas passou a ter a aba **Livro** e as do acervo; Resultado, Estudo,
+  Revisão e Texto são **modos** da Livro — uma barra de botões marcáveis e exclusivos no topo do
+  painel (`qt/painel_principal.py`), e quem sabe onde cada área mora é `qt/areas_de_trabalho.py`.
+  Ver §17.7. Os portões da F9 rerodados com o trilho e os modos: `teclado`, `contraste`,
+  `texto_pintado`, `bloqueio`, `quadros`, mais `comandos` e `percurso` — **todos PASSOU** (§17.3).
+
+### 17.1 Suíte (main)
+
+| onde | o quê |
+|---|---|
+| `ingest/pdf/importer.py` | `PdfImportOptions.keep_partial`; `run()` devolve o parcial marcado (`ImportReport.canceled`, `pages_planned`, `pages_built`); o parágrafo em curso é fechado antes de entregar; progresso **a cada página** (era a cada 10) |
+| `ui/trilho.py` (novo) | regra pura: `EstadoDaPagina`, `estados(report, decisions, page_count)`, `primeira_duvidosa`, `progresso`, `resumo_pt`. Duvidosa = região de OCR em revisão/abstida sem decisão do revisor **ou** diagrama localizado sem posição; a primeira em ordem de página |
+| `ui/views/importacao.py` (novo) | `ImportadorDoLivro(QObject)`: thread, `keep_partial=True`, `ReviewDecisions.for_pdf`, sinais `estado/progresso/pagina_montada/controles/terminou` — o desenho do `ExportadorDeLivro` |
+| `ui/audit/percurso.py` (novo) | o portão: 6 ações nomeadas por comando do catálogo, o cancelamento a 30 % e a exportação; **tudo numa pasta temporária** (estado, `labels.csv`, galeria, estudos) |
+| testes | `test_importer.py` (+2: 30 % / sabotagem; cancel na survey → vazio marcado), `test_trilho.py` (5) |
+
+### 17.2 Tronco (ramo `passo-17-trilho`, sobre `a3bf4c5`)
+
+| onde | o quê |
+|---|---|
+| `ui/trilho.py` (novo) | `MarcaDaPagina` (copia o estado da suíte por nome), `rotulo_da_pagina`, `papel_da_pagina` (ATENCAO / PRONTO_TEXTO / TEXTO_MORTO / TEXTO_PADRAO — só papéis de texto, medidos ≥ 4,57:1 sobre a lista), `dica_da_pagina` |
+| `qt/trilho.py` (novo) | `TrilhoDoLivro`: lista em `IconMode` vertical com altura de item declarada, miniaturas pelo processo de trabalho (uma por vez, visíveis primeiro, `_visiveis` pela barra e não por `indexAt`), botões do catálogo, barra de progresso, resumo |
+| `qt/importador_de_livro.py` (novo) | a guarda da suíte (como `exportador_de_livro`), a `Ponte` importador↔trilho, o registro no `BusyRegistry` (cancelável, progresso por página), `estados_do_trilho` |
+| `ui/comandos.py`, `ui/menu.py` | `importar_livro`, `cancelar_importacao` (Arquivo), `trilho` (interruptor) e `primeira_duvidosa` (Ver); todos neutros — a ênfase única continua `ler_melhor` |
+| `qt/janela.py` | o trilho à esquerda da coluna do livro; `livro = importador_de_livro.montar(...)`; quatro comandos; 1.944 → 1.984 linhas (catraca com o motivo) |
+| `ui/busy.py`, `docs/ARCHITECTURE.md` | a thread da miniatura declarada; 18 threads |
+| testes | `test_qt_trilho.py` (10), `test_qt_janela.py` (+3), `test_ui_comandos.py` (rótulos divergentes) |
+| **tarefa 3** — `ui/abas.py` | `LIVRO`, `MODOS` (= `DO_DIAGRAMA`), `ABAS = (LIVRO, *DO_ACERVO)`, `ABA_DE_TRABALHO = LIVRO`, `MODO_DE_TRABALHO = RESULTADO`, `e_modo()` |
+| **tarefa 3** — `qt/painel_principal.py` (novo) | `PainelPrincipal`: barra de `QToolButton` marcáveis num `QButtonGroup` exclusivo (nome acessível `Modo X`, grupo `Modos do livro`) + `QStackedWidget`; `adicionar_modo`, `definir_modo`, `definir_contagem` (a regra de `ui/abas.rotulo`), `modo_de(painel)` |
+| **tarefa 3** — `qt/areas_de_trabalho.py` (novo) | `AreasDeTrabalho(QTabWidget)`: a `Livro` montada e à frente; `areas()` (modos + acervo, a ordem das oito abas antigas), `mostrar_area(nome)`, `mostrar(painel)`, `area_atual()`, `nome_da_area_atual()`, `definir_contagens` — a janela e os portões falam por nome, sem saber se é aba ou modo |
+| **tarefa 3** — `qt/janela.py` | monta cada painel e diz se é modo ou aba; `_indice_da_aba`, o laço das contagens e o `indexOf` do `_focar_aba` saíram para o widget; **1.984 → 1.967 linhas**, catraca descida. O estado continua guardando o **modo** (`Revisão`), e uma sessão anterior ao passo reabre a `Livro` nele |
+| **tarefa 3** — testes | `test_qt_janela.py`: ordem `[Livro, Dataset, Galeria, +Rotulagem, +Revisão de texto]`, os quatro modos na ordem de `MODOS` e exclusivos, toda área alcançada por nome, o modo volta pelo estado; `test_busy.py` e a régua do estado vazio varrem `areas()` |
+
+### 17.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --paginas 31-38 --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "%PDF%" --paginas 40-47 --saida benchmarks\reports\ui\c19     # Kemeri: 3 acoes, sem duvida
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado  --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.comandos --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c19
+```
+
+| portão | resultado |
+|---|---|
+| `percurso` (Aagaard 31–38) | **PASSOU, 6 ações**: abrir 391 ms · importar 31,9 s (OCR em 8 páginas) · primeira duvidosa 75 ms · abrir o diagrama 1,07 s (lê a página) · gravar 0 ms · exportar 3,4 s → `percurso.epub` 1,06 MB. Cancelamento: 8 pedidas, cancelada após 2, **3 montadas** (0,38), `canceled=True`, trilho com 3 acesas. `percurso_20260916_074202.json` |
+| `percurso` (Kemeri 40–47) | PASSOU com **3 ações** — 289 páginas com estado, 0 duvidosas: os passos 3–5 não se aplicam e o relatório o declara. `percurso_20260916_073528.json` |
+| `teclado` | PASSOU em todos os arranjos com o trilho (+3 focáveis por aba: a lista e dois botões, nomeados pelo catálogo). `teclado_20260916_074039.json` |
+| `comandos` | PASSOU: 397 medidos, 388 habilitados, 0 soltos, 0 que prometem. `comandos_20260916_*.json` |
+| `bloqueio` | PASSOU com o trilho (289 itens criados na abertura, miniaturas no processo). `bloqueio_20260916_074047.json` |
+
+**Segunda entrega (tarefa 3), `benchmarks/reports/ui/c20`**, os mesmos comandos com `c20`:
+
+| portão | resultado |
+|---|---|
+| `teclado` | **PASSOU nos 6 arranjos**, com os quatro modos medidos um a um (Foco: Resultado 34, Estudo 62, Revisão 40, Texto 49 focáveis, todos pelo Tab; 0 sem nome). A 1.ª corrida **REPROVOU** — ver §17.7 item 1. `teclado_20260916_084346.json` |
+| `contraste` | PASSOU: 300 pares por polaridade, 220 sob portão, 0 reprovados (menor folga 3,03:1 na barra de rolagem escura). `contraste_20260916_084439.json` |
+| `texto_pintado` | PASSOU: 828 medidos, 24 cegos, 0 cobertos, 0 cortados, nos 24 arranjos × tamanhos. `texto_pintado_20260916_084432.json` |
+| `bloqueio` | PASSOU: pior 13,5 ms (abrir o PDF) contra a referência de 55,6 ms. `bloqueio_20260916_084455.json` |
+| `quadros` | PASSOU: pan 657 · zoom 430 · juntos 459 fps @ p95. `fps_20260916_084506.json` |
+| `comandos` | PASSOU: 397 medidos, 388 habilitados, 0 soltos, 0 que prometem. `comandos_20260916_084403.json` |
+| `percurso` (Aagaard 31–38) | **PASSOU, 6 ações** (importar 33,1 s; exportou 1,06 MB); cancelamento a 30 % → 3 de 8 montadas, `canceled=True`. `percurso_20260916_084614.json` |
+| capturas | `c20/capturas/modos_{claro,escuro,fita}_1366x768_{resultado,estudo,revisao,texto,dataset,...}.png` — a barra de modos sob a faixa de abas, o modo à frente na cor de seleção |
+
+**Sabotagem.** A do roadmap — cancelamento que descarta o parcial — é o comportamento de
+`keep_partial=False`, afirmado em `test_importer.py::test_a_cancel_at_thirty_percent_keeps_thirty_percent_of_the_pages`
+(o mesmo cancelamento sem a opção levanta `ImportCanceled` e não devolve página nenhuma).
+
+### 17.4 O que o arnês ensinou
+
+1. **A primeira corrida do `percurso` gravou uma amostra de verdade** em `data/labels.csv` e um
+   PNG em `data/samples/` do tronco — o passo 5 é `salvar`, e a janela do arnês usava o dataset
+   padrão. Revertido à mão no mesmo minuto; o arnês passa `csv_de_rotulos`, `pasta_de_estudos`
+   e `pasta_da_galeria` para a pasta temporária, como os testes de janela. É a lição da F9-C10
+   (`estado_de_medicao`) estendida ao acervo: **um portão que escreve no acervo de quem o roda
+   não é um portão** — e `test_medicao.TestNenhumPortaoEscreveNaSessaoDeQuemORoda` só vigia o
+   estado; o dataset fica como item para o crítico.
+2. **`indexAt` não serve para saber que linhas estão à vista** numa lista com `spacing`: cai no
+   vão e responde −1; a primeira versão pedia as miniaturas 0–12 fosse qual fosse a página. A
+   conta pela barra de rolagem e pela altura uniforme é a certa.
+3. **Um item sem ícone e um com ícone medem alturas diferentes**, e `uniformItemSizes` mede o
+   primeiro: a altura do item é declarada (`ALTURA_DO_ITEM`) e a página ainda não rasterizada
+   tem uma folha lisa na superfície **elevada** — na afundada ela era invisível (fotografado).
+4. Sobre o Kemeri o importador não roda OCR: as 289 páginas têm camada de texto válida e nenhum
+   diagrama vetorial, então nada é duvidoso. O trilho diz «289 página(s) lida(s) · nada para
+   rever», que é verdade — mas é o livro errado para medir o percurso; por isso o Aagaard.
+
+### 17.5 O que o ramo ainda deve
+
+- **O crítico visual** (§11.4) sobre a janela com o trilho e os modos. O ramo foi fundido em
+  `4d8c894` pelo critério de Q4 (portões e `percurso` verdes); o crítico revisa o fundido.
+- O trilho não persiste a visibilidade no `AppState` (sem campo novo neste passo).
+- A miniatura não se atualiza quando a página é anotada/salva (só com a importação).
+- A barra de modos é um grupo de botões: `Tab` para no modo à frente e as **setas** andam entre
+  os quatro (a regra do Qt para grupos, a mesma dos rádios). Não há atalho direto por modo
+  (`Ctrl+1..4`); fica para o crítico dizer se falta.
+
+### 17.6 Saída
+
+Tronco: ramo `passo-17-trilho`, commits `10aac70` (tarefas 1, 2, 4) e `faf0b1a` (tarefa 3)
+sobre `a3bf4c5`. **Fundido em `4d8c894`** (2026-09-16, `git merge --no-ff`) pelo critério que Q4
+fixou — «só se funde com os portões e o `AUDIT.percurso` verdes», que `c20` cumpriu; desfazer é
+`git revert -m 1 4d8c894`. O crítico visual (C3) revisa o resultado fundido. Suíte:
+`ingest/pdf/importer.py`, `ui/trilho.py`, `ui/views/importacao.py`, `ui/audit/percurso.py`,
+`ui/audit/capture.py` (`areas_de_trabalho`), `ui/audit/teclado.py` (a régua do grupo), os laços
+de `teclado`/`texto_pintado`/`execucao`/`capture`, testes, este §17 e a linha do roadmap.
+**Desfazer:** o ramo não se funde; na suíte, `keep_partial` é opcional e desligado por padrão, e
+`areas_de_trabalho` cai para "cada aba é uma área" num tronco sem `AreasDeTrabalho`.
+
+### 17.7 Tarefa 3 — as abas do diagrama viram modos
+
+**O que mudou de forma.** A faixa de abas tinha sete ou oito abas de peso igual, e quatro delas
+(Resultado, Estudo, Revisão, Texto) falam do mesmo objeto — o diagrama e a página no visor ao
+lado — enquanto as outras falam do acervo. Agora a faixa tem `Livro | Dataset | Galeria |
+Rotulagem | Revisão de texto`, e a `Livro` tem no topo uma barra de quatro botões marcáveis e
+exclusivos, com o painel do modo escolhido embaixo. A contagem da fila (`Revisão (27)`) foi para
+o botão, pela mesma regra pura de `ui/abas.rotulo`. Nenhum painel saiu, nenhum foi reescrito;
+quatro mudaram de casa. **O estado guarda o mesmo nome de sempre** (`active_tab = "Revisão"`),
+e é por isso que uma sessão anterior ao passo reabre no mesmo lugar: `mostrar_area("Revisão")`
+abre a `Livro` naquele modo.
+
+**Onde mora o conhecimento.** Um só widget, `qt/areas_de_trabalho.AreasDeTrabalho(QTabWidget)`,
+sabe se um nome é aba ou modo, o que está à frente e como percorrer cada área uma vez. A janela
+só monta cada painel e diz se ele é modo ou aba — e perdeu 17 linhas com isso (1.984 → 1.967,
+catraca descida). Os portões da suíte ganharam o helper `capture.areas_de_trabalho(janela)`, o
+**único** laço do arnês sobre as áreas: um `for indice in range(janela.abas.count())` passaria a
+ver três abas onde há oito áreas, e mediria o modo Resultado quatro vezes e os outros nenhuma.
+Num tronco anterior ao passo o helper cai para "cada aba é uma área".
+
+**O que o arnês ensinou.**
+
+1. **A 1.ª corrida do `teclado` REPROVOU as quatro áreas da Livro nos 6 arranjos**: «Modo
+   Estudo / Revisão / Texto inalcançáveis pelo Tab». O Qt faz de um grupo de botões marcáveis
+   **um** ponto de parada (`QAbstractButtonPrivate::fixFocusPolicy`: depois do foco, os outros do
+   grupo perdem `TabFocus`) e as setas andam entre eles marcando o vizinho (`moveFocus`) — a
+   regra dos rádios, que a régua já aceitava (`por_seta`). Mas `_grupo_exclusivo` só olhava o
+   `QButtonGroup` **depois** de `autoExclusive()` dizer sim, e um botão num grupo **não** é
+   `autoExclusive` (a propriedade é para botões sem grupo). Medido em PyQt6 6.11 offscreen: três
+   botões num grupo, `autoExclusive=[False]*3`; após o foco, as políticas dos outros dois perdem
+   o `TabFocus`; `Right` foca e marca o seguinte; `Tab` sai do grupo. A régua passou a seguir a
+   condição do próprio Qt (`group || autoExclusive`), com teste em `test_medicao.py`. É a mesma
+   classe de lição da F9-C12: **um defeito que descreve o Qt, e não o produto, é defeito da
+   régua** — e a régua é que muda, com a prova ao lado.
+2. **A catraca desceu em vez de subir.** A primeira versão pôs `mostrar_por_nome`,
+   `superficie_atual`, `superficies` e `mostrar` na janela (+57 linhas, 2.041). Reler o
+   docstring da catraca («baixe o que for possível») deu o desenho certo: o `QTabWidget` que sabe
+   onde cada área mora é um widget, e a janela só o usa.
+3. **Nenhuma medida da F9 piorou**: contraste 0 reprovados, texto pintado 0 cobertos/cortados,
+   bloqueio pior 13,5 ms, quadros ≥ 430 fps, comandos 0 soltos — e o `percurso` continua em 6
+   ações. A barra de modos custou uma linha de botões (≈ 30 px) ao painel; a janela cabe em 768.
+
+## §18 — Passo 13: editor de posição com o recorte e sobreposição numerada (2026-09-16)
+
+### 18.0 Em uma tela
+
+- **Corrigir uma casa errada leva 3 ações, sem zoom na página — medido** (`AUDIT.percurso
+  --fluxo casa`, novo fluxo do instrumento do passo 17): clicar a casa **no recorte** → escolher
+  a peça na paleta → aplicar no tabuleiro. PASSOU sobre o Kemeri p. 80 (e2: dama branca → dama
+  preta) e sobre o Aagaard p. 31 (f1: torre branca → bispo branco). A sabotagem
+  (`--sabotar sem_sincronia`, o clique do recorte não chega ao tabuleiro) custa a ação a mais
+  — clicar a casa de novo, no tabuleiro — e o portão **REPROVA com 4**.
+- **O recorte do diagrama ao lado do tabuleiro** (U1, SPEC §10.4): o tabuleiro retificado que o
+  classificador leu (`board_rgb`), ampliado, num divisor com o tabuleiro editável; os dois
+  quadrados saem do mesmo tamanho em qualquer largura (pisos iguais, folga 1:1). A casa sob o
+  ponteiro e a selecionada se espelham nos dois; a dica de qualquer casa diz as **três leituras**
+  e a **margem**; um clique no recorte é o gesto inteiro do tabuleiro (`pressionar`: pinta com
+  pincel, seleciona sem). O recorte é focável e nomeado: setas andam, `Enter` clica.
+- **Âmbar por margem, ligado por padrão.** A tinta de incerteza passou a seguir a margem entre a
+  primeira e a segunda leitura (`LIMIAR_DE_MARGEM = 0,5`), na mesma rampa do produto; sem matriz
+  (fila, dataset) vale a régua antiga. A caixa virou «Esconder incerteza» e nasce desmarcada;
+  `AppState.show_heatmap` continua sendo o que se guarda (é o inverso dela).
+- **Caixas da página com dois estados a mais**: «duvidoso» (a leitura hesitou em alguma casa;
+  âmbar, `?`) e «corrigido» (correção no editor ainda não gravada; `✎`), além de lido, pronto
+  e dispensado — regra em `page_overlay.estado_da_caixa`, com a precedência salvo > confirmado >
+  corrigido > duvidoso > lido; o «corrigido» é recarimbado a cada edição e desfazer o devolve a
+  lido. **Vazio desenhado**: sem diagrama o recorte mostra uma moldura tracejada com a frase.
+- **O que o âmbar não é**: p(exato) do diagrama. Isso é o passo 8, bloqueado pela população
+  (§4); o âmbar diz «aqui o modelo hesitou», e a dica diz entre o quê.
+- Portões da F9 rerodados (`c21`): `teclado` (o recorte entra na volta do Tab, 0 sem nome),
+  `contraste`, `texto_pintado`, `bloqueio` (abrir PDF 7,0 ms ≤ 214,5), `quadros` (≥ 413 fps),
+  `comandos`, `percurso --fluxo livro` (6 ações) — **todos PASSOU**.
+
+### 18.1 Tronco (`religa-as-decisoes-orfas`, depois de fundir o ramo `passo-17-trilho` em `4d8c894`)
+
+| onde | o quê |
+|---|---|
+| `ui/recorte_do_diagrama.py` (novo, sem toolkit) | `casa_em` / `retangulo_da_casa` (casa ↔ pixel, com o giro de 180° de `RecognizedDiagram.rotation`), `alternativas` (top-3), `margem`/`margens`, `casas_ambar`, `tinta_do_diagrama` (uma `Tinta` para o tabuleiro e o recorte: por margem com matriz, pela confiança sem), `e_duvidoso`, `dica_da_casa` («e7 · dama branca 0,600 · dama preta 0,350 · … · margem 0,25») |
+| `qt/painel_de_recorte.py` (novo) | `PainelDeRecorte`: o recorte com fio neutro de 1 px, contorno das casas em hesitação na rampa de calor (contorno e não tinta: o pixel impresso é o que se veio ver), anéis de seleção e de ponteiro, dica por casa, teclado (setas, `Espaço`/`Enter`), vazio desenhado; `sizeHint` = 240 (o piso do tabuleiro) |
+| `qt/tabuleiro_editavel.py` | `casa_apontada` (mouse tracking ligado), `apontar`, `selecionar_casa`, `pressionar` (o clique de um espelho), `definir_probabilidades`, dica por casa, anel tracejado da casa apontada |
+| `qt/painel_de_resultado.py` | o divisor recorte ∥ tabuleiro (1:1 sobre pisos iguais), a fiação nos dois sentidos, `ligar_recorte` (a costura da sabotagem), `mudou` (sinal), `mostrar_incerteza` (propriedade), tinta por margem, «Esconder incerteza», legenda numa linha, piso de 1 px na lista e nos detalhes |
+| `ui/page_overlay.py`, `qt/visor.py` | `DiagramBox.doubtful`/`.edited`, estados `DUVIDOSO`/`CORRIGIDO` com traço e glifo próprios (assinatura injetiva mantida; `pronto` continua o traço mais forte), `mark_edited`, `boxes_from_diagrams` decide `doubtful`; cores `ATENCAO`/`CORRIGIDO` no visor |
+| `ui/editor_model.py` | `hand_edited_indices()` — a diferença de agora entre leitura e tela, e não a marca `edited_by_hand` |
+| `qt/janela.py` | `_publicar_caixas` carimba `mark_edited` quando o editor mostra a página; `_recarimbar_caixas` religado a `painel.mudou`; 1.967 → 1.979 linhas (catraca com o motivo) |
+| `ui/strings.py` | `ESCONDER_INCERTEZA`; `resumo_da_legenda` / `LIMITE_DA_LEGENDA` (ver 18.3 item 2) |
+| testes | `test_ui_recorte_do_diagrama.py` (18), `test_qt_painel_de_recorte.py` (12), `test_qt_painel_de_resultado.py` (+9: a fiação, a sabotagem, a tinta, a caixa), `test_page_overlay.py` (+3), `test_editor_model.py` (+1, e os seis módulos de `ui/` sem Tk registrados em `SEM_TKINTER` — o teste estava vermelho desde `8b61a3e`), `test_qt_janela.py` (+1: lido → corrigido → lido → pronto). Suíte do tronco: 4.441 passaram |
+
+### 18.2 Suíte (main)
+
+| onde | o quê |
+|---|---|
+| `ui/audit/percurso.py` | `--fluxo casa`: preparação (abrir, ir à página, ler pelo clique na caixa — cronometrada, não conta) e as três ações como **cliques de mouse de verdade** (`QTest.mouseClick`) nos widgets nomeados; a casa é a ocupada de menor margem (ou de menor confiança) do primeiro diagrama, a peça é a segunda leitura; `--sabotar sem_sincronia`; o relatório diz a casa, a leitura, a peça, o zoom antes/depois, se a caixa ficou «corrigido» e se o recorte é focável. `--fluxo livro` é o do passo 17, intacto |
+
+### 18.3 Portões
+
+```
+set PYTHONPATH=src;..\ChessVisionOFF_Puro\src;.venv-pack\Lib\site-packages
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "%PDF%" --pagina 80 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "%PDF%" --pagina 80 --sabotar sem_sincronia --saida benchmarks\reports\ui\c21   # tem de reprovar
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --fluxo casa --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --pagina 31 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.percurso --pdf "..\ChessVisionOFF_Puro\PDF\AAGAARD - Practical Chess Defence.pdf" --paginas 31-38 --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.teclado  --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.comandos --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.texto_pintado --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.contraste --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.bloqueio --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+.venv\Scripts\python.exe -m caissa.ui.audit.quadros  --pdf "%PDF%" --saida benchmarks\reports\ui\c21
+```
+
+| portão | resultado |
+|---|---|
+| `percurso --fluxo casa` (Kemeri p. 80) | **PASSOU, 3 ações**: clicar e2 no recorte (selecionada no tabuleiro) · dama preta na paleta · aplicar; sem zoom (0,402 antes e depois, enquadramento à largura); a caixa da página ficou «corrigido»; recorte focável. Preparação: abrir 459 ms · página 493 ms · ler 2,1 s. `percurso_casa_20260916_115628.json` |
+| `percurso --fluxo casa` (Aagaard p. 31) | PASSOU, 3 ações (f1: torre branca → bispo branco). `percurso_casa_20260916_115608.json` |
+| sabotagem `sem_sincronia` | **REPROVOU, 4 ações**: a 2.ª é «clicar a casa e2 no tabuleiro (o recorte não a selecionou)». `percurso_casa_sabotado_20260916_115637.json` |
+| `percurso --fluxo livro` (Aagaard 31–38) | PASSOU, 6 ações (importar 31,6 s; exportou 1,06 MB; cancelamento 3/8). `percurso_20260916_115521.json` |
+| `teclado` | PASSOU nos 6 arranjos; Resultado 35 focáveis na Foco (era 34: o recorte), 0 sem nome. `teclado_20260916_115238.json` |
+| `contraste` | PASSOU: 0 reprovados nas duas polaridades. `contraste_20260916_115323.json` |
+| `texto_pintado` | PASSOU: 828 medidos, 0 cobertos, 0 cortados. `texto_pintado_20260916_115323.json` |
+| `bloqueio` | PASSOU: abrir PDF 7,0 ms (o passo pedia ≤ 214,5 e ≤ 7 operações fora do visor: 0). `bloqueio_20260916_115331.json` |
+| `quadros` | PASSOU: pan 627 · zoom 414 · juntos 447 fps @ p95 (o passo pedia ≥ 55). `fps_20260916_115334.json` |
+| `comandos` | PASSOU: 397 medidos, 0 soltos, 0 que prometem. `comandos_20260916_115253.json` |
+| retratos | `c21/retratos/recorte_foco_{1366x768,1440x900,1920x1080}.png`: o recorte e o tabuleiro do mesmo tamanho (242/240 a 1366; 379/436 a 1920), a casa apontada tracejada nos dois, a selecionada cheia |
+
+### 18.4 O que o arnês ensinou
+
+1. **A primeira corrida do fluxo `casa` esperou 300 s por uma página sem diagrama.** O Kemeri
+   p. 41 (a página dos outros portões) não tem caixa; o clique na caixa 0 lia a página, a
+   leitura terminava em `NoBoardDetectedError` e a condição «itens > 0» nunca vinha. O
+   instrumento passou a esperar «a leitura terminou» (o adiamento do duplo clique inativo e a
+   `Tarefa` zerada) e a recusar a página sem caixa com a frase certa. A página do portão é a 80
+   (a única do Kemeri no conjunto de campo com diagrama), e o Aagaard p. 31 é a segunda amostra.
+2. **A legenda inteira forçava a janela a 1.323 px de altura.** O rótulo de detalhes escrevia
+   `Legenda: {caption}` com o parágrafo de análise inteiro (dezenove linhas no Kemeri p. 80), e
+   um `QLabel` que quebra linha pede a altura de todas como **mínimo** — a janela deixava de caber
+   em 768 na primeira página lida com legenda longa. Defeito anterior ao passo, invisível para
+   os portões porque nenhum deles lia uma página com legenda; a legenda passou a uma linha
+   (`strings.resumo_da_legenda`, 120 caracteres) e a lista de diagramas e o parágrafo ganharam
+   piso de 1 px — o painel com um diagrama lido pede 541 px em vez de 697, e a janela **cabe em
+   768 com página lida** (mínimo 697 na Foco).
+3. **Empilhar não serve.** A primeira versão punha o recorte **acima** do tabuleiro quando o
+   painel era mais alto que largo; o piso de altura do empilhado forçava a janela acima de 768,
+   e a janela alta fazia o painel parecer estreito — um laço que se fecha sozinho. Lado a lado, o
+   piso de altura não muda, e a 1366 × 768 o tabuleiro continua com os ~240–300 px que a altura
+   já lhe dava.
+4. **Pisos iguais, folga 1:1.** Com o recorte pedindo o mínimo (160) o divisor lhe dava 175 px ao
+   lado de um tabuleiro de 436 a 1920 — uma miniatura. Pedir 240 (o piso do tabuleiro) faz a
+   folga se repartir ao meio sobre o mesmo piso, e os dois saem iguais em qualquer largura.
+5. **Uma casa vazia não se seleciona** — nem no tabuleiro nem no recorte (`BoardModel.press`):
+   o fluxo `casa → peça → aplicar` é o de uma peça lida como outra, e o instrumento escolhe a
+   casa entre as ocupadas. Para uma casa vazia o caminho é `peça → casa` (2 ações), e o mesmo
+   clique no recorte o serve.
+6. **`test_editor_model.SemTkinterTests` estava vermelho desde o WIP da outra sessão**
+   (`8b61a3e`): quatro módulos de `ui/` sem Tk fora do registro, mais o `trilho.py` do passo 17.
+   Os seis entraram no registro com a frase de cada um; o teste voltou a vigiar.
+
+### 18.5 O que fica
+
+- **O âmbar significa hesitação, não p(exato)**: o passo 8 continua bloqueado pela população do
+  conjunto de campo (0b, humano). Quando ele entrar, `tinta_do_diagrama` é o único lugar a mudar.
+- O divisor recorte ∥ tabuleiro não é persistido no `AppState` (sem campo novo neste passo).
+- A 1366 × 768 com página lida a lista de diagramas cede primeiro (1 px): o número do diagrama
+  continua no seletor e nas caixas da página. É o preço de caber; o crítico visual decide se
+  vale.
+- **Crítico visual (C3)** sobre os passos 13, 16 e 17: é papel do crítico (`CRITIC_CHARTER.md`),
+  às cegas contra Affinity/Resolve/Chessbase; o material está em `benchmarks/reports/ui/c18`,
+  `c20` e `c21/retratos`.
+
+### 18.6 Saída
+
+Tronco: `religa-as-decisoes-orfas`, commit `790b8c8` (sobre `4d8c894`, a fusão do ramo do
+passo 17 pelo critério de Q4 — portões e `percurso` verdes). Suíte: `ui/audit/percurso.py`
+(`--fluxo casa`), este §18, a linha do roadmap, cópias em `docs/quality/ui/c21`. **Desfazer:** o
+divisor é um widget do painel (`PainelDeResultado.divisor`); a tinta volta à confiança trocando
+`tinta_do_diagrama` pela chamada antiga; os dois estados novos das caixas só aparecem com
+`doubtful`/`edited` marcados.
+
+---
+
+## §19 — Passo 9, tarefa 1: os barrados nomeados, e o rascunho do passo 0b (2026-09-20)
+
+### 19.0 Em uma tela
+
+Todos os passos sem dependência humana estão executados (§18). O que restava do passo 9 sem
+depender de 0b era a **tarefa 1** — o diagnóstico: para cada diagrama casado que o portão de
+exportação barra, certo ou errado pela anotação e o motivo do bloqueio. `tools/f4_field_failures.py`
+ganhou `--barrados` e responde com 20 linhas (`barrados.md`): **12 barrados** (1 ilegal, 7 por
+reparo, 4 por casa fraca) e mais **8 exportados sem FEN** — dos 19 sem placement do §4.1, 18 foram
+casados; o 19.º o detector não casa (recall 114/115).
+
+Só **2** dos 12 barrados têm veredito (os dois do Levenfis p150: 1 certo, 1 errado — os de §4.1);
+os outros **10 são "sem FEN"**. O diagnóstico do passo 9 termina, portanto, onde o §4 já dizia: **a
+alavanca é anotar.** Para encurtar essa anotação, este passo entrega o rascunho do 0b: uma
+leitura visual independente (segundo leitor, não o modelo, recorte por recorte e ampliação nas
+casas em dúvida) dos 18 casados sem FEN, em `docs/quality/0b/propostas_0b.{json,md}`, com a casa em
+que cada proposta difere do modelo e a dúvida escrita. **Nada disso entrou no conjunto de campo**:
+cada entrada tem `confirmado: false`, e `tools/aplicar_0b.py` só grava as que um humano virar para
+`true` (rascunho por padrão, `--gravar` escreve; casa pela bbox anotada, nunca sobrescreve placement).
+
+```
+.venv\Scripts\python.exe tools\f4_field_failures.py --barrados --out benchmarks\reports\f4_barrados   # 1 min
+.venv\Scripts\python.exe tools\aplicar_0b.py            # 0 aplicáveis, 18 pendentes (nada gravado)
+.venv\Scripts\python.exe tools\aplicar_0b.py --gravar   # depois de confirmar as entradas
+```
+
+### 19.1 A tabela (barrados.md, régua da anotação — a correção de `field_corrections.json` não se aplica aqui)
+
+| motivo | certo | errado | sem FEN | onde |
+|---|---|---|---|---|
+| reparo | 1 | 1 | 5 | Levenfis p150 ×2, Koblenz p30/p50 ×3, Niemeijer p20, Stefaniu p100 |
+| casa fraca | 0 | 0 | 4 | Euwe p40 (0,573), Niemeijer p20 ×3 (0,35–0,50) |
+| ilegal | 0 | 0 | 1 | Koblenz p30 |
+| exportado (sem FEN) | — | — | 8 | Euwe p25 ×3, Gallagher p124, Reinfeld p40/p150, Yusupov p11 ×2 |
+
+### 19.2 O que a leitura visual diz — se as propostas valerem
+
+| | modelo certo | modelo errado |
+|---|---|---|
+| exportados sem FEN (8) | 8 | 0 |
+| barrados sem FEN (10) | 2 (Euwe p40, Niemeijer p20 d1 — casa fraca) | 8 |
+
+- Os 8 exportados são todos iguais à leitura (Euwe/Reinfeld/Yusupov/Gallagher, fontes limpas ou
+  hachura leve): a exportação não perde nada aqui, e `conditional_exact` continua 1,0 nesse
+  estrato se as propostas valerem.
+- Dos 10 barrados sem FEN, **8 estão errados** — e não por uma casa: os quatro do Koblenz
+  (`El dominio del arte de la combinación`, fonte em que as pretas têm traço grosso e as brancas
+  contorno fino) diferem em 8–11 casas cada, com dama/rei/bispo trocados de cor. O Niemeijer erra
+  1 casa em dois deles (cavalo lido como peão em g6/h6) e 8 no primeiro. O Stefaniu p100 erra b5
+  (rei por cavalo) e deixa e1 vazia. **O portão barrou bem 8 de 10** — os dois certos barrados são
+  os de casa fraca (0,573 e 0,347).
+- Uma dúvida declarada: Stefaniu p100 **f1** — a tinta é a do bispo preto de b7, mas as pretas
+  já têm bispos em f8 e b7; pela lógica da partida é o bispo branco. É a mesma dúvida que o
+  anotador escreveu na nota; fica marcada `média` e para a página decidir.
+
+**Consequência para o passo 8.** Com as propostas confirmadas, os negativos do conjunto de campo
+passam de 2 para **10** (8 + 2) em 114 casados — ainda longe dos ≥ 30 do 0b, e concentrados em
+dois livros (Koblenz 4, Niemeijer 3). Um modelo de dez sinais continua sem população; o que muda é
+que a discriminação por `min_confidence` passa a ter algo a separar (os 8 errados barrados estão
+entre 0,002 e 0,50; os 2 certos barrados em 0,35 e 0,57 — sobreposição em Niemeijer). Os ≥ 20
+errados que faltam continuam sendo o trabalho humano do 0b: páginas novas pela fila da aba
+Dataset por menor `min_confidence`, de livros que ainda não estão no conjunto.
+
+### 19.3 Sabotagem
+
+A sabotagem do passo 9 (trocar 3 anotações por FEN errada → `conditional_exact` cai) só faz
+sentido com FEN anotada, e o portão do passo 9 espera o passo 8; nenhum portão novo foi declarado
+aqui. O que se pode provar já: `aplicar_0b.py` **recusa** sobrescrever placement existente (rodado
+duas vezes numa cópia, a 2.ª recusa as 2 gravadas), recusa bbox sem par único e FEN inválida, e sem
+`--gravar` não toca no arquivo — o `git status` do tronco fica limpo em `data/` depois de todas as
+corridas deste passo.
+
+### 19.4 Saída
+
+Suíte: `tools/f4_field_failures.py --barrados` (`barrados.json/.md`, `ficha_0b.md`),
+`tools/aplicar_0b.py`, `docs/quality/0b/` (tabela, ficha, propostas e os 20 recortes em JPEG; os PNG
+ficam em `benchmarks/reports/f4_barrados`, fora do git), este §19 e a linha do roadmap. Tronco:
+inalterado. **Desfazer:** apagar `docs/quality/0b/`; nada foi gravado no conjunto de campo.
+
+### 19.5 As 18 confirmadas e gravadas — o passo 8 volta a ter população (2026-09-20, mais tarde)
+
+O usuário conferiu as 18 propostas contra as páginas: 16 valiam; em **b08** e **b09** (Koblenz p50) o
+segundo leitor errou a cor de um bispo (g4 e e7 são pretos) e a leitura foi corrigida. As 18 entraram
+no conjunto de campo por `tools/aplicar_0b.py --gravar` — tronco `0fbb908`, `data/field_set.jsonl`:
+115 diagramas, **114 com placement** (o único sem é o do Yusupov p11 que o detector não casa).
+
+O portão do passo 8, rodado sobre o conjunto novo (`diagram_confidence_gate.py --runs 3`, 3 execuções
+idênticas, ~2 min):
+
+```
+casados com posição anotada: 114 (exatos 104 régua corrigida; negativos: 10)
+AUROC fora da dobra (por livro): 0,899   constante 0,500   min_confidence sozinho: 0,966
+ECE 0,011   Brier 0,019 (constante 0,080)
+  fonte          n=18 neg=1    scan-hachurado n=21 neg=5    scan-puro n=44 neg=4    vetorial n=31 neg=0
+portão: AUROC ≥ 0,90 ✗ · ECE ≤ 0,03 ✓ → REPROVOU
+--sabotar ruido: AUROC 0,206 → REPROVOU
+```
+
+O que mudou de verdade: **a sabotagem passou a ser distinguível** (0,899 real contra 0,206 com ruído; em
+§4 eram 0,02 e 0,12, indistinguíveis) — o instrumento agora mede. O que não mudou: o portão fica
+vermelho, e por um motivo que os números explicam — com 10 negativos o modelo de dez sinais (0,899)
+fica **abaixo** de `min_confidence` sozinho (0,966): é ajuste demais para população de menos. A alavanca
+continua a do 0b, os ≥ 20 errados que faltam em páginas novas; enquanto isso, nada muda no produto
+(`default_confidence()` segue `None`, a fila e o âmbar seguem em `min_confidence` — que, medido, é o
+melhor sinal disponível).
+
+**Saída:** tronco `0fbb908` (conjunto de campo); suíte: `docs/quality/0b/propostas_0b.json` com as 18
+confirmadas, este §19.5. **Desfazer:** `git -C ChessVisionOFF_Puro revert 0fbb908`.

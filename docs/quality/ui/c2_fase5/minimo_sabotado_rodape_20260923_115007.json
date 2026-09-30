@@ -1,0 +1,739 @@
+{
+  "gerado_em": "2026-09-23T11:50:07+00:00",
+  "teto": [
+    1250,
+    640
+  ],
+  "sabotagem": "rodape",
+  "medidas": [
+    {
+      "pele": "classica",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2208,
+        606
+      ],
+      "ficou": [
+        2208,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            1045,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "Gaprindashvili, Paata - Imagination in Chess. How To Think Creatively And Avoid "
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            2208,
+            606
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 28
+        },
+        {
+          "tamanho": [
+            2208,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 17
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            2208,
+            606
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            2208,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": false,
+      "a_vista": false
+    },
+    {
+      "pele": "foco",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2208,
+        640
+      ],
+      "ficou": [
+        2208,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            1045,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "Gaprindashvili, Paata - Imagination in Chess. How To Think Creatively And Avoid "
+        },
+        {
+          "minimo": [
+            702,
+            248
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            542,
+            516
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            115,
+            396
+          ],
+          "cadeia": "CartaoDaLinha < QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            2208,
+            640
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 28
+        },
+        {
+          "tamanho": [
+            2208,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 18
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            2208,
+            640
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            2208,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": false,
+      "a_vista": false
+    },
+    {
+      "pele": "fita",
+      "pdf": "",
+      "sabotagem": "rodape",
+      "areas_visitadas": [
+        "Resultado",
+        "Estudo",
+        "Revisão",
+        "Texto",
+        "Dataset",
+        "Galeria",
+        "Rotulagem",
+        "Revisão de texto"
+      ],
+      "frase_no_rodape": 300,
+      "minimo": [
+        2190,
+        629
+      ],
+      "ficou": [
+        2190,
+        728
+      ],
+      "motores": [
+        {
+          "minimo": [
+            1617,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "A importação de 1937 Kemeri.pdf terminou depois de o livro mudar e foi descartad"
+        },
+        {
+          "minimo": [
+            1045,
+            16
+          ],
+          "cadeia": "RotuloComum < RodapeDaJanela < QWidget",
+          "texto": "Gaprindashvili, Paata - Imagination in Chess. How To Think Creatively And Avoid "
+        },
+        {
+          "minimo": [
+            777,
+            59
+          ],
+          "cadeia": "Fita < QWidget < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            700,
+            199
+          ],
+          "cadeia": "QWidget < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            529,
+            482
+          ],
+          "cadeia": "QStackedWidget < AreasDeTrabalho < QSplitter < QWidget",
+          "texto": ""
+        },
+        {
+          "minimo": [
+            139,
+            390
+          ],
+          "cadeia": "QWidget < QWidget < QScrollArea < QSplitter < PainelDeRevisaoDeTexto < QStackedWidget",
+          "texto": ""
+        }
+      ],
+      "vistas": [
+        {
+          "tamanho": [
+            2190,
+            629
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 58
+        },
+        {
+          "tamanho": [
+            2190,
+            728
+          ],
+          "fora_sem_barra": [],
+          "espremidos": [
+            {
+              "area": "Resultado",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Estudo",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Dataset",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 480,
+              "minimo": 1617
+            },
+            {
+              "area": "Galeria",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 499,
+              "minimo": 1617
+            },
+            {
+              "area": "Rotulagem",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 499,
+              "minimo": 1617
+            },
+            {
+              "area": "Revisão de texto",
+              "tipo": "RotuloComum",
+              "texto": "A importação de 1937 Kemeri.pdf terminou",
+              "cadeia": "RodapeDaJanela < QWidget",
+              "largura": 499,
+              "minimo": 1617
+            }
+          ],
+          "alcancaveis_pela_barra": 19
+        }
+      ],
+      "rodape": [
+        {
+          "tamanho": [
+            2190,
+            629
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        },
+        {
+          "tamanho": [
+            2190,
+            728
+          ],
+          "mensagem_px": 480,
+          "documento_px": 1045,
+          "barra_px": 120,
+          "espremidos": []
+        }
+      ],
+      "cabe": false,
+      "a_vista": false
+    }
+  ],
+  "passou": false
+}

@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -43,8 +43,11 @@ __all__ = [
     "ReviewDecisions",
     "ReviewItem",
     "ReviewQueue",
+    "accepts_nothing",
     "blind_guard",
     "decisions_path",
+    "sem_efeito",
+    "unread_page",
 ]
 
 RectT = tuple[float, float, float, float]
@@ -55,6 +58,51 @@ class Action(StrEnum):
     EDIT = "edit"              # the reviewer typed the text
     KEEP_IMAGE = "keep_image"  # leave the region as a picture
     SKIP = "skip"
+
+
+def accepts_nothing(action: Action, reading: str) -> bool:
+    """An accept of no reading: «Aceitar leitura», or the Enter on an empty truth, accepts nothing.
+
+    The item was never read: a page whose OCR raised, a contested page the OCR could not answer.
+    Crítico da fase 5, ciclo 6: the page item of a ``MemoryError``, accepted with the Enter, became
+    an accept over the whole page's rectangle, and the next import applied it to the reading that
+    came then -- «aceita pelo revisor», verified, out of the queue -- a reading nobody saw.  An
+    accept records the reading it accepted (:meth:`ReviewQueue.decide`), so an accept without one
+    is refused by the window, left out of the decisions and not applied to a region.
+    """
+    return action is Action.ACCEPT and not reading.strip()
+
+
+def unread_page(item: ReviewItem) -> bool:
+    """The item of a page the OCR did not read: no OCR region is behind it.
+
+    The page whose OCR raised (the importer's ``_failed_for_review``) and the contested text layer
+    the OCR could not answer (``_contested_without_answer``): a page item with no reading and no
+    engine.  A page the OCR read in one region -- ``RegionKind.PAGE``, the whole page with no
+    division of the layout -- is a region like any other: its item has the reading and the
+    engine, and a decision on it reaches the book.  Crítico da fase 5, ciclo 8: 13 of the 39 items
+    of the Karpov 2 pp. 101-115 are such pages, 6 of 129 of the Gallagher pp. 41-60.
+    """
+    return item.kind == "page" and not item.text.strip() and not item.engine
+
+
+def sem_efeito(item: ReviewItem, action: Action) -> bool:
+    """A decision that decides nothing: the window refuses it and the queue does not count it.
+
+    An accept of no reading (:func:`accepts_nothing`); and any decision on the item of a page the
+    OCR did not read (:func:`unread_page`): the importer applies decisions only to the regions of
+    an OCR reading, and that item has none.  Crítico da fase 5, ciclo 7: the refusal said «escreva
+    o texto e grave a edição, ou mantenha-a como imagem», and on a page of six regions (the largest
+    with IoU 0,25 with the page) the edit and the «keep as image» applied to none -- the text typed
+    stayed in the file and not in the book; and a log written before the refusal, with the empty
+    accept of the page item, still hid the page from the pending list («0 pendente(s) de 1»).
+    Ciclo 8: the rule of that cycle took every item of kind «page» for a page nobody read, and a
+    page the OCR read in one region could not be accepted, edited or kept as an image -- and the
+    edit a window before had saved left the decisions file at the next save.
+    """
+    if accepts_nothing(action, item.text):
+        return True
+    return unread_page(item) and action in (Action.ACCEPT, Action.EDIT, Action.KEEP_IMAGE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,7 +268,8 @@ class ReviewQueue:
     # -- viewing ----------------------------------------------------------- #
 
     def pending(self) -> list[ReviewItem]:
-        done = {entry.key for entry in self.log if entry.action is not Action.SKIP}
+        """The items with no decision that decides something (:meth:`decided`)."""
+        done = set(self.decided())
         return [i for i in self.items if i.key not in done]
 
     def open(self, key: str) -> ReviewItem:
@@ -270,24 +319,95 @@ class ReviewQueue:
         phrase (SOL-11): the partition exists to measure, and a page the
         reviewer fixed by hand would measure the reviewer.  Keeping the
         region as an image or skipping it changes no text and is allowed.
+        And a decision that decides nothing is refused (:func:`sem_efeito`):
+        an accept of an item without a reading -- there is nothing to
+        accept --, and any decision on the item of a page the OCR did not
+        read (:func:`unread_page`), which the next import applies to no
+        region; the phrase says what the reviewer can do.
         """
         item = self._item(key)
         if action in (Action.ACCEPT, Action.EDIT) and self.blind(item.document, item.page_index):
             return (f"página {item.page_index + 1} está na partição cega: "
                     "a leitura não pode ser aceita nem corrigida aqui (ela mede o OCR).")
+        if sem_efeito(item, action):
+            if unread_page(item):
+                return ("o OCR não leu esta página, e uma decisão sobre ela não chega ao livro: a "
+                        "importação só aplica decisões às regiões que o OCR lê. Ela fica na fila; "
+                        "importe o livro de novo quando o OCR puder lê-la.")
+            return ("não há leitura para aceitar: o OCR não leu esta região. Escreva o texto e "
+                    "grave a edição, ou mantenha-a como imagem.")
         return ""
 
+    def carry_over(self, previous: ReviewQueue | None) -> int:
+        """Keep the decisions of ``previous`` (the same book, an earlier queue) in this one.
+
+        OCR_UI ciclo 2, passo C7: the window's import hands its result to the
+        review tab, which rebuilds the queue from it.  A region decided before
+        was applied on that import and is not in the new ``review_items`` -- so
+        a queue built from scratch would have no trace of it, and the next
+        ``gravar`` would write the decisions file **without** it.  The earlier
+        decisions come along here: an item of ``previous`` that was decided is
+        matched to the new items by page and rectangle (IoU ≥ 0,5) and its log
+        entries re-keyed; one that has no counterpart is appended, decided, so
+        :meth:`decisions` still sees it.  Returns how many decisions came over.
+        """
+        if previous is None or not previous.log:
+            return 0
+        decided = previous.decided()
+        if not decided:
+            return 0
+        by_key = {item.key: item for item in self.items}
+        carried = 0
+        rekey: dict[str, str] = {}
+        for key, _entry in decided.items():
+            try:
+                old = previous._item(key)
+            except KeyError:
+                continue
+            match = next(
+                (item for item in self.items
+                 if item.page_index == old.page_index and _iou(item.rect, old.rect) >= 0.5),
+                None,
+            )
+            if match is not None:
+                rekey[key] = match.key
+            else:
+                new_key = key if key not in by_key else f"{key}:anterior"
+                rekey[key] = new_key
+                self.items.append(replace(old, key=new_key))
+                by_key[new_key] = self.items[-1]
+            carried += 1
+        for entry in previous.log:
+            if entry.key in rekey:
+                self.log.append(replace(entry, key=rekey[entry.key]))
+        return carried
+
     def decided(self) -> dict[str, AuditEntry]:
-        """The last non-skip decision per item."""
+        """The last decision per item that decides something.
+
+        A skip is none, and neither is a decision that decides nothing (:func:`sem_efeito`) that
+        a log written before the window refused it still has: crítico da fase 5, ciclo 7 -- the
+        empty accept of the page item, in the log of cycle 6, left «0 pendente(s) de 1», and
+        :meth:`carry_over` handed it to the next import's queue.
+        """
+        por_chave = {item.key: item for item in self.items}
         out: dict[str, AuditEntry] = {}
         for entry in self.log:
             if entry.action is Action.SKIP:
+                continue
+            item = por_chave.get(entry.key)
+            if item is not None and sem_efeito(item, entry.action):
                 continue
             out[entry.key] = entry
         return out
 
     def decisions(self) -> ReviewDecisions:
-        """The decisions the importer applies (blind pages withheld, as in :meth:`corrections`)."""
+        """The decisions the importer applies (blind pages withheld, as in :meth:`corrections`).
+
+        A decision that decides nothing is none (:func:`sem_efeito`, left out by
+        :meth:`decided`) -- a log written before the window refused it would otherwise hand the
+        importer an accept over the page.
+        """
         entries = []
         for key, entry in self.decided().items():
             item = self._item(key)
@@ -429,8 +549,11 @@ class ReviewDecisions:
         return [d for d in self.entries if d.page_index == page_index]
 
     def match(self, page_index: int, rect: RectT) -> Decided | None:
+        """The decision over ``rect`` -- never an accept of no reading (:func:`accepts_nothing`)."""
         best, best_iou = None, 0.0
         for decided in self.for_page(page_index):
+            if accepts_nothing(decided.action, decided.text):
+                continue
             iou = _iou(decided.rect, rect)
             if iou > best_iou:
                 best, best_iou = decided, iou
@@ -442,7 +565,9 @@ class ReviewDecisions:
         ``accept`` → the region is accepted and verified; ``edit`` → its
         reading becomes the reviewer's text (one line over the region's box
         when the line count differs), accepted and verified; ``keep_image``
-        → abstained, so the importer keeps the region as a picture.
+        → abstained, so the importer keeps the region as a picture.  An
+        accept that carries no reading accepted nothing and is not applied
+        (:func:`accepts_nothing`): the file may predate the window's refusal.
         """
         from dataclasses import replace
 

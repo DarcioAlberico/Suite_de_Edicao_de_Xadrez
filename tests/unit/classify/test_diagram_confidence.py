@@ -44,7 +44,10 @@ def test_signals_read_a_recognised_diagram():
     assert signals.squares_below_0_90 == 3 and signals.squares_below_0_70 == 2
     assert signals.min_margin == pytest.approx(0.05)
     assert signals.repaired_squares == 1 and signals.vector_route
-    assert list(signals.as_dict()) == list(FEATURE_NAMES)
+    # The fitted features first and in order; the C11/C5 signals ride along, outside the vector.
+    assert list(signals.as_dict())[: len(FEATURE_NAMES)] == list(FEATURE_NAMES)
+    assert list(signals.as_dict())[len(FEATURE_NAMES):] == ["next_move_replays", "external_repairs"]
+    assert len(signals.vector()) == len(FEATURE_NAMES)
 
 
 def test_the_fit_separates_separable_boards_and_the_metrics_know_a_constant():

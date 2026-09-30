@@ -18,6 +18,8 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -179,6 +181,75 @@ FRACAO_DO_DIVISOR = 0.566
 que os torna comparáveis com os do próximo. Ver `_fixar_o_divisor`."""
 
 
+def aguardar_a_folha(janela_ou_painel: Any, limite_ms: int = 15_000) -> bool:
+    """Espera a rasterização ao fundo do tronco entregar a folha (OCR_UI passo 15).
+
+    Desde o passo 15 `abrir_pdf` e `ir_para_pagina` voltam antes de a página estar na tela --
+    a rasterização corre num processo de trabalho e chega por sinal. Todo arnês que fotografa,
+    conta ou mede **a folha** tem de esperar por ela; este é o único lugar em que se espera, e
+    ele aceita a janela ou o painel. Num tronco anterior ao passo (sem `aguardar_pagina`) não
+    há o que esperar e devolve `True`.
+    """
+    painel = getattr(janela_ou_painel, "pdf", janela_ou_painel)
+    aguardar = getattr(painel, "aguardar_pagina", None)
+    if aguardar is None:
+        return True
+    return bool(aguardar(limite_ms))
+
+
+@dataclass(frozen=True)
+class AreaDeTrabalho:
+    """Um lugar onde se trabalha na janela do tronco: aba do acervo ou modo da aba `Livro`."""
+
+    nome: str
+    """O nome sem contagem (`Resultado`, `Dataset`), como `ui/abas.nome_base` o devolve."""
+    mostrar: Callable[[], object]
+    """Traz a área para a frente -- a aba, ou a aba `Livro` no modo certo."""
+    widget: Callable[[], Any]
+    """O painel da área, para quem mede a subárvore dele e não a janela inteira."""
+
+
+def areas_de_trabalho(janela: Any) -> list[AreaDeTrabalho]:
+    """Cada lugar onde se trabalha, uma vez, na ordem em que a janela os lista.
+
+    **Desde o passo 17 da OCR_UI (tarefa 3) as quatro abas do diagrama são modos da aba `Livro`**
+    (`qt/areas_de_trabalho.py` no tronco): um laço `for indice in range(janela.abas.count())`
+    passou a ver três abas onde há sete ou oito áreas, e um portão que só andasse pelas abas
+    mediria o modo Resultado quatro vezes e Estudo, Revisão e Texto nenhuma. Este é o **único**
+    laço do arnês sobre as áreas -- teclado, texto pintado, execução e captura andam por ele -- e
+    ele pergunta à janela (`areas`, `mostrar_area`), sem saber se um nome é aba ou modo. Num
+    tronco anterior ao passo, sem esses métodos, cada aba é uma área, como sempre foi.
+    """
+    abas = janela.abas
+    listar = getattr(abas, "areas", None)
+    mostrar_area = getattr(abas, "mostrar_area", None)
+    if listar is None or mostrar_area is None:
+        return [
+            AreaDeTrabalho(
+                nome=abas.tabText(indice).split(" (")[0].replace("&", "").strip(),
+                mostrar=lambda i=indice: abas.setCurrentIndex(i),
+                widget=lambda i=indice: abas.widget(i),
+            )
+            for indice in range(abas.count())
+        ]
+
+    def widget_de(nome: str) -> Any:
+        modo = abas.principal.widget_do_modo(nome)
+        if modo is not None:
+            return modo
+        indice = abas.indice_da_aba(nome)
+        return abas.widget(indice) if indice is not None else None
+
+    return [
+        AreaDeTrabalho(
+            nome=nome,
+            mostrar=lambda n=nome: mostrar_area(n),
+            widget=lambda n=nome: widget_de(n),
+        )
+        for nome in listar()
+    ]
+
+
 def estado_de_medicao(pasta: Path) -> Path:
     """Escreve um estado de sessão **próprio** naquela pasta e devolve o caminho dele.
 
@@ -259,9 +330,27 @@ def _fixar_a_vista(janela: object) -> None:
         return
     try:
         painel.ir_para_pagina(PAGINA_DA_AUDITORIA)
+        aguardar_a_folha(painel)
         painel.definir_enquadramento(ENQUADRAMENTO_DA_AUDITORIA)
     except Exception as exc:  # noqa: BLE001 - ver a docstring
         print(f"  (a vista não foi fixada: {exc})", file=sys.stderr)
+
+
+ESCALA_ENV = "QT_SCALE_FACTOR"
+"""A escala do sistema (125 % = `1.25`, 200 % = `2`): o Qt a lê **antes** da `QApplication`,
+por isso ela viaja pelo ambiente do subprocesso de cada pele e nunca é fixada depois."""
+
+
+def tamanhos_logicos(escala: float) -> tuple[tuple[int, int], ...]:
+    """Os mesmos tamanhos físicos de `TAMANHOS` em pixels **lógicos** da escala (C14 do ciclo 2).
+
+    A 200 % um monitor 4K tem 1920×1080 pixels lógicos: a janela é pedida nesse tamanho e a
+    captura (`grab`, física) sai com 3840×2160 -- o mesmo nome de arquivo, a mesma régua do
+    `vazio`, sobre a fotografia que a pessoa a 200 % vê.
+    """
+    if escala <= 1.0:
+        return TAMANHOS
+    return tuple((int(round(w / escala)), int(round(h / escala))) for w, h in TAMANHOS)
 
 
 def capturar(
@@ -271,6 +360,7 @@ def capturar(
     pdf: Path | None = None,
     caminho_do_tronco: Path = TRONCO,
     peles: tuple[tuple[str, str], ...] = PELES,
+    escala: float = 1.0,
 ) -> list[Path]:
     """Grava um PNG por (pele, tamanho, aba), **uma pele por processo**, e devolve o que gravou.
 
@@ -292,6 +382,8 @@ def capturar(
         antes = set(saida.glob(f"{marca}_{rotulo}_*.png"))
         ambiente = dict(os.environ)
         ambiente["CVOFF_SKIN"] = nome_da_pele
+        if escala > 1.0:
+            ambiente[ESCALA_ENV] = f"{escala:g}"
         argumentos = [
             sys.executable,
             "-m",
@@ -304,6 +396,8 @@ def capturar(
             marca,
             "--tronco",
             str(caminho_do_tronco),
+            "--escala",
+            f"{escala:g}",
         ]
         if pdf is not None:
             argumentos += ["--pdf", str(pdf)]
@@ -330,6 +424,7 @@ def capturar_uma_pele(
     """Grava um PNG por (tamanho, aba) para **uma** pele. É o que cada subprocesso faz."""
     _preparar(caminho_do_tronco)
     saida.mkdir(parents=True, exist_ok=True)
+    recusas: list[dict[str, Any]] = []
     gravados: list[Path] = []
 
     from chess_diagram_ocr.qt.plataforma import politica_de_escala
@@ -381,13 +476,15 @@ def capturar_uma_pele(
     if pdf is not None and pdf.exists():
         try:
             janela.abrir_pdf(pdf)
+            aguardar_a_folha(janela)
             _fixar_a_vista(janela)
         except Exception as exc:
             print(f"  (livro {pdf.name} não abriu: {exc})", file=sys.stderr)
     for _ in range(3):
         aplicacao.processEvents()
 
-    for largura, altura in TAMANHOS:
+    escala = float(os.environ.get(ESCALA_ENV, "1") or 1.0)
+    for (largura, altura), (fisica_w, fisica_h) in zip(tamanhos_logicos(escala), TAMANHOS, strict=True):
         janela.resize(largura, altura)
         for _ in range(8):
             aplicacao.processEvents()
@@ -401,29 +498,41 @@ def capturar_uma_pele(
             # **A recusa é dado, não ruído.** Uma janela que não encolhe até o tamanho
             # pedido não cabe na tela de quem pediu, e o número exato é o defeito.
             print(
-                f"  ! {tema} pediu {largura}x{altura}, ficou "
+                f"  ! {tema} pediu {largura}x{altura}"
+                f"{f' (escala {escala:g}: {fisica_w}x{fisica_h} físicos)' if escala > 1.0 else ''}, ficou "
                 f"{janela.width()}x{janela.height()} (mínimo "
                 f"{janela.minimumSizeHint().width()}x{janela.minimumSizeHint().height()})"
             )
-        for indice in range(janela.abas.count()):
-            janela.abas.setCurrentIndex(indice)
+            recusas.append({
+                "pele": tema, "escala": escala, "pedido": [largura, altura],
+                "fisico": [fisica_w, fisica_h], "ficou": [janela.width(), janela.height()],
+                "minimo": [janela.minimumSizeHint().width(), janela.minimumSizeHint().height()],
+            })
+        for area in areas_de_trabalho(janela):
+            area.mostrar()
             for _ in range(4):
                 aplicacao.processEvents()
-            rotulo_da_aba = janela.abas.tabText(indice)
-            nome_base = rotulo_da_aba.split(" (")[0].strip().lower()
+            nome_base = area.nome.lower()
             nome_base = (
                 nome_base.replace("ã", "a")
                 .replace("é", "e")
                 .replace("ç", "c")
                 .replace("ó", "o")
             )
-            alvo = saida / f"{marca}_{tema}_{largura}x{altura}_{nome_base}.png"
+            # O nome leva o tamanho **físico**: a régua do `vazio` procura `*_3840x2160_*`.
+            alvo = saida / f"{marca}_{tema}_{fisica_w}x{fisica_h}_{nome_base}.png"
             janela.grab().save(str(alvo))
             gravados.append(alvo)
             print(f"  {alvo.name}")
     janela.close()
     janela.deleteLater()
     aplicacao.processEvents()
+    if recusas:
+        # C14: a janela que não cabe na tela lógica da escala é um número publicado, não
+        # uma linha perdida no stderr.
+        (saida / f"{marca}_{tema}_recusas.json").write_text(
+            json.dumps({"escala": escala, "recusas": recusas}, indent=2, ensure_ascii=False),
+            encoding="utf-8")
 
     return gravados
 
@@ -439,7 +548,19 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="fotografa UMA pele. Sem isto, o arnes percorre todas as de PELES.",
     )
+    parser.add_argument(
+        "--escala", type=float, default=1.0,
+        help="C14: a escala do sistema (1.25, 1.5, 2). Os tamanhos físicos são os mesmos; a "
+             "janela é pedida em pixels lógicos e a captura sai física.",
+    )
     args = parser.parse_args(argv)
+    if args.escala > 1.0 and os.environ.get(ESCALA_ENV, "") != f"{args.escala:g}":
+        # A escala tem de existir antes da QApplication: quem chega aqui sem ela no ambiente
+        # (a linha de comando) reexecuta a si mesmo com ela.
+        ambiente = dict(os.environ)
+        ambiente[ESCALA_ENV] = f"{args.escala:g}"
+        return subprocess.run([sys.executable, "-m", "caissa.ui.audit.capture", *(argv or sys.argv[1:])],
+                              env=ambiente, check=False).returncode  # noqa: S603 - argv nosso
     if args.pele:
         rotulo = dict(PELES).get(args.pele)
         if rotulo is None:
@@ -454,7 +575,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"{len(gravados)} capturas da pele {args.pele} em {args.saida}")
         return 0
-    gravados = capturar(args.saida, marca=args.marca, pdf=args.pdf, caminho_do_tronco=args.tronco)
+    gravados = capturar(args.saida, marca=args.marca, pdf=args.pdf, caminho_do_tronco=args.tronco,
+                        escala=args.escala)
     print(f"{len(gravados)} capturas em {args.saida}")
     return 0
 

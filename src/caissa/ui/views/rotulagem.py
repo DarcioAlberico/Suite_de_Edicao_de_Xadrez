@@ -26,6 +26,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -44,6 +45,7 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
+    QFrame,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsScene,
@@ -60,6 +62,7 @@ from PyQt6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QSplitter,
     QTableWidget,
@@ -69,6 +72,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from caissa.ui.theme import pele
 from caissa.ocr.labeling import LabelProject, LineLabel, LineStatus, PageLabels, RegionLabel
 from caissa.ocr.labeling.export import (
     calibration_pairs,
@@ -109,7 +113,12 @@ from caissa.ocr.training import (
 )
 from caissa.ocr.training.negatives import RECOMMENDED_NEGATIVES, RECOMMENDED_OVERSAMPLE
 from caissa.ui.views.exportacao import ExportadorDeLivro
-from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pixmap_de
+from caissa.ui.widgets.cartao_da_linha import CartaoDaLinha, pelas_setas, pixmap_de
+from caissa.ui.widgets.fileira_fluida import FileiraFluida
+from caissa.ui.widgets.foco_a_vista import RolagemSegueOFoco, ancorar, no_meio_do_clique
+from caissa.ui.widgets.rotulo_que_encolhe import RotuloQueEncolhe
+from caissa.ui.widgets.tabela_de_linhas import TabelaDeLinhas
+from caissa.ui.widgets.um_clique import um_clique_por_vez
 
 __all__ = [
     "TITULO",
@@ -122,8 +131,10 @@ __all__ = [
 TITULO = "Rotulagem"
 """O rótulo da aba. O tronco o lê daqui para não escrever o nome duas vezes."""
 
-REGION_COLOR = "#7c3aed"
-SELECTED_COLOR = "#dc2626"
+#: The colours of the region boxes come from the trunk's skin when it is around
+#: (:mod:`caissa.ui.theme.pele`, passo C9); these are the names the painter asks for.
+REGION_COLOR = "regiao"
+SELECTED_COLOR = "regiao_selecionada"
 PAGE_DPI = 150  # the page image in the viewer; the crop on the right is at 300
 SEM_LINHA = "Reconheça a página (F5) ou desenhe uma região (D)."
 CLICK_SLOP_PX = 4
@@ -228,7 +239,7 @@ class _Visor(QGraphicsView):
         super().__init__(parent)
         self.cena = QGraphicsScene(self)
         self.setScene(self.cena)
-        self.setBackgroundBrush(QBrush(QColor("#3f3f46")))
+        self.setBackgroundBrush(QBrush(QColor(pele.cor("vazio_do_visor"))))
         self.setRenderHints(QPainter.RenderHint.SmoothPixmapTransform)
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
@@ -283,7 +294,7 @@ class _Visor(QGraphicsView):
             return
         for region in page.regions:
             x0, y0, x1, y1 = region.rect
-            pen = QPen(QColor(SELECTED_COLOR if region is selecionada else REGION_COLOR))
+            pen = QPen(QColor(pele.cor(SELECTED_COLOR if region is selecionada else REGION_COLOR)))
             pen.setCosmetic(True)
             pen.setWidth(2 if region is selecionada else 1)
             if region is not selecionada:
@@ -292,7 +303,7 @@ class _Visor(QGraphicsView):
                 self.cena.addRect(QRectF(x0 - 2, y0 - 2, x1 - x0 + 4, y1 - y0 + 4), pen)
             )
             texto = QGraphicsSimpleTextItem(f"{region.index} {region.kind}")
-            texto.setBrush(QBrush(QColor(REGION_COLOR)))
+            texto.setBrush(QBrush(QColor(pele.cor(REGION_COLOR))))
             texto.setFlag(texto.GraphicsItemFlag.ItemIgnoresTransformations)
             texto.setPos(x0 - 2, y0 - 12)
             self.cena.addItem(texto)
@@ -327,7 +338,7 @@ class _Visor(QGraphicsView):
         self._inicio = ponto
         self._inicio_tela = event.position().toPoint()
         if self.desenhando:
-            pen = QPen(QColor(SELECTED_COLOR))
+            pen = QPen(QColor(pele.cor(SELECTED_COLOR)))
             pen.setCosmetic(True)
             pen.setWidth(2)
             self._rascunho = self.cena.addRect(QRectF(ponto, ponto), pen)
@@ -428,21 +439,24 @@ class PainelDeRotulagem(QWidget):
     def _montar(self) -> None:  # noqa: PLR0915 - one widget tree, top to bottom
         raiz = QVBoxLayout(self)
         raiz.setContentsMargins(4, 4, 4, 4)
-        # Two rows: the pane the trunk gives a tab is ~800 px wide, and one
-        # row of everything was measured truncating every button label.
-        linha1 = QHBoxLayout()
-        raiz.addLayout(linha1)
-        barra = QHBoxLayout()
-        raiz.addLayout(barra)
+        # Two fluid rows (C18, crítico da fase 5): the pane the trunk gives a tab
+        # is ~800 px wide and one row of everything truncated every label; two
+        # `QHBoxLayout` rows still summed more than the tab has with the window
+        # at its minimum of 1248x640, and Qt squeezed fifteen controls under
+        # their text («Adicionar PDF…» at 57 of 107 px).  Fluid rows wrap.
+        linha1 = FileiraFluida(self)
+        raiz.addWidget(linha1)
+        barra = FileiraFluida(self)
+        raiz.addWidget(barra)
 
         def botao(
-            texto: str, acao: Callable[[], Any], *, dica: str = "", em: QHBoxLayout | None = None
+            texto: str, acao: Callable[[], Any], *, dica: str = "", em: FileiraFluida | None = None
         ) -> QPushButton:
             b = QPushButton(texto, self)
             b.clicked.connect(lambda _c=False: acao())
             if dica:
                 b.setToolTip(dica)
-            (em if em is not None else barra).addWidget(b)
+            (em if em is not None else barra).adicionar(b)
             return b
 
         botao("Adicionar PDF…", self.add_pdf, em=linha1)
@@ -454,7 +468,7 @@ class PainelDeRotulagem(QWidget):
         self.doc_box.addItems(sorted(self.project.documents))
         self.doc_box.setAccessibleName("Documento aberto")
         self.doc_box.activated.connect(lambda _i: self._select_document(self.doc_box.currentText()))
-        linha1.addWidget(self.doc_box, 1)
+        linha1.adicionar(self.doc_box)
         b = botao(
             "◀",
             lambda: self.go_page(self.page_index - 1),
@@ -473,9 +487,9 @@ class PainelDeRotulagem(QWidget):
             lambda: self.page_spin.value() != self.page_index
             and self.go_page(self.page_spin.value())
         )
-        linha1.addWidget(self.page_spin)
+        linha1.adicionar(self.page_spin)
         self.page_total = QLabel("/ 0", self)
-        linha1.addWidget(self.page_total)
+        linha1.adicionar(self.page_total)
         b = botao(
             "▶",
             lambda: self.go_page(self.page_index + 1),
@@ -502,7 +516,7 @@ class PainelDeRotulagem(QWidget):
         menu.addAction("Idioma do documento = caixa «idioma»", self.apply_language)
         menu.addAction("Resumo do projeto", self.show_summary)
         exportar.setMenu(menu)
-        linha1.addWidget(exportar)
+        linha1.adicionar(exportar)
         botao("Medir no livro…", self.open_measure, em=linha1)
         botao("Treinar…", self.open_training, em=linha1)
         self.queue_button = botao(
@@ -511,21 +525,21 @@ class PainelDeRotulagem(QWidget):
             dica="Pontua uma amostra do livro pelo que um rótulo mudaria e abre a lista; "
             "clicar de novo durante a pontuação cancela",
         )
-        barra.addWidget(QLabel("DPI", self))
+        barra.adicionar(QLabel("DPI", self))
         self.dpi_spin = QSpinBox(self)
         self.dpi_spin.setAccessibleName("Resolução do reconhecimento")
         self.dpi_spin.setRange(150, 600)
         self.dpi_spin.setSingleStep(50)
         self.dpi_spin.setValue(300)
-        barra.addWidget(self.dpi_spin)
-        barra.addWidget(QLabel("idioma", self))
+        barra.adicionar(self.dpi_spin)
+        barra.adicionar(QLabel("idioma", self))
         self.lang_box = QComboBox(self)
         self.lang_box.setEditable(True)
         self.lang_box.addItems(LANGS)
         self.lang_box.setAccessibleName("Idioma do reconhecimento")
         if self.lang_box.lineEdit() is not None:
             self.lang_box.lineEdit().setAccessibleName("Idioma do reconhecimento, escrito")
-        barra.addWidget(self.lang_box)
+        barra.adicionar(self.lang_box)
         botao(
             "Reconhecer (F5)",
             self.recognise_page,
@@ -534,13 +548,12 @@ class PainelDeRotulagem(QWidget):
         self.draw_button = botao("Desenhar região (D)", self.toggle_drawing)
         self.only_doubtful = QCheckBox("só duvidosas", self)
         self.only_doubtful.toggled.connect(lambda _v: self._fill_table())
-        barra.addWidget(self.only_doubtful)
+        barra.adicionar(self.only_doubtful)
         botao(
             "Aceitar confiáveis",
             lambda: self.accept_confident(),
             dica="Aceita toda linha da página sem palavra fraca nem candidato discordante",
         )
-        barra.addStretch(1)
 
         # Page above, line below: the pane is narrow and tall, so a side-by-side
         # split left the page 180 px wide.
@@ -575,7 +588,19 @@ class PainelDeRotulagem(QWidget):
         esq.addWidget(self.visor, 1)
         corpo.addWidget(esquerda)
 
-        direita = QWidget(corpo)
+        # The card, its buttons and the table live inside a scroll area (OCR_UI passo 16):
+        # stacked, they asked 496 px of minimum height, which put the whole window at 827 px
+        # and made it refuse a 1366x768 screen -- the declared floor of the product. Inside a
+        # scroll area the minimum is two lines; the form scrolls when the window is short and
+        # fills the pane when it is not (`setWidgetResizable`).
+        rolagem = QScrollArea(corpo)
+        rolagem.setWidgetResizable(True)
+        rolagem.setFrameShape(QFrame.Shape.NoFrame)
+        # The frame is not a control: Tab visits the fields inside it. Without this the
+        # `teclado` gate counts one focusable widget with neither name nor role.
+        rolagem.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        direita = QWidget(rolagem)
+        rolagem.setWidget(direita)
         dir_ = QVBoxLayout(direita)
         dir_.setContentsMargins(4, 0, 0, 0)
         # The card is shared with the text-review window (passo 14); the
@@ -594,6 +619,7 @@ class PainelDeRotulagem(QWidget):
         self.cartao.alternativa_pedida.connect(lambda i: self._use_alternative(index=i))
         dir_.addWidget(self.cartao)
         botoes = QHBoxLayout()
+        decidem: list[QPushButton] = []
         for texto, acao in (
             ("Aceitar leitura", lambda: self.decide(LineStatus.ACCEPTED)),
             ("Gravar edição", lambda: self.decide(LineStatus.EDITED)),
@@ -603,13 +629,28 @@ class PainelDeRotulagem(QWidget):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, a=acao: a())
             botoes.addWidget(b)
+            decidem.append(b)
         botoes.addStretch(1)
-        for texto, delta in (("◀ anterior", -1), ("próxima ▶", 1)):
+        paginador = []
+        for texto, delta in (("Anterior", -1), ("Próxima", 1)):
             b = QPushButton(texto, direita)
             b.clicked.connect(lambda _c=False, d=delta: self.step(d))
             botoes.addWidget(b)
+            paginador.append(b)
+        pele.vestir_paginador(*paginador)   # o desenho do tronco ao lado da palavra (C9)
+        # O segundo clique de um duplo clique num botão que decide e anda não decide a linha
+        # seguinte, que ninguém viu (crítico da fase 5, ciclo 9: 2 linhas em 8 de 12).
+        self._um_clique_por_vez = um_clique_por_vez(self, *decidem, *paginador)
+        # E o botão apertado fica sob o ponteiro até o mouse sossegar: a linha que ele decide ou
+        # mostra muda a altura do cartão acima desta fileira, e o segundo clique de um duplo clique
+        # caía fora dele -- no fundo, no cabeçalho ou na barra da tabela (construtor, ciclo 10 da
+        # fase 5, com a sonda `proxima_c9.py` do crítico: 3 em 12 nas três peles).
+        for da_fileira in (*decidem, *paginador):
+            da_fileira.pressed.connect(lambda b=da_fileira: self._ancorar_o_botao(b))
         dir_.addLayout(botoes)
-        self.table = QTableWidget(0, 5, direita)
+        # PgUp, PgDn, Home e End andam pelas linhas com o foco na tabela, e não viram a página do
+        # livro (`TabelaDeLinhas`; crítico da fase 5, ciclo 6: o PgDn esvaziava a tabela)
+        self.table = TabelaDeLinhas(0, 5, direita)
         self.table.setHorizontalHeaderLabels(["#", "reg.", "estado", "conf.", "texto"])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -617,32 +658,51 @@ class PainelDeRotulagem(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setAccessibleName("Linhas da página")
+        # As setas andam pelas linhas e o Enter leva ao campo da verdade; o Tab sai da tabela.
+        # Com a navegação do Tab ligada (o padrão do Qt), o Tab andava de célula em célula, e cada
+        # troca de linha mandava o foco à verdade: com uma página reconhecida, a tecla não saía do
+        # laço, e de volta o Shift+Tab nunca chegava às figurinas nem às ações (crítico da fase 5,
+        # ciclo 5: 23 de 37 controles).
+        self.table.setTabKeyNavigation(False)
         self.table.itemSelectionChanged.connect(self._on_table_select)
+        self.table.activated.connect(lambda _indice: self.truth.setFocus())
         dir_.addWidget(self.table, 1)
-        corpo.addWidget(direita)
+        corpo.addWidget(rolagem)
         corpo.setStretchFactor(0, 3)
         corpo.setStretchFactor(1, 2)
         corpo.setSizes([560, 440])
+        # The control that takes the focus inside the scroll area is scrolled into view, also
+        # when the focus comes from outside it (OCR_UI ciclo 2, fase 5, crítico do ciclo 4: the
+        # `teclado` gate with the real key put the focus on «Leitura do motor» with 0 px on screen
+        # at 1280x641 -- the scroll area only follows the focus that moves inside it).
+        self._segue_o_foco = RolagemSegueOFoco(rolagem)
+        self._rolagem_do_cartao = rolagem
 
-        self.status = QLabel("", self)
-        self.status.setStyleSheet("padding:3px 6px; border-top:1px solid #d1d5db;")
+        # C18: a linha de estado pedia 2.868 px de largura mínima (o texto inteiro).
+        self.status = RotuloQueEncolhe("", self)
+        self.status.setStyleSheet(f"padding:3px 6px; border-top:1px solid {pele.cor('moldura')};")
         raiz.addWidget(self.status)
 
     def _atalhos(self) -> None:
+        """Só o que não colide com a janela do tronco (passo C8): ``Escape`` para o desenho e
+        ``D`` no visor. ``Ctrl+S``, ``F5``, ``PgUp``/``PgDn`` eram ambíguos com os globais da
+        janela e não disparavam com a aba à frente; hoje são comandos do catálogo
+        (:data:`caissa.ui.views.declarados.COMANDOS_DA_ROTULAGEM`), e a janela roteia o
+        ``Ctrl+S``/``Ctrl+R``/``PgUp``/``PgDn`` globais para esta aba quando ela está à frente."""
         contexto = Qt.ShortcutContext.WidgetWithChildrenShortcut
-        for tecla, acao in (
-            ("F5", self.recognise_page),
-            ("Ctrl+S", self.save),
-            ("PgUp", lambda: self.go_page(self.page_index - 1)),
-            ("PgDown", lambda: self.go_page(self.page_index + 1)),
-            ("Escape", self._stop_drawing),
-        ):
-            atalho = QShortcut(QKeySequence(tecla), self)
-            atalho.setContext(contexto)
-            atalho.activated.connect(acao)
+        escape = QShortcut(QKeySequence("Escape"), self)
+        escape.setContext(contexto)
+        escape.activated.connect(self._stop_drawing)
         desenhar = QShortcut(QKeySequence("D"), self.visor)
         desenhar.setContext(contexto)
         desenhar.activated.connect(self.toggle_drawing)
+
+    def pagina_anterior(self) -> None:
+        """A página anterior desta aba -- o ``PgUp`` global, quando ela está à frente (C8)."""
+        self.go_page(self.page_index - 1)
+
+    def proxima_pagina(self) -> None:
+        self.go_page(self.page_index + 1)
 
     # -- service ------------------------------------------------------------ #
 
@@ -682,11 +742,44 @@ class PainelDeRotulagem(QWidget):
         caminho, _f = QFileDialog.getOpenFileName(self, "PDF digitalizado", "", "PDF (*.pdf)")
         if not caminho:
             return
+        self.abrir(Path(caminho), gravar=True)
+
+    def abrir(self, pdf: Path | str, *, gravar: bool = False, page_count: int | None = None) -> str:  # noqa: ARG002 - the window's count; this bench reads its own
+        """Open ``pdf`` in the bench: add it to the project (if new) and select it.
+
+        OCR_UI ciclo 2, passo C7: the window opens one book and every tab follows
+        it; this is what the trunk calls from ``_abriu_livro``. The project is
+        **not** written unless ``gravar`` is set (the *Abrir PDF…* button does):
+        merely looking at a book must not enrol it in ``labeling/`` -- the first
+        label decided on it saves the project, and the book with it.
+        """
+        caminho = Path(pdf)
+        novo = caminho.stem not in self.project.documents
         book = self.project.add_document(caminho)
-        self.project.save()
-        self.doc_box.clear()
-        self.doc_box.addItems(sorted(self.project.documents))
+        if gravar:
+            self.project.save()
+        if novo or self.doc_box.count() != len(self.project.documents):
+            self.doc_box.clear()
+            self.doc_box.addItems(sorted(self.project.documents))
+        if not self.isVisible():
+            # Selecting the document fingerprints the whole PDF (SHA-256) and
+            # renders a page -- 150-200 ms on the window thread, measured by
+            # ``caissa.ui.audit.bloqueio`` when the window's *abrir PDF* landed
+            # here.  A hidden tab defers that until it is shown.
+            self._abrir_pendente = book
+            self.document = book
+            self.doc_box.setCurrentText(book)
+            return book
+        self._abrir_pendente = None
         self._select_document(book)
+        return book
+
+    def showEvent(self, event: Any) -> None:  # noqa: N802 - Qt name
+        super().showEvent(event)
+        pendente = getattr(self, "_abrir_pendente", None)
+        if pendente is not None:
+            self._abrir_pendente = None
+            self._select_document(pendente)
 
     def _select_document(self, book: str) -> None:
         if book not in self.project.documents:
@@ -1018,7 +1111,22 @@ class PainelDeRotulagem(QWidget):
             return
         line = next((c for c in region.lines if c.index == line_index), None)
         if line is not None and (self.current is None or line is not self.current[1]):
-            self._select_line(region, line, from_table=True)
+            if no_meio_do_clique():
+                # O cartão acima da tabela muda de altura com a linha (o motivo quebra em uma ou
+                # duas linhas): sem a âncora, a tabela deslizava sob o ponteiro parado, e o segundo
+                # clique do duplo clique caía na linha vizinha (ciclo 9 da fase 5).
+                ancorar(self._rolagem_do_cartao, self.table)
+            self._select_line(region, line, from_table=True, focar=not pelas_setas(self.table))
+
+    def _ancorar_o_botao(self, botao: QPushButton) -> None:
+        """O botão que o mouse aperta fica no mesmo lugar da vista até o mouse sossegar (`ancorar`).
+
+        O `pressed` vem antes da ação, que vem no soltar: a âncora guarda onde o botão estava antes
+        de o cartão mudar de altura. O Espaço também emite o `pressed`, mas sem um botão do mouse
+        apertado não há ponteiro a respeitar.
+        """
+        if no_meio_do_clique():
+            ancorar(self._rolagem_do_cartao, botao)
 
     def _select_first_pending(self) -> None:
         pairs = self._visible_lines()
@@ -1031,19 +1139,19 @@ class PainelDeRotulagem(QWidget):
             self._show_line(None)
 
     def _select_line(
-        self, region: RegionLabel, line: LineLabel, *, from_table: bool = False
+        self, region: RegionLabel, line: LineLabel, *, from_table: bool = False, focar: bool = True
     ) -> None:
         self._flush_timer()
         self.current = (region, line)
         self.selected_region = region
         self.opened_at = time.perf_counter()
         self._draw_boxes()
-        self._show_line(line)
+        self._show_line(line, focar=focar)
         self.visor.centralizar(line.box)
         if not from_table:
             self._fill_table()
 
-    def _show_line(self, line: LineLabel | None) -> None:
+    def _show_line(self, line: LineLabel | None, *, focar: bool = True) -> None:
         if line is None or self.page is None:
             self.cartao.limpar()
             return
@@ -1087,7 +1195,7 @@ class PainelDeRotulagem(QWidget):
                 f"{len(line.alternatives)} leitura(s) alternativa(s) — Alt+1/Alt+2 copia"
             )
         self.reason_label.setText(" · ".join(reasons))
-        self.cartao.mostrar_verdade(line.text if line.done else line.hypothesis)
+        self.cartao.mostrar_verdade(line.text if line.done else line.hypothesis, focar=focar)
 
     def _use_alternative(self, *, index: int | None = None) -> None:
         if index is None:
@@ -1520,6 +1628,22 @@ class DialogoDaFila(QDialog):
         self.painel._score_pages()
 
 
+def _preferencias_de_treino() -> Any:
+    """`settings.training` do tronco, ou os padrões da suíte quando o tronco não está ao alcance.
+
+    Devolve um objeto com `ocr_iterations`, `ocr_learning_rate` e `ocr_negatives`. O tronco
+    é opcional para este módulo (a vista roda nos testes da suíte sem ele), e os números de
+    fallback são os mesmos que `TrainingSettings` declara -- o diálogo abre igual nos dois casos.
+    """
+    try:
+        from chess_diagram_ocr.settings import load_settings
+    except ImportError:
+        return SimpleNamespace(
+            ocr_iterations=2000, ocr_learning_rate=0.001, ocr_negatives=RECOMMENDED_NEGATIVES
+        )
+    return load_settings().training
+
+
 class DialogoDeTreino(QDialog):
     """*Treinar…* — o ajuste fino, por padrão para o livro aberto (ROTULAGEM.md §7a)."""
 
@@ -1578,11 +1702,15 @@ class DialogoDeTreino(QDialog):
         self.iterations = QSpinBox(self)
         self.iterations.setRange(100, 50000)
         self.iterations.setSingleStep(100)
-        self.iterations.setValue(2000)
+        # Os padrões dos três controles vêm de `data/settings.json` do tronco (Ferramentas ▸
+        # Configurações…): o que a pessoa fixa lá é o que este diálogo abre mostrando; mudar
+        # aqui vale só para este treino.
+        treino = _preferencias_de_treino()
+        self.iterations.setValue(treino.ocr_iterations)
         self.iterations.setAccessibleName("Iterações")
         linha.addWidget(self.iterations)
         linha.addWidget(QLabel("taxa", self))
-        self.rate = QLineEdit("0.001", self)
+        self.rate = QLineEdit(f"{treino.ocr_learning_rate:g}", self)
         self.rate.setAccessibleName("Taxa de aprendizado")
         self.rate.setFixedWidth(70)
         linha.addWidget(self.rate)
@@ -1598,7 +1726,7 @@ class DialogoDeTreino(QDialog):
         self.negatives = QSpinBox(self)
         self.negatives.setRange(0, 5000)
         self.negatives.setSingleStep(20)
-        self.negatives.setValue(RECOMMENDED_NEGATIVES)
+        self.negatives.setValue(treino.ocr_negatives)
         self.negatives.setAccessibleName("Negativos")
         self.negatives.setToolTip(
             "Linhas de prosa do livro re-renderizadas sob foto, ruído, manchas e fax, "
@@ -1648,7 +1776,8 @@ class DialogoDeTreino(QDialog):
         botoes.addWidget(self.progress)
         self.log = QPlainTextEdit(self)
         self.log.setReadOnly(True)
-        self.log.setStyleSheet("background:#111827; color:#e5e7eb; font-family:Consolas;")
+        self.log.setStyleSheet(f"background:{pele.cor('log_fundo')}; color:{pele.cor('log_texto')};")
+        self.log.setFont(pele.fonte_monoespacada())
         self.log.setAccessibleName("Registro do treino")
         raiz.addWidget(self.log, 1)
         self.timer = QTimer(self)
@@ -1878,7 +2007,7 @@ class DialogoDeMedida(QDialog):
         raiz.addWidget(self.progress_label)
         self.text = QPlainTextEdit(self)
         self.text.setReadOnly(True)
-        self.text.setStyleSheet("font-family:Consolas;")
+        self.text.setFont(pele.fonte_monoespacada())
         self.text.setAccessibleName("Resultado da medição")
         raiz.addWidget(self.text, 1)
         self.timer = QTimer(self)
