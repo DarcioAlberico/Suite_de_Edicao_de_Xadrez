@@ -319,8 +319,14 @@ class Medidor:
 
     def carregar(self, xhtml: str, folhas: Sequence[tuple[str, str]] = (),
                  folha_do_usuario: str | None = None,
-                 imagens: dict[str, bytes] | None = None) -> None:
-        """O livro numa pasta temporária (`Text/`, `Styles/`, `Images/`), carregado do disco."""
+                 imagens: dict[str, bytes] | None = None, *,
+                 nome_da_pagina: str = "pagina.xhtml") -> None:
+        """O livro numa pasta temporária (`Text/`, `Styles/`, `Images/`), carregado do disco.
+
+        `nome_da_pagina` escolhe o analisador do Chromium pela extensão: o `.xhtml` é XML (o
+        livro), o `.html` é HTML5 (a página do exportador HTML de hoje, sem o `xmlns`, H1
+        tarefa 2).
+        """
         from PyQt6.QtCore import QEventLoop, QTimer, QUrl
 
         self.pasta = Path(tempfile.mkdtemp(prefix="caissa_medicao_"))
@@ -331,7 +337,7 @@ class Medidor:
             (self.pasta / "Styles" / nome).write_text(texto, encoding="utf-8")
         for nome, dados in (imagens or {}).items():
             (self.pasta / "Images" / nome).write_bytes(dados)
-        arquivo = self.pasta / "Text" / "pagina.xhtml"
+        arquivo = self.pasta / "Text" / nome_da_pagina
         arquivo.write_text(xhtml, encoding="utf-8")
         self.recusadas.clear()
         self.permitidas.clear()

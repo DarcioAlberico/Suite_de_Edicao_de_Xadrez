@@ -139,3 +139,21 @@ def test_ligar_o_componente_aponta_tudo_para_a_pasta_dele(origem: Path, tmp_path
     assert dados["recursos"] == str(pasta / "PyQt6" / "Qt6" / "resources")
     assert dados["traducoes"].endswith("qtwebengine_locales")
     assert dados["path"] == str(pasta / "PyQt6" / "Qt6" / "bin")
+
+
+def test_os_filhos_do_processo_aparecem() -> None:
+    """A foto dos processos acha o filho (a sonda lista assim o `QtWebEngineProcess`): a estrutura
+    do `PROCESSENTRY32W` inteira, com o `dwSize` — sem ele a foto não anda."""
+    if sys.platform != "win32":
+        pytest.skip("a foto dos processos é do Windows")
+    filho = subprocess.Popen(  # noqa: S603 - o Python dos testes, dormindo
+        [sys.executable, "-c", "import time; time.sleep(30)"])
+    try:
+        import os
+
+        achados = sonda.processos_filhos(os.getpid())
+        assert filho.pid in {pid for pid, _ in achados}
+        assert any(nome.lower().endswith(".exe") for _, nome in achados)
+    finally:
+        filho.kill()
+        filho.wait()

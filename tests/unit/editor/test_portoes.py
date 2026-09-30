@@ -595,3 +595,23 @@ def test_a_conferencia_reprova_a_execucao_que_saiu_com_zero(tmp_path: Path) -> N
     execucao = portoes.rodar(comando, pasta, 1, motivo="métrica ausente")
     assert execucao.codigo == 2
     assert execucao.motivo_visto is True
+
+
+def test_a_tabela_do_h1_mede_os_motores_a_latencia_e_a_sonda() -> None:
+    passo = portoes.PASSOS["H1"]
+    assert {"benchmarks/editor_motores.py", "benchmarks/editor_sonda.py",
+            "packaging/sonda_webengine.spec", "{web}", "{pack}",
+            portoes.SONDA_DA_MAQUINA_LIMPA} <= set(passo.instrumentos)
+    assert f"{portoes.IR_REAL_DO_H5}/pedido.ir.json" in passo.instrumentos
+    comandos = {c.nome: c for c in passo.portao}
+    assert set(comandos) == {"test_motores", "autoteste", "hostil", "matriz", "tamanhos",
+                             "latencia", "sonda"}
+    assert comandos["latencia"].repeticoes == 3, "a latência mede tempo: três execuções"
+    assert comandos["autoteste"].argv[0] == "{web}"
+    assert "--limpa" in comandos["sonda"].argv, "a máquina limpa entra no portão"
+    assert {s.nome for s in passo.sabotagens} == {"sem_ids", "sem_interceptador",
+                                                 "sonda_sem_runtime"}
+    for sabotagem in passo.sabotagens:
+        assert sabotagem.motivo.startswith("REPROVADO: "), sabotagem.nome
+        assert sabotagem.nome in sabotagem.comando.argv
+    assert "web" in portoes.interpretes()

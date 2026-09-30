@@ -648,7 +648,7 @@ usa o projeto gerado de um livro real depende do H8. Um que usa a matriz de CSS 
 
 - **Governa:** spec D3, R1.13, R1.15, R4.1, §5.5.
 - **Arquivos:**
-  - `benchmarks/editor_motores.py`;
+  - `benchmarks/editor_motores.py`, `benchmarks/editor_sonda.py` (a sonda pelo portão);
   - `tests/fixtures/editor/css/`, `tests/fixtures/editor/hostil/`;
   - `packaging/sonda_webengine.py` e `packaging/sonda_webengine.spec` (a sonda congelada; saída em
     `build\sonda_webengine\`, ignorado);

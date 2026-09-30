@@ -112,3 +112,45 @@ def test_o_livro_hostil_leva_a_porta_e_a_sentinela(tmp_path: Path) -> None:
     assert sentinela.as_uri() in fora
     assert (livro / "Images" / "dentro.png").read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     assert len(list((livro / "Text").glob("*.xhtml"))) == 9
+
+
+def test_o_clique_acha_o_bloco_e_a_continuacao_na_pagina_seguinte() -> None:
+    """A regra do clique: o retângulo que contém; a continuação acima do primeiro bloco da
+    página (o MuPDF só dá o bloco que passa da página na primeira); a folga da primeira linha."""
+    posicoes = [(0, "a", (36.0, 36.0, 384.0, 300.0)), (0, "b", (36.0, 310.0, 384.0, 700.0)),
+                (1, "c", (36.0, 200.0, 384.0, 400.0))]
+    assert motores.bloco_no_clique(posicoes, 0, 100, 100) == "a"
+    assert motores.bloco_no_clique(posicoes, 0, 100, 400) == "b"
+    assert motores.bloco_no_clique(posicoes, 1, 100, 100) == "b", "a continuação de b"
+    assert motores.bloco_no_clique(posicoes, 1, 100, 300) == "c"
+    assert motores.bloco_no_clique(posicoes, 1, 100, 404) == "c", "a folga de 6 pt"
+    assert motores.bloco_no_clique(posicoes, 1, 100, 450) is None
+    assert motores.bloco_no_clique(posicoes, 0, 100, 20) is None, "a cabeça do livro: nenhum"
+
+
+def test_o_capitulo_cresce_por_blocos_e_conta_so_o_corpo() -> None:
+    """O capítulo de 50 KB tem blocos (a cabeça da página, com o CSS e as fontes embutidas, não
+    conta), e a edição põe um caractere no texto de um bloco, sem tocar nas etiquetas."""
+    import random
+
+    capitulos = motores.capitulos(None)
+    for nome, alvo in motores.ALVOS_DOS_CAPITULOS.items():
+        capitulo = capitulos[nome]
+        assert capitulo.blocos, nome
+        assert capitulo.kb * 1024 >= alvo
+        assert capitulo.origem.startswith("o corpus sintético")
+    capitulo = capitulos["50kb"]
+    indice, novo = motores.editar(capitulo, random.Random(42))
+    antigo = capitulo.blocos[indice]
+    assert len(novo) == len(antigo) + 1
+    assert re.sub(r"<[^>]*>", "", novo) != re.sub(r"<[^>]*>", "", antigo)
+    assert re.findall(r"<[^>]*>", novo) == re.findall(r"<[^>]*>", antigo)
+
+
+def test_a_cobertura_das_posicoes_cai_sem_os_ids() -> None:
+    """A sabotagem `sem_ids`: sem o `id` nos blocos, o MuPDF não dá a posição de nenhum."""
+    capitulo = motores.capitulos(None)["50kb"]
+    com = motores.posicoes_no_mupdf(capitulo)
+    sem = motores.posicoes_no_mupdf(capitulo, sem_ids=True)
+    assert com["cobertura"] == 1.0
+    assert sem["cobertura"] < 1.0

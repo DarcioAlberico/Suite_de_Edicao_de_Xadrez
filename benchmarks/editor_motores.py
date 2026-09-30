@@ -1,4 +1,4 @@
-r"""Os motores de pré-visualização, medidos — o passo H1 do Editor HTML/CSS (tarefas 1 e 4).
+r"""Os motores de pré-visualização, medidos — o passo H1 do Editor HTML/CSS (tarefas 1, 2, 3e e 4).
 
 Mede os dois motores que a spec D3 põe lado a lado: o **MuPDF** (`pymupdf.Story`, que o produto já
 leva) e o **Chromium** (o `QWebEngineView` do PyQt6-WebEngine 6.11), que roda no **ambiente de
@@ -25,23 +25,42 @@ variável `CAISSA_WEBENGINE_PY`), que o produto não leva —, num processo filh
    entrada do validador, H10).
 2. **O livro hostil** (`--hostil`): `tests/fixtures/editor/hostil/`, nos dois motores; ver
    `hostil()`.
+3. **A latência e as posições** (`--latencia`, tarefa 2): os capítulos de 50 KB e 260 KB do
+   `PEDIDO` p. 50–60 pelo exportador HTML de hoje (o `XhtmlBuilder`; do IR real do H5, `--ir-real`
+   — sem ele, o corpus sintético, e a exigência reprova). **MuPDF:** tecla → o leiaute do
+   capítulo na página A5 da prévia e o raster da página, p50/p95 em 20 edições. **Posições:** um
+   `id` em cada bloco (a cópia da prévia) e a cobertura do `element_positions` (**100 %**, o
+   portão; a sabotagem `sem_ids` a derruba), e o acerto clique → bloco em 400 cliques (semente 42),
+   conferido pelo texto na ordem. **Chromium** (o processo filho do ambiente de medição): o frio
+   (do lançamento à primeira pintura), a memória extra (o hospedeiro e os `QtWebEngineProcess`) e
+   o remendo do DOM por `runJavaScript` até a pintura (dois `requestAnimationFrame`), p50/p95 em
+   50 edições — os critérios 2, 3 e 5 da D3, publicados. Saída: `latencia.json`.
+4. **Os tamanhos do componente** (`--tamanhos`, tarefa 3e): ver `tamanhos()`.
 
 Uso::
 
     & $PY benchmarks\editor_motores.py --matriz --saida benchmarks\reports\editor\h1\matriz
     & $PY benchmarks\editor_motores.py --matriz --limite 8 --saida <pasta>   (a rodada curta)
+    & $PY benchmarks\editor_motores.py --latencia --ir-real benchmarks\reports\editor\h5_ir_real `
+        --saida benchmarks\reports\editor\h1\latencia
 """
 
 from __future__ import annotations
 
 import argparse
+import bisect
+import html
 import io
+import itertools
 import json
+import math
 import os
+import random
 import re
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -90,7 +109,7 @@ CONTROLES = (("color", "#c00", True), ("color", "#000", False))
 HOSTIL = RAIZ / "tests" / "fixtures" / "editor" / "hostil"
 ESPERA_DO_HOSTIL_MS = 600
 """Quanto a página hostil tem depois de carregar para tentar o que for (o refresh, o onerror)."""
-SABOTAGENS = ("sem_interceptador", "sem_guarda_de_rede")
+SABOTAGENS = ("sem_interceptador", "sem_guarda_de_rede", "sem_ids")
 """`sem_interceptador` (do roadmap): o interceptador só olha, e o arquivo de fora passa.
 `sem_guarda_de_rede`: tira também o `LocalContentCanAccessRemoteUrls` desligado, a camada que
 barra o endereço de rede antes do interceptador — e as requisições chegam ao servidor."""
@@ -746,6 +765,466 @@ def tamanhos(saida: Path) -> tuple[dict[str, bool], dict[str, Any]]:
 # --------------------------------------------------------------------------- #
 
 
+# --------------------------------------------------------------------------- #
+# A latência e as posições (tarefa 2)
+# --------------------------------------------------------------------------- #
+
+ALVOS_DOS_CAPITULOS = {"50kb": 50 * 1024, "260kb": 260 * 1024}
+EDICOES_NO_MUPDF = 20
+EDICOES_NO_CHROMIUM = 50
+PONTOS = 400
+SEMENTE = 42
+ORCAMENTOS_DA_D3 = {"frio_s": 1.5, "remendo_p95_ms": 150.0, "memoria_mb": 350.0}
+"""Os critérios 2, 3 e 5 da D3 (spec §3, D3; §5.5): o frio, o remendo e a memória extra."""
+PAGINAS_DA_PREVIA = 500
+"""O teto da paginação A5 da prévia (`previa.MAXIMO_DE_PAGINAS`)."""
+_TEXTO_DO_BLOCO = re.compile(r">([^<>]*[^\s<>][^<>]*)<")
+_SEM_TEXTO_DESENHADO = re.compile(r"<(style|script|svg)\b.*?</\1>", re.S)
+"""O que não sai como texto na página do MuPDF: o CSS, o script e o SVG do texto (uma imagem)."""
+FOLGA_DO_CLIQUE = 6.0
+"""A distância (em pontos) em que o clique perto de um retângulo ainda é dele (o ascendente da
+primeira linha fica acima da caixa do bloco)."""
+SALTO_CURTO = 200
+"""Até onde (em caracteres do texto normalizado) o trecho curto pode pular à frente: o «1» de uma
+nota casaria com o «1» das coordenadas de um diagrama adiante e tiraria o resto do lugar."""
+_ETIQUETA_DE_ABERTURA = re.compile(r"^<([A-Za-z][\w:-]*)")
+
+
+@dataclass
+class Capitulo:
+    """Um capítulo da página do exportador HTML de hoje.
+
+    A cabeça, os blocos do `<main>` e a cauda; os blocos repetem, na ordem, até o tamanho.
+    """
+
+    nome: str
+    cabeca: str
+    blocos: list[str]
+    cauda: str
+    origem: str
+
+    def texto(self, trocas: dict[int, str] | None = None) -> str:
+        trocas = trocas or {}
+        return self.cabeca + "".join(trocas.get(k, b) for k, b in enumerate(self.blocos)) + \
+            self.cauda
+
+    @property
+    def kb(self) -> float:
+        """O tamanho do corpo (os blocos), em KB: o que o capítulo do projeto teria."""
+        return sum(len(b.encode("utf-8")) for b in self.blocos) / 1024
+
+
+def capitulos(ir_real: Path | None) -> dict[str, Capitulo]:
+    """Os capítulos de 50 KB e 260 KB pelo `XhtmlBuilder` de hoje (a exportação HTML).
+
+    Do `PEDIDO` p. 50–60 (o IR real do H5), ou do corpus sintético sem ele — e isso fica dito
+    na origem.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from editor_ida_e_volta import carregar_ir_real, corpus_sintetico
+
+    from caissa.editor.validacao.xml import Elemento, ler
+    from caissa.export import export
+
+    documentos = carregar_ir_real(ir_real) if ir_real is not None else {}
+    if "pedido" in documentos:
+        documento, origem = documentos["pedido"], "PEDIDO p. 50–60 (o IR real do H5)"
+    else:
+        documento, origem = corpus_sintetico(400, SEMENTE), "o corpus sintético (sem o IR real)"
+    with tempfile.TemporaryDirectory(prefix="caissa_h1_capitulo_") as pasta:
+        destino = Path(pasta) / "livro.html"
+        export(documento, destino, "html")
+        texto = destino.read_text(encoding="utf-8")
+    lido, _ = ler("livro.html", texto)
+    principal = next((e for e in lido.elementos() if e.nome == "main"), None)
+    if principal is None:
+        raise RuntimeError("a página do exportador HTML não tem <main>")
+    filhos = [f for f in principal.filhos if isinstance(f, Elemento)]
+    inicios = [lido.deslocamento(f.linha, f.coluna) for f in filhos]
+    fim = texto.index("</main>", inicios[-1])
+    blocos = [texto[a:b] for a, b in zip(inicios, [*inicios[1:], fim], strict=True)]
+    cabeca, cauda = texto[:inicios[0]], texto[fim:]
+    feitos = {}
+    for nome, alvo in ALVOS_DOS_CAPITULOS.items():
+        # O tamanho é o do corpo (os blocos): a cabeça da página do exportador leva o CSS e as
+        # fontes embutidas, que no projeto do editor são arquivos à parte.
+        escolhidos: list[str] = []
+        tamanho = 0
+        for bloco in itertools.cycle(blocos):
+            if tamanho >= alvo:
+                break
+            escolhidos.append(bloco)
+            tamanho += len(bloco.encode("utf-8"))
+        feitos[nome] = Capitulo(nome, cabeca, escolhidos, cauda, origem)
+    return feitos
+
+
+def editar(capitulo: Capitulo, sorte: random.Random) -> tuple[int, str]:
+    """Uma tecla: um caractere a mais no texto de um bloco sorteado."""
+    for _ in range(100):
+        indice = sorte.randrange(len(capitulo.blocos))
+        bloco = capitulo.blocos[indice]
+        trechos = list(_TEXTO_DO_BLOCO.finditer(bloco))
+        if trechos:
+            trecho = sorte.choice(trechos)
+            lugar = sorte.randrange(trecho.start(1), trecho.end(1) + 1)
+            return indice, bloco[:lugar] + "x" + bloco[lugar:]
+    raise RuntimeError("nenhum bloco com texto no capítulo")
+
+
+def _percentil(valores: Sequence[float], p: float) -> float:
+    ordenados = sorted(valores)
+    if not ordenados:
+        return float("nan")
+    return ordenados[min(len(ordenados) - 1, max(0, round(p / 100 * (len(ordenados) - 1))))]
+
+
+def latencia_no_mupdf(capitulo: Capitulo, edicoes: int) -> dict[str, Any]:
+    """Tecla → a página refeita, a cada edição (a primeira aquece e não conta).
+
+    O leiaute do capítulo na página A5 da prévia, e o raster da página.
+    """
+    import pymupdf
+
+    from caissa.editor.previa import paginar
+
+    sorte = random.Random(SEMENTE)
+    tempos: list[float] = []
+    paginas, laco = 0, False
+    pymupdf.TOOLS.mupdf_display_errors(False)
+    for vez in range(edicoes + 1):
+        indice, novo = editar(capitulo, sorte)
+        texto = capitulo.texto({indice: novo})
+        inicio = time.perf_counter()
+        medida = paginar(texto, "", maximo=PAGINAS_DA_PREVIA)
+        with pymupdf.open("pdf", medida.pdf) as pdf:
+            pdf[0].get_pixmap(dpi=DPI_DO_MUPDF, alpha=False)
+        if vez:
+            tempos.append(1000 * (time.perf_counter() - inicio))
+        paginas, laco = medida.paginas, medida.laco
+    return {"kb": round(capitulo.kb, 1), "edicoes": len(tempos), "p50_ms": _percentil(tempos, 50),
+            "p95_ms": _percentil(tempos, 95), "paginas": paginas, "laco": laco,
+            "tempos_ms": [round(t, 1) for t in tempos]}
+
+
+def _com_ids(capitulo: Capitulo) -> tuple[Capitulo, list[str]]:
+    """O capítulo com um `id` em cada bloco; o `id` que o bloco já tem fica.
+
+    É a cópia da prévia: o `element_positions` do MuPDF só dá a posição do elemento com `id`.
+    """
+    ids, blocos = [], []
+    for indice, bloco in enumerate(capitulo.blocos):
+        abertura = bloco[:bloco.index(">") + 1] if ">" in bloco else ""
+        existente = re.search(r'\sid="([^"]+)"', abertura)
+        if existente:
+            ids.append(existente.group(1))
+            blocos.append(bloco)
+            continue
+        ident = f"pos{indice}"
+        ids.append(ident)
+        blocos.append(_ETIQUETA_DE_ABERTURA.sub(rf'<\1 id="{ident}"', bloco, count=1))
+    return Capitulo(capitulo.nome, capitulo.cabeca, blocos, capitulo.cauda, capitulo.origem), ids
+
+
+def _texto_dos_blocos(blocos: Sequence[str]) -> list[str]:
+    from caissa.editor.validacao.css import _normal
+
+    sem_codigo = (_SEM_TEXTO_DESENHADO.sub("", b) for b in blocos)
+    return [_normal(html.unescape(re.sub(r"<[^>]*>", "", b))) for b in sem_codigo]
+
+
+def _visivel(bloco: str) -> bool:
+    """O bloco que o MuPDF desenha: sem o `hidden`, e com texto ou imagem."""
+    abertura = bloco[:bloco.index(">") + 1] if ">" in bloco else bloco
+    if re.search(r"\shidden(=|\s|>|/)", abertura):
+        return False
+    texto = re.sub(r"<[^>]*>", "", _SEM_TEXTO_DESENHADO.sub("", bloco)).strip()
+    return bool(texto) or "<img" in bloco or "<svg" in bloco
+
+
+def _pagina_com_posicoes(texto: str) -> tuple[bytes, list[tuple[int, str, tuple[float, ...]]]]:
+    """O capítulo na página A5 da prévia, e cada posição que o `element_positions` dá."""
+    import io as _io
+
+    import pymupdf
+
+    historia = pymupdf.Story(html=texto, em=16)
+    posicoes: list[tuple[int, str, tuple[float, ...]]] = []
+    pagina_atual = [0]
+
+    def anotar(posicao: Any) -> None:  # o MuPDF exige um só argumento
+        if posicao.id:  # a abertura, o fecho e a continuação na página seguinte
+            posicoes.append((pagina_atual[0], posicao.id, tuple(posicao.rect)))
+
+    saida = _io.BytesIO()
+    escritor = pymupdf.DocumentWriter(saida)
+    caixa = pymupdf.Rect(36, 36, 420 - 36, 595 - 36)
+    mais = True
+    pymupdf.TOOLS.mupdf_display_errors(False)
+    while mais and pagina_atual[0] < PAGINAS_DA_PREVIA:
+        dispositivo = escritor.begin_page(pymupdf.Rect(0, 0, 420, 595))
+        mais, _ = historia.place(caixa)
+        historia.element_positions(anotar)
+        historia.draw(dispositivo)
+        escritor.end_page()
+        pagina_atual[0] += 1
+    escritor.close()
+    return saida.getvalue(), posicoes
+
+
+def _trechos_com_bloco(pdf_bytes: bytes,
+                       capitulo: Capitulo) -> list[tuple[int, tuple[float, ...], int | None]]:
+    """Cada trecho de texto da página (a página, a caixa) e o bloco que tem aquele texto.
+
+    O bloco verdadeiro sai do texto, na ordem (o trecho curto só casa perto do anterior), e não
+    das posições: é contra ele que o clique é conferido. O texto de fora do `<main>` (a cabeça do
+    livro, o sumário, antes; as notas, depois) entra no fluxo sem bloco: senão o «Bispo» do
+    sumário casaria dentro do primeiro bloco e tiraria o resto do lugar.
+    """
+    import pymupdf
+
+    from caissa.editor.validacao.css import _normal
+
+    trechos: list[tuple[int, str, tuple[float, ...]]] = []
+    with pymupdf.open("pdf", pdf_bytes) as pdf:
+        for numero, folha in enumerate(pdf):
+            for bloco in folha.get_text("dict", flags=pymupdf.TEXTFLAGS_DICT
+                                        & ~pymupdf.TEXT_PRESERVE_IMAGES)["blocks"]:
+                for linha in bloco.get("lines", []):
+                    trechos += [(numero, s["text"], tuple(s["bbox"])) for s in linha["spans"]
+                                if _normal(s["text"])]
+    corpo = capitulo.cabeca[capitulo.cabeca.find("<body"):] if "<body" in capitulo.cabeca \
+        else capitulo.cabeca
+    textos = _texto_dos_blocos([corpo, *capitulo.blocos, capitulo.cauda])
+    donos: list[int | None] = [None, *range(len(capitulo.blocos)), None]
+    fluxo = "".join(textos)
+    inicios = list(itertools.accumulate((len(t) for t in textos), initial=0))
+    resultado: list[tuple[int, tuple[float, ...], int | None]] = []
+    cursor = 0
+    for numero, conteudo, caixa in trechos:
+        chave = _normal(conteudo)
+        achado = -1
+        for variante in dict.fromkeys((chave, chave.rstrip("-\u2010"))):  # o hífen da quebra
+            if variante:
+                achado = fluxo.find(variante, cursor,
+                                    None if len(variante) >= 12 else cursor + SALTO_CURTO)
+            if achado >= 0:
+                cursor = achado + len(variante)
+                break
+        resultado.append((numero, caixa, donos[bisect.bisect_right(inicios, achado) - 1]
+                          if achado >= 0 else None))
+    return resultado
+
+
+def bloco_no_clique(posicoes: Sequence[tuple[int, str, tuple[float, ...]]],
+                    pagina: int, x: float, y: float) -> str | None:
+    """O bloco que um clique acha pelas posições do MuPDF (a regra que a prévia do H13 usa).
+
+    O `element_positions` dá o bloco que passa de uma página só na primeira (medido: o bloco de
+    três páginas vem na primeira, com o retângulo até 705 pt numa página de 559; o que mal passa
+    vem com o retângulo dentro dela): nas seguintes, o texto acima do primeiro bloco que começa
+    na página é a continuação do último bloco das anteriores. O clique fora de todo retângulo
+    fica com o mais perto, até `FOLGA_DO_CLIQUE`.
+    """
+    dentro = [i for n, i, r in posicoes if n == pagina and r[0] <= x <= r[2] and r[1] <= y <= r[3]]
+    if dentro:
+        return dentro[-1]
+    anteriores = [i for n, i, _ in posicoes if n < pagina]
+    topo = min((r[1] for n, _, r in posicoes if n == pagina), default=math.inf)
+    if anteriores and y < topo:
+        return anteriores[-1]
+    perto = [(max(r[0] - x, 0, x - r[2]) + max(r[1] - y, 0, y - r[3]), i)
+             for n, i, r in posicoes if n == pagina]
+    distancia, ident = min(perto, default=(math.inf, None))
+    return ident if distancia <= FOLGA_DO_CLIQUE else None
+
+
+def posicoes_no_mupdf(capitulo: Capitulo, *, sem_ids: bool = False) -> dict[str, Any]:
+    """A cobertura do `element_positions` (os blocos com posição) e o acerto clique → bloco.
+
+    Os 400 cliques (semente 42) caem no miolo de trechos de texto sorteados da página; o bloco
+    que as posições dão (o que tem o retângulo que contém o clique) é conferido contra o bloco
+    que tem aquele texto, achado pelo texto na ordem (independente das posições).
+    """
+    medido, ids = (capitulo, []) if sem_ids else _com_ids(capitulo)
+    pdf_bytes, posicoes = _pagina_com_posicoes(medido.texto())
+    # A cobertura conta os blocos que o MuPDF desenha (o `note-slot` escondido não tem posição).
+    visiveis = [k for k, bloco in enumerate(capitulo.blocos) if _visivel(bloco)]
+    alvos = {ids[k] for k in visiveis} if ids else set()
+    com_posicao = {i for _, i, _ in posicoes if i in alvos}
+    trechos = _trechos_com_bloco(pdf_bytes, medido)
+    sorte = random.Random(SEMENTE)
+    candidatos = [k for k, (_, _, bloco) in enumerate(trechos) if bloco is not None]
+    cliques = [sorte.choice(candidatos) for _ in range(PONTOS)] if candidatos else []
+    indice_do_id = {ident: k for k, ident in enumerate(ids)}
+    dos_blocos = [(n, i, r) for n, i, r in posicoes if i in indice_do_id]
+    acertos = 0
+    for k in cliques:
+        numero, (x0, y0, x1, y1), verdadeiro = trechos[k]
+        achado = bloco_no_clique(dos_blocos, numero, (x0 + x1) / 2, y0 + 0.6 * (y1 - y0))
+        acertos += achado is not None and indice_do_id[achado] == verdadeiro
+    return {"blocos": len(visiveis), "escondidos": len(capitulo.blocos) - len(visiveis),
+            "com_posicao": len(com_posicao),
+            "cobertura": len(com_posicao) / len(visiveis) if visiveis else 0.0,
+            "cliques": len(cliques), "acertos": acertos,
+            "acerto": acertos / len(cliques) if cliques else 0.0, "sem_ids": sem_ids,
+            "trechos_sem_bloco": sum(1 for _, _, b in trechos if b is None)}
+
+
+def _memoria_mb(pid: int) -> float:
+    """A memória privada (commit) do processo, em MB (o `GetProcessMemoryInfo` do psapi)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class Contadores(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+            ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+            ("QuotaNonPagedPoolUsage", ctypes.c_size_t), ("PagefileUsage", ctypes.c_size_t),
+            ("PeakPagefileUsage", ctypes.c_size_t), ("PrivateUsage", ctypes.c_size_t)]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    alca = kernel.OpenProcess(0x0400 | 0x0010, False, pid)  # QUERY_INFORMATION | VM_READ
+    if not alca:
+        return 0.0
+    try:
+        contadores = Contadores()
+        contadores.cb = ctypes.sizeof(Contadores)
+        if not psapi.GetProcessMemoryInfo(alca, ctypes.byref(contadores), contadores.cb):
+            return 0.0
+        return contadores.PrivateUsage / 2**20
+    finally:
+        kernel.CloseHandle(alca)
+
+
+def medir_latencia_no_chromium(capitulo: Capitulo, pasta: Path, *,
+                               edicoes: int = EDICOES_NO_CHROMIUM) -> dict[str, Any]:
+    """O frio, a memória extra e o remendo no Chromium, num processo filho do ambiente de medição.
+
+    O frio conta do lançamento do processo à primeira pintura do capítulo (o relógio de parede,
+    dos dois lados): a importação do Qt, o perfil, a página, o carregamento e dois quadros.
+    """
+    pasta.mkdir(parents=True, exist_ok=True)
+    entrada, saida = pasta / "latencia_chromium.json", pasta / "resultado_latencia.json"
+    sorte = random.Random(SEMENTE)
+    remendos = []
+    for _ in range(edicoes + 1):
+        indice, novo = editar(capitulo, sorte)
+        remendos.append({"indice": indice, "html": novo})
+    entrada.write_text(json.dumps({"pagina": capitulo.texto(), "remendos": remendos},
+                                  ensure_ascii=False), encoding="utf-8")
+    python = python_do_webengine()
+    if not python.is_file():
+        raise FileNotFoundError(f"o ambiente de medição com o WebEngine não existe: {python}")
+    lancado = time.time()
+    processo = subprocess.run(  # noqa: S603 - o Python do ambiente de medição, com os nossos args
+        [str(python), str(Path(__file__).resolve()), "--filho-latencia", str(entrada),
+         str(saida)], capture_output=True, text=True, encoding="utf-8", errors="replace",
+        check=False, timeout=1800)
+    (pasta / "latencia_chromium.log").write_text(processo.stdout + processo.stderr,
+                                                 encoding="utf-8")
+    if processo.returncode != 0 or not saida.is_file():
+        raise RuntimeError(f"o processo do Chromium falhou ({processo.returncode}): "
+                           f"{(processo.stderr or processo.stdout)[-600:]}")
+    resultado = dict(json.loads(saida.read_text(encoding="utf-8")))
+    resultado["frio_s"] = resultado.pop("pintado_em") - lancado
+    return resultado
+
+
+def filho_latencia(entrada: Path, saida: Path) -> int:
+    """No ambiente de medição: o capítulo carregado (o frio), a memória, e cada remendo."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packaging"))
+    import editor_chromium_medicao as cm
+    from sonda_webengine import processos_filhos
+
+    dados = json.loads(entrada.read_text(encoding="utf-8"))
+    antes = _memoria_mb(os.getpid())
+    medidor = cm.Medidor()
+    medidor.carregar(dados["pagina"], nome_da_pagina="pagina.html")
+    pintado = time.time()
+    medidor.esperar(500)  # a página assenta (o processo de renderização termina de subir)
+    filhos = processos_filhos(os.getpid())
+    memoria = {"hospedeiro_mb": _memoria_mb(os.getpid()) - antes,
+               "filhos_mb": sum(_memoria_mb(pid) for pid, _ in filhos), "filhos": len(filhos),
+               "nomes_dos_filhos": sorted({nome for _, nome in filhos})}
+    tempos, na_pagina = [], []
+    for vez, remendo in enumerate(dados["remendos"]):
+        codigo = ("(function(){ const m = document.querySelector('main') || document.body;"
+                  " const el = m.children[Math.min(" + str(remendo["indice"])
+                  + ", m.children.length - 1)]; window.__pintado = 0;"
+                  " const t = performance.now(); el.outerHTML = " + json.dumps(remendo["html"])
+                  + "; requestAnimationFrame(() => requestAnimationFrame(() => {"
+                  " window.__pintado = performance.now(); })); return t; })()")
+        inicio = time.perf_counter()
+        comeco = float(medidor.js(codigo))
+        while True:
+            pintou = medidor.js("window.__pintado || 0")
+            if pintou:
+                break
+            medidor.esperar(1)
+        if vez:  # o primeiro aquece
+            tempos.append(1000 * (time.perf_counter() - inicio))
+            na_pagina.append(float(pintou) - comeco)
+    saida.write_text(json.dumps({
+        "pintado_em": pintado, "memoria": memoria,
+        "memoria_extra_mb": memoria["hospedeiro_mb"] + memoria["filhos_mb"],
+        "remendos": len(tempos), "p50_ms": _percentil(tempos, 50), "p95_ms": _percentil(tempos, 95),
+        "na_pagina_p95_ms": _percentil(na_pagina, 95),
+        "tempos_ms": [round(t, 1) for t in tempos]}, ensure_ascii=False), encoding="utf-8")
+    return 0
+
+
+def latencia(saida: Path, ir_real: Path | None, *, sabotagem: str | None = None,
+             sem_chromium: bool = False,
+             edicoes: int | None = None) -> tuple[dict[str, bool], dict[str, Any]]:
+    """A tarefa 2: a latência nos dois motores, as posições do MuPDF, o frio e a memória.
+
+    O portão exige a cobertura das posições do MuPDF em 100 % no capítulo do PEDIDO; o resto
+    (as latências, o acerto do clique, o frio, a memória: os critérios 2, 3 e 5 da D3) é
+    publicado, e o veredito da D3 vai ao relatório.
+    """
+    caps = capitulos(ir_real)
+    registro: dict[str, Any] = {"origem": caps["260kb"].origem, "sabotagem": sabotagem}
+    registro["mupdf"] = {nome: latencia_no_mupdf(cap, edicoes or EDICOES_NO_MUPDF)
+                         for nome, cap in caps.items()}
+    registro["posicoes"] = posicoes_no_mupdf(caps["260kb"], sem_ids=sabotagem == "sem_ids")
+    if not sem_chromium:
+        registro["chromium"] = medir_latencia_no_chromium(
+            caps["260kb"], saida / "chromium", edicoes=edicoes or EDICOES_NO_CHROMIUM)
+        chromium = registro["chromium"]
+        registro["d3"] = {
+            "2_frio": chromium["frio_s"] <= ORCAMENTOS_DA_D3["frio_s"],
+            "3_remendo": chromium["p95_ms"] <= ORCAMENTOS_DA_D3["remendo_p95_ms"],
+            "5_memoria": chromium["memoria_extra_mb"] <= ORCAMENTOS_DA_D3["memoria_mb"]}
+    posicoes = registro["posicoes"]
+    do_pedido = caps["260kb"].origem.startswith("PEDIDO")
+    exigencias = {
+        f"posições: {posicoes['com_posicao']}/{posicoes['blocos']} blocos com posição no MuPDF "
+        f"(a cobertura, 100 %); o clique acha o bloco em {posicoes['acertos']}/"
+        f"{posicoes['cliques']}": posicoes["cobertura"] >= 1.0,
+        f"latência: o capítulo de {caps['260kb'].kb:.0f} KB — {caps['260kb'].origem}":
+            do_pedido,
+    }
+    saida.mkdir(parents=True, exist_ok=True)
+    (saida / "latencia.json").write_text(json.dumps(registro, ensure_ascii=False, indent=1),
+                                         encoding="utf-8")
+    for nome, medida in registro["mupdf"].items():
+        print(f"MuPDF {nome}: p50 {medida['p50_ms']:.0f} ms, p95 {medida['p95_ms']:.0f} ms "
+              f"({medida['kb']} KB, {medida['paginas']} páginas"
+              f"{', laço' if medida['laco'] else ''})")
+    if "chromium" in registro:
+        c = registro["chromium"]
+        print(f"Chromium: frio {c['frio_s']:.2f} s, remendo p50 {c['p50_ms']:.0f} ms p95 "
+              f"{c['p95_ms']:.0f} ms, memória extra {c['memoria_extra_mb']:.0f} MB — D3 "
+              f"{registro['d3']}")
+    return exigencias, registro
+
+
 def _principal() -> Path:
     """O checkout principal (a árvore de trabalho acha o Sigil e o venv ao lado dele)."""
     comum = subprocess.run(
@@ -759,16 +1238,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--matriz", action="store_true")
     parser.add_argument("--hostil", action="store_true")
     parser.add_argument("--tamanhos", action="store_true")
+    parser.add_argument("--latencia", action="store_true")
+    parser.add_argument("--ir-real", type=Path)
+    parser.add_argument("--sem-chromium", action="store_true",
+                        help="a latência só no MuPDF (sem o ambiente de medição)")
+    parser.add_argument("--edicoes", type=int,
+                        help="as edições da latência (a rodada curta, que não mede)")
     parser.add_argument("--sabotar", choices=SABOTAGENS)
     parser.add_argument("--limite", type=int)
     parser.add_argument("--saida", type=Path)
     parser.add_argument("--filho-chromium", nargs=2, type=Path, metavar=("ENTRADA", "SAIDA"))
     parser.add_argument("--filho-hostil", nargs=2, type=Path, metavar=("ENTRADA", "SAIDA"))
+    parser.add_argument("--filho-latencia", nargs=2, type=Path, metavar=("ENTRADA", "SAIDA"))
     args = parser.parse_args(argv)
     if args.filho_chromium:
         return filho_chromium(*args.filho_chromium)
     if args.filho_hostil:
         return filho_hostil(*args.filho_hostil)
+    if args.filho_latencia:
+        return filho_latencia(*args.filho_latencia)
     if args.saida is None:
         parser.error("--saida é obrigatório")
     saida = args.saida if args.saida.is_absolute() else RAIZ / args.saida
@@ -779,8 +1267,13 @@ def main(argv: list[str] | None = None) -> int:
         exigencias.update(hostil(saida, sabotagem=args.sabotar)[0])
     if args.tamanhos:
         exigencias.update(tamanhos(saida)[0])
+    if args.latencia:
+        ir_real = args.ir_real if args.ir_real is None or args.ir_real.is_absolute() \
+            else RAIZ / args.ir_real
+        exigencias.update(latencia(saida, ir_real, sabotagem=args.sabotar,
+                                   sem_chromium=args.sem_chromium, edicoes=args.edicoes)[0])
     if not exigencias:
-        parser.error("diga o que medir: --matriz, --hostil, --tamanhos")
+        parser.error("diga o que medir: --matriz, --hostil, --tamanhos, --latencia")
     for texto, ok in exigencias.items():
         print(f"{'PASSOU' if ok else 'REPROVADO'}: {texto}")
     return 0 if all(exigencias.values()) else 1

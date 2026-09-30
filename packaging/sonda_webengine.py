@@ -262,7 +262,8 @@ def processos_filhos(pid: int) -> list[tuple[int, str]]:
     from ctypes import wintypes
 
     class Entrada(ctypes.Structure):
-        _fields_ = [  # noqa: RUF012 - a forma do ctypes("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
+        _fields_ = [  # noqa: RUF012 - a forma do ctypes
+                    ("dwSize", wintypes.DWORD), ("cntUsage", wintypes.DWORD),
                     ("th32ProcessID", wintypes.DWORD), ("th32DefaultHeapID", ctypes.c_size_t),
                     ("th32ModuleID", wintypes.DWORD), ("cntThreads", wintypes.DWORD),
                     ("th32ParentProcessID", wintypes.DWORD), ("pcPriClassBase", ctypes.c_long),

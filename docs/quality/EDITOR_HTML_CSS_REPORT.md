@@ -28,10 +28,11 @@ dia todo, e medir junto contaminaria os tempos das duas.
 ## H1 — Motores de pré-visualização, medidos
 
 **Estado:** em curso. Prontos e medidos: o arnês de medição Chromium (tarefa 5, `cc20e00`), a
-matriz de CSS (tarefa 1) e o livro hostil (tarefa 4). Pendentes: a latência e as posições (tarefa
-2: os capítulos do `PEDIDO` p. 50–60 saem do mesmo IR real do H5, que espera a máquina livre), a
-sonda congelada (tarefa 3b: uma construção PyInstaller) e a máquina limpa (3c: o Windows Sandbox
-ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entrada do executor.
+matriz de CSS (tarefa 1), o livro hostil (tarefa 4) e os tamanhos (3e). Prontos e conferidos numa
+rodada curta, à espera da medida: a latência e as posições (tarefa 2: o capítulo do `PEDIDO`
+p. 50–60 sai do IR real do H5) e a sonda congelada com a instalação atômica (3b, 3d: a construção
+PyInstaller espera a máquina livre). A entrada `PASSOS["H1"]` do executor está registrada.
+Pendente do usuário: a **máquina limpa** (3c: o Windows Sandbox ou uma VM sem Python).
 
 - **O ambiente de medição:** o venv de rascunho `C:\Python-Chess2\_h1_webengine\.venv` (Python
   3.11, `PyQt6-WebEngine` 6.11.0 e `PyQt6-WebEngine-Qt6` 6.11.2, o download consentido em
@@ -97,10 +98,47 @@ ou uma VM, do usuário), a instalação atômica e os tamanhos (3d, 3e) e a entr
   WebChannel, o Positioning, o OpenGL, o PrintSupport; e os módulos QtNetwork, QtPrintSupport e
   QtWebChannel) — tem **42 arquivos, 240,0 MB**: dentro dos 300 MB. A instalação copia para
   `runtime\webengine.parcial\` e só no fim renomeia; a que cai no meio (`--abortar-apos N`) apaga
-  a parcial. Testes: `tests/unit/test_sonda_webengine.py` (5, com rodas de mentira: o corte, a
-  instalação atômica, a queda, a remoção, a ligação num processo à parte). **Pendentes:** a
-  construção pelo PyInstaller e a rodada nesta máquina (a máquina livre) e a **máquina limpa**
-  (o Windows Sandbox ou uma VM sem Python, do usuário).
+  a parcial. Testes: `tests/unit/test_sonda_webengine.py` (6, com rodas de mentira: o corte, a
+  instalação atômica, a queda, a remoção, a ligação num processo à parte; e a foto dos
+  processos, que acha o filho). **Um defeito achado e corrigido:** um conserto de estilo do
+  `991e008` pôs um comentário no meio da linha da estrutura do `PROCESSENTRY32W` e tirou dela o
+  `dwSize` e o `cntUsage` — a foto dos processos não andava, e a sonda não acharia o
+  `QtWebEngineProcess` (as DLL dele ficariam sem conferir); a rodada da latência o mostrou (0
+  filhos), e o teste novo o guarda.
+- **A sonda pelo portão** (`benchmarks/editor_sonda.py`): constrói a sonda pelo PyInstaller do
+  `.venv-pack`; a instalação atômica pela própria sonda congelada (a que cai no meio não deixa
+  nada; a completa deixa `runtime\webengine\` e nada parcial); nesta máquina, o Chromium
+  desenha com toda DLL do WebEngine vinda de `runtime\webengine\`; a remoção cai no MuPDF; e a
+  **máquina limpa** pelo `sonda.json` que o usuário traz (`--limpa`). A sabotagem
+  `sonda_sem_runtime` apaga o componente e exige que a sonda reprove nele. **O passo a passo da
+  máquina limpa** (do usuário): habilitar o Windows Sandbox; copiar para ele a pasta
+  `benchmarks\reports\editor\h1\sonda\1\dist\sonda_webengine\` (com o `runtime\` que o
+  portão instalou); rodar `sonda_webengine.exe --saida C:\sonda`; trazer o `C:\sonda\sonda.json`
+  para `benchmarks\reports\editor\h1_limpa\sonda.json`.
+- **A latência e as posições (tarefa 2)** (`benchmarks/editor_motores.py --latencia`): os capítulos
+  de 50 KB e 260 KB (o corpo, por blocos do `<main>`; a cabeça da página, com o CSS e as fontes
+  embutidas, não conta) pelo exportador HTML de hoje; **MuPDF:** tecla → o leiaute na página A5 da
+  prévia e o raster da página, p50/p95; **posições:** um `id` em cada bloco (a cópia da prévia) e
+  a cobertura do `element_positions` nos blocos que o MuPDF desenha (o `note-slot` escondido não
+  conta), e o acerto clique → bloco em 400 cliques (semente 42), conferido pelo texto na ordem
+  (a cabeça do livro e o sumário entram no fluxo sem bloco; o texto do SVG não; o hífen da quebra
+  sai); **Chromium** (o filho do ambiente de medição): o frio do lançamento à primeira pintura, a
+  memória extra (o hospedeiro e os `QtWebEngineProcess`) e o remendo do DOM até a pintura (dois
+  `requestAnimationFrame`). **Achados** da rodada curta (o corpus sintético, 3 edições — não é a
+  medida): o `element_positions` do MuPDF dá o bloco que passa de uma página **só na primeira**
+  (o de três páginas vem com o retângulo até 705 pt numa página de 559; o que mal passa, com o
+  retângulo dentro dela) — a regra do clique (`bloco_no_clique`, a que a prévia do H13 usa): o
+  texto acima do primeiro bloco que começa na página é a continuação do último bloco das
+  anteriores, e o clique a até 6 pt de um retângulo (o ascendente da primeira linha) é dele —,
+  com ela o clique acha o bloco em **400/400**; cobertura **19/19**; o Chromium: frio 0,90 s,
+  remendo p95 34 ms, memória extra 86 MB (48 no hospedeiro, 38 no processo de renderização).
+  `& $PY benchmarks\editor_motores.py --latencia --ir-real benchmarks\reports\editor\h5_ir_real --saida <pasta>`
+  (`--sem-chromium`, `--edicoes N`: a rodada curta; `--sabotar sem_ids`: a cobertura cai).
+- **O portão** (`PASSOS["H1"]`): os testes, o autoteste do arnês (`{web}`), o hostil, a matriz, os
+  tamanhos, a latência (3×) e a sonda (com a máquina limpa); as sabotagens `sem_ids`,
+  `sem_interceptador` e `sonda_sem_runtime`. Pendentes: o IR real do H5, a máquina livre e o
+  `sonda.json` da máquina limpa (sem ele, o executor reprova por instrumento ausente).
+  `& $PY benchmarks\editor_portoes.py --passo H1 --saida benchmarks\reports\editor\h1`
 
 ## H2 — O editor de código nativo aguenta, com tudo ligado?
 

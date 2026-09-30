@@ -87,6 +87,9 @@ TRONCO = PRINCIPAL.parent / "ChessVisionOFF_Puro"
 RELATORIOS = RAIZ / "benchmarks" / "reports" / "editor"
 IR_REAL_DO_H5 = "benchmarks/reports/editor/h5_ir_real"
 """O IR real das páginas do portão do H5, que o `editor_ida_e_volta.py --gerar-ir-real` grava."""
+SONDA_DA_MAQUINA_LIMPA = "benchmarks/reports/editor/h1_limpa/sonda.json"
+"""O registro que a sonda congelada gravou na máquina limpa (o Windows Sandbox ou a VM do
+usuário), trazido de volta: o portão do H1 o confere (`editor_sonda.py --limpa`)."""
 
 #: As pastas do usuário que nenhum arnês deste programa toca (roadmap §0.3).
 PASTAS_DO_USUARIO = ("labeling", "data", "editor")
@@ -495,6 +498,58 @@ PASSOS: dict[str, Passo] = {
             ) for metrica in ("figurinas", "lances", "insercao")),
         ),
     ),
+    "H1": Passo(
+        nome="H1",
+        descricao="os motores de pré-visualização medidos, e o Chromium provado num pacote real",
+        instrumentos=(
+            "benchmarks/editor_motores.py",
+            "benchmarks/editor_chromium_medicao.py",
+            "benchmarks/editor_sonda.py",
+            "packaging/sonda_webengine.py",
+            "packaging/sonda_webengine.spec",
+            "tests/unit/editor/test_motores.py",
+            "tests/unit/test_sonda_webengine.py",
+            "tests/fixtures/editor/hostil",
+            # O capítulo da latência e das posições: o PEDIDO p. 50–60, do IR real do H5.
+            f"{IR_REAL_DO_H5}/pedido.ir.json",
+            "{web}",
+            "{pack}",
+            SONDA_DA_MAQUINA_LIMPA,
+        ),
+        portao=(
+            Comando("test_motores", _pytest("tests/unit/editor/test_motores.py",
+                                             "tests/unit/test_sonda_webengine.py")),
+            Comando("autoteste", ("{web}", "benchmarks/editor_chromium_medicao.py",
+                                  "--autoteste", "--saida", "{saida}")),
+            Comando("hostil", ("{py}", "benchmarks/editor_motores.py", "--hostil",
+                               "--saida", "{saida}")),
+            Comando("matriz", ("{py}", "benchmarks/editor_motores.py", "--matriz",
+                               "--saida", "{saida}")),
+            Comando("tamanhos", ("{py}", "benchmarks/editor_motores.py", "--tamanhos",
+                                 "--saida", "{saida}")),
+            # A latência e o frio medem tempo: três execuções (§0.2).
+            Comando("latencia", ("{py}", "benchmarks/editor_motores.py", "--latencia",
+                                 "--ir-real", IR_REAL_DO_H5, "--saida", "{saida}"),
+                    repeticoes=3),
+            Comando("sonda", ("{py}", "benchmarks/editor_sonda.py", "--construir",
+                              "--limpa", SONDA_DA_MAQUINA_LIMPA, "--saida", "{saida}")),
+        ),
+        sabotagens=(
+            Sabotagem("sem_ids", Comando("latencia_sem_ids", (
+                "{py}", "benchmarks/editor_motores.py", "--latencia", "--sem-chromium",
+                "--edicoes", "2", "--ir-real", IR_REAL_DO_H5, "--sabotar", "sem_ids",
+                "--saida", "{saida}")), motivo="REPROVADO: posições"),
+            Sabotagem("sem_interceptador", Comando("hostil_sem_interceptador", (
+                "{py}", "benchmarks/editor_motores.py", "--hostil", "--sabotar",
+                "sem_interceptador", "--saida", "{saida}")),
+                motivo="REPROVADO: hostil no Chromium"),
+            Sabotagem("sonda_sem_runtime", Comando("sonda_sem_runtime", (
+                "{py}", "benchmarks/editor_sonda.py", "--sonda",
+                "{saida_do_passo}/sonda/1/dist/sonda_webengine", "--sabotar",
+                "sonda_sem_runtime", "--limpa", SONDA_DA_MAQUINA_LIMPA, "--saida", "{saida}")),
+                motivo="REPROVADO: a sonda nesta máquina"),
+        ),
+    ),
     "H2": Passo(
         nome="H2",
         descricao="o editor de código nativo aguenta, com tudo ligado?",
@@ -780,13 +835,19 @@ def _ambiente_virtual(nome: str) -> Path:
 
 
 def interpretes() -> dict[str, Path]:
-    """Os três Pythons do roadmap §0.2 e o de medição; o da suíte cai para o que roda o executor."""
+    """Os Pythons do roadmap §0.2, o de medição e o do WebEngine.
+
+    O da suíte cai para o que roda o executor.
+    """
     suite = _ambiente_virtual(".venv")
     return {
         "py": suite if suite.is_file() else Path(sys.executable),
         "pack": _ambiente_virtual(".venv-pack"),
         "pyq": TRONCO / ".venv" / "Scripts" / "python.exe",
         "med": _ambiente_virtual(".venv-medicao"),
+        # O ambiente de medição com o PyQt6-WebEngine (H1): fora do repositório, ao lado dele.
+        "web": Path(os.environ.get("CAISSA_WEBENGINE_PY")
+                    or PRINCIPAL.parent / "_h1_webengine" / ".venv" / "Scripts" / "python.exe"),
     }
 
 
