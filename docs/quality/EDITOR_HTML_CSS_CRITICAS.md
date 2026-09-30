@@ -1779,3 +1779,54 @@ e virou o defeito `Text/css-contraste-import-camada-vazia.xhtml` (o `@import` de
 `@layer vazio { /* nada */ }` vale: o problema); o teste
 `test_a_zona_do_import_e_a_definicao_vazia_de_layer` separa os casos — a declaração (uma camada e
 duas), o bloco vazio, o só com comentário, o `@charset`, o bloco com regra e a regra comum.
+
+## H10 — ciclo 5 (2026-09-30): APROVADO
+
+O crítico julgou a resposta ao ciclo 4 (o `08c9fe0`), somente leitura, com o portão sem o tempo
+(69/69, o limpo 0 em 27), as sabotagens (6/69 e 68/69) e os 1014 testes. O veredito, transcrito
+sem edição:
+
+VEREDITO: APROVADO  
+CICLO: 5  
+FRENTE: Editor HTML/CSS — H10 (implementação e definição do portão)
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| A zona do `@import` preserva `@charset` e definições vazias de `@layer` | `src/caissa/editor/validacao/pagina.py:330-359` | Confirmada |
+| Declarações `@layer nome;` e `@layer a, b;` registram a ordem da camada | `src/caissa/editor/validacao/pagina.py:330-333`; `tests/unit/editor/test_validacao.py:312-319` | Confirmada |
+| Blocos vazios, inclusive só com comentários, preservam o `@import` | `tests/unit/editor/test_validacao.py:315-316` | Confirmada |
+| Blocos `@layer` com regras fecham a zona do `@import` | `src/caissa/editor/validacao/pagina.py:334-347`; `tests/unit/editor/test_validacao.py:317` | Confirmada |
+| Regra comum antes do `@import` também fecha a zona | `tests/unit/editor/test_validacao.py:318-319` | Confirmada |
+| A fixture do bloco vazio agora prova que o import entra na cascata | `tests/fixtures/editor/defeitos/Text/css-contraste-import-camada-vazia.xhtml:6-10`; `esperado.json:487-496` | Confirmada |
+| O caso inválido permanece no conjunto limpo | `tests/fixtures/editor/limpos/Text/camadas.xhtml:6-13` | Confirmada |
+| Há cobertura separada para declaração, bloco vazio, comentário, bloco não vazio e regra comum | `tests/unit/editor/test_validacao.py:312-328` | Confirmada |
+| Defeitos, sabotagens e testes do ciclo | `h10_c5/portao.log:1`; `h10_c5/sabotagens.log:1-3`; `h10_c5/testes.log:3` | Confirmados: 69/69, sabotagens reprovam, 1014 testes passaram |
+
+## Defeitos bloqueantes
+
+Nenhum.
+
+O bloqueante do ciclo 4 foi corrigido integralmente: `@layer nome {}` vazio, após ignorar espaços e comentários, não encerra mais a zona do `@import`.
+
+## Defeitos não bloqueantes
+
+- O portão operacional continua pendente: IR real, tempo em máquina livre e execução integral pelo executor. O próprio relatório declara essa pendência (`docs/quality/EDITOR_HTML_CSS_REPORT.md:313-318`). Isso não bloqueia a aprovação da implementação H10.
+- A docstring interna de `_regras_do_bloco` ainda menciona apenas a declaração `@layer` e não o bloco vazio (`src/caissa/editor/validacao/pagina.py:305-309`). É uma inconsistência documental menor.
+- Os 8 testes pulados dependem de componentes externos, conforme `h10_c5/testes.log:1-3`.
+
+## O que especificamente precisa mudar para eu aprovar
+
+Nada adicional na implementação H10: os requisitos do ciclo 4 foram satisfeitos e a implementação está aprovada.
+
+Para fechar posteriormente o portão operacional, ainda devem ser concluídos o IR real, a medição em máquina livre e a execução integral pelo executor.
+
+**Depois da aprovação:** a docstring de `_regras_do_bloco` diz a definição vazia de `@layer` (o
+não bloqueante); e um endurecimento do caminho de erro do contraste, que o ciclo 5 não julgou —
+o MuPDF que falha ao desenhar a página (a exceção dele, `RuntimeError` ou `FzErrorBase`) vira um
+`css-contraste-incompleto` no `<body>`, com a mensagem, e a imagem sob o texto que não se lê (o
+SVG cortado: o substituto dá o leiaute, a de verdade não abre) vira um no elemento do texto — em
+vez de derrubar a validação do arquivo; os testes `test_o_mupdf_que_falha_e_dito_no_body` e
+`test_a_imagem_ilegivel_sob_o_texto_e_dita_e_nao_derruba`. Fica para o próximo crítico que olhar
+o H10 (o portão operacional).

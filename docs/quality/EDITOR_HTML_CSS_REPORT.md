@@ -310,8 +310,12 @@ as 4 sabotagens) **espera a máquina livre**.
 
 ## H10 — A validação em camadas, com linha e coluna
 
-**Estado:** implementado e revisto depois dos **ciclos 1 a 4 do crítico** (REPROVADOS, 5
-bloqueantes, 1, 1 e 1: `quality/EDITOR_HTML_CSS_CRITICAS.md`; a **M-H10-1 aprovada no ciclo 2**) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
+**Estado:** implementado e **APROVADO pelo crítico no ciclo 5** (2026-09-30, o `08c9fe0`),
+depois dos ciclos 1 a 4 REPROVADOS (5 bloqueantes, 1, 1 e 1: `quality/EDITOR_HTML_CSS_CRITICAS.md`;
+a **M-H10-1 aprovada no ciclo 2**). Depois da aprovação, o não bloqueante do ciclo 5 (a docstring
+da zona do `@import`) e um endurecimento: o MuPDF que falha ao desenhar a página, e a imagem
+sob o texto que não se lê (o SVG cortado), são ditos como `css-contraste-incompleto` — no
+`<body>`, e no elemento do texto — em vez de derrubar a validação do arquivo (dois testes) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
 thread da janela), as fixtures de defeito e o limpo adversarial (as duas de geradores que o teste
 confere byte a byte), o arnês e a entrada `PASSOS["H10"]` do executor (3 execuções de cada
 comando); os testes passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina

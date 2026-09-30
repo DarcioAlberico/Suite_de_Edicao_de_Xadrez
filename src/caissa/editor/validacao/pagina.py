@@ -305,8 +305,9 @@ def _regras_do_bloco(nos: Iterable[Any], arquivo: str, contexto: Contexto,
     """As regras de estilo de uma lista de regras (a folha, ou o bloco de um `@media`…).
 
     O `@import` só vale no topo da folha e antes de toda outra regra (menos o `@charset` e a
-    declaração `@layer a;`); o `@media` e o `@supports` que casam entram no lugar deles; o
-    `@layer` com bloco põe as regras dele na camada. O resto dos `@` sai: não muda a cor.
+    definição vazia de `@layer`: a declaração `@layer a;` e o bloco vazio `@layer x { }`); o
+    `@media` e o `@supports` que casam entram no lugar deles; o `@layer` com bloco põe as regras
+    dele na camada. O resto dos `@` sai: não muda a cor.
     """
     from caissa.editor.validacao.css import PROPRIEDADES
 

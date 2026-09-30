@@ -326,3 +326,46 @@ def test_a_zona_do_import_e_a_definicao_vazia_de_layer(antes: str, vale: bool) -
              '<body><p class="cinza">O texto.</p></body></html>')
     problemas = validar_arquivo("Text/zona.xhtml", texto, Contexto(arquivos=ARQUIVOS))
     assert ("css-contraste" in {p.codigo for p in problemas}) is vale, [str(p) for p in problemas]
+
+
+def test_a_imagem_ilegivel_sob_o_texto_e_dita_e_nao_derruba() -> None:
+    """A imagem que não se lê (um SVG cortado no meio) sob o texto.
+
+    O leiaute usa o substituto (a raiz do SVG diz o tamanho), mas a de verdade não se desenha: o
+    contraste dali é dito incompleto, no elemento, e a validação segue.
+    """
+    inteira = (b'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="40">'
+               b'<rect width="300" height="40" fill="#141414"/></svg>')
+    arquivos = dict(ARQUIVOS)
+    arquivos["Images/inteira.svg"] = inteira
+    arquivos["Images/corrompida.svg"] = inteira[:-len(b"</svg>")] + b"<g"
+    texto = ('<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR"><head><title>t</title>'
+             '</head><body>\n<div style="position: relative">\n'
+             '<img src="../Images/inteira.svg" alt="Um fundo"/>\n'
+             '<p style="position: absolute; top: 0; color: #ffffff">Sobre a imagem.</p>\n</div>\n'
+             "</body></html>")
+    texto_corrompido = texto.replace("inteira.svg", "corrompida.svg")
+    antes = validar_arquivo("Text/imagem.xhtml", texto, Contexto(arquivos=arquivos))
+    assert [p.codigo for p in antes if p.severidade != "informa"] == [], "branco no escuro"
+    problemas = validar_arquivo("Text/imagem.xhtml", texto_corrompido, Contexto(arquivos=arquivos))
+    incompletos = [p for p in problemas if p.codigo == "css-contraste-incompleto"]
+    assert [(p.local.linha, p.local.coluna) for p in incompletos] == [(4, 1)]
+    assert "corrompida.svg" in incompletos[0].detalhe
+
+
+def test_o_mupdf_que_falha_e_dito_no_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    """O MuPDF que não desenha a página: um problema no `<body>`, e a validação segue."""
+    from caissa.editor import previa
+
+    def falha(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("o MuPDF caiu")
+
+    monkeypatch.setattr(previa, "paginar", falha)
+    nome = "Text/css-contraste.xhtml"
+    problemas = validar_arquivo(nome, ARQUIVOS[nome].decode("utf-8"),
+                                Contexto(arquivos=ARQUIVOS))
+    corpo = next(e for e in ler(nome, ARQUIVOS[nome].decode("utf-8"))[0].elementos()
+                 if e.nome == "body")
+    assert [(p.codigo, p.local.linha, p.local.coluna) for p in problemas] == [
+        ("css-contraste-incompleto", corpo.linha, corpo.coluna)]
+    assert "o MuPDF caiu" in problemas[0].detalhe

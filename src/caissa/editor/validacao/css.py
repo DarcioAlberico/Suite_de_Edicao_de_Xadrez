@@ -326,6 +326,8 @@ class _Falha:
     x: float | None = None
     deslocamento: int = 0
     """Os caracteres (normalizados) do trecho antes do pior fundo."""
+    incompleta: bool = False
+    """O fundo não se mediu (a imagem sob o trecho não se lê): `css-contraste-incompleto`."""
 
 
 def _medidos(folha: Any, numero: int, inicio: int) -> list[_Medido]:
@@ -445,16 +447,24 @@ def _fundo_no_ponto(x: float, y: float, cobrem: list[tuple[Any, Cor, float]],
 
 
 def _imagem_em(dados: bytes, caminho: str, caixa: Any) -> Any:
-    """A imagem de verdade desenhada no tamanho da caixa em que o MuPDF a pôs (com o alfa)."""
+    """A imagem de verdade desenhada no tamanho da caixa em que o MuPDF a pôs (com o alfa).
+
+    `None` se ela não se lê (o arquivo corrompido): o fundo do texto sobre ela fica sem medir, e
+    isso é dito (`css-contraste-incompleto`), e não medido contra o papel.
+    """
     import pymupdf
 
     tipo = caminho.rsplit(".", 1)[-1].lower()
-    with pymupdf.open(stream=dados, filetype=tipo) as imagem:
-        pagina = imagem[0]
-        escala = DPI_DO_FUNDO / 72
-        matriz = pymupdf.Matrix(escala * (caixa[2] - caixa[0]) / max(pagina.rect.width, 1e-6),
-                                escala * (caixa[3] - caixa[1]) / max(pagina.rect.height, 1e-6))
-        return pagina.get_pixmap(matrix=matriz, alpha=True)
+    try:
+        with pymupdf.open(stream=dados, filetype=tipo) as imagem:
+            pagina = imagem[0]
+            escala = DPI_DO_FUNDO / 72
+            matriz = pymupdf.Matrix(
+                escala * (caixa[2] - caixa[0]) / max(pagina.rect.width, 1e-6),
+                escala * (caixa[3] - caixa[1]) / max(pagina.rect.height, 1e-6))
+            return pagina.get_pixmap(matrix=matriz, alpha=True)
+    except (RuntimeError, pymupdf.mupdf.FzErrorBase):
+        return None
 
 
 def _fundos_com_imagem(medido: _Medido, preenchimentos: list[tuple[Any, Cor, float]],
@@ -624,12 +634,12 @@ def contraste(documento: Documento, contexto: Contexto) -> list[Problema]:
     A página é a do `Story` do MuPDF (`pagina.preparar`: o CSS do projeto inteiro, o `var()`
     resolvido pela cascata, as cores que o MuPDF lê, o papel do `body`); o fundo de cada trecho
     é o que o MuPDF pintou embaixo dele — os retângulos compostos com a opacidade, e o pixel da
-    página sem o texto onde há imagem.
+    página sem o texto onde há imagem. O MuPDF que falha ao desenhar a página é dito no `<body>`
+    (`css-contraste-incompleto`), e a validação do arquivo segue.
     """
     import pymupdf
 
-    from caissa.editor.previa import LARGURA_PT, paginar
-    from caissa.editor.validacao.pagina import ALTURA_DA_MEDIDA, preparar
+    from caissa.editor.validacao.pagina import preparar
 
     pagina = preparar(documento, contexto)
     # A folha que o @import não trouxe inteira (o limite de defesa) é dita no <link>/<style>.
@@ -639,34 +649,49 @@ def contraste(documento: Documento, contexto: Contexto) -> list[Problema]:
         return cortes
     mostrava = pymupdf.TOOLS.mupdf_display_errors()
     pymupdf.TOOLS.mupdf_display_errors(False)  # o que o MuPDF diria do CSS a camada já diz
-    medidos: list[_Medido] = []
-    falhas: dict[int, _Falha] = {}
     try:
-        medida = paginar(pagina.texto, pagina.css, largura=LARGURA_PT, altura=ALTURA_DA_MEDIDA,
-                         maximo=contexto.teto_de_paginas, arquivo=pagina.arquivo())
-        with pymupdf.open("pdf", medida.pdf) as pdf:
-            sob_imagem = _medir(pdf, pagina, medidos, falhas)
-            if sob_imagem:
-                # A ordem não bateu (um SVG do texto, uma imagem que o MuPDF não desenhou): o
-                # leiaute com os substitutos é o mesmo, e as páginas com as imagens de verdade.
-                real = paginar(pagina.texto, pagina.css, largura=LARGURA_PT,
-                               altura=ALTURA_DA_MEDIDA, maximo=contexto.teto_de_paginas,
-                               arquivo=pagina.arquivo(reais=True))
-                with pymupdf.open("pdf", real.pdf) as com_imagens:
-                    for numero, lista in sob_imagem.items():
-                        fundos = _fundos_rasterizados(com_imagens[numero], lista, pagina.papel)
-                        for medido in lista:
-                            falha = _falha(medido, fundos.get(medido.indice,
-                                                              {pagina.papel: None}))
-                            if falha is not None:
-                                falhas[medido.indice] = falha
-            for indice, falha in falhas.items():
-                if falha.x is not None:
-                    medido = medidos[indice]
-                    falha.deslocamento = _deslocamento(pdf[medido.pagina], medido, falha.x)
+        return cortes + _medir_a_pagina(documento, contexto, pagina)
+    except (RuntimeError, pymupdf.mupdf.FzErrorBase) as erro:
+        corpo = next((e for e in documento.elementos() if e.nome == "body"), documento.raiz)
+        if corpo is None:
+            return cortes
+        return [*cortes, Problema(INCOMPLETO, documento.local(corpo),
+                                  f"o MuPDF não desenhou a página: {str(erro)[:120]}")]
     finally:
         pymupdf.TOOLS.mupdf_display_errors(mostrava)
-    return cortes + _acusar(documento, pagina.trechos, medidos, falhas, medida.laco)
+
+
+def _medir_a_pagina(documento: Documento, contexto: Contexto, pagina: Any) -> list[Problema]:
+    """A página no MuPDF, cada trecho medido contra o fundo dele, e os problemas nos elementos."""
+    import pymupdf
+
+    from caissa.editor.previa import LARGURA_PT, paginar
+    from caissa.editor.validacao.pagina import ALTURA_DA_MEDIDA
+
+    medidos: list[_Medido] = []
+    falhas: dict[int, _Falha] = {}
+    medida = paginar(pagina.texto, pagina.css, largura=LARGURA_PT, altura=ALTURA_DA_MEDIDA,
+                     maximo=contexto.teto_de_paginas, arquivo=pagina.arquivo())
+    with pymupdf.open("pdf", medida.pdf) as pdf:
+        sob_imagem = _medir(pdf, pagina, medidos, falhas)
+        if sob_imagem:
+            # A ordem não bateu (um SVG do texto, uma imagem que o MuPDF não desenhou): o
+            # leiaute com os substitutos é o mesmo, e as páginas com as imagens de verdade.
+            real = paginar(pagina.texto, pagina.css, largura=LARGURA_PT,
+                           altura=ALTURA_DA_MEDIDA, maximo=contexto.teto_de_paginas,
+                           arquivo=pagina.arquivo(reais=True))
+            with pymupdf.open("pdf", real.pdf) as com_imagens:
+                for numero, lista in sob_imagem.items():
+                    fundos = _fundos_rasterizados(com_imagens[numero], lista, pagina.papel)
+                    for medido in lista:
+                        falha = _falha(medido, fundos.get(medido.indice, {pagina.papel: None}))
+                        if falha is not None:
+                            falhas[medido.indice] = falha
+        for indice, falha in falhas.items():
+            if falha.x is not None:
+                medido = medidos[indice]
+                falha.deslocamento = _deslocamento(pdf[medido.pagina], medido, falha.x)
+    return _acusar(documento, pagina.trechos, medidos, falhas, medida.laco)
 
 
 def _medir(pdf: Any, pagina: Any, medidos: list[_Medido],
@@ -697,6 +722,12 @@ def _medir(pdf: Any, pagina: Any, medidos: list[_Medido],
                     if k not in desenhadas:
                         caminho = pagina.imagens[k] or ""
                         desenhadas[k] = _imagem_em(pagina.reais[caminho], caminho, caixa)
+                ilegiveis = [pagina.imagens[k] for k, _ in embaixo if desenhadas[k] is None]
+                if ilegiveis:
+                    falhas[medido.indice] = _Falha(
+                        f"a imagem {ilegiveis[0]} sob «{medido.texto.strip()[:40]}» não se lê: o "
+                        "contraste ali não foi medido", incompleta=True)
+                    continue
                 fundos = _fundos_com_imagem(medido, preenchimentos, pagina.papel,
                                             [(c, desenhadas[k]) for k, c in embaixo])
             else:
@@ -717,7 +748,7 @@ def _acusar(documento: Documento, trechos: list[Trecho], medidos: list[_Medido],
         inicios = list(itertools.accumulate((len(p) for p in pedacos), initial=0))
         posicoes = _alinhar(medidos, fluxo, max(falhas))
         acusados: dict[int, Cor] = {}
-        ordem: list[tuple[Elemento, str]] = []
+        ordem: list[tuple[Elemento, _Falha]] = []
         for indice in sorted(falhas):
             elemento = corpo
             if indice in posicoes:
@@ -728,14 +759,15 @@ def _acusar(documento: Documento, trechos: list[Trecho], medidos: list[_Medido],
             if elemento is None or id(elemento) in acusados:
                 continue
             acusados[id(elemento)] = medidos[indice].cor
-            ordem.append((elemento, falhas[indice].mensagem))
-        for elemento, mensagem in ordem:
+            ordem.append((elemento, falhas[indice]))
+        for elemento, falha in ordem:
             cor = acusados[id(elemento)]
             # O descendente com a mesma tinta do ancestral acusado herdou dele: um problema só.
             if any(id(a) in acusados and _mesma_cor(acusados[id(a)], cor)
                    for a in elemento.ancestrais()):
                 continue
-            problemas.append(Problema(CONTRASTE, documento.local(elemento), mensagem))
+            problemas.append(Problema(INCOMPLETO if falha.incompleta else CONTRASTE,
+                                      documento.local(elemento), falha.mensagem))
     if laco and corpo is not None:
         ultimo = medidos[-1].texto.strip()[:40] if medidos else ""
         problemas.append(Problema(INCOMPLETO, documento.local(corpo),
