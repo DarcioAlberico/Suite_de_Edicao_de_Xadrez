@@ -541,6 +541,7 @@ PASSOS: dict[str, Passo] = {
             "tests/unit/editor/test_contrato.py",
             "tests/fixtures/editor/contrato",
             "tests/fixtures/editor/contrato_negativas/negativa_sem_fen.xhtml",
+            "tests/fixtures/editor/contrato_negativas/negativa_classe_confundida.xhtml",
             "tests/fixtures/editor/css/mapa_positivo",
             "tests/fixtures/editor/css/mapa_negativo",
             "tests/fixtures/editor/sidecar",
@@ -554,6 +555,10 @@ PASSOS: dict[str, Passo] = {
             Sabotagem("sem_fen", Comando("contrato_sem_fen", (
                 "{py}", "benchmarks/editor_contrato.py", "--sabotar", "sem_fen",
                 "--saida", "{saida}")), motivo="REPROVADO: CB validate"),
+            # O CB não acusa a classe que ele confunde nem o lance que ele pula: o portão, sim.
+            Sabotagem("confundida", Comando("contrato_confundida", (
+                "{py}", "benchmarks/editor_contrato.py", "--sabotar", "confundida",
+                "--saida", "{saida}")), motivo="REPROVADO: CB validate: 0 erro(s)"),
         ),
     ),
     "H4": Passo(
@@ -604,6 +609,7 @@ PASSOS: dict[str, Passo] = {
             "tests/unit/export/test_legivel_ida.py",
             "tests/unit/export/test_legivel_conferencia.py",
             "tests/unit/editor/test_leitura.py",
+            "tests/unit/editor/test_mapa_sem_id.py",
             "tests/unit/editor/test_mapa_de_estilo.py",
             "tests/unit/editor/test_paginas.py",
             "tests/unit/model/test_esquema_v2.py",
@@ -620,8 +626,9 @@ PASSOS: dict[str, Passo] = {
             Comando("test_legivel", _pytest(
                 "tests/unit/export/test_legivel.py", "tests/unit/export/test_legivel_ida.py",
                 "tests/unit/export/test_legivel_conferencia.py",
-                "tests/unit/editor/test_leitura.py", "tests/unit/editor/test_mapa_de_estilo.py",
-                "tests/unit/editor/test_paginas.py", "tests/unit/model/test_esquema_v2.py")),
+                "tests/unit/editor/test_leitura.py", "tests/unit/editor/test_mapa_sem_id.py",
+                "tests/unit/editor/test_mapa_de_estilo.py", "tests/unit/editor/test_paginas.py",
+                "tests/unit/model/test_esquema_v2.py")),
             Comando("roundtrip_corpus", _pytest("tests/unit/model/test_roundtrip_corpus.py")),
             Comando("ida_e_volta", ("{py}", "benchmarks/editor_ida_e_volta.py", "--ir-real",
                                     IR_REAL_DO_H5, "--saida", "{saida}"), repeticoes=3),
@@ -636,7 +643,8 @@ PASSOS: dict[str, Passo] = {
                                  ("engole_desconhecido", "REPROVADO: volta"),
                                  ("perde_atributo", "REPROVADO: volta"),
                                  ("css_silencioso", "REPROVADO: mapa de estilo"),
-                                 ("nula", "REPROVADO: ida"))),
+                                 ("nula", "REPROVADO: ida"),
+                                 ("lance_sem_fen", "REPROVADO: CB validate"))),
     ),
     "H6": Passo(
         nome="H6",

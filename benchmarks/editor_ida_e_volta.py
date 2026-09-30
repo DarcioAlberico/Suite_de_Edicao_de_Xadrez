@@ -14,15 +14,18 @@ r"""A ida e a volta do perfil legível — o portão do passo H5 do Editor HTML/
    aviso esperado. **100 %.**
 5. **O CB validate** nas fixtures, nos capítulos do IR real e nas edições: **0 erro de contrato**
    (o erro de conteúdo do livro — o diagrama que não é a posição do lance acima dele — é contado
-   à parte e não reprova: o contrato não o decide).
+   à parte e não reprova: o contrato não o decide); e, nas fixtures e em todos os arquivos da ida,
+   **nada que o CB confunda sem acusar** (o MARKUP §10): nenhum elemento que uma expressão do
+   `validate.py` case sem ter a classe dela, e nenhum `cb-move` sem `data-fen`, que ele pula.
 6. **O EPUBCheck** num EPUB montado no arnês com os capítulos legíveis do IR real, as folhas e as
    imagens: **0 erro**.
 
 **Sabotagens** (`--sabotar`), cada uma tem de reprovar: `perde_fen` (o escritor não escreve o
-`data-fen`), `perde_classe` (o escritor perde a classe do estilo), `engole_desconhecido` (o leitor
-descarta o elemento fora do contrato em vez de preservá-lo), `perde_atributo` (o leitor ignora os
-atributos preservados), `css_silencioso` (o mapa de estilo não avisa a regra fora dele) e `nula`
-(o escritor não escreve nada).
+`data-fen` do diagrama), `perde_classe` (o escritor perde a classe do estilo),
+`engole_desconhecido` (o leitor descarta o elemento fora do contrato em vez de preservá-lo),
+`perde_atributo` (o leitor ignora os atributos preservados), `css_silencioso` (o mapa de estilo não
+avisa a regra fora dele), `nula` (o escritor não escreve nada) e `lance_sem_fen` (o lance que não
+se joga volta ao `cb-move` sem `data-fen`, a forma que o ciclo 1 do crítico reprovou).
 
 O IR real é caro de importar: `--gerar-ir-real <pasta>` o importa uma vez e o guarda (o JSON do
 IR, com o SHA-256 do PDF e o commit ao lado); `--ir-real <pasta>` o usa.
@@ -75,7 +78,7 @@ LIVROS_REAIS: tuple[tuple[str, str, tuple[int, ...]], ...] = (
 )
 """O nome, o arquivo e as páginas (base 0) de cada livro do IR real."""
 SABOTAGENS = ("perde_fen", "perde_classe", "engole_desconhecido", "perde_atributo",
-              "css_silencioso", "nula")
+              "css_silencioso", "nula", "lance_sem_fen")
 ERROS_DE_CONTEUDO = ("Diagram does not show the position of the move above it",)
 """Os erros do CB que são do conteúdo do livro, e não do contrato de marcação."""
 
@@ -332,6 +335,38 @@ def validar_no_cb(arquivos: Sequence[Path], imagens: Sequence[Path]) -> dict[str
                           for e in de_contrato[:10]]}
 
 
+MARCACOES_DO_CB = (("_MOVE_OPEN_RE", "cb-move"), ("_LINE_RE", "cb-line"),
+                   ("_GAME_RE", "cb-game"), ("_DIAGRAM_RE", "cb-diagram"))
+"""As marcações que o `validate.py` do CB acha por expressão, e a classe que cada uma tem de ter."""
+
+
+def o_que_o_cb_confunde(documentos: Sequence[dict[str, str]]) -> dict[str, list[str]]:
+    """O que a leitura do CB toma errado sem acusar (MARKUP §10); o portão exige nenhum.
+
+    - ``confundidos``: o elemento que uma expressão do CB casa sem ter a classe dela (o hífen é
+      fronteira de palavra: um `span.cb-move-x` seria lido como lance);
+    - ``pulados``: o `cb-move` sem `data-fen`, que o CB pula como anterior ao contrato.
+
+    O «0 erro» do CB não diz nada dos dois.
+    """
+    if str(pasta_do_cb()) not in sys.path:
+        sys.path.insert(0, str(pasta_do_cb()))
+    import sigil_chess.validate as cb
+
+    confundidos = []
+    for documento in documentos:
+        for expressao, classe in MARCACOES_DO_CB:
+            for casado in getattr(cb, expressao).finditer(documento["text"]):
+                classes = cb._attributes(casado.group("attrs")).get("class", "").split()
+                if classe not in classes:
+                    confundidos.append(f"{documento['bookpath']}: «{' '.join(classes)}» lido "
+                                       f"como {classe}")
+    pulados = [f"{d['bookpath']}: {m.san} sem data-fen" for d in documentos
+               for m in cb._moves_in(d["text"])
+               if "cb-move" in m.attrs.get("class", "").split() and not m.attrs.get("data-fen")]
+    return {"confundidos": confundidos, "pulados": pulados}
+
+
 def montar_epub(destino: Path, capitulos: Sequence[tuple[str, str]], documento: Any,
                 imagens: dict[str, bytes]) -> Path:
     """Um EPUB 3 mínimo com os capítulos legíveis, as folhas do projeto e as imagens.
@@ -474,6 +509,10 @@ def sabotagem(nome: str | None) -> Iterator[None]:
         trocar(mapa, "resolver", sem_aviso)
     elif nome == "nula":
         trocar(legivel.EscritorLegivel, "blocos", lambda _self, _blocos, **_kw: "")
+    elif nome == "lance_sem_fen":
+        # A forma do ciclo 1: o lance que não se joga num `cb-move` sem `data-fen`. A ida, a volta
+        # e o validate do CB passam; só a conta do que o CB pula a pega.
+        trocar(legivel, "CLASSE_LITERAL", "cb-move")
     try:
         yield
     finally:
@@ -545,11 +584,24 @@ def portao(saida: Path, *, ir_real: Path | None, nos: int, semente: int,
     imagens = [*sorted((CONTRATO / "Images").glob("*")), *sorted((pasta_da_ida / "Images")
                                                                .glob("*"))]
     cb = validar_no_cb(do_cb, imagens)
+    # O que o CB confunde sem acusar, no que o contrato e o escritor escrevem: as fixtures e os
+    # arquivos da ida (o sintético também: o conteúdo sorteado não passa no validate, mas as
+    # classes são as do escritor). As edições à mão ficam de fora: são da pessoa (a #09 digita um
+    # lance sem a posição, que o leitor guarda bruto e o CB pula — o aviso é da validação, H10).
+    escritos = [p for p in arquivos if p.parent != EDITADOS]
+    confunde = o_que_o_cb_confunde([{"bookpath": f"Text/{p.name}",
+                                     "text": p.read_text(encoding="utf-8")} for p in escritos])
+    cb.update(confundidos=confunde["confundidos"][:10], n_confundidos=len(confunde["confundidos"]),
+              pulados=confunde["pulados"][:10], n_pulados=len(confunde["pulados"]))
     registro["cb"] = cb
     exigencias[f"CB validate: {cb['erros_de_contrato']} erro(s) de contrato em {cb['arquivos']} "
-               f"arquivos ({cb['erros_de_conteudo']} de conteúdo, {cb['avisos']} aviso(s))"
-               + (f" -- {'; '.join(cb['primeiros'][:5])}" if cb["primeiros"] else "")] = (
-        cb["erros_de_contrato"] == 0)
+               f"arquivos ({cb['erros_de_conteudo']} de conteúdo, {cb['avisos']} aviso(s)); nos "
+               f"{len(escritos)} das fixtures e da ida, {cb['n_confundidos']} marcação(ões) que o "
+               f"CB confunde e {cb['n_pulados']} lance(s) que ele pula por não ter data-fen"
+               + (f" -- {'; '.join(cb['primeiros'][:5])}" if cb["primeiros"] else "")
+               + (f" -- {'; '.join([*cb['confundidos'], *cb['pulados']][:5])}"
+                  if cb["n_confundidos"] or cb["n_pulados"] else "")] = (
+        cb["erros_de_contrato"] == 0 and not cb["n_confundidos"] and not cb["n_pulados"])
 
     if sem_epubcheck:
         registro["epubcheck"] = {"pulado": True}

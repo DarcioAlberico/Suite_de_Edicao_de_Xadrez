@@ -184,9 +184,11 @@ _DIGITALIZADO = frozenset({SourceKind.OCR})
 
 _ROTULO_AUTOMATICO = "Diagrama {}"
 
-CLASSE_LITERAL = "cb-move-literal"
+CLASSE_LITERAL = "cb-literal-move"
 """O lance que não se joga dali (§12.3): sem `data-fen`, e por isso fora do `cb-move` do CB, que
-sempre carrega a posição depois do lance."""
+sempre carrega a posição depois do lance. O nome não começa com `cb-move-`: o `validate.py` do CB
+acha o lance por uma expressão que casa com toda classe `cb-move-…` num `span`, e pularia a forma
+literal como um lance anterior ao contrato."""
 
 
 # --------------------------------------------------------------------------- #
@@ -853,7 +855,7 @@ class EscritorLegivel:
         if no.stipulation is not None:
             legenda.append(f'<span class="cb-stipulation">{_texto(no.stipulation)}</span>')
         if no.move_context is not None:
-            legenda.append(f'<span class="cb-move-context">{_texto(no.move_context)}</span>')
+            legenda.append(f'<span class="cb-diagram-context">{_texto(no.move_context)}</span>')
         if no.caption:
             legenda.append(f'<span class="cb-caption-text">{self.inlines(no.caption)}</span>')
         if no.side_to_move_indicator:
@@ -2204,7 +2206,7 @@ class _Leitor:
                     numero):
                 rotulo = None
         estipulacao, contexto = ("".join(partes[c].itertext()) if c in partes else None for c in (
-            "cb-stipulation", "cb-move-context"))
+            "cb-stipulation", "cb-diagram-context"))
         legenda_livre = tuple(self.inlines(partes["cb-caption-text"])) \
             if "cb-caption-text" in partes else ()
         fen = elemento.get("data-fen") or ""

@@ -1782,13 +1782,19 @@ a N3 perdia a proveniência dos nós sem `id`; e o lance que não se joga ia num
   lugar dele (S2), e o portão prova que todo registro acha o lugar e que os registros são as N3.
   O `proveniencia.json` ganhou o fólio, as dúvidas, a revisão e as decisões da S2 (a revisão e
   as decisões vazias até o H7), e os `nos`.
-- **O lance que não se joga** vai num `span.cb-move-literal` (classe nova do MARKUP §12): o
+- **O lance que não se joga** vai num `span.cb-literal-move` (classe nova do MARKUP §12): o
   `cb-move` continua o do CB, sempre com `data-uci` e `data-fen` (o `data-uci` só quando o IR tem
-  o uci, o que o crítico aceitou).
+  o uci, o que o crítico aceitou). O nome não começa com `cb-move-`, que o `validate.py` do CB
+  casaria como lance (MARKUP §10), e os portões contam o que o CB confunde sem acusar (o
+  elemento que uma expressão dele casa sem ter a classe dela, e o `cb-move` sem `data-fen`, que
+  ele pula): 0.
 - **O perfil legível é um módulo próprio** (S3), e não um `perfil=` do `XhtmlBuilder`; o
   `cssselect2` passa ao H19, quando o inspetor de CSS o usar (nenhum código o importa no H5).
 - A sondagem: **0 diferença** fora de N1–N4 em três sementes de 2 mil nós (7, 11, 13), com o mapa
   passando pelo JSON e a N3 guardada inteira (117, 132 e 122 registros, todos no lugar).
+- **O contrato v2 (M-H5-2):** a conta do que o CB confunde achou a extensão `cb-move-context`
+  do H3 casando com a mesma expressão do `validate.py` do CB; ela passou a `cb-diagram-context`, e
+  o MARKUP §10 proíbe o nome que case com as expressões do CB.
 
 ---
 

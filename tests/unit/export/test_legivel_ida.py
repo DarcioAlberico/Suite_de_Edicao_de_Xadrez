@@ -7,6 +7,7 @@ pequeno e cada forma que a ida precisou dizer (o contrato, §12).
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from caissa.core.model import (
 from caissa.core.model.props import Alignment
 from caissa.editor.leitura import mapa_de_json, mapa_para_json, nomes_de_estilo
 from caissa.export.legivel import (
+    CLASSE_LITERAL,
     Capitulo,
     canon,
     escrever_capitulo,
@@ -102,6 +104,12 @@ def test_o_lance_que_nao_se_joga_vai_na_forma_literal_e_a_variante_dele_na_do_co
     assert 'data-ply="1"' in escrito
     assert 'data-variation-start' not in escrito, "a variante do contrato se acha pela FEN"
     assert "data-uci" not in escrito, "o IR não tinha o uci: o contrato não o inventa"
+    # O `validate.py` do CB acha o lance por `\bcb-move\b` num span (MARKUP §10): a forma literal
+    # não casa com a expressão, e todo span que casa carrega a posição.
+    assert re.search(rf'<span class="[^"]*\b{CLASSE_LITERAL}\b[^"]*" data-san="Nc6"', escrito)
+    lances = re.findall(r'<span\b[^>]*\bclass="[^"]*\bcb-move\b[^"]*"[^>]*>', escrito)
+    assert lances, "o lance jogável é um cb-move"
+    assert all("data-fen=" in lance for lance in lances), "o CB pularia o lance sem data-fen"
     diferencas, depois = _ida(documento)
     assert diferencas == []
     partida = depois.body[0]

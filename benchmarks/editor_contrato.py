@@ -6,7 +6,9 @@ Este instrumento confere, sem implementar nada do que o H5 vai construir:
 1. **A cobertura:** cada linha da S4 (`LINHAS_DO_S4`) tem a fixture dela, e o §11 do contrato
    nomeia a mesma — 100 %.
 2. **O `CB validate`** (`..\Sigil-master\...\sigil_chess\validate.py`, no `sys.path` só aqui) sobre
-   as fixtures do contrato e as combinações, com as imagens que o livro leva: **0 erro**.
+   as fixtures do contrato e as combinações, com as imagens que o livro leva: **0 erro**, e
+   **nada que o CB confunda sem acusar** (o §10 do contrato): nenhum elemento que uma expressão
+   do `validate.py` case sem ter a classe dela, e nenhum `cb-move` sem `data-fen`, que ele pula.
    As extensões do H5 (o §12 do contrato) têm as fixtures `extensoes_*.xhtml`, que o
    `--regerar-extensoes` escreve pelo escritor legível, e que entram na cobertura e no CB.
 3. **A fixture legada** (`legado_xhtml_builder.xhtml`, saída do exportador HTML de hoje, no perfil
@@ -18,8 +20,11 @@ Este instrumento confere, sem implementar nada do que o H5 vai construir:
 5. **As fixtures douradas do sidecar** (spec Apêndice C) existem, assinadas pelo crítico no
    `LEIAME.md`, com o SHA-256 igual ao do relatório (§H3 do `EDITOR_HTML_CSS_REPORT.md`).
 
-**Sabotagem** `--sabotar sem_fen`: a negativa `contrato_negativas/negativa_sem_fen.xhtml` (um
-diagrama sem `data-fen`) entra no conjunto limpo; o CB acusa, e o portão reprova.
+**Sabotagens:** `--sabotar sem_fen` — a negativa `contrato_negativas/negativa_sem_fen.xhtml` (um
+diagrama sem `data-fen`) entra no conjunto limpo; o CB acusa, e o portão reprova. `--sabotar
+confundida` — a negativa `negativa_classe_confundida.xhtml` (a classe `cb-move-context` da v1 do
+contrato e um `cb-move` sem `data-fen`) entra; o CB **não** acusa nada, e o portão reprova pela
+conta do que ele confunde.
 
 Uso::
 
@@ -50,7 +55,7 @@ CSS = FIXTURES / "css"
 SIDECAR = FIXTURES / "sidecar"
 DOCUMENTO = RAIZ / "docs" / "MARKUP_CAISSA.md"
 RELATORIO = RAIZ / "docs" / "quality" / "EDITOR_HTML_CSS_REPORT.md"
-SABOTAGENS = ("sem_fen",)
+SABOTAGENS = ("sem_fen", "confundida")
 
 #: Cada linha da S4 (spec §5.2) e a fixture dela — a tabela do §11 do contrato.
 LINHAS_DO_S4: dict[str, str] = {
@@ -133,10 +138,33 @@ def validar_no_cb(nomes: list[Path]) -> dict[str, Any]:
     cb = pasta_do_cb()
     if str(cb) not in sys.path:
         sys.path.insert(0, str(cb))
-    from sigil_chess.validate import validate_book
+    import sigil_chess.validate as validador
 
     documentos, arquivos = documentos_do_livro(nomes)
-    return validate_book(documentos, files=arquivos).to_dict()
+    relatorio = validador.validate_book(documentos, files=arquivos).to_dict()
+    # O que o CB toma errado sem acusar (MARKUP §10), e o «0 erro» não diria: o elemento que uma
+    # expressão dele casa sem ter a classe dela (o hífen é fronteira de palavra: um
+    # `span.cb-move-x` seria lido como lance), e o `cb-move` sem `data-fen`, que ele pula como
+    # anterior ao contrato.
+    confundidos = []
+    for documento in documentos:
+        for expressao, classe in MARCACOES_DO_CB:
+            for casado in getattr(validador, expressao).finditer(documento["text"]):
+                classes = validador._attributes(casado.group("attrs")).get("class", "").split()
+                if classe not in classes:
+                    confundidos.append(f"{documento['bookpath']}: «{' '.join(classes)}» lido "
+                                       f"como {classe}")
+    relatorio["confundidos"] = confundidos
+    relatorio["pulados"] = [
+        f"{d['bookpath']}: {m.san} sem data-fen" for d in documentos
+        for m in validador._moves_in(d["text"])
+        if "cb-move" in m.attrs.get("class", "").split() and not m.attrs.get("data-fen")]
+    return relatorio
+
+
+MARCACOES_DO_CB = (("_MOVE_OPEN_RE", "cb-move"), ("_LINE_RE", "cb-line"),
+                   ("_GAME_RE", "cb-game"), ("_DIAGRAM_RE", "cb-diagram"))
+"""As marcações que o `validate.py` do CB acha por expressão, e a classe que cada uma tem de ter."""
 
 
 def conferir_legada() -> list[str]:
@@ -539,13 +567,19 @@ def main(argv: list[str] | None = None) -> int:
               if (CONTRATO / n).is_file()]
     if args.sabotar == "sem_fen":
         limpas.append(NEGATIVAS / "negativa_sem_fen.xhtml")
+    elif args.sabotar == "confundida":
+        limpas.append(NEGATIVAS / "negativa_classe_confundida.xhtml")
     relatorio_cb = validar_no_cb(limpas)
     erros = [i for i in relatorio_cb["issues"] if i["severity"] == "error"]
+    confunde = [*relatorio_cb["confundidos"], *relatorio_cb["pulados"]]
     exigencias[f"CB validate: {relatorio_cb['error_count']} erro(s) em {len(limpas)} fixtures "
-               f"({relatorio_cb['warning_count']} aviso(s))"
+               f"({relatorio_cb['warning_count']} aviso(s)), "
+               f"{len(relatorio_cb['confundidos'])} marcação(ões) que o CB confunde e "
+               f"{len(relatorio_cb['pulados'])} lance(s) que ele pula por não ter data-fen"
                + ("" if not erros else " -- " + "; ".join(
-                   f"{e['bookpath']}:{e['line']} {e['message']}" for e in erros[:5]))] = (
-        not erros)
+                   f"{e['bookpath']}:{e['line']} {e['message']}" for e in erros[:5]))
+               + ("" if not confunde else " -- " + "; ".join(confunde[:5]))] = (
+        not erros and not confunde)
 
     legada = conferir_legada()
     exigencias["a fixture legada lida pelo leitor atual"

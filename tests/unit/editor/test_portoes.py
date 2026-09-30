@@ -170,7 +170,7 @@ def test_a_tabela_do_h3_confere_o_contrato_no_cb() -> None:
     assert "docs/MARKUP_CAISSA.md" in passo.instrumentos
     assert any("sigil_chess/validate.py" in i for i in passo.instrumentos)
     assert [c.nome for c in passo.portao] == ["test_contrato", "contrato"]
-    assert {s.nome for s in passo.sabotagens} == {"sem_fen"}
+    assert {s.nome for s in passo.sabotagens} == {"sem_fen", "confundida"}
 
 
 def test_a_tabela_do_h4_conta_os_sintomas_antes_e_depois() -> None:
@@ -193,7 +193,7 @@ def test_a_tabela_do_h5_mede_a_ida_e_a_volta_com_as_sabotagens() -> None:
     assert "{saida}" in ida_e_volta.argv
     assert {s.nome for s in passo.sabotagens} == {
         "perde_fen", "perde_classe", "engole_desconhecido", "perde_atributo", "css_silencioso",
-        "nula"}
+        "nula", "lance_sem_fen"}
     for sabotagem in passo.sabotagens:
         assert sabotagem.motivo.startswith("REPROVADO: "), sabotagem.nome
         assert sabotagem.nome in sabotagem.comando.argv

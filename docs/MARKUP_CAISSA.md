@@ -1,6 +1,6 @@
-# Contrato de Marcação do Caissa, v1
+# Contrato de Marcação do Caissa, v2
 
-> **Data:** 2026-09-24 · **Versão:** 1 · **Normativo.** Passo H3 do `EDITOR_HTML_CSS_ROADMAP.md`;
+> **Data:** 2026-09-24 · **Versão:** 2 (2026-09-30) · **Normativo.** Passo H3 do `EDITOR_HTML_CSS_ROADMAP.md`;
 > governa o perfil legível do motor HTML (H5), a validação (H10), os temas (H19) e a exportação
 > (H24). Decisão: spec D2 (ADR-0011), com o Q3 respondido «sim» em 2026-09-24.
 >
@@ -10,6 +10,13 @@
 >
 > **Fixtures:** `tests/fixtures/editor/contrato/` (§11). **Instrumento:**
 > `benchmarks/editor_contrato.py`.
+>
+> **v2** (2026-09-30, H5; a mutação M-H5-2 do roadmap §10): a extensão `cb-move-context` da v1
+> passa a `cb-diagram-context`. A classe da v1 casava com a expressão com que o `validate.py` do CB
+> acha o lance (§10), e o CB a leria como um lance sem `data-fen`. Nenhum livro nem projeto foi
+> escrito com a v1 (o escritor legível nasce no H5, e o exportador o liga no H24), e o
+> `projeto.json` não guarda a versão do contrato: a migração é vazia. A classe é do Caissa, e o
+> `MARKUP.md` do CB nunca a teve: não há o que registrar no `DECISIONS.md` dele.
 
 ---
 
@@ -152,7 +159,7 @@ mostra); no IR, nas decisões e no sidecar, base 0; o fólio impresso é uma ter
 | `cb-diagram-label` | o rótulo («Diagrama 12», o `label` do IR, ou o número automático) | extensão |
 | `cb-stipulation` | a estipulação («Mate em 2»), o `stipulation` do IR | extensão |
 | `cb-stm-marker` | o quadradinho de quem joga; cheio para as pretas; `aria-label` diz o lado | MARKUP |
-| `cb-move-context` | onde a posição está na partida («após 24…Txf2»), o `move_context` do IR | extensão |
+| `cb-diagram-context` | onde a posição está na partida («após 24…Txf2»), o `move_context` do IR (na v1, `cb-move-context`) | extensão |
 | `cb-caption-text` | a legenda livre do diagrama (o `caption` do IR), depois do rótulo, da estipulação e do contexto | extensão |
 
 A legenda sai nessa ordem: rótulo, estipulação, contexto, legenda livre, marcador do lado. O
@@ -343,6 +350,13 @@ implementa em `editor/css/mapa_de_estilo.py`):
   `projeto.json`), um registro no `DECISIONS.md` do CB e uma mutação no roadmap §10.
 - Quando um tema precisar de uma distinção que o contrato não diz, acrescenta-se um `data-*`, e
   não uma variante de classe.
+- **Um nome novo não casa com as expressões com que o `validate.py` do CB acha as marcações
+  dele:** `\bcb-move\b` num `span`, `\bcb-line\b` num `p`, `\bcb-game\b` numa `section`,
+  `\bcb-diagram\b` numa `figure`. O hífen é fronteira de palavra, e uma classe `cb-move-x` num
+  `span` seria lida como lance. Os portões (`editor_contrato.py`, `editor_ida_e_volta.py`) contam
+  o que o CB confunde sem acusar — o elemento que uma dessas expressões casa sem ter a classe
+  dela, e o `cb-move` sem `data-fen`, que ele pula como anterior ao contrato: têm de ser 0. O
+  «0 erro» do `validate.py` não diz nada dos dois (a sabotagem `confundida` do H3 o prova).
 
 ## 11. As fixtures (o portão do H3)
 
@@ -437,7 +451,7 @@ imagem no diagrama); o nó sem dono com `id` vai em `capitulo.nos`.
 | `IndexEntry` | `data-sort-key`, `data-see-also`, `data-primary` |
 | `RawInline` de outro formato | `span.cb-raw[data-format]`, com o texto escapado |
 | `PieceGlyph` | `data-font-family` |
-| `Move` | `span.cb-move[data-san]`, com `data-fen-before`, `data-uci` (quando o IR o tem), `data-fen` (derivado), `data-ply` (quando a posição não diz), o `span.cb-movenum` dentro quando o número aparece, `data-number-text`, os `span.cb-nag` dentro, e `data-render`/`data-language`/`data-figurine-set` quando a peça impressa não diz; o lance que não se joga da posição dele vai num `span.cb-move-literal`, sem `data-fen` |
+| `Move` | `span.cb-move[data-san]`, com `data-fen-before`, `data-uci` (quando o IR o tem), `data-fen` (derivado), `data-ply` (quando a posição não diz), o `span.cb-movenum` dentro quando o número aparece, `data-number-text`, os `span.cb-nag` dentro, e `data-render`/`data-language`/`data-figurine-set` quando a peça impressa não diz; o lance que não se joga da posição dele vai num `span.cb-literal-move`, sem `data-fen` |
 
 ### 12.3 O xadrez
 
@@ -450,9 +464,11 @@ imagem no diagrama); o nó sem dono com `id` vai em `capitulo.nos`.
   `data-fen`; quando o IR diz outra coisa que o tabuleiro, `data-san`, `data-fen-before`,
   `data-fen-after` e `data-ply`. O leitor acha o lance pela FEN quando não há `data-uci`.
 - **A forma literal** (o lance que não se joga dali, e o resto da linha dele): um
-  **`span.cb-move-literal`** — e não um `cb-move`, que no CB sempre carrega `data-uci` e `data-fen`
+  **`span.cb-literal-move`** — e não um `cb-move`, que no CB sempre carrega `data-uci` e `data-fen`
   — com `data-san`, `data-ply`, e `data-uci`, `data-fen-before` e `data-fen-after` quando o IR os
-  tem. O CB não o toma por lance: é texto. O `p.cb-line` que começa uma variante com um lance
+  tem. O CB não o toma por lance: é texto. O nome não começa com `cb-move-` (§10): o `validate.py`
+  do CB acha o lance pela expressão `\bcb-move\b` num `span`, que casa também com `cb-move-…`, e
+  pularia a forma literal como um lance sem `data-fen`, anterior ao contrato. O `p.cb-line` que começa uma variante com um lance
   literal leva `data-variation-start="1"`; a variante de um lance literal parte da posição de antes
   dele.
 - **As anotações do lance:** `data-emphasis`, `data-clock` (com `data-clock-kind` e

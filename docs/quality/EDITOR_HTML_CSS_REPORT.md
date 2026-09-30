@@ -54,8 +54,13 @@ de desempenho (`editor_codigo.py`, 3×) espera a máquina livre (ele mede bloque
   `python-chess` 1.11.2 do `.venv`): **0 erro, 0 aviso em 19 fixtures** (as 14, as 2 combinações
   e as 3 extensões; em 2026-09-30, no `d2f7531`). Ele acusa uma FEN de lance adulterada, um
   diagrama que não mostra a posição do lance acima dele e a negativa sem `data-fen` (a sabotagem
-  `sem_fen`).
-  `& $PY benchmarks\editor_contrato.py --saida <pasta>`
+  `sem_fen`). Desde o H5 o instrumento conta também o que o CB confunde sem acusar (MARKUP
+  §10): o elemento que uma expressão do `validate.py` casa sem ter a classe dela, e o `cb-move`
+  sem `data-fen`, que ele pula. A conta achou o `cb-move-context` da v1 do contrato, que passou a
+  `cb-diagram-context` na v2 (M-H5-2); agora, **0 e 0**. A sabotagem nova `confundida` (a
+  negativa com a classe da v1 e um `cb-move` sem `data-fen`) dá **0 erro no CB** e reprova pela
+  conta: 1 marcação confundida e 1 lance pulado.
+  `& $PY benchmarks\editor_contrato.py --saida <pasta>` e `--sabotar confundida`
 - **A legada:** `legado_xhtml_builder.xhtml`, saída do exportador HTML de hoje (perfil de máquina,
   `embed_ir=False`), lida pelo `read_html_text` com o título, o parágrafo, o diagrama e a partida.
   `& $PY benchmarks\editor_contrato.py --regerar-legada`
@@ -123,8 +128,13 @@ sabotagens e o EPUBCheck) **espera a máquina livre**.
      parágrafo, o intervalo e o SHA-256 do texto); o `conferir_mapa` prova que todo registro acha
      o lugar, e o portão exige registros = N3. O JSON ganhou o fólio, as dúvidas, a revisão e as
      decisões da S2 (vazias até o H7);
-  3. o lance que não se joga ia num `cb-move` sem `data-fen` → vai num `span.cb-move-literal`, e o
-     `cb-move` fica o do CB.
+  3. o lance que não se joga ia num `cb-move` sem `data-fen` → vai num `span.cb-literal-move`, e o
+     `cb-move` fica o do CB. O primeiro nome, `cb-move-literal`, ainda casava com a expressão
+     `\bcb-move\b` com que o `validate.py` do CB acha o lance (o hífen é fronteira de palavra): o
+     CB o pularia como um lance sem `data-fen`, e o «0 erro» não diria nada. O construtor achou
+     isso antes do ciclo 2, trocou o nome e fez os dois portões contarem o que o CB confunde
+     sem acusar (o elemento que uma expressão dele casa sem ter a classe dela, e o `cb-move` sem
+     `data-fen`: têm de ser 0), no H5 em todos os arquivos da volta, o sintético também.
 - **A ida no arnês** (a sonda do ciclo 1 virou a exigência da ida do próprio portão): 0 diferença
   em três sementes de 2 mil nós, com o mapa passando pelo JSON — semente 7: N1 14, N2 1349, N3
   117, N4 3; semente 11: 9, 1416, 132, 2; semente 13: 8, 1215, 122, 2 — e a N3 guardada no mapa é
@@ -149,8 +159,10 @@ sabotagens e o EPUBCheck) **espera a máquina livre**.
   **24/24** negativas; CB **0 erro** em 39 arquivos. Cada sabotagem (semente 7) reprova na linha
   declarada: `perde_fen` (ida, 49 diferenças; volta, 6 brutos fora do esperado), `perde_classe`
   (ida, 647; volta, 7 brutos), `perde_atributo` (ida, 116; volta, 26/40), `nula` (ida, 2012, e os
-  162 registros do mapa fora do lugar; volta, 1/40), `engole_desconhecido` (volta, 24/40) e
-  `css_silencioso` (mapa, 0/24 negativas).
+  162 registros do mapa fora do lugar; volta, 1/40), `engole_desconhecido` (volta, 24/40),
+  `css_silencioso` (mapa, 0/24 negativas) e a nova `lance_sem_fen` (a forma do ciclo 1 de volta:
+  a ida sem diferença, a volta 40/40 e o validate do CB com 0 erro — e o portão reprova pelos
+  **152 lances que o CB pularia**).
   `& $PY benchmarks\editor_ida_e_volta.py --nos 2000 --semente 7 --sem-epubcheck [--sabotar <nome>] --saida <pasta>`
 - **Os testes:** `test_legivel.py` (27), `test_legivel_ida.py` (16), `test_legivel_conferencia.py`
   (28), `test_leitura.py` (5), `test_mapa_sem_id.py` (4), `test_mapa_de_estilo.py` (52),

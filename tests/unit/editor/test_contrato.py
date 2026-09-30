@@ -87,3 +87,15 @@ def test_a_sabotagem_poe_a_negativa_no_cb() -> None:
     relatorio = contrato.validar_no_cb(sujas)
     assert [i["message"] for i in relatorio["issues"] if i["severity"] == "error"] == [
         "Diagram has no data-fen"]
+
+
+def test_o_que_o_cb_confunde_sem_acusar_e_contado() -> None:
+    """A classe da v1 que a expressão do CB casa, e o lance que ele pula: 0 erro, e reprova."""
+    limpas = [contrato.CONTRATO / nome for nome in contrato.LINHAS_DO_S4.values()]
+    relatorio = contrato.validar_no_cb(limpas)
+    assert (relatorio["confundidos"], relatorio["pulados"]) == ([], [])
+    relatorio = contrato.validar_no_cb([contrato.NEGATIVAS / "negativa_classe_confundida.xhtml"])
+    assert relatorio["error_count"] == 0, "o CB não acusa nada: por isso o portão conta"
+    assert relatorio["confundidos"] == [
+        "Text/negativa_classe_confundida.xhtml: «cb-move-context» lido como cb-move"]
+    assert relatorio["pulados"] == ["Text/negativa_classe_confundida.xhtml: Cf3 sem data-fen"]
