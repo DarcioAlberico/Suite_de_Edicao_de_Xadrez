@@ -307,3 +307,22 @@ def test_a_precedencia_das_camadas() -> None:
     assert SEM_CAMADA > c > a > a_b
     assert chave_de_camada(a_b, True) > chave_de_camada(a, True) > chave_de_camada(
         c, True) > chave_de_camada(SEM_CAMADA, True)
+
+
+@pytest.mark.parametrize(("antes", "vale"), [
+    ("@layer base;", True),
+    ("@layer base, tema;", True),
+    ("@layer vazio { }", True),
+    ("@layer vazio { /* só um comentário */ }", True),
+    ("@layer base { p { color: #111111; } }", False),
+    ("@charset \"utf-8\";", True),
+    ("p.outro { color: #111111; }", False),
+])
+def test_a_zona_do_import_e_a_definicao_vazia_de_layer(antes: str, vale: bool) -> None:
+    """CSS Cascade 5 §2: o `@import` vale depois do `@charset` e da definição vazia de `@layer` (a
+    declaração e o bloco vazio), e não depois de um bloco com regra (o ciclo 4 do crítico)."""
+    texto = ('<html xmlns="http://www.w3.org/1999/xhtml" lang="pt-BR"><head><title>t</title>'
+             f'<style>{antes}\n@import url("../Styles/cinza.css");</style></head>'
+             '<body><p class="cinza">O texto.</p></body></html>')
+    problemas = validar_arquivo("Text/zona.xhtml", texto, Contexto(arquivos=ARQUIVOS))
+    assert ("css-contraste" in {p.codigo for p in problemas}) is vale, [str(p) for p in problemas]

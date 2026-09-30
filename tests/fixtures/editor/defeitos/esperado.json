@@ -484,6 +484,17 @@
    ],
    "contexto": {}
   },
+  "Text/css-contraste-import-camada-vazia.xhtml": {
+   "regra": "css-contraste",
+   "problemas": [
+    {
+     "codigo": "css-contraste",
+     "linha": 10,
+     "coluna": 1
+    }
+   ],
+   "contexto": {}
+  },
   "Text/css-contraste-import-camada.xhtml": {
    "regra": "css-contraste",
    "problemas": [

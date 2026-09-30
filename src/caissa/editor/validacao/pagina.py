@@ -36,9 +36,10 @@ na ordem do documento. O que o MuPDF sozinho desenharia diferente do livro — m
 - **O `@import`** — todo `@import` local, em qualquer profundidade, entra no lugar dele (a folha
   importada duas vezes, por dois caminhos, entra duas vezes, como no CSS), com as condições dele
   (a mídia, o `supports()`, o `layer`); o que importa a si mesmo pelo caminho aberto não entra de
-  novo (o laço). O `@import` só vale antes de toda outra regra — só o `@charset` e a **declaração**
-  `@layer a, b;` podem vir antes (CSS Cascade 5 §2: «ignoring @charset and @layer statement
-  rules»); o bloco `@layer x { }`, até o vazio, fecha a zona. O `LIMITE_DE_IMPORTS` é uma defesa:
+  novo (o laço). O `@import` só vale antes de toda outra regra — só o `@charset` e a **definição
+  vazia** de `@layer` podem vir antes (CSS Cascade 5 §2: «ignoring @charset and empty @layer
+  definitions»): a declaração `@layer a, b;` e o bloco vazio `@layer x { }`; o bloco com uma
+  regra fecha a zona. O `LIMITE_DE_IMPORTS` é uma defesa:
   passar dele é dito, no `<link>` ou no `<style>` de onde a cadeia veio
   (`PaginaMedida.incompletas`).
 
@@ -326,7 +327,7 @@ def _regras_do_bloco(nos: Iterable[Any], arquivo: str, contexto: Contexto,
             if zona_do_import:
                 regras += _importar(regra, arquivo, contexto, abertos, leitura, camadas, caminho)
             continue
-        if palavra == "charset" or (palavra == "layer" and regra.content is None):
+        if palavra == "charset" or (palavra == "layer" and _definicao_vazia(regra)):
             for nome in Camadas.nomes(regra.prelude) if palavra == "layer" else []:
                 camadas.registrar((*caminho, *nome))
             continue
@@ -345,6 +346,17 @@ def _regras_do_bloco(nos: Iterable[Any], arquivo: str, contexto: Contexto,
             regras += _regras_do_bloco(dentro, arquivo, contexto, abertos, leitura, camadas,
                                        (*caminho, *nome), topo=False)
     return regras
+
+
+def _definicao_vazia(regra: Any) -> bool:
+    """A definição vazia de `@layer`, que o `@import` pode ter antes dele.
+
+    A declaração `@layer a, b;` ou o bloco sem regra (só espaço e comentário): CSS Cascade 5 §2,
+    «ignoring @charset and empty @layer definitions».
+    """
+    if regra.content is None:
+        return True
+    return all(no.type in ("whitespace", "comment") for no in regra.content)
 
 
 def _importar(regra: Any, arquivo: str, contexto: Contexto, abertos: tuple[str, ...],

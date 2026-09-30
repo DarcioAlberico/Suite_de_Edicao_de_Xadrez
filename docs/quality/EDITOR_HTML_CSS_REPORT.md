@@ -310,8 +310,8 @@ as 4 sabotagens) **espera a máquina livre**.
 
 ## H10 — A validação em camadas, com linha e coluna
 
-**Estado:** implementado e revisto depois dos **ciclos 1, 2 e 3 do crítico** (REPROVADOS, 5
-bloqueantes, 1 e 1: `quality/EDITOR_HTML_CSS_CRITICAS.md`; a **M-H10-1 aprovada no ciclo 2**) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
+**Estado:** implementado e revisto depois dos **ciclos 1 a 4 do crítico** (REPROVADOS, 5
+bloqueantes, 1, 1 e 1: `quality/EDITOR_HTML_CSS_CRITICAS.md`; a **M-H10-1 aprovada no ciclo 2**) — o pacote `src/caissa/editor/validacao/` (sem Qt, fora da
 thread da janela), as fixtures de defeito e o limpo adversarial (as duas de geradores que o teste
 confere byte a byte), o arnês e a entrada `PASSOS["H10"]` do executor (3 execuções de cada
 comando); os testes passam; **o portão** espera o IR real do H5 (o conjunto limpo) e a máquina
@@ -357,9 +357,10 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), apr
     o bloqueante do ciclo 2): o laço pelo caminho aberto não entra de novo, a folha importada
     por dois caminhos entra duas vezes, e o limite de defesa (256 folhas por `<link>`/`<style>`)
     é dito no `<link>` (`css-contraste-incompleto`); o `@import` só vale antes de toda outra
-    regra — só o `@charset` e a **declaração** `@layer a;` antes dele (CSS Cascade 5 §2: o bloco
-    `@layer x { }`, até o vazio, fecha a zona: o bloqueante do ciclo 3) —, com as condições dele
-    (a mídia, o `supports()`, o `layer`);
+    regra — só o `@charset` e a **definição vazia** de `@layer` antes dele (CSS Cascade 5 §2:
+    «ignoring @charset and empty @layer definitions»: a declaração `@layer a;` e o bloco vazio
+    `@layer x { }`; o bloco com regra fecha a zona — os bloqueantes dos ciclos 3 e 4) —, com as
+    condições dele (a mídia, o `supports()`, o `layer`);
   - **as condições** (`condicoes.py`): o MuPDF ignora o bloco inteiro do `@media`, do
     `@supports` e do `@layer` (medido); o leitor os aplica. O `@media` e o `@supports` se
     avaliam para o dispositivo de leitura (a tela, o esquema claro, em pé, a largura da página
@@ -394,19 +395,19 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), apr
     dele; o curto só casa perto, para o que o CSS gera não desalinhar o resto); o fundo que cobre
     parte do trecho acusa o elemento do texto sobre ele, pelos caracteres; um problema por
     elemento, e o descendente com a mesma tinta do acusado herda dele.
-- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **68/68** com o código e a linha:coluna
+- **Os defeitos** (`tests/fixtures/editor/defeitos/`): **69/69** com o código e a linha:coluna
   certos — um arquivo por regra, e mais um por caso onde o crítico pediu (o contraste: a variável
   do `<style>` com o texto repetido, a da classe e a do `style=""`, o fundo parcial e o
   translúcido, o papel do `body`, a imagem, o link, a cor só na sexta folha de uma cadeia de
   `@import`, a cor só num `@layer`, num `@media screen` e num `@supports`, o `@import` depois
-  da declaração `@layer`, a página que não termina; a animação no
+  da declaração `@layer` e depois do bloco vazio, a página que não termina; a animação no
   `srcset`, na `<source>`, no WebP e no `url()`; a `page-list` sem alvo, com lacuna, repetida, e
   o marcador fora dela) —, e o de 8 MB que o portão monta; o local esperado sai de um marcador no
   texto, pela definição da regra. Toda regra registrada tem o seu (52).
 - **O limpo:** **0 problema que bloqueia ou avisa** em 27 arquivos — as 16 fixtures do contrato e
   o **limpo adversarial** (`tests/fixtures/editor/limpos/`, 11 — com o `@import` em laço e o que
-  vem depois de uma regra ou de um bloco `@layer` (até o vazio), que se valesse pintaria o texto
-  de cinza; a regra sem camada que vence a de camada mais específica (o MuPDF sozinho a pintaria
+  vem depois de uma regra ou de um bloco `@layer` com regra, que se valesse pintaria o texto de
+  cinza; a regra sem camada que vence a de camada mais específica (o MuPDF sozinho a pintaria
   de cinza); o `@media` de impressão, do esquema escuro, da tela larga e o `not screen`, e o
   `@supports` que não vale: o branco na caixa escura, o papel
   escuro do `body` com o link claro do autor, o realce que cobre parte do trecho, o translúcido
@@ -423,11 +424,12 @@ livre (o tempo). As decisões do passo estão na **M-H10-1** (roadmap §10), apr
 - **O tempo** (rodada leve, com outra sessão medindo — não é o portão): o arquivo de 260 KB (agora
   de 260 KB: o de antes dobrava o capítulo e tinha 514 KB), com a folha base do produto ligada,
   **343 ms** a validação inteira (a mediana de 5), o contraste 302 ms.
-- **As sabotagens:** `sem_linha` reprova (6/68 defeitos certos) e `regra_muda` reprova (67/68: o
+- **As sabotagens:** `sem_linha` reprova (6/69 defeitos certos) e `regra_muda` reprova (68/69: o
   diagrama sem `data-fen` some).
-- **Os testes:** `tests/unit/editor/test_validacao.py` (125, com o limite de defesa do `@import`
+- **Os testes:** `tests/unit/editor/test_validacao.py` (133, com o limite de defesa do `@import`
   dito no `<link>`, a mídia do leitor em 18 consultas, o `@supports` em 7, a precedência das
-  camadas: cada defeito, toda regra com o seu, o
+  camadas, a zona do `@import` em 7 casos — a declaração, o bloco vazio, o só com comentário, o
+  com regra: cada defeito, toda regra com o seu, o
   vocabulário do validador igual ao do MARKUP, o de 8 MB, o limpo do contrato e o adversarial, as
   fixtures dos dois geradores byte a byte, os consertos, a coluna por caractere, o local do
   EPUBCheck, o pacote sem Qt, as variáveis e o teto da prévia, a imagem animada pela estrutura, o

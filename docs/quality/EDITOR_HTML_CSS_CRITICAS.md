@@ -1717,3 +1717,65 @@ Adicionar teste/fixture com um `@layer` não vazio seguido de `@import`, comprov
    camada vence o `#destaque` de camada, que o MuPDF sozinho pintaria de cinza) e `midia.xhtml` (o
    `@media` de impressão, do esquema escuro, da tela larga, o `not screen` e o `@supports` que não
    vale); os testes da mídia em 18 consultas, do `@supports` em 7 e da precedência das camadas.
+
+## H10 — ciclo 4 (2026-09-30): REPROVADO, 1 bloqueante (o bloco vazio de `@layer`)
+
+O crítico julgou a resposta ao ciclo 3 (o `28ef8d0`), somente leitura, com o portão sem o tempo
+(68/68, o limpo 0 em 27), as sabotagens (6/68 e 67/68) e os 1001 testes. O veredito, transcrito
+sem edição:
+
+VEREDITO: REPROVADO  
+CICLO: 4  
+FRENTE: Editor HTML/CSS — H10 (implementação e definição do portão)
+
+## Afirmações conferidas
+
+| Afirmação | Conferida em arquivo:linha | Resultado |
+|---|---|---|
+| Imports profundos continuam sendo expandidos, com limite explícito | `src/caissa/editor/validacao/pagina.py:350-369`; `tests/unit/editor/test_validacao.py:250-263` | Confirmada |
+| `@layer nome;` permite `@import` posterior | `pagina.py:325-331`; `css-contraste-import-camada.xhtml:6-10` | Confirmada |
+| `@media` e `@supports` são avaliados para o leitor | `condicoes.py:214-247`; `pagina.py:338-346`; `test_validacao.py:266-296` | Confirmada nos casos testados |
+| A precedência das camadas é aplicada e exportada ao `style=""` | `condicoes.py:253-289`; `pagina.py:456-474, 731-743`; `test_validacao.py:299-309` | Confirmada nos casos testados |
+| Defeitos, linhas/colunas e sabotagens | `h10_c4/portao.log:1`; `h10_c4/sabotagens.log:1-2` | Confirmada |
+| Testes automatizados | `h10_c4/testes.log:1-3` | 1001 passaram; 8 foram pulados |
+| `@layer nome {}` vazio encerra a zona de `@import` | `pagina.py:329-333`; `limpos/Text/camadas.xhtml:10-16` | **Contradita pela especificação e pelo requisito do ciclo** |
+
+## Defeitos bloqueantes
+
+1. **`@layer nome {}` vazio foi classificado como encerrador da zona de `@import`.**
+
+   Evidência: `src/caissa/editor/validacao/pagina.py:329-333`. O código só preserva a zona para `@layer` com `content is None`, isto é, a declaração `@layer nome;`. Um bloco, mesmo vazio, cai em `zona_do_import = False`.
+
+   A CSS Cascade 5 determina que `@import` ignora `@charset` e **definições vazias de `@layer`**, portanto o `@import` após `@layer vazio {}` deve valer. [CSS Cascade 5 §2 (W3C)](https://www.w3.org/TR/css-cascade-5/#at-import)
+
+   A fixture `limpos/Text/camadas.xhtml:10-16` codifica o comportamento errado: o `@import` de `cinza.css` em `Styles/cinza.css:1` deveria pintar `p.vazio` de cinza e gerar um defeito de contraste. O portão passa esse caso apenas porque a implementação descarta indevidamente o import.
+
+## Defeitos não bloqueantes
+
+- O portão operacional completo continua pendente: IR real, tempo em máquina livre e execução integral pelo executor. Isso não bloqueia este julgamento.
+- Os 8 testes pulados decorrem de dependências externas ausentes, conforme `testes.log`.
+- A M-H10-1 permanece aprovada desde o ciclo 2.
+
+## O que especificamente precisa mudar para eu aprovar
+
+- Em `_regras_do_bloco`, preservar `zona_do_import` para:
+  - `@charset`;
+  - `@layer nome;`;
+  - `@layer nome {}` vazio, após ignorar espaços e comentários.
+- Continuar encerrando a zona para qualquer `@layer` com regras ou declarações.
+- Corrigir a fixture/expectativa de `camadas.xhtml` para provar que o import após bloco vazio entra na cascata.
+- Manter testes separados para declaração `@layer`, bloco vazio e bloco não vazio.
+
+O restante da implementação do ciclo 4 está conferido, mas esse bloqueante semântico impede a aprovação.
+
+**O que mudou para o ciclo 5:** o crítico tinha razão, e a leitura do construtor no ciclo 3
+estava errada. O texto da CSS Cascade 5 §2 (conferido no W3C em 2026-09-30) diz «ignoring
+@charset and **empty @layer definitions**», e não «@layer statement rules»: o bloco vazio é uma
+definição vazia. `_regras_do_bloco` (`validacao/pagina.py`) mantém a zona do `@import` depois do
+`@charset` e da definição vazia de `@layer` (`_definicao_vazia`: a declaração `@layer a, b;` ou o
+bloco só com espaço e comentário, que ainda registra a ordem da camada) e a fecha depois do bloco
+com regra. O caso do bloco vazio saiu do limpo `camadas.xhtml` (onde a expectativa estava errada)
+e virou o defeito `Text/css-contraste-import-camada-vazia.xhtml` (o `@import` depois de
+`@layer vazio { /* nada */ }` vale: o problema); o teste
+`test_a_zona_do_import_e_a_definicao_vazia_de_layer` separa os casos — a declaração (uma camada e
+duas), o bloco vazio, o só com comentário, o `@charset`, o bloco com regra e a regra comum.

@@ -252,6 +252,11 @@ t = xhtml('<p class="cinza">O @import depois da declaração @layer vale.</p>',
           '<style>@layer base;\n@import url("../Styles/cinza.css");</style>\n')
 defeito("css-contraste", t, [("css-contraste", '<p class="cinza"', 1)],
         arquivo="Text/css-contraste-import-camada.xhtml")
+# O @import depois do bloco vazio @layer x { } também vale (a definição vazia, CSS Cascade 5 §2).
+t = xhtml('<p class="cinza">O @import depois do bloco vazio da camada vale.</p>',
+          '<style>@layer vazio { /* nada */ }\n@import url("../Styles/cinza.css");</style>\n')
+defeito("css-contraste", t, [("css-contraste", '<p class="cinza"', 1)],
+        arquivo="Text/css-contraste-import-camada-vazia.xhtml")
 # O link que o autor pinta de cinza: o MuPDF sozinho o pintaria do azul dele (e passaria).
 t = xhtml('<p>Veja <a href="#fim">o fim do capítulo</a>.</p>\n<p id="fim">O fim.</p>',
           "<style>a { color: #999999; }</style>\n")
