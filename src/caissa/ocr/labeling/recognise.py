@@ -5,6 +5,13 @@ the reviewer corrects exactly what the importer would have emitted:
 same layout, same candidates, same fusion, same doubts.  A line's
 alternatives are the other candidates' readings of the same strip, matched
 by overlap; they are shown, never applied.
+
+The page's chess diagrams are located first, by the import's own finder
+(:func:`caissa.ingest.pdf.finders.combined_finder`), and the lines the
+import drops from the flow because of them -- ink inside the board, the
+coordinate labels around it -- never reach the queue: on the Dvoretsky the
+engine read a board's border as ``cO - OO OO ♔ W ♔ r``, and the reviewer
+had to reject it by hand.
 """
 
 from __future__ import annotations
@@ -19,10 +26,11 @@ import numpy as np
 
 from caissa.ocr.types import BBox, OcrLine, RegionKind
 
-from .model import LineLabel, PageLabels, RectT, RegionLabel, WordHint
+from .model import DiagramLabel, LineLabel, PageLabels, RectT, RegionLabel, WordHint
 
 __all__ = [
     "close_documents",
+    "find_diagrams",
     "iso_lang",
     "label_page",
     "page_count",
@@ -35,6 +43,9 @@ __all__ = [
 _DOCS: dict[str, Any] = {}
 #: Overlap below which another candidate's line is not the same strip.
 MIN_LINE_IOU = 0.3
+#: The finder of the bench, built on first use: the classifier it loads is
+#: the process's shared one, so a second page pays nothing to load it.
+_FINDER: Any = None
 
 
 def _open(pdf_path: Path | str) -> Any:
@@ -104,6 +115,87 @@ def render_rgb(
 
 
 # --------------------------------------------------------------------------- #
+# Diagrams
+# --------------------------------------------------------------------------- #
+
+
+def _default_finder() -> Any:
+    global _FINDER  # noqa: PLW0603 - one finder per process, like the import's classifier
+    if _FINDER is None:
+        from caissa.ingest.pdf.finders import combined_finder
+
+        _FINDER = combined_finder()
+    return _FINDER
+
+
+def find_diagrams(
+    pdf_path: Path | str, page_index: int, *, finder: Any = None
+) -> tuple[list[DiagramLabel], list[str]]:
+    """The page's chess diagrams, by the import's finder, and what went wrong.
+
+    ``finder`` has the import's :data:`~caissa.ingest.pdf.importer.DiagramFinder`
+    shape; ``None`` is the product's default (vector, inferred font, raster).
+    A finder that cannot run -- no trunk, no ``cv2`` -- is a note, never a
+    lost page: the lines are then laid out as before.
+    """
+    from caissa.ingest.pdf.geometry import PageFrame
+    from caissa.ingest.pdf.textlayer import PageText
+
+    try:
+        finder = finder or _default_finder()
+        page = _open(pdf_path)[page_index]
+        frame = PageFrame.from_page(page, page_index)
+        hits = list(finder(page, frame, PageText(frame=frame, lines=())))
+    except Exception as exc:  # noqa: BLE001 - the bench still labels a page it cannot see boards on
+        return [], [f"diagramas não localizados: {exc}"]
+    hits.sort(key=lambda h: (h.box[1], h.box[0]))
+    diagrams = [
+        DiagramLabel(
+            index=n,
+            rect=_rect_of(hit.box),
+            fen=hit.fen or "",
+            confidence=float(hit.confidence),
+            path=str(getattr(hit.path, "value", hit.path)),
+            method=str(hit.method),
+            white_at_bottom=bool(hit.orientation_white),
+        )
+        for n, hit in enumerate(hits)
+    ]
+    return diagrams, []
+
+
+def _rect_of(box: Sequence[float]) -> RectT:
+    x0, y0, x1, y1 = (round(float(v), 2) for v in box)
+    return x0, y0, x1, y1
+
+
+def _coverage(box: RectT, rect: RectT) -> float:
+    """Share of ``box`` inside ``rect``."""
+    width = max(0.0, min(box[2], rect[2]) - max(box[0], rect[0]))
+    height = max(0.0, min(box[3], rect[3]) - max(box[1], rect[1]))
+    area = (box[2] - box[0]) * (box[3] - box[1])
+    return width * height / area if area > 0 else 0.0
+
+
+def _board_ink(text: str, box: RectT, boards: Sequence[RectT]) -> bool:
+    """Whether the import would drop this line from the flow because of a board.
+
+    The two rules of the import, unchanged: a line mostly inside a board is
+    the board's ink (``LayoutConfig.diagram_coverage``, the layout's
+    ``DIAGRAM_LABEL``), and a bare rank digit or run of file letters within
+    reach of one is a coordinate label (``paragraphs.is_axis_label_near``).
+    """
+    if not boards:
+        return False
+    from caissa.ingest.pdf.paragraphs import ParagraphConfig, is_axis_label_near
+
+    config = ParagraphConfig()
+    if any(_coverage(box, rect) >= config.layout.diagram_coverage for rect in boards):
+        return True
+    return is_axis_label_near(text, box, boards, config)
+
+
+# --------------------------------------------------------------------------- #
 # Recognition → labels
 # --------------------------------------------------------------------------- #
 
@@ -149,10 +241,16 @@ def _lines_from(
     *,
     dx: float = 0.0,
     dy: float = 0.0,
+    boards: Sequence[RectT] = (),
+    dropped: list[str] | None = None,
 ) -> list[LineLabel]:
     lines: list[LineLabel] = []
     for n, line in enumerate(result_lines):
         if not line.words:
+            continue
+        if boards and _board_ink(line.text, _pt(line.box, scale, dx, dy), boards):
+            if dropped is not None:
+                dropped.append(line.text)
             continue
         words = tuple(
             WordHint(text=w.text, confidence=float(w.confidence), box=_pt(w.box, scale, dx, dy))
@@ -179,8 +277,22 @@ def label_page(
     *,
     dpi: float = 300.0,
     lang: str = "",
+    diagrams: Sequence[DiagramLabel] | None = None,
+    finder: Any = None,
 ) -> PageLabels:
-    """Run the service on one page and lay its regions and lines out for review."""
+    """Run the service on one page and lay its regions and lines out for review.
+
+    ``diagrams`` are the page's boards when the caller already has them (the
+    measurement reuses the labelled page's); ``None`` locates them with
+    ``finder`` (:func:`find_diagrams`), and ``()`` skips the boards.
+    """
+    notes: list[str] = []
+    if diagrams is None:
+        found, notes = find_diagrams(pdf_path, page_index, finder=finder)
+    else:
+        found = list(diagrams)
+    boards = [d.rect for d in found]
+    dropped: list[str] = []
     gray = render_gray(pdf_path, page_index, dpi)
     width_pt, height_pt = page_size(pdf_path, page_index)
     recognition = service.recognize_image(gray, dpi=float(dpi), lang=lang, page_index=page_index)
@@ -201,7 +313,9 @@ def label_page(
             # The layout gave the engine the whole page (or a column): its own
             # paragraph segmentation is the block structure the reviewer wants.
             for para_lines in _paragraphs(region.result.lines):
-                lines = _lines_from(para_lines, scale, region.candidates, chosen)
+                lines = _lines_from(
+                    para_lines, scale, region.candidates, chosen, boards=boards, dropped=dropped
+                )
                 if not lines:
                     continue
                 rect = _union(line.box for line in lines)
@@ -216,11 +330,21 @@ def label_page(
                     )
                 )
             continue
-        lines = _lines_from(region.result.lines, scale, region.candidates, chosen)
+        before = len(dropped)
+        lines = _lines_from(
+            region.result.lines, scale, region.candidates, chosen, boards=boards, dropped=dropped
+        )
+        rect = _pt(region.box_px, scale)
+        if boards and (
+            (len(dropped) > before and not lines)
+            or any(_coverage(rect, b) >= _DIAGRAM_REGION for b in boards)
+        ):
+            # Every line of it was board ink, or the region is the board.
+            continue
         regions.append(
             RegionLabel(
                 index=len(regions),
-                rect=_pt(region.box_px, scale),
+                rect=rect,
                 kind=str(region.kind),
                 reading_order=len(regions),
                 lines=lines,
@@ -238,8 +362,19 @@ def label_page(
         regions=regions,
         engines=dict(recognition.engines),
         recognised_at=datetime.now(UTC).isoformat(timespec="seconds"),
-        notes=list(recognition.notes),
+        notes=[*notes, *_board_notes(found, dropped), *recognition.notes],
+        diagrams=found,
     )
+
+
+def _board_notes(diagrams: Sequence[DiagramLabel], dropped: Sequence[str]) -> list[str]:
+    if not diagrams:
+        return []
+    read = sum(1 for d in diagrams if d.fen)
+    note = f"{len(diagrams)} diagrama(s) localizado(s), {read} lido(s)"
+    if dropped:
+        note += f"; {len(dropped)} linha(s) do tabuleiro fora da fila, como na importação"
+    return [note]
 
 
 def recognise_rect(
@@ -287,6 +422,8 @@ def recognise_rect(
 
 
 _SPLIT_KINDS = {str(RegionKind.PAGE), str(RegionKind.COLUMN), str(RegionKind.UNKNOWN)}
+#: A layout region this much inside a board is the board, not a block of text.
+_DIAGRAM_REGION = 0.6
 
 
 def _paragraphs(lines: Sequence[OcrLine]) -> list[list[OcrLine]]:

@@ -24,6 +24,7 @@ from typing import Any
 from caissa.ocr.golden import Partition, partition_for
 
 __all__ = [
+    "DiagramLabel",
     "LabelProject",
     "LineLabel",
     "LineStatus",
@@ -263,6 +264,59 @@ class RegionLabel:
 
 
 # --------------------------------------------------------------------------- #
+# Diagrams
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(slots=True)
+class DiagramLabel:
+    """A chess diagram the product's finder located on the page.
+
+    Not a region: there is no line in it to label.  The bench keeps it so
+    the reviewer sees the board where the import will see it, and so the
+    lines the engine read inside it (borders, pieces, coordinates) leave the
+    queue the way the import drops them from the flow.
+    """
+
+    index: int
+    rect: RectT  # page points, the board as the finder reports it
+    #: Full FEN when the position was read; empty when only located.
+    fen: str = ""
+    confidence: float = 0.0
+    #: Which route found it (``vector``, ``vector_inferred``, ``neural`` …).
+    path: str = ""
+    method: str = ""
+    white_at_bottom: bool = True
+
+    @property
+    def placement(self) -> str:
+        return self.fen.split(" ", 1)[0] if self.fen else ""
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "rect": [round(v, 2) for v in self.rect],
+            "fen": self.fen,
+            "confidence": round(self.confidence, 4),
+            "path": self.path,
+            "method": self.method,
+            "white_at_bottom": self.white_at_bottom,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DiagramLabel:
+        return cls(
+            index=int(data.get("index", 0)),
+            rect=_rect(data["rect"]),
+            fen=str(data.get("fen", "") or ""),
+            confidence=float(data.get("confidence", 0.0)),
+            path=str(data.get("path", "")),
+            method=str(data.get("method", "")),
+            white_at_bottom=bool(data.get("white_at_bottom", True)),
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Pages
 # --------------------------------------------------------------------------- #
 
@@ -284,6 +338,9 @@ class PageLabels:
     #: Review time accumulated on this page (Sol §SOL-11 measures it).
     seconds: float = 0.0
     notes: list[str] = field(default_factory=list)
+    #: Chess diagrams located on the page (empty on pages recognised before
+    #: the bench looked for them, and on pages without boards).
+    diagrams: list[DiagramLabel] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -334,6 +391,7 @@ class PageLabels:
             "recognised_at": self.recognised_at,
             "seconds": round(self.seconds, 2),
             "notes": list(self.notes),
+            "diagrams": [d.as_dict() for d in self.diagrams],
         }
 
     @classmethod
@@ -351,6 +409,7 @@ class PageLabels:
             recognised_at=str(data.get("recognised_at", "")),
             seconds=float(data.get("seconds", 0.0)),
             notes=[str(n) for n in data.get("notes", ())],
+            diagrams=[DiagramLabel.from_dict(d) for d in data.get("diagrams", ())],
         )
 
 

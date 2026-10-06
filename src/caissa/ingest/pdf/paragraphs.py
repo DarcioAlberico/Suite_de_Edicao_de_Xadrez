@@ -81,6 +81,7 @@ __all__ = [
     "column_measures",
     "diagram_extents",
     "finish_document",
+    "is_axis_label_near",
     "layout_page",
     "looks_like_moves",
 ]
@@ -489,17 +490,25 @@ _AXIS_LABEL: Final = re.compile(r"^(?:[1-8]|[a-h](?:\W+[a-h])*)$")
 
 
 def _is_axis_label_near(line: TextLine, diagrams: Sequence[RectT], config: ParagraphConfig) -> bool:
+    return is_axis_label_near(line.text, line.box, diagrams, config)
+
+
+def is_axis_label_near(
+    text: str, box: RectT, diagrams: Sequence[RectT], config: ParagraphConfig | None = None
+) -> bool:
     """A bare rank digit or a run of file letters within reach of a board.
 
     The vector detector reports the 8x8 lattice; the labels sit outside it,
     which is why coverage by the board rectangle never catches them and why
     they used to come out as eight one-character paragraphs (Dvoretsky, every
     diagram).  Only the label *pattern* qualifies, so a caption printed just
-    under the board is untouched.
+    under the board is untouched.  Public because the labelling bench drops
+    the same lines the import drops (``caissa.ocr.labeling.recognise``).
     """
-    if not diagrams or not _AXIS_LABEL.match(line.text.strip()):
+    config = config or ParagraphConfig()
+    if not diagrams or not _AXIS_LABEL.match(text.strip()):
         return False
-    lx0, ly0, lx1, ly1 = line.box
+    lx0, ly0, lx1, ly1 = box
     for dx0, dy0, dx1, dy1 in diagrams:
         reach = config.axis_label_reach * max(dx1 - dx0, dy1 - dy0) / 8.0
         if lx1 < dx0 - reach or lx0 > dx1 + reach or ly1 < dy0 - reach or ly0 > dy1 + reach:

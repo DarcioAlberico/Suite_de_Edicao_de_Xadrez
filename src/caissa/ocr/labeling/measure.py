@@ -339,7 +339,8 @@ def measure_book(
             started = time.monotonic()
             try:
                 recognised = label_page(
-                    service, path, document, page.page_index, dpi=page.dpi, lang=page.lang
+                    service, path, document, page.page_index, dpi=page.dpi, lang=page.lang,
+                    diagrams=page.diagrams,
                 )
             except Exception as exc:  # noqa: BLE001 - one page must not lose the measurement
                 measure.notes.append(f"página {page.page_index} ({label}): {exc}")
