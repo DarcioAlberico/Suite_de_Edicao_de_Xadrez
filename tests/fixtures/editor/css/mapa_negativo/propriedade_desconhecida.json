@@ -1,0 +1,19 @@
+{
+ "avisos": [
+  {
+   "arquivo": "propriedade_desconhecida.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 2,
+   "propriedade": "-webkit-hyphens",
+   "seletor": ".z"
+  },
+  {
+   "arquivo": "propriedade_desconhecida.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 3,
+   "propriedade": "hyphens",
+   "seletor": ".z"
+  }
+ ],
+ "estilos": {}
+}

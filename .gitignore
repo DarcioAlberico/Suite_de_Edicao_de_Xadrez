@@ -45,6 +45,8 @@ benchmarks/corpus/**/derived/
 benchmarks/corpus/golden/manifest.private.json
 # Projetos de rotulagem (tools/rotular.py): trechos de livros do acervo, nao saem da maquina
 /labeling/
+# Projetos do Editor HTML/CSS (caissa.editor.projeto): o livro do usuario, nao sai da maquina
+/editor/
 *.doctor.json
 report.json
 

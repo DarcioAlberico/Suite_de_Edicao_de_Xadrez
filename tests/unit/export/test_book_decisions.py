@@ -13,7 +13,10 @@ book with a finder that "reads" a known wrong position:
 * the sabotage of the roadmap -- exporting without applying -- ships the
   machine's FEN, which is what the ``percurso`` gate now refuses;
 * ``export_book(document=...)`` writes an import already in hand and does
-  not read the PDF again.
+  not read the PDF again;
+* a correction applied to the import in hand keeps the book's printed demand
+  (``"Mate em 2"``, C12) -- only a stipulation that restates the side, or
+  none, takes the reviewer's side.
 """
 
 from __future__ import annotations
@@ -27,9 +30,23 @@ _INGEST_TESTS = Path(__file__).resolve().parent.parent / "ingest"
 if str(_INGEST_TESTS) not in sys.path:
     sys.path.insert(0, str(_INGEST_TESTS))
 
-from caissa.core.model import Diagram, RecognitionPath, SourceKind  # noqa: E402
+from caissa.core.model import (  # noqa: E402
+    Diagram,
+    DiagramSource,
+    Document,
+    RecognitionPath,
+    Rect,
+    SourceKind,
+)
 from caissa.export import export_book, read_epub  # noqa: E402
-from caissa.ingest.pdf import DiagramHit, PdfImportOptions, import_pdf  # noqa: E402
+from caissa.export.book import apply_diagram_decisions  # noqa: E402
+from caissa.ingest.pdf import (  # noqa: E402
+    DiagramHit,
+    ImportReport,
+    ImportResult,
+    PdfImportOptions,
+    import_pdf,
+)
 from caissa.ocr.diagram_decisions import (  # noqa: E402
     ENV_ROOT,
     DiagramDecision,
@@ -226,3 +243,56 @@ def test_a_decision_recorded_after_the_import_still_reaches_the_document_in_hand
     assert any(w.startswith("corrigido pelo revisor (ana)") for w in corrected.recognition.warnings)
     assert corrected.provenance is not None
     assert corrected.provenance.verified_by_human is True
+
+
+def _in_hand(stipulation: str | None) -> ImportResult:
+    """An import already in hand: one diagram at ``BOX`` on page 1, read as ``MACHINE``."""
+    diagram = Diagram(fen=MACHINE, stipulation=stipulation, source=DiagramSource(
+        page_index=0, rect=Rect(x=100.0, y=200.0, width=200.0, height=200.0)))
+    return ImportResult(document=Document(body=(diagram,)), report=ImportReport())
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        ("Mate em 2", "Mate em 2"),  # the book's demand outlives the correction
+        (None, "Pretas jogam"),  # nothing better: the reviewer's side is filled
+        ("Brancas jogam", "Pretas jogam"),  # a side sentence follows the corrected side
+        ("brancas  jogam.", "Pretas jogam"),  # however it was spaced or cased
+    ],
+)
+def test_a_correction_keeps_the_printed_demand_and_fills_only_the_side(
+    before: str | None, after: str
+) -> None:
+    decisions = DiagramDecisions(items=(DiagramDecision.now(0, BOX, CORRECTED, source="teste"),))
+    result = apply_diagram_decisions(_in_hand(before), decisions)
+    (diagram,) = result.document.body
+    assert diagram.fen == CORRECTED
+    assert diagram.stipulation == after
+    assert diagram.side_to_move_indicator is True
+    assert result.report.counters["diagram_decisions_applied"] == 1
+
+
+@requires_pymupdf
+def test_a_correction_after_the_import_keeps_the_books_demand(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The window's flow on a problem: the caption prints ``#2``, the import says «Mate em 2»,
+    the reviewer corrects the position -- and the EPUB still says «Mate em 2»; it used to
+    trade the book's demand for «Pretas jogam»."""
+    monkeypatch.setenv(ENV_ROOT, str(tmp_path / "decisoes"))
+    pdf = tmp_path / "problemas.pdf"
+    pdf.write_bytes(build_pdf([PageSpec().text("#2", 100, 410, size=10)]))
+    imported = import_pdf(pdf, PdfImportOptions(
+        diagram_finder=_finder([]), games=False, enable_ocr=False, verify_stipulations=False,
+        asset_dir=tmp_path / "assets",
+    ))
+    (read,) = [b for b in imported.document.body if isinstance(b, Diagram)]
+    assert read.stipulation == "Mate em 2", "a legenda deu a exigência"
+    record(pdf, DiagramDecision.now(0, BOX, CORRECTED, reviewer="ana", source="teste"))
+    result = export_book(pdf, tmp_path / "problemas.epub", "epub", enable_ocr=False,
+                         document=imported.document)
+    assert result.diagram_decisions_applied == 1
+    for diagram in (_diagrams(result.path, sidecar=True)[0], _diagrams(result.path)[0]):
+        assert diagram.fen == CORRECTED
+        assert diagram.stipulation == "Mate em 2"

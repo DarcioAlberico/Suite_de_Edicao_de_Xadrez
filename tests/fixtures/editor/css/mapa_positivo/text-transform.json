@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h5": {
+   "text-transform": "none"
+  },
+  "p.caixa-alta": {
+   "text-transform": "uppercase"
+  },
+  "span.caixa-alta": {
+   "text-transform": "uppercase"
+  }
+ }
+}

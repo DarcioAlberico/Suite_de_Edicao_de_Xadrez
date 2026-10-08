@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "font_variant_fora.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "font-variant",
+   "seletor": ".v"
+  }
+ ],
+ "estilos": {}
+}

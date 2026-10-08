@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.compacto": {
+   "line-height": "12pt"
+  },
+  "p.corrido": {
+   "line-height": "1.4"
+  },
+  "span.compacto": {
+   "line-height": "12pt"
+  }
+ }
+}

@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.recuo": {
+   "text-indent": "1.5em"
+  },
+  "p.sem-recuo": {
+   "text-indent": "0"
+  },
+  "span.sem-recuo": {
+   "text-indent": "0"
+  }
+ }
+}

@@ -190,9 +190,15 @@ def default_output_path(
     return pdf_path.with_name(stem + _EXTENSION[format_name])
 
 
-def _write_provenance(document: Document, written: Path, format_name: str,
-                      indices: Sequence[int], pdf_path: Path | str) -> Path | None:
-    """The sidecar beside the book; a failure is logged, never fatal (A11 is additive)."""
+def _write_provenance(
+    document: Document, written: Path, format_name: str, indices: Sequence[int],
+    pdf_path: Path | str,
+) -> tuple[Path | None, str | None]:
+    """The sidecar beside the book, or why it is not there -- never fatal (A11 is additive).
+
+    A failure is logged *and* returned, for :attr:`BookExportResult.provenance_error` and
+    the summary to say it: a sidecar that failed on every real import looked like success.
+    """
     from caissa.export.provenance import write_sidecar
 
     profile: dict[str, Any] = {}
@@ -206,10 +212,12 @@ def _write_provenance(document: Document, written: Path, format_name: str,
     except Exception:  # noqa: BLE001 - the profile is a courtesy of the header
         profile = {}
     try:
-        return write_sidecar(document, written, format_name=format_name, pages=indices, profile=profile)
-    except Exception:  # noqa: BLE001 - additive: the book is written, the sidecar is not
+        path = write_sidecar(document, written, format_name=format_name, pages=indices,
+                             profile=profile)
+    except Exception as exc:  # noqa: BLE001 - additive: the book is written, the sidecar is not
         LOGGER.warning("sidecar de proveniência não gravado ao lado de %s", written, exc_info=True)
-        return None
+        return None, f"{type(exc).__name__}: {exc}"
+    return path, None
 
 
 def _check_format(format_name: str) -> None:
@@ -243,6 +251,9 @@ class BookExportResult:
     provenance_path: Path | None = None
     """The provenance sidecar written next to the book (ciclo 2, passo A11); ``None`` when
     the write failed (the book is still there -- the sidecar is additive)."""
+    provenance_error: str | None = None
+    """Why :attr:`provenance_path` is ``None`` -- the exception, in one line; :meth:`summary`
+    says it, so the failure reaches the status bar and the CLI, not only the log."""
 
     @property
     def pages(self) -> str:
@@ -276,6 +287,8 @@ class BookExportResult:
                 f"OCR: {'restam ' if self.decisions_applied else ''}"
                 f"{len(self.warnings)} região(ões) para revisão"
             )
+        if self.provenance_error:
+            parts.append(f"sidecar de proveniência não gravado ({self.provenance_error})")
         return "; ".join(parts) + "."
 
 
@@ -450,7 +463,9 @@ def _export_book(
 
     written = export(document, target, format_name, options=export_options)
     # A11: the provenance the EPUB/DOCX cannot carry, next to it, keyed like the PGN's.
-    provenance_path = _write_provenance(document, written.path, format_name, indices, source)
+    provenance_path, provenance_error = _write_provenance(
+        document, written.path, format_name, indices, source
+    )
     if progress is not None:
         progress("gravando", 1, 1)
     warnings = tuple(
@@ -471,6 +486,7 @@ def _export_book(
             imported.report.counters.get("diagram_decisions_applied", 0)
         ),
         provenance_path=provenance_path,
+        provenance_error=provenance_error,
     )
 
 
@@ -551,6 +567,10 @@ def apply_diagram_decisions(imported: ImportResult, decisions: Any) -> ImportRes
     does; the machine's reading stays in ``recognition.fen`` and the warning,
     the provenance and the counter (``diagram_decisions_applied``) say what
     happened.  A decision already applied on import is not counted twice.
+    The stipulation follows the importer's precedence too: a printed demand
+    (``"Mate em 2"``, C12) stays; only a stipulation that says no more than
+    whose move it is -- or none -- takes the reviewer's side
+    (:func:`_stipulation_after_decision`).
     """
     from caissa.core.model import Diagram, SourceKind
 
@@ -583,7 +603,7 @@ def apply_diagram_decisions(imported: ImportResult, decisions: Any) -> ImportRes
                 fen=decision.fen,
                 recognition=recognition,
                 provenance=provenance,
-                stipulation="Brancas jogam" if decision.side == "w" else "Pretas jogam",
+                stipulation=_stipulation_after_decision(block.stipulation, decision.side),
                 side_to_move_indicator=True,
             )
         )
@@ -594,6 +614,25 @@ def apply_diagram_decisions(imported: ImportResult, decisions: Any) -> ImportRes
         int(report.counters.get("diagram_decisions_applied", 0)) + applied
     )
     return ImportResult(document=replace(imported.document, body=tuple(body)), report=report)
+
+
+_SIDE_ONLY_STIPULATIONS: Final = frozenset({"brancas jogam", "pretas jogam"})
+"""What the importer writes when all it knows is whose move it is, casefolded."""
+
+
+def _stipulation_after_decision(current: str | None, side: str) -> str:
+    """The stipulation of a diagram the reviewer corrected after the import (passo A3).
+
+    ``"Brancas jogam"``/``"Pretas jogam"`` only restate the side to move, so they follow
+    the reviewer's side, as an empty stipulation takes it; anything that says more -- the
+    caption's ``"Mate em 2"`` -- is the book's demand and stays, as it does when the
+    importer applies the decision itself.
+    """
+    if current is not None:
+        said = " ".join(current.split()).rstrip(".").casefold()
+        if said and said not in _SIDE_ONLY_STIPULATIONS:
+            return current
+    return "Brancas jogam" if side == "w" else "Pretas jogam"
 
 
 def _stamp_selection(document: Document, indices: Sequence[int], page_count: int) -> Document:

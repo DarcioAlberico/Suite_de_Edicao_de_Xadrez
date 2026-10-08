@@ -371,7 +371,12 @@ class ExportOptions:
             art is impossible.
         embed_ir: Write the serialised IR into the container as a sidecar. It is
             what lets a re-import be exact, and it is *never* counted towards a
-            fidelity measurement -- see :mod:`caissa.export.fidelity`.
+            fidelity measurement -- see :mod:`caissa.export.fidelity`. The EPUB,
+            a package made to be handed on, writes it without the author's disk:
+            every absolute path in it (the source PDF's, the extracted images')
+            comes down to the file name, the content hashes kept
+            (:mod:`caissa.export.epub`). The HTML page, the LaTeX source and the
+            PDF's ``.caissa.json`` write the IR as it is.
         max_warnings_per_property: Cap on individual warnings per property
             before the recorder switches to counting. Zero means no cap.
         dark_mode: Emit a dark colour scheme alongside the light one, where the

@@ -1,0 +1,26 @@
+{
+ "avisos": [],
+ "estilos": {
+  "h2": {
+   "color": "#808080"
+  },
+  "h2.t": {
+   "color": "#008000",
+   "font-style": "italic"
+  },
+  "p.lance": {
+   "color": "#000000",
+   "font-weight": "400"
+  },
+  "p.t": {
+   "color": "#008000"
+  },
+  "span.lance": {
+   "color": "#000080",
+   "font-weight": "400"
+  },
+  "span.t": {
+   "color": "#008000"
+  }
+ }
+}

@@ -1,0 +1,14 @@
+{
+ "avisos": [],
+ "estilos": {
+  "p.alerta": {
+   "color": "#ff0000"
+  },
+  "p.suave": {
+   "color": "#666666"
+  },
+  "span.alerta": {
+   "color": "#ff0000"
+  }
+ }
+}

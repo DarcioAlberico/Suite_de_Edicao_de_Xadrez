@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "seletor_universal.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "*"
+  }
+ ],
+ "estilos": {}
+}

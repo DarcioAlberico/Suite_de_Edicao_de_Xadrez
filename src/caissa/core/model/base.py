@@ -57,10 +57,17 @@ class IRNode:
         id: Stable identity, minted on construction unless supplied.
         provenance: Where this node came from and how sure the reader was.
             ``None`` for authored content that was never read from anything.
+        html_attributes: HTML attributes the legible XHTML carried that the
+            markup contract does not model (``style``, ``title``, ``aria-*``,
+            a ``data-*`` of the author's, a class beyond the style's), in the
+            order the ``canon`` writes them, so the Editor HTML/CSS writes them
+            back (spec R2.3; schema v2). Empty -- and omitted on disk -- for
+            everything else.
     """
 
     id: ULID = field(default_factory=new_ulid)
     provenance: Provenance | None = None
+    html_attributes: tuple[tuple[str, str], ...] = ()
 
     @property
     def node_type(self) -> str:

@@ -255,6 +255,9 @@ class NodeFactory:
 
     def __init__(self, seed: int = 0xCA155A) -> None:
         self.random = random.Random(seed)
+        # Os atributos HTML preservados (esquema v2, Editor HTML/CSS H5) sorteiam num gerador
+        # próprio: o corpus que as outras provas conhecem continua o mesmo, nó por nó.
+        self._atributos = random.Random(seed ^ 0x5EED)
         self._counter = 0
 
     # -- primitives --------------------------------------------------------
@@ -294,6 +297,15 @@ class NodeFactory:
             value=round(self.random.uniform(-24.0, 48.0), 3),
             unit=self.random.choice(list(LengthUnit)),
         )
+
+    def html_attributes(self) -> tuple[tuple[str, str], ...]:
+        """De 1 a 3 atributos que o contrato de marcação não modela, ou nenhum (9 em 10)."""
+        if self._atributos.random() >= 0.1:  # a fração do corpus com atributos
+            return ()
+        todos = (("style", "color: #444444"), ("title", "uma dica"),
+                 ("aria-describedby", "nota-1"), ("data-meu", "valor"),
+                 ("class", "minha-classe"), ("lang", "en"))
+        return tuple(sorted(self._atributos.sample(todos, self._atributos.randrange(1, 4))))
 
     def provenance(self) -> Provenance:
         return Provenance(
@@ -472,11 +484,21 @@ class NodeFactory:
     # -- inlines -----------------------------------------------------------
 
     def text(self) -> Text:
+        ident = self.next_ulid()
+        provenance = self.provenance() if self.maybe(0.3) else None
+        atributos = self.html_attributes()
+        content = self.sentence(self.random.randrange(1, 8))
+        props = self.run_props(rich=self.maybe(0.4))
+        if props.language:
+            # O `lang` preservado ao lado da língua modelada: o leitor legível nunca monta os
+            # dois (o par `lang`/`xml:lang` é a língua; o `lang` sozinho, um atributo da pessoa).
+            atributos = tuple(par for par in atributos if par[0] != "lang")
         return Text(
-            id=self.next_ulid(),
-            provenance=self.provenance() if self.maybe(0.3) else None,
-            content=self.sentence(self.random.randrange(1, 8)),
-            props=self.run_props(rich=self.maybe(0.4)),
+            id=ident,
+            provenance=provenance,
+            html_attributes=atributos,
+            content=content,
+            props=props,
         )
 
     def move(self) -> Move:
@@ -683,6 +705,7 @@ class NodeFactory:
         return Diagram(
             id=self.next_ulid(),
             provenance=self.provenance() if self.maybe(0.5) else None,
+            html_attributes=self.html_attributes(),
             fen=self.random.choice(FENS),
             orientation=self.random.choice(list(Orientation)),
             source=DiagramSource(
@@ -778,6 +801,7 @@ class NodeFactory:
             return Paragraph(
                 id=self.next_ulid(),
                 provenance=self.provenance() if self.maybe(0.3) else None,
+                html_attributes=self.html_attributes(),
                 content=self.inlines(5),
                 props=self.paragraph_props(),
                 drop_cap=self.random.randrange(2, 5) if self.maybe(0.1) else None,

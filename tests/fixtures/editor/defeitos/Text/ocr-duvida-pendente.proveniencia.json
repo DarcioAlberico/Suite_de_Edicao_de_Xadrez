@@ -1,0 +1,40 @@
+{
+ "formato": 2,
+ "folios": {},
+ "blocos": {
+  "p1-1": {
+   "ir_id": "00000000000000000000000002",
+   "origem": "pagina",
+   "folio": null,
+   "proveniencia": {
+    "type": "provenance",
+    "kind": "ocr",
+    "page_index": 0,
+    "confidence": 0.5
+   },
+   "duvidas": [
+    {
+     "ini": 9,
+     "fim": 18,
+     "proveniencia": {
+      "type": "provenance",
+      "kind": "ocr",
+      "page_index": 0,
+      "confidence": 0.5
+     },
+     "alternativas": [],
+     "texto_sha": null
+    }
+   ],
+   "nos": [],
+   "revisao": {
+    "estado": "",
+    "decisoes": []
+   }
+  }
+ },
+ "diagramas": {},
+ "capitulo": {
+  "nos": []
+ }
+}

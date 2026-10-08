@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "pseudo_elemento.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "",
+   "seletor": "p::first-letter"
+  }
+ ],
+ "estilos": {}
+}

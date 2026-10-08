@@ -12,13 +12,26 @@ from __future__ import annotations
 import io
 import re
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
 import pytest
-from corpus import epubcheck_jar, java_available, run_epubcheck
+from corpus import epubcheck_jar, java_available, local_paths_in_epub, run_epubcheck
 
-from caissa.core.model import Document, DocumentMetadata, Paragraph, Text
+from caissa.core.model import (
+    Diagram,
+    DiagramSource,
+    Document,
+    DocumentMetadata,
+    ImageBlock,
+    Paragraph,
+    Provenance,
+    Rect,
+    Resource,
+    SourceKind,
+    Text,
+)
 from caissa.export.epub import EpubExporter, EpubOptions, read_epub
 
 
@@ -97,6 +110,69 @@ def test_the_navigation_document_has_landmarks(package: Path) -> None:
     assert 'epub:type="bodymatter"' in nav
 
 
+def _nav_tree_problems(markup: str) -> list[str]:
+    """What EPUB 3 forbids in a toc list: not one ``<ol>`` at the top, an ``<li>`` without its
+    ``<a>`` first, or with more than one ``<ol>`` (EPUBCheck RSC-005)."""
+    root = ET.fromstring(f"<nav>{markup}</nav>")
+    problems = []
+    if [child.tag for child in root] != ["ol"]:
+        problems.append(f"top level: {[child.tag for child in root]}")
+    for item in root.iter("li"):
+        tags = [child.tag for child in item]
+        if tags not in (["a"], ["a", "ol"]):
+            problems.append(f"li {item.find('a').text if item.find('a') is not None else '?'}: "
+                            f"{tags}")
+    return problems
+
+
+@pytest.mark.parametrize("levels", [
+    (1, 2, 3),
+    (3, 1),            # the KEMERI p. 80: the page opens on a level-3 heading
+    (1, 3, 2, 3),      # the PEDIDO p. 55: from 3 back to 2 under a 1
+    (1, 2, 3, 1),
+    (2, 1, 2),
+    (1, 1, 1),
+    (4, 3, 2, 1),
+    (1, 3, 1, 3, 2, 1),
+])
+def test_the_toc_keeps_one_list_per_level(levels: tuple[int, ...]) -> None:
+    """Whatever the order of the heading levels, the toc is a list EPUBCheck accepts.
+
+    The H4 gate found it: the stack opened a new ``<ol>`` next to the one it had just closed,
+    two lists at the top (a page that opens on a level-3 heading) or two inside one item.
+    """
+    from caissa.export.epub import _nav_list
+
+    entries = [(level, f"Text/s000.xhtml#h{n}", f"h{n}") for n, level in enumerate(levels)]
+    markup = _nav_list(entries)
+    assert _nav_tree_problems(markup) == [], markup
+    root = ET.fromstring(f"<nav>{markup}</nav>")
+    assert [a.text for a in root.iter("a")] == [title for _, _, title in entries], (
+        "every heading once, in the order of the book")
+
+
+def test_the_toc_nests_a_deeper_heading_under_the_one_before() -> None:
+    from caissa.export.epub import _nav_list
+
+    root = ET.fromstring("<nav>" + _nav_list(
+        [(1, "a.xhtml", "one"), (2, "a.xhtml#b", "one.one"), (1, "a.xhtml#c", "two")]) + "</nav>")
+    top = root.find("ol")
+    assert [li.find("a").text for li in top.findall("li")] == ["one", "two"]
+    assert [a.text for a in top.find("li").find("ol").iter("a")] == ["one.one"]
+
+
+def test_every_order_of_levels_makes_a_valid_toc() -> None:
+    """All sequences of up to six headings with levels 1 to 4."""
+    from itertools import product
+
+    from caissa.export.epub import _nav_list
+
+    for size in range(1, 7):
+        for levels in product((1, 2, 3, 4), repeat=size):
+            markup = _nav_list([(level, "a.xhtml", f"h{n}") for n, level in enumerate(levels)])
+            assert _nav_tree_problems(markup) == [], (levels, markup)
+
+
 def test_the_package_carries_dublin_core_metadata(package: Path) -> None:
     """The OPF names the title, the language and a unique identifier."""
     with zipfile.ZipFile(package) as archive:
@@ -148,6 +224,72 @@ def test_reading_it_back_gives_a_document(package: Path) -> None:
     document = read_epub(package)
     assert isinstance(document, Document)
     assert document.body
+
+
+def _png() -> bytes:
+    """A one-pixel PNG, for an image resource with real bytes on disk."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        crc = struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+        return struct.pack(">I", len(body)) + kind + body + crc
+
+    return (
+        bytes([0x89]) + b"PNG" + bytes([0x0D, 0x0A, 0x1A, 0x0A])
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes([0, 40, 120, 200])))
+        + chunk(b"IEND", b"")
+    )
+
+
+def test_the_package_carries_no_path_of_the_authors_disk(tmp_path: Path) -> None:
+    """The importer records absolute paths -- the PDF's in the book's ``source`` and in
+    every node's provenance, the extracted image's in its resource -- and on Windows they
+    carry the user's name.  A package is handed on: the embedded IR and ``dc:source`` name
+    the file only, the hashes stay, and the packaged IR reads back as the document but for
+    the folders."""
+    pdf = str(tmp_path / "Livros" / "Livro.pdf")
+    image = tmp_path / "assets" / "fig.png"
+    image.parent.mkdir()
+    image.write_bytes(_png())
+    rect = Rect(x=72.0, y=120.0, width=200.0, height=200.0)
+    provenance = Provenance(kind=SourceKind.VISION, document_path=pdf, document_hash="cc" * 32,
+                            page_index=0, rect=rect)
+    paragraph = Paragraph(content=(Text(content="Um parágrafo lido do PDF."),),
+                          provenance=provenance)
+    figure = ImageBlock(resource="fig", alt_text="Uma figura")
+    diagram = Diagram(
+        fen="6k1/5ppp/3q4/4R3/8/8/5PPP/6K1 b - - 0 1", stipulation="Mate em 2",
+        provenance=provenance,
+        source=DiagramSource(kind=SourceKind.VISION, path=pdf, content_hash="cc" * 32,
+                             page_index=0, rect=rect),
+    )
+    resource = Resource(key="fig", path=str(image), media_type="image/png",
+                        content_hash="ee" * 32)
+    document = Document(metadata=DocumentMetadata(title="Livro", source=pdf),
+                        resources=(resource,), body=(paragraph, figure, diagram))
+    target = tmp_path / "livro.epub"
+    EpubExporter().export(document, target)
+
+    assert local_paths_in_epub(target, tmp_path) == []
+    with zipfile.ZipFile(target) as archive:
+        opf = archive.read("OEBPS/content.opf").decode("utf-8")
+        assert any(name.startswith("OEBPS/Images/") for name in archive.namelist())
+    assert "<dc:source>Livro.pdf</dc:source>" in opf
+    named = replace(provenance, document_path="Livro.pdf")
+    expected = replace(
+        document,
+        metadata=replace(document.metadata, source="Livro.pdf"),
+        resources=(replace(resource, path="fig.png"),),
+        body=(
+            replace(paragraph, provenance=named),
+            figure,
+            replace(diagram, provenance=named, source=replace(diagram.source, path="Livro.pdf")),
+        ),
+    )
+    assert read_epub(target, use_sidecar=True) == expected
+    assert read_epub(target).metadata.source == "Livro.pdf"
 
 
 def test_fixed_layout_declares_itself(tmp_path: Path, small: Document) -> None:

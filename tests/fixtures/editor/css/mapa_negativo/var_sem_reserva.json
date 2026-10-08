@@ -1,0 +1,12 @@
+{
+ "avisos": [
+  {
+   "arquivo": "var_sem_reserva.css",
+   "codigo": "css-fora-do-mapa",
+   "linha": 1,
+   "propriedade": "color",
+   "seletor": "h1"
+  }
+ ],
+ "estilos": {}
+}
