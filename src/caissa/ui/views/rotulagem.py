@@ -40,6 +40,7 @@ from PyQt6.QtGui import (
     QShortcut,
 )
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -74,6 +75,7 @@ from PyQt6.QtWidgets import (
 
 from caissa.ui.theme import pele
 from caissa.ocr.labeling import LabelProject, LineLabel, LineStatus, PageLabels, RegionLabel
+from caissa.ocr.labeling.model import DiagramLabel
 from caissa.ocr.labeling.export import (
     calibration_pairs,
     corrections,
@@ -135,6 +137,8 @@ TITULO = "Rotulagem"
 #: (:mod:`caissa.ui.theme.pele`, passo C9); these are the names the painter asks for.
 REGION_COLOR = "regiao"
 SELECTED_COLOR = "regiao_selecionada"
+DIAGRAM_COLOR = "diagrama"
+DIAGRAM_TINT_ALPHA = 40  # of 255: the board shows through
 PAGE_DPI = 150  # the page image in the viewer; the crop on the right is at 300
 SEM_LINHA = "Reconheça a página (F5) ou desenhe uma região (D)."
 CLICK_SLOP_PX = 4
@@ -225,6 +229,28 @@ class _Fila(QObject):
 # --------------------------------------------------------------------------- #
 
 
+def rotulo_do_diagrama(diagram: DiagramLabel, *, completo: bool = False) -> str:
+    """What the page says under a board: its number and the position read."""
+    nome = f"Diagrama {diagram.index + 1}"
+    if not diagram.fen:
+        return f"{nome} · localizado, sem leitura"
+    if not completo:
+        return f"{nome} · {diagram.placement}"
+    lado = "" if diagram.white_at_bottom else " · pretas embaixo"
+    return f"{nome} · {diagram.fen} · confiança {diagram.confidence:.0%} · {diagram.path}{lado}"
+
+
+def diagrama_em(page: PageLabels | None, x: float, y: float) -> DiagramLabel | None:
+    """The board under a point of the page, in page points."""
+    if page is None:
+        return None
+    for diagram in page.diagrams:
+        x0, y0, x1, y1 = diagram.rect
+        if x0 <= x <= x1 and y0 <= y <= y1:
+            return diagram
+    return None
+
+
 class _Visor(QGraphicsView):
     """The page with its boxes. Scene units are page points."""
 
@@ -292,6 +318,8 @@ class _Visor(QGraphicsView):
         self.caixas = []
         if page is None:
             return
+        for diagram in page.diagrams:
+            self._desenhar_diagrama(diagram)
         for region in page.regions:
             x0, y0, x1, y1 = region.rect
             pen = QPen(QColor(pele.cor(SELECTED_COLOR if region is selecionada else REGION_COLOR)))
@@ -314,6 +342,29 @@ class _Visor(QGraphicsView):
                 pen.setCosmetic(True)
                 pen.setWidth(3 if line is atual else 1)
                 self.caixas.append(self.cena.addRect(QRectF(lx0, ly0, lx1 - lx0, ly1 - ly0), pen))
+
+    def _desenhar_diagrama(self, diagram: DiagramLabel) -> None:
+        """The board where the import sees it: a tinted box and what was read.
+
+        Tinted and thick, because a line box is neither: the token is the trunk's
+        ``LIDO``, an amber near the pending line's, and the shape is what tells them apart.
+        """
+        x0, y0, x1, y1 = diagram.rect
+        cor = QColor(pele.cor(DIAGRAM_COLOR))
+        pen = QPen(cor)
+        pen.setCosmetic(True)
+        pen.setWidth(3)
+        tinta = QColor(cor)
+        tinta.setAlpha(DIAGRAM_TINT_ALPHA)
+        caixa = self.cena.addRect(QRectF(x0, y0, x1 - x0, y1 - y0), pen, QBrush(tinta))
+        caixa.setToolTip(rotulo_do_diagrama(diagram, completo=True))
+        self.caixas.append(caixa)
+        texto = QGraphicsSimpleTextItem(rotulo_do_diagrama(diagram))
+        texto.setBrush(QBrush(cor))
+        texto.setFlag(texto.GraphicsItemFlag.ItemIgnoresTransformations)
+        texto.setPos(x0, y1 + 1)
+        self.cena.addItem(texto)
+        self.caixas.append(texto)
 
     def centralizar(self, box: tuple[float, float, float, float]) -> None:
         x0, y0, x1, y1 = box
@@ -979,6 +1030,9 @@ class PainelDeRotulagem(QWidget):
             None,
         )
         if region is None:
+            diagram = diagrama_em(self.page, x, y)
+            if diagram is not None:
+                self._menu_do_diagrama(diagram, onde)
             return
         self.selected_region = region
         self._draw_boxes()
@@ -998,6 +1052,16 @@ class PainelDeRotulagem(QWidget):
         )
         menu.addSeparator()
         menu.addAction("Remover região", lambda r=region: self._remove_region(r))
+        menu.exec(onde)
+
+    def _menu_do_diagrama(self, diagram: DiagramLabel, onde: Any) -> None:
+        menu = QMenu(self)
+        titulo = menu.addAction(rotulo_do_diagrama(diagram, completo=True))
+        titulo.setEnabled(False)
+        copiar = menu.addAction(
+            "Copiar a FEN", lambda d=diagram: QApplication.clipboard().setText(d.fen)
+        )
+        copiar.setEnabled(bool(diagram.fen))
         menu.exec(onde)
 
     def _set_kind(self, region: RegionLabel, kind: str) -> None:
@@ -1321,10 +1385,17 @@ class PainelDeRotulagem(QWidget):
             else ""
         )
         minutes, seconds = divmod(int(self.page.seconds), 60)
+        boards = self.page.diagrams
+        diagramas = (
+            f" · {len(boards)} diagrama(s), {sum(1 for d in boards if d.fen)} lido(s)"
+            if boards
+            else ""
+        )
         self._set_status(
             f"{counts['total']} linhas · {counts['pending']} pendentes ({doubtful} duvidosas) · "
             f"{counts['accepted']} aceitas · {counts['edited']} editadas · "
-            f"{counts['rejected']} rejeitadas · tempo na página {minutes:02d}:{seconds:02d}{blind}"
+            f"{counts['rejected']} rejeitadas{diagramas} · "
+            f"tempo na página {minutes:02d}:{seconds:02d}{blind}"
             + self._book_status()
         )
 

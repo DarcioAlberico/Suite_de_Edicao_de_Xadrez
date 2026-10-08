@@ -768,3 +768,45 @@ def test_a_double_click_on_a_button_stays_on_it_while_the_card_above_changes(
     monkeypatch.setattr(PainelDeRotulagem, "_ancorar_o_botao", lambda _self, _botao: None)
     fora, _andou, _decididas = duplos_cliques(tmp_path / "sabotado")
     assert fora, "sabotaged: the second click falls off the button"
+
+
+def test_the_page_shows_each_diagram_with_what_was_read_and_counts_them(app, tmp_path: Path):
+    """The boards the import's finder located are drawn on the page, numbered, with the
+    position read (or «sem leitura»), and counted in the status line."""
+    pymupdf = pytest.importorskip("pymupdf")
+    from PyQt6.QtWidgets import QGraphicsSimpleTextItem
+
+    from caissa.ocr.labeling import PageLabels
+    from caissa.ocr.labeling.model import DiagramLabel
+    from caissa.ui.views.rotulagem import (
+        PainelDeRotulagem,
+        abrir_projeto,
+        diagrama_em,
+        rotulo_do_diagrama,
+    )
+
+    pdf = tmp_path / "Livro D.pdf"
+    doc = pymupdf.open()
+    doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    project = abrir_projeto(tmp_path / "proj", revisor="ana")
+    lido = DiagramLabel(index=0, rect=(50, 150, 200, 300), fen="3qr1k1/8/8/8/8/8/8/6K1 w - - 0 1",
+                        confidence=0.97, path="neural")
+    cego = DiagramLabel(index=1, rect=(220, 150, 370, 300))
+    painel = PainelDeRotulagem(projeto=project, pdf_inicial=pdf)
+    painel.show()
+    app.processEvents()
+    page = PageLabels(document="Livro D", pdf_path=str(pdf), page_index=0, width_pt=400,
+                      height_pt=600, dpi=300, lang="eng", diagrams=[lido, cego])
+    project.put_page(page)
+    painel.go_page(0)
+    app.processEvents()
+    rotulos = [i.text() for i in painel.visor.caixas if isinstance(i, QGraphicsSimpleTextItem)]
+    assert "Diagrama 1 · 3qr1k1/8/8/8/8/8/8/6K1" in rotulos
+    assert "Diagrama 2 · localizado, sem leitura" in rotulos
+    assert "confiança 97%" in rotulo_do_diagrama(lido, completo=True)
+    assert diagrama_em(page, 100, 200) is lido
+    assert diagrama_em(page, 210, 200) is None
+    assert "2 diagrama(s), 1 lido(s)" in painel.status.text()
+    painel.close()

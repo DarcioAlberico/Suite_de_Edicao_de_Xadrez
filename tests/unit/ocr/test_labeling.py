@@ -411,6 +411,116 @@ def test_label_page_lays_out_lines_in_points_with_alternatives(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
+# The page's diagrams: located by the import's finder, their ink off the queue
+# --------------------------------------------------------------------------- #
+
+#: A board 150 pt square, where the fake finder says it is.
+_BOARD = (50.0, 150.0, 200.0, 300.0)
+
+
+class _BoardPageService:
+    """A page with prose above a board, the board's border read as text, the
+    file letters under it and a caption under those."""
+
+    lang = "spa"
+
+    def recognize_image(self, image, *, dpi, lang="", page_index=0):
+        from caissa.ocr.types import BBox
+
+        scale = dpi / 72.0
+
+        def line(text: str, x0: float, y0: float, x1: float, y1: float, paragraph: int) -> _Line:
+            box = BBox(x0 * scale, y0 * scale, (x1 - x0) * scale, (y1 - y0) * scale)
+            return _Line((_Word(text, 0.9, box),), box, paragraph_index=paragraph)
+
+        lines = (
+            line("Las blancas juegan", 50, 100, 200, 110, 0),
+            line("cO - OO OO W r", 184, 175, 188, 290, 1),  # the border, inside the board
+            line("a b c d e f g h", 55, 302, 195, 310, 2),  # the file letters, just under it
+            line("Juegan las negras", 80, 320, 170, 330, 3),  # the caption: text
+        )
+        decision = SimpleNamespace(decision="review", reasons_pt=())
+        region = _Region(0, "page", BBox(0, 0, 400 * scale, 600 * scale), _Result(lines), decision,
+                         candidates=(_Candidate("original", "tesseract", _Result(lines)),))
+        return _Recognition(dpi=dpi, regions=[region])
+
+
+def _board_finder(page, frame, text):
+    from caissa.core.model import RecognitionPath
+    from caissa.ingest.pdf.importer import DiagramHit
+
+    return [DiagramHit(box=_BOARD, fen="3qr1k1/8/8/8/8/8/8/6K1 w - - 0 1", confidence=0.97,
+                       path=RecognitionPath.NEURAL, method="raster")]
+
+
+def _blank_pdf(tmp_path: Path) -> Path:
+    pymupdf = pytest.importorskip("pymupdf")
+    pdf = tmp_path / "Livro.pdf"
+    doc = pymupdf.open()
+    doc.new_page(width=400, height=600)
+    doc.save(pdf)
+    doc.close()
+    return pdf
+
+
+def test_label_page_keeps_the_diagrams_and_drops_the_lines_the_import_drops(tmp_path: Path):
+    from caissa.ocr.labeling.recognise import label_page
+
+    pdf = _blank_pdf(tmp_path)
+    page = label_page(_BoardPageService(), pdf, "Livro", 0, lang="spa", finder=_board_finder)
+    [diagram] = page.diagrams
+    assert diagram.rect == _BOARD
+    assert diagram.fen.startswith("3qr1k1/")
+    assert diagram.path == "neural"
+    texts = [line.hypothesis for _, line in page.lines()]
+    # The border inside the board and the file letters beside it are the
+    # board's, as in the import; the caption under them is text.
+    assert texts == ["Las blancas juegan", "Juegan las negras"]
+    assert any("1 diagrama(s) localizado(s), 1 lido(s); 2 linha(s)" in n for n in page.notes)
+    # Saved and loaded, the page keeps its boards.
+    again = PageLabels.from_dict(json.loads(json.dumps(page.as_dict())))
+    assert again.diagrams == page.diagrams
+
+
+def test_label_page_without_boards_lays_every_line_out(tmp_path: Path):
+    from caissa.ocr.labeling.recognise import label_page
+
+    pdf = _blank_pdf(tmp_path)
+    page = label_page(_BoardPageService(), pdf, "Livro", 0, lang="spa", diagrams=())
+    assert page.diagrams == []
+    assert len(list(page.lines())) == 4
+    # And the boards a caller already has are used as given (the measurement's way).
+    kept = label_page(_BoardPageService(), pdf, "Livro", 0, lang="spa",
+                      diagrams=(_diagram_label(),))
+    assert [line.hypothesis for _, line in kept.lines()] == [
+        "Las blancas juegan", "Juegan las negras"]
+
+
+def _diagram_label():
+    from caissa.ocr.labeling.model import DiagramLabel
+
+    return DiagramLabel(index=0, rect=_BOARD)
+
+
+def test_a_finder_that_cannot_run_is_a_note_and_the_page_is_still_labelled(tmp_path: Path):
+    from caissa.ocr.labeling.recognise import label_page
+
+    def broken(page, frame, text):
+        raise ImportError("sem o tronco")
+
+    pdf = _blank_pdf(tmp_path)
+    page = label_page(_BoardPageService(), pdf, "Livro", 0, lang="spa", finder=broken)
+    assert page.diagrams == []
+    assert len(list(page.lines())) == 4
+    assert page.notes[0] == "diagramas não localizados: sem o tronco"
+
+
+def test_a_page_saved_before_the_diagrams_loads_without_them():
+    data = {"document": "Livro", "page_index": 3, "regions": []}
+    assert PageLabels.from_dict(data).diagrams == []
+
+
+# --------------------------------------------------------------------------- #
 # The queue by value (OCR_UI_ROADMAP passo 5)
 # --------------------------------------------------------------------------- #
 

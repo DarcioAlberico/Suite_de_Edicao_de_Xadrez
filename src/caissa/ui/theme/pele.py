@@ -28,6 +28,9 @@ PAPEIS: dict[str, tuple[str, str, str]] = {
     # `TRACEJADO` é, na tabela de significado do tronco, "a área que você está selecionando"
     # -- a marcação de página para o que está em foco; `ALVO` é de tabuleiro e some sobre a folha.
     "regiao_selecionada": ("TRACEJADO", "#dc2626", "#f87171"),
+    # o diagrama que o localizador da importação achou na página: `LIDO` é, no tronco, "o OCR
+    # já leu este" -- a caixa do tabuleiro, que não é região de texto nem tem linha a rotular
+    "diagrama": ("LIDO", "#d97706", "#ffb02e"),
     # o vazio em volta da página no visor da Rotulagem
     "vazio_do_visor": ("VAZIO_DE_CANVAS", "#3f3f46", "#26282b"),
     # a linha acima da barra de estado das abas
@@ -63,6 +66,7 @@ PARES: tuple[tuple[str, str, str], ...] = (
     ("cartao_palavra_conferir", "cromo", "a palavra fraca da leitura do motor, no cartão"),
     ("regiao", "pagina", "a caixa de região sobre a página"),
     ("regiao_selecionada", "pagina", "a caixa selecionada sobre a página"),
+    ("diagrama", "pagina", "a caixa de diagrama sobre a página"),
 )
 
 #: Os fundos que os pares medem: a superfície da janela (``SUPERFICIE_PADRAO`` do tronco) e a
