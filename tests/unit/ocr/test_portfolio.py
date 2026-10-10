@@ -19,7 +19,7 @@ from caissa.ocr.portfolio import (
 )
 from caissa.ocr.types import BBox, OcrLine, OcrResult, OcrWord
 
-from .conftest import render_text_page, requires_font, rotate
+from .conftest import render_band_page, render_text_page, requires_font, rotate
 
 
 @pytest.fixture(scope="module")
@@ -161,6 +161,36 @@ def test_degradation_reasons_are_the_variants_the_portfolio_builds(clean_page):
         assert set(names) <= set(planned), (planned, names)
     assert degradation_reasons(detect_signals(clean_page, dpi=300), dpi=300) == ()
     assert degradation_reasons(detect_signals(noisy, dpi=300), dpi=300) != ()
+
+
+# --------------------------------------------------------------------------- #
+# Reverse video: a band of light text on black is a reason of its own
+# --------------------------------------------------------------------------- #
+
+
+@requires_font
+def test_a_reverse_band_justifies_the_reverse_video_variant(clean_page):
+    from caissa.ocr.portfolio import degradation_reasons
+
+    page, _ = render_band_page()
+    signals = detect_signals(page, dpi=300)
+    assert signals.reverse_bands == 1, signals.as_dict()
+    assert "reverse_video" in degradation_reasons(signals, dpi=300)
+    portfolio = build_portfolio(page, dpi=300, signals=signals)
+    assert "reverse_video" in portfolio.names, portfolio.describe_pt()
+    variant = next(v for v in portfolio.variants if v.name == "reverse_video")
+    assert variant.applied_steps == ("reverse_video",)
+    assert variant.geometry.is_identity
+    # The variant carries the band as ink on paper; the original keeps it black.
+    from .conftest import BAND_BOX
+    x0, y0, x1, y1 = BAND_BOX
+    assert (variant.image[y0 + 5:y1 - 5, x0 + 5:x1 - 5] == 0).mean() < 0.5
+    assert (portfolio.original.image[y0 + 5:y1 - 5, x0 + 5:x1 - 5] == 0).mean() > 0.5
+    # A clean page has no band and gets no such variant; the switch turns it off.
+    assert detect_signals(clean_page, dpi=300).reverse_bands == 0
+    off = build_portfolio(page, dpi=300, signals=signals,
+                          config=PortfolioConfig(min_reverse_bands=0))
+    assert "reverse_video" not in off.names
 
 
 # --------------------------------------------------------------------------- #

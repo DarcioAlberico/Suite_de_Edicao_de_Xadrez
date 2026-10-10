@@ -352,7 +352,9 @@ motores.
 
 Deskew (transformada de projeção), remoção de sombra (morfologia), binarização adaptativa
 (Sauvola), despeckle, correção de bleed-through (subtração do verso quando disponível),
-dewarp (para fotos de páginas curvas), e super-resolução opcional para DPI < 200.
+dewarp (para fotos de páginas curvas), super-resolução opcional para DPI < 200, e inversão de
+vídeo reverso (faixas de texto claro sobre fundo preto — o cabeçalho das soluções do Yusupov —
+localizadas por geometria física e invertidas antes da binarização, só a faixa).
 
 ### 7.3 Pós-correção consciente de notação (maior ganho de precisão)
 

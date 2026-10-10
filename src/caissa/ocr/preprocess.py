@@ -12,11 +12,14 @@ Every step is an object with three obligations:
 
 The default order is not arbitrary:
 
-    upscale -> shadow removal -> bleed-through -> deskew -> dewarp
-            -> binarise (Sauvola) -> despeckle
+    upscale -> shadow removal -> bleed-through -> reverse video -> deskew
+            -> dewarp -> binarise (Sauvola) -> despeckle
 
 Grayscale corrections come first because they are all photometric and none of
-them cares about geometry.  Geometry comes next, on grayscale, because rotating
+them cares about geometry.  Reverse video (white text knocked out of a black
+band) is the last of them: it needs the flattened page so that a gutter shadow
+is not mistaken for a band, and it must precede binarisation so that the
+engines see the band's text as ordinary ink.  Geometry comes next, on grayscale, because rotating
 or remapping a *binary* image quantises every stroke edge into a staircase that
 no later step can undo.  Binarisation is therefore last but one, and despeckle
 follows it because "speck" is only definable once there are connected
@@ -50,10 +53,16 @@ __all__ = [
     "Binarize",
     "Despeckle",
     "Dewarp",
+    "ReverseBand",
+    "ReverseVideo",
     "Upscale",
+    "BAND_HALO",
+    "BAND_INVERT",
     "default_pipeline",
     "deskew_image",
     "estimate_skew_angle",
+    "find_reverse_bands",
+    "invert_reverse_bands",
     "sauvola_threshold",
     "otsu_threshold",
     "to_gray",
@@ -686,6 +695,267 @@ class BleedThroughReduction(_StepBase):
 
 
 # --------------------------------------------------------------------------- #
+# Reverse video (white text on a black band)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True, slots=True)
+class ReverseBand:
+    """One black band with light text knocked out of it, in pixel coordinates.
+
+    ``x1``/``y1`` are exclusive, numpy-slice style.  ``dark_share`` is the
+    share of the band's box that is ink in the *input*: the number that made
+    it a band rather than a word, kept so a report can say why.
+    """
+
+    x0: int
+    y0: int
+    x1: int
+    y1: int
+    dark_share: float
+
+    @property
+    def width(self) -> int:
+        return self.x1 - self.x0
+
+    @property
+    def height(self) -> int:
+        return self.y1 - self.y0
+
+    def as_tuple(self) -> tuple[int, int, int, int]:
+        return (self.x0, self.y0, self.x1, self.y1)
+
+
+#: Values of the mask :func:`find_reverse_bands` returns.
+BAND_INVERT = 1
+BAND_HALO = 2
+
+
+def _band_core_rows(box_ink: NDArray[np.uint8], min_margin_share: float,
+                    inset: int = 2) -> tuple[int, int]:
+    """``(first, last)`` rows of ``box_ink`` whose two end margins are solid.
+
+    Falls back to the whole box when no row qualifies — a band whose text
+    runs to its very ends has no solid margin to measure, and keeping it
+    whole is the harmless answer.
+    """
+    h, w = box_ink.shape
+    m = max(4, round(0.05 * w))
+    lo, hi = min(inset, max(0, w - 1)), max(w - inset, 0)
+    if hi - lo < 2 * m:
+        return 0, h - 1
+    margins = np.concatenate([box_ink[:, lo:lo + m], box_ink[:, hi - m:hi]], axis=1)
+    solid = np.flatnonzero(margins.mean(axis=1) >= min_margin_share)
+    if solid.size == 0:
+        return 0, h - 1
+    return int(solid[0]), int(solid[-1])
+
+
+def _fill_holes(mask: NDArray[np.uint8]) -> NDArray[np.uint8]:
+    """Fill every enclosed hole of a 0/1 mask (the counters of the letters)."""
+    h, w = mask.shape
+    padded = np.zeros((h + 2, w + 2), dtype=np.uint8)
+    padded[1:-1, 1:-1] = mask
+    outside = (1 - padded).astype(np.uint8)
+    flood = outside.copy()
+    cv2.floodFill(flood, np.zeros((h + 4, w + 4), dtype=np.uint8), (0, 0), 2)
+    # ``outside`` pixels the flood did not reach are holes.
+    holes = (flood == 1)
+    filled = padded.copy()
+    filled[holes] = 1
+    return filled[1:-1, 1:-1]
+
+
+def find_reverse_bands(image: NDArray[Any], dpi: int = 300, *,
+                       min_width_inches: float = 0.6,
+                       min_height_inches: float = 0.06,
+                       max_height_inches: float = 0.75,
+                       min_aspect: float = 2.5,
+                       min_dark_share: float = 0.55,
+                       min_solidity: float = 0.80,
+                       close_inches: float = 0.03,
+                       min_margin_share: float = 0.9,
+                       ) -> tuple[list[ReverseBand], NDArray[np.uint8]]:
+    """Locate the black bands that carry light text.
+
+    The game header of a Yusupov solutions page, the shaded row of a table,
+    a reversed title.
+
+    Returns ``(bands, mask)``: the bands found and a page mask in which
+    :data:`BAND_INVERT` marks the band's own pixels, holes filled — exactly
+    the set to invert — and :data:`BAND_HALO` marks the ragged fringe a
+    scanner leaves along the band's edge, which belongs to no text and is
+    erased: left alone it becomes, after the inversion, a dark strip of noise
+    that an engine reads as a line of its own.
+
+    A band is defined by what it is, not by what it contains: a box of the
+    page where **most pixels are dark** (``min_dark_share`` of the input's
+    ink), **wide and short** (``min_aspect``, the height between
+    ``min_height_inches`` and ``max_height_inches``), **solid** once the
+    light strokes are closed (``min_solidity``).  Each criterion rules out
+    one neighbour: a bold heading is wide and short but at most 45 % ink
+    once its letters are closed into a blob; a chess diagram is half dark but
+    square; a rule is wide and dark but thinner than 0.06 in; a photograph is
+    dark but taller than 0.75 in, and inverting one that is not would cost
+    nothing a recogniser could read anyway.
+
+    The band's **core** is the run of rows whose left and right margins (5 %
+    of the width at each end) are solid ink to ``min_margin_share``: a row of
+    the band with text on it is still solid at its ends, while a row of the
+    scanner's fringe is a texture everywhere (measured on the Yusupov page:
+    0,30 at most in the fringe, 1,00 in every row of the band).  Rows of the
+    box outside the core are fringe.
+
+    Everything is physical (inches at ``dpi``) so the same band is found at
+    150 and at 600 DPI.
+    """
+    gray = to_gray(image)
+    h, w = gray.shape[:2]
+    empty = np.zeros((h, w), dtype=np.uint8)
+    if gray.size == 0:
+        return [], empty
+    threshold = otsu_threshold(gray)
+    ink = (gray <= threshold).astype(np.uint8)
+    if not ink.any():
+        return [], empty
+    k = _odd(close_inches * dpi, 3)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (k, k))
+    # Closing the ink swallows the light strokes, so a band becomes one solid
+    # component; letters of black text merge into word blobs that the dark
+    # share and the solidity then reject.
+    solid = cv2.morphologyEx(ink, cv2.MORPH_CLOSE, kernel)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(solid, connectivity=8)
+    min_w = max(4, round(min_width_inches * dpi))
+    min_h = max(3, round(min_height_inches * dpi))
+    max_h = max(min_h, round(max_height_inches * dpi))
+    bands: list[ReverseBand] = []
+    mask = empty
+    for label in range(1, count):
+        x, y, bw, bh, area = (int(v) for v in stats[label])
+        if bw < min_w or bh < min_h or bh > max_h or bw < min_aspect * bh:
+            continue
+        if area < min_solidity * bw * bh:
+            continue
+        box_ink = ink[y:y + bh, x:x + bw]
+        dark_share = float(box_ink.mean())
+        if dark_share < min_dark_share:
+            continue
+        component = (labels[y:y + bh, x:x + bw] == label).astype(np.uint8)
+        filled = _fill_holes(component)
+        # Opening trims the ragged halo a scanner leaves along the band's
+        # edge, which the closing above joined to the body; the rectangular
+        # body itself is unchanged by a rectangular element.
+        trimmed = cv2.morphologyEx(filled, cv2.MORPH_OPEN, kernel)
+        if not trimmed.any():
+            continue
+        first, last = _band_core_rows(box_ink, min_margin_share)
+        if mask is empty:
+            mask = empty.copy()
+        window = mask[y:y + bh, x:x + bw]
+        body = trimmed.astype(bool)
+        # The fringe is what the closing joined to the band and the opening
+        # took away, plus the rows of the box above and below the solid core.
+        halo = component.astype(bool) & ~body
+        halo[:first] |= body[:first]
+        halo[last + 1:] |= body[last + 1:]
+        body[:first] = False
+        body[last + 1:] = False
+        window[halo] = BAND_HALO
+        window[body] = BAND_INVERT
+        bands.append(ReverseBand(x, y + first, x + bw, y + last + 1, dark_share))
+    bands.sort(key=lambda b: (b.y0, b.x0))
+    return bands, mask
+
+
+def invert_reverse_bands(image: NDArray[Any], dpi: int = 300,
+                         **criteria: Any) -> tuple[NDArray[np.uint8], list[ReverseBand]]:
+    """Turn every white-on-black band into black-on-white.
+
+    The rest of the page is left untouched.  Returns ``(image, bands)``; when
+    no band is found the very array that was passed in comes back, so
+    ``out is image`` says "nothing happened".
+
+    Only the band's own pixels are inverted — not its bounding box — so a
+    caption flush under the band stays black on white.  The scanner's fringe
+    along the band and the two pixels of anti-aliased edge around it are set
+    to paper, so that no strip of noise and no frame survives for a
+    recogniser to read as a line or an underline.
+    """
+    gray = to_gray(image)
+    bands, mask = find_reverse_bands(gray, dpi, **criteria)
+    if not bands:
+        return gray, []
+    out = gray.copy()
+    inside = mask == BAND_INVERT
+    out[inside] = 255 - gray[inside]
+    body = inside.astype(np.uint8)
+    rim = cv2.dilate(body, np.ones((5, 5), dtype=np.uint8)).astype(bool) & ~inside
+    out[rim | (mask == BAND_HALO)] = 255
+    return out, bands
+
+
+class ReverseVideo(_StepBase):
+    """Invert the bands of white text on black so the engines read them.
+
+    Measured on the Yusupov *Build Up Your Chess* solutions page 19 (200 DPI
+    render): every exercise header ("E.Jackson – D.Baird") sits on a black
+    band, and the book's own text layer carries "E. ackson" for it.  A
+    recogniser trained on black-on-white treats the band as a picture or
+    reads its edge as a line of noise; inverting just the band gives it the
+    header as ordinary text, and the rest of the page — including the line
+    flush under the band — is not touched.
+
+    Photometric, so it runs before any geometry step and before binarisation;
+    after shadow removal, because a gutter shadow on an unflattened page is a
+    dark region too and the aspect test is all that keeps it apart.
+    """
+
+    name = "reverse_video"
+
+    def __init__(self, enabled: bool = True, *,
+                 min_width_inches: float = 0.6,
+                 min_height_inches: float = 0.06,
+                 max_height_inches: float = 0.75,
+                 min_aspect: float = 2.5,
+                 min_dark_share: float = 0.55) -> None:
+        super().__init__(enabled)
+        self.min_width_inches = min_width_inches
+        self.min_height_inches = min_height_inches
+        self.max_height_inches = max_height_inches
+        self.min_aspect = min_aspect
+        self.min_dark_share = min_dark_share
+
+    def criteria(self) -> dict[str, float]:
+        return {
+            "min_width_inches": self.min_width_inches,
+            "min_height_inches": self.min_height_inches,
+            "max_height_inches": self.max_height_inches,
+            "min_aspect": self.min_aspect,
+            "min_dark_share": self.min_dark_share,
+        }
+
+    def find(self, image: Image, dpi: int = 300) -> list[ReverseBand]:
+        return find_reverse_bands(image, dpi, **self.criteria())[0]
+
+    def _run(self, image: Image,
+             ctx: PreprocessContext) -> tuple[Image, str, dict[str, Any]]:
+        gray = to_gray(image)
+        out, bands = invert_reverse_bands(gray, ctx.dpi, **self.criteria())
+        detail: dict[str, Any] = {
+            "bands": tuple(b.as_tuple() for b in bands),
+            "band_count": len(bands),
+            "dark_shares": tuple(round(b.dark_share, 3) for b in bands),
+        }
+        if not bands:
+            return gray, "nenhuma faixa de texto claro sobre fundo escuro", detail
+        inverted = int(sum(b.width * b.height for b in bands))
+        detail["inverted_pixels"] = inverted
+        return (out,
+                f"{len(bands)} faixa(s) de texto claro sobre fundo escuro "
+                f"invertida(s) ({inverted / gray.size:.2%} da página)", detail)
+
+
+# --------------------------------------------------------------------------- #
 # Binarisation
 # --------------------------------------------------------------------------- #
 
@@ -1189,6 +1459,7 @@ def default_pipeline(*, dewarp: bool = False,
         Upscale(),
         ShadowRemoval(),
         BleedThroughReduction(),
+        ReverseVideo(),
         Deskew(),
         Dewarp(enabled=dewarp),
         Binarize(method=binarize_method),

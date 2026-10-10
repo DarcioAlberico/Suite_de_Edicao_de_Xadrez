@@ -449,3 +449,74 @@ def add_faint_bleed_through(image: np.ndarray, *, level: int = 214,
     out = np.minimum(image, faint)
     ghost = (faint < 255) & (image > level)
     return out, ghost
+
+
+#: Where :func:`render_band_page` puts things, in pixels of a 1700×1150 page
+#: at 300 DPI: the band (x0, y0, x1, y1, exclusive), the fringe rows above it,
+#: and the decoys.
+BAND_BOX = (300, 150, 1300, 210)
+BAND_FRINGE_ROWS = 6
+BAND_TEXT = "E.Jackson – D.Baird"
+
+
+def render_band_page(*, band: bool = True, fringe: bool = True,
+                     decoys: bool = True, seed: int = 3,
+                     font_size: int = 36) -> tuple[np.ndarray, np.ndarray]:
+    """A page with the Yusupov solutions header: light text on a black band.
+
+    Returns ``(page, reference)``.  ``reference`` is the same page with the
+    header drawn as ordinary black text and no band, so that what the
+    inversion produces inside the band can be scored against ground truth
+    drawn here.  With ``decoys`` the page also carries the things a band
+    detector must *not* take for a band: a bold heading, a 4 px rule and an
+    8×8 checkerboard the size of a chess diagram.  With ``fringe`` a strip
+    of random dark texture sits on the band's top edge, as the scanner left
+    it on the real page.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    if FONT_PATH is None:
+        pytest.skip("nenhuma fonte TrueType disponível")
+
+    width, height = 1700, 1150
+    # Body text at book size (44 px is 10.5 pt at 300 DPI), so the page
+    # earns no upscale and the band is the only thing wrong with it.
+    base, _ = render_text_page(width=width, height=height, margin=300,
+                               font_size=44, wrap=40)
+    x0, y0, x1, y1 = BAND_BOX
+
+    def draw_on(image: Image.Image, *, reverse: bool) -> None:
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype(FONT_PATH, font_size)
+        if reverse:
+            draw.rectangle((x0, y0, x1 - 1, y1 - 1), fill=0)
+        tw = draw.textlength(BAND_TEXT, font=font)
+        tx = (x0 + x1 - tw) / 2.0
+        ty = y0 + (y1 - y0 - font_size) / 2.0 - 4
+        draw.text((tx, ty), BAND_TEXT, fill=255 if reverse else 0, font=font)
+        if decoys:
+            big = ImageFont.truetype(FONT_PATH, 64)
+            draw.text((640, 30), "Solutions", fill=0, font=big)
+            draw.rectangle((100, 260, 1600, 263), fill=0)
+            cell = 50
+            for row in range(8):
+                for col in range(8):
+                    if (row + col) % 2:
+                        cx, cy = 1250 + col * cell, 700 + row * cell
+                        draw.rectangle((cx, cy, cx + cell - 1, cy + cell - 1), fill=0)
+            draw.rectangle((1250, 700, 1250 + 8 * cell - 1, 700 + 8 * cell - 1),
+                           outline=0, width=2)
+
+    page = Image.fromarray(base)
+    reference = Image.fromarray(base.copy())
+    if band:
+        draw_on(page, reverse=True)
+    else:
+        draw_on(page, reverse=False)
+    draw_on(reference, reverse=False)
+    out = np.array(page)
+    if band and fringe:
+        rng = np.random.default_rng(seed)
+        strip = out[y0 - BAND_FRINGE_ROWS:y0, x0:x1]
+        strip[rng.random(strip.shape) < 0.6] = 0
+    return out, np.array(reference)

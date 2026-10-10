@@ -18,6 +18,8 @@ import numpy as np
 import pytest
 
 from caissa.ocr.preprocess import (
+    BAND_HALO,
+    BAND_INVERT,
     Binarize,
     BleedThroughReduction,
     Deskew,
@@ -25,21 +27,27 @@ from caissa.ocr.preprocess import (
     Dewarp,
     PreprocessContext,
     PreprocessPipeline,
+    ReverseVideo,
     ShadowRemoval,
     Upscale,
     default_pipeline,
     deskew_image,
     estimate_skew_angle,
+    find_reverse_bands,
+    invert_reverse_bands,
     otsu_threshold,
     sauvola_threshold,
     to_gray,
 )
 
 from .conftest import (
+    BAND_BOX,
+    BAND_FRINGE_ROWS,
     add_faint_bleed_through,
     add_illumination,
     add_specks,
     curl,
+    render_band_page,
     render_text_page,
     requires_font,
     rotate,
@@ -532,6 +540,12 @@ def test_default_pipeline_order_is_fixed():
     assert names.index("shadow_removal") < names.index("binarize")
     assert names.index("binarize") < names.index("despeckle")
     assert names.index("upscale") < names.index("binarize")
+    # Reverse video is photometric: after the page is flattened (a gutter
+    # shadow is a dark region too), before any geometry and before the ink
+    # is decided.
+    assert names.index("shadow_removal") < names.index("reverse_video")
+    assert names.index("reverse_video") < names.index("deskew")
+    assert names.index("reverse_video") < names.index("binarize")
 
 
 def test_pipeline_reports_every_step(clean_page):
@@ -584,3 +598,104 @@ def test_full_pipeline_recovers_a_triply_degraded_page(clean_page):
 
     assert fixed > raw, f"a pipeline piorou a página: {raw:.3f} -> {fixed:.3f}"
     assert fixed > 0.60, f"F1 de tinta recuperada apenas {fixed:.3f}"
+
+
+# --------------------------------------------------------------------------- #
+# Reverse video — light text on a black band (Yusupov, solutions header)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.fixture(scope="module")
+def band_page() -> tuple[np.ndarray, np.ndarray]:
+    return render_band_page()
+
+
+def _band_slice(box: tuple[int, int, int, int]) -> tuple[slice, slice]:
+    x0, y0, x1, y1 = box
+    return slice(y0, y1), slice(x0, x1)
+
+
+def test_reverse_band_is_found_where_it_was_drawn(band_page):
+    page, _ = band_page
+    bands, mask = find_reverse_bands(page, 300)
+    assert len(bands) == 1, [b.as_tuple() for b in bands]
+    found = bands[0]
+    x0, y0, x1, y1 = BAND_BOX
+    # The box is the band's solid core: the fringe rows above it are not
+    # part of it, the band's own rows all are.
+    assert max(abs(found.x0 - x0), abs(found.x1 - x1)) <= 3, found
+    assert max(abs(found.y0 - y0), abs(found.y1 - y1)) <= 2, found
+    assert found.dark_share > 0.55
+    assert (mask[_band_slice(found.as_tuple())] == BAND_INVERT).mean() > 0.98
+    # The fringe is marked for erasure, not for inversion.
+    fringe = mask[y0 - BAND_FRINGE_ROWS:y0, x0:x1]
+    assert (fringe == BAND_HALO).any()
+    assert not (fringe == BAND_INVERT).any()
+
+
+def test_reverse_band_inversion_matches_the_black_on_white_reference(band_page):
+    page, reference = band_page
+    out, bands = invert_reverse_bands(page, 300)
+    assert len(bands) == 1
+    rows, cols = _band_slice(bands[0].as_tuple())
+    recovered = ink_mask(out[rows, cols], 128)
+    truth = ink_mask(reference[rows, cols], 128)
+    f1 = ink_f1(recovered, truth)
+    assert f1 > 0.95, f"F1 da tinta do cabeçalho invertido: {f1:.3f}"
+    # Nothing outside the band (and its 2 px rim) was touched: the body text,
+    # the heading, the rule and the diagram are pixel-identical.
+    x0, y0, x1, y1 = BAND_BOX
+    untouched = np.ones(page.shape, dtype=bool)
+    untouched[y0 - BAND_FRINGE_ROWS - 3:y1 + 3, x0 - 3:x1 + 3] = False
+    assert np.array_equal(out[untouched], page[untouched])
+
+
+def test_reverse_band_fringe_is_erased(band_page):
+    page, _ = band_page
+    out, _ = invert_reverse_bands(page, 300)
+    x0, y0, x1, _ = BAND_BOX
+    fringe_before = page[y0 - BAND_FRINGE_ROWS:y0, x0:x1]
+    fringe_after = out[y0 - BAND_FRINGE_ROWS:y0, x0:x1]
+    assert (fringe_before == 0).mean() > 0.4, "a franja de teste não foi desenhada"
+    assert (fringe_after == 255).all(), "a franja sobreviveu à inversão como ruído"
+
+
+def test_a_heading_a_rule_and_a_diagram_are_not_bands():
+    page, _ = render_band_page(band=False)
+    assert find_reverse_bands(page, 300)[0] == []
+    step = ReverseVideo()
+    out, report = step.apply(page, PreprocessContext(dpi=300))
+    assert out is page
+    assert report.applied
+    assert not report.changed
+    assert report.detail["band_count"] == 0
+
+
+def test_reverse_band_is_physical_not_in_pixels(band_page):
+    """Half the resolution, half the DPI: the same single band."""
+    import cv2
+
+    page, _ = band_page
+    small = cv2.resize(page, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA)
+    bands, _ = find_reverse_bands(small, 150)
+    assert len(bands) == 1, [b.as_tuple() for b in bands]
+    x0, y0 = BAND_BOX[0] // 2, BAND_BOX[1] // 2
+    assert max(abs(bands[0].x0 - x0), abs(bands[0].y0 - y0)) <= 3, bands[0]
+
+
+def test_reverse_video_step_reports_what_it_inverted(band_page):
+    page, _ = band_page
+    out, report = ReverseVideo().apply(page, PreprocessContext(dpi=300))
+    assert report.applied
+    assert report.changed
+    assert out is not page
+    assert report.detail["band_count"] == 1
+    assert "1 faixa(s)" in report.message_pt
+    # Through the whole pipeline the band's text ends up as ink on paper.
+    outcome = default_pipeline().run(page, PreprocessContext(dpi=300))
+    assert "reverse_video" in outcome.applied_steps
+    rows, cols = _band_slice(report.detail["bands"][0])
+    core = outcome.image[rows, cols]
+    # The header is a short line in a wide band: a few per cent of ink, not
+    # the 90 % a black band would leave.
+    assert 0.01 < (core == 0).mean() < 0.3, "a faixa continua preta após a pipeline"

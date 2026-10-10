@@ -40,6 +40,7 @@ from .preprocess import (
     Despeckle,
     Dewarp,
     PreprocessContext,
+    ReverseVideo,
     ShadowRemoval,
     StepReport,
     Upscale,
@@ -82,9 +83,13 @@ class PageSignals:
     ink_fraction: float
     contrast: float
     is_binary: bool
+    #: Bands of light text on a dark ground (:func:`find_reverse_bands`):
+    #: the Yusupov solutions header.  One is enough to justify the variant.
+    reverse_bands: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
+            "reverse_bands": self.reverse_bands,
             "dpi": self.dpi,
             "skew_deg": round(self.skew_deg, 3),
             "shadow_spread": round(self.shadow_spread, 1),
@@ -206,6 +211,7 @@ def detect_signals(image: NDArray[Any], *, dpi: int = 300,
         ink_fraction=ink_fraction,
         contrast=float(hi - lo),
         is_binary=is_binary,
+        reverse_bands=len(ReverseVideo().find(gray, dpi)),
     )
 
 
@@ -368,6 +374,9 @@ class PortfolioConfig:
     #: Curl worth a dewarp.
     min_curl_amplitude_px: float = 3.0
     min_curl_consistency: float = 2.0
+    #: Build the reverse-video variant when the page has at least this many
+    #: bands of light text on a dark ground.  ``0`` switches it off.
+    min_reverse_bands: int = 1
     #: Hard cap on variants beyond the original; the cheapest reasons win.
     max_variants: int = 3
     #: Mirror of the page for true bleed subtraction, when the caller has it.
@@ -462,7 +471,8 @@ def degradation_reasons(signals: PageSignals, *, dpi: int,
     """Why the page counts as degraded — the conditions of :func:`build_portfolio`.
 
     One name per variant the signals would justify (``upscale``,
-    ``deskew_shadow``, ``bleed_sauvola``, ``dewarp``); empty for a clean page.
+    ``reverse_video``, ``deskew_shadow``, ``bleed_sauvola``, ``dewarp``); empty
+    for a clean page.
     OCR_UI_ROADMAP passo 1 keys the second engine on this: measured on the
     golden corpus, RapidOCR wins the degraded strata (fax, photo, shadow,
     150 DPI) and loses on clean scans and native pages, so it enters exactly
@@ -473,6 +483,8 @@ def degradation_reasons(signals: PageSignals, *, dpi: int,
     reasons: list[str] = []
     if dpi < cfg.low_dpi or (0.0 < signals.xheight_px < cfg.min_xheight_px):
         reasons.append("upscale")
+    if cfg.min_reverse_bands > 0 and signals.reverse_bands >= cfg.min_reverse_bands:
+        reasons.append("reverse_video")
     if abs(signals.skew_deg) >= cfg.min_skew_deg or signals.shadow_spread >= cfg.min_shadow_spread:
         reasons.append("deskew_shadow")
     if (signals.bleed_share >= cfg.min_bleed_share
@@ -510,6 +522,14 @@ def build_portfolio(image: NDArray[Any], *, dpi: int = 300,
         target = max(300, int(round(dpi * 2))) if dpi < cfg.low_dpi else int(round(dpi * 1.5))
         plans.append(("upscale", [Upscale(min_dpi=max(cfg.low_dpi, dpi + 1),
                                           target_dpi=target, max_scale=2.0)], reasons))
+
+    # 1b. Reverse video: a band of light text on black is unreadable to the
+    #     engines as it stands, and the variant is the cheapest of all — one
+    #     threshold, one morphology, no geometry.  It goes right after the
+    #     upscale so that the cap never pushes it out for a dewarp.
+    if cfg.min_reverse_bands > 0 and signals.reverse_bands >= cfg.min_reverse_bands:
+        plans.append(("reverse_video", [ReverseVideo()],
+                      [f"{signals.reverse_bands} faixa(s) de texto claro sobre fundo escuro"]))
 
     # 2. Deskew + shadow.
     if abs(signals.skew_deg) >= cfg.min_skew_deg or signals.shadow_spread >= cfg.min_shadow_spread:
