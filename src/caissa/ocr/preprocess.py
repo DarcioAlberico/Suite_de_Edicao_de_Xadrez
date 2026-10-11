@@ -732,19 +732,33 @@ BAND_HALO = 2
 
 
 def _band_core_rows(box_ink: NDArray[np.uint8], min_margin_share: float,
-                    inset: int = 2) -> tuple[int, int]:
-    """``(first, last)`` rows of ``box_ink`` whose two end margins are solid.
+                    min_row_share: float = 0.95, inset: int = 2) -> tuple[int, int]:
+    """``(first, last)`` rows of the band's core: from the first to the last
+    row that is ink across its whole width (``min_row_share``, inset 2 px).
 
-    Falls back to the whole box when no row qualifies — a band whose text
-    runs to its very ends has no solid margin to measure, and keeping it
-    whole is the harmless answer.
+    A band always has a solid leading above and below its text, and the
+    scanner's fringe never reaches 0.85 (measured at 200 and 220 DPI on the
+    Yusupov page).  The end margins alone (the first rule) were not enough:
+    the last fringe row, flush against the band, is solid at its ends and
+    texture in the middle, and inverted it became a dashed line the trunk's
+    glyph reader read as "—" between the letters.
+
+    Falls back to the margin rule, then to the whole box, when no row
+    qualifies — a band whose text runs to its very ends has no solid row or
+    margin to measure, and keeping it whole is the harmless answer.
     """
     h, w = box_ink.shape
-    m = max(4, round(0.05 * w))
     lo, hi = min(inset, max(0, w - 1)), max(w - inset, 0)
+    if hi - lo < 8:
+        return 0, h - 1
+    middle = box_ink[:, lo:hi]
+    whole = np.flatnonzero(middle.mean(axis=1) >= min_row_share)
+    if whole.size:
+        return int(whole[0]), int(whole[-1])
+    m = max(4, round(0.05 * w))
     if hi - lo < 2 * m:
         return 0, h - 1
-    margins = np.concatenate([box_ink[:, lo:lo + m], box_ink[:, hi - m:hi]], axis=1)
+    margins = np.concatenate([middle[:, :m], middle[:, -m:]], axis=1)
     solid = np.flatnonzero(margins.mean(axis=1) >= min_margin_share)
     if solid.size == 0:
         return 0, h - 1
@@ -799,12 +813,15 @@ def find_reverse_bands(image: NDArray[Any], dpi: int = 300, *,
     dark but taller than 0.75 in, and inverting one that is not would cost
     nothing a recogniser could read anyway.
 
-    The band's **core** is the run of rows whose left and right margins (5 %
-    of the width at each end) are solid ink to ``min_margin_share``: a row of
-    the band with text on it is still solid at its ends, while a row of the
-    scanner's fringe is a texture everywhere (measured on the Yusupov page:
-    0,30 at most in the fringe, 1,00 in every row of the band).  Rows of the
-    box outside the core are fringe.
+    The band's **core** runs from the first to the last row that is ink
+    across its whole width (0.95): a band always has a solid leading above
+    and below its text, while the scanner's fringe is a texture everywhere
+    (measured on the Yusupov page: 0.85 at most in the fringe, 1.00 in the
+    leading).  The core then loses 0.012 in on every side, because its first
+    row is still the last of the fringe and the band's ends are serrated the
+    same way.  Rows and columns of the box outside the core are fringe.  The
+    end margins (``min_margin_share``) are the fallback for a band with no
+    whole row.
 
     Everything is physical (inches at ``dpi``) so the same band is found at
     150 and at 600 DPI.
@@ -849,20 +866,37 @@ def find_reverse_bands(image: NDArray[Any], dpi: int = 300, *,
         if not trimmed.any():
             continue
         first, last = _band_core_rows(box_ink, min_margin_share)
+        # The first whole row is still the last of the fringe: 95 % ink is
+        # 5 % holes, and inverted it is a 1 px dashed line (measured at
+        # 220 DPI in the trunk: 48 one-pixel-tall components on row 0 of the
+        # band, read as "—" between the letters).  The band's ends carry the
+        # same serration.  The leading above and below the text is at least
+        # 0.04 in and the end margins at least 0.1 in, so eating 0.012 in off
+        # every side of the core removes the dashes and comes nowhere near
+        # the letters.
+        trim = max(1, round(0.012 * dpi))
+        if last - first + 1 > 4 * trim:
+            first += trim
+            last -= trim
+        left, right = trim, bw - trim
         if mask is empty:
             mask = empty.copy()
         window = mask[y:y + bh, x:x + bw]
         body = trimmed.astype(bool)
         # The fringe is what the closing joined to the band and the opening
-        # took away, plus the rows of the box above and below the solid core.
+        # took away, plus the rows and columns of the box outside the core.
         halo = component.astype(bool) & ~body
         halo[:first] |= body[:first]
         halo[last + 1:] |= body[last + 1:]
+        halo[:, :left] |= body[:, :left]
+        halo[:, right:] |= body[:, right:]
         body[:first] = False
         body[last + 1:] = False
+        body[:, :left] = False
+        body[:, right:] = False
         window[halo] = BAND_HALO
         window[body] = BAND_INVERT
-        bands.append(ReverseBand(x, y + first, x + bw, y + last + 1, dark_share))
+        bands.append(ReverseBand(x + left, y + first, x + right, y + last + 1, dark_share))
     bands.sort(key=lambda b: (b.y0, b.x0))
     return bands, mask
 
