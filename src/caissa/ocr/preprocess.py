@@ -733,8 +733,10 @@ BAND_HALO = 2
 
 def _band_core_rows(box_ink: NDArray[np.uint8], min_margin_share: float,
                     min_row_share: float = 0.95, inset: int = 2) -> tuple[int, int]:
-    """``(first, last)`` rows of the band's core: from the first to the last
-    row that is ink across its whole width (``min_row_share``, inset 2 px).
+    """``(first, last)`` rows of the band's core.
+
+    The core runs from the first to the last row that is ink across its
+    whole width (``min_row_share``, inset 2 px).
 
     A band always has a solid leading above and below its text, and the
     scanner's fringe never reaches 0.85 (measured at 200 and 220 DPI on the
@@ -778,6 +780,24 @@ def _fill_holes(mask: NDArray[np.uint8]) -> NDArray[np.uint8]:
     filled = padded.copy()
     filled[holes] = 1
     return filled[1:-1, 1:-1]
+
+
+def _mark_band(window: NDArray[np.uint8], component: NDArray[np.uint8],
+               trimmed: NDArray[np.uint8], *, rows: tuple[int, int],
+               cols: tuple[int, int]) -> None:
+    """Write one band into its window of the page mask.
+
+    The core — the opened body inside ``rows`` × ``cols`` — is
+    :data:`BAND_INVERT`.  The fringe is :data:`BAND_HALO`: what the closing
+    joined to the band and the opening took away, plus the body's own rows
+    and columns outside the core.
+    """
+    body = trimmed.astype(bool)
+    core = np.zeros_like(body)
+    core[rows[0]:rows[1], cols[0]:cols[1]] = body[rows[0]:rows[1], cols[0]:cols[1]]
+    halo = (component.astype(bool) | body) & ~core
+    window[halo] = BAND_HALO
+    window[core] = BAND_INVERT
 
 
 def find_reverse_bands(image: NDArray[Any], dpi: int = 300, *,
@@ -881,21 +901,8 @@ def find_reverse_bands(image: NDArray[Any], dpi: int = 300, *,
         left, right = trim, bw - trim
         if mask is empty:
             mask = empty.copy()
-        window = mask[y:y + bh, x:x + bw]
-        body = trimmed.astype(bool)
-        # The fringe is what the closing joined to the band and the opening
-        # took away, plus the rows and columns of the box outside the core.
-        halo = component.astype(bool) & ~body
-        halo[:first] |= body[:first]
-        halo[last + 1:] |= body[last + 1:]
-        halo[:, :left] |= body[:, :left]
-        halo[:, right:] |= body[:, right:]
-        body[:first] = False
-        body[last + 1:] = False
-        body[:, :left] = False
-        body[:, right:] = False
-        window[halo] = BAND_HALO
-        window[body] = BAND_INVERT
+        _mark_band(mask[y:y + bh, x:x + bw], component, trimmed,
+                   rows=(first, last + 1), cols=(left, right))
         bands.append(ReverseBand(x + left, y + first, x + right, y + last + 1, dark_share))
     bands.sort(key=lambda b: (b.y0, b.x0))
     return bands, mask

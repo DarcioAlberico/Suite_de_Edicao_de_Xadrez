@@ -626,8 +626,10 @@ def test_reverse_band_is_found_where_it_was_drawn(band_page):
     # band's own rows lose only their serrated border.
     assert max(abs(found.x0 - x0), abs(found.x1 - x1)) <= 5, found
     assert max(abs(found.y0 - y0), abs(found.y1 - y1)) <= 5, found
-    assert found.x0 >= x0 and found.x1 <= x1
-    assert found.y0 >= y0 and found.y1 <= y1
+    assert found.x0 >= x0
+    assert found.x1 <= x1
+    assert found.y0 >= y0
+    assert found.y1 <= y1
     assert found.dark_share > 0.55
     assert (mask[_band_slice(found.as_tuple())] == BAND_INVERT).mean() > 0.98
     # The fringe is marked for erasure, not for inversion.
