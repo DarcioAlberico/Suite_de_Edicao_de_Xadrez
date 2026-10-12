@@ -70,6 +70,18 @@ from caissa.export.html import (
 )
 from caissa.export.profiles import EPUB_PROFILE
 
+_IR_ID_ATTRIBUTE = re.compile(r'\s+data-ir-id="[^"]*"')
+
+
+def _strip_ir_ids(markup: str) -> str:
+    """The markup without its ``data-ir-id`` attributes (``EpubOptions.ir_ids=False``).
+
+    Only that attribute: ``id`` anchors are what the navigation and the
+    footnotes link to, and ``data-ir`` (the node kind) is one short word a
+    stylesheet or a script may key on.
+    """
+    return _IR_ID_ATTRIBUTE.sub("", markup)
+
 __all__ = ["EpubExporter", "EpubOptions", "read_epub"]
 
 _HEADING_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6"})
@@ -128,6 +140,14 @@ class EpubOptions(ExportOptions):
     split_level: int = 1
     include_ncx: bool = True
     max_section_bytes: int = 260_000
+    #: Keep the ``data-ir-id`` identity of every node in the XHTML.  It is
+    #: what makes a round trip measurable (:func:`read_epub` restores the
+    #: ids and :mod:`caissa.export.fidelity` pairs the nodes by them), and
+    #: it is noise to a reader: a ULID on every paragraph and span, a third
+    #: of the markup of a solutions page.  The book export for readers
+    #: (:func:`caissa.export.book.export_book`) turns it off; the default
+    #: keeps the measurable package.
+    ir_ids: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -510,6 +530,7 @@ class EpubExporter(Exporter):
         if context.options.interactive:
             script = '<script src="../Scripts/replay.js"><![CDATA[]]></script>'
         body_class = ' class="page"' if fixed else ""
+        body = section.body if getattr(context.options, "ir_ids", True) else _strip_ir_ids(section.body)
         return (
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<!DOCTYPE html>\n'
@@ -522,7 +543,7 @@ class EpubExporter(Exporter):
             + "\n".join(links)
             + "\n</head>\n"
             f"<body{body_class}>\n"
-            f'<section epub:type="chapter">\n{section.body}\n</section>\n'
+            f'<section epub:type="chapter">\n{body}\n</section>\n'
             f"{script}\n"
             "</body>\n</html>\n"
         )

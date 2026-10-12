@@ -107,7 +107,8 @@ def run_book(
         page_count = doc.page_count
         result = import_pdf(
             doc,
-            PdfImportOptions(pages=pages, diagram_finder=finder, detect_raster_diagrams=raster),  # type: ignore[arg-type]
+            PdfImportOptions(pages=pages, diagram_finder=finder, detect_raster_diagrams=raster,  # type: ignore[arg-type]
+                             page_reader="servico"),
         )
     elapsed = time.perf_counter() - started
     report = result.report

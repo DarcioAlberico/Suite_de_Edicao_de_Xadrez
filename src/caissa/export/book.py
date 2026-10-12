@@ -448,6 +448,13 @@ def _export_book(
         progress("gravando", 0, 1)
     from caissa.export import export
 
+    if export_options is None and format_name == "epub":
+        # A book for readers, not a package for the fidelity harness: the
+        # ULID on every paragraph and span stays out (2026-10-12, the user on
+        # the Yusupov export: "os parágrafos estão cheios de id").
+        from caissa.export.epub import EpubOptions
+
+        export_options = EpubOptions(ir_ids=False)
     written = export(document, target, format_name, options=export_options)
     # A11: the provenance the EPUB/DOCX cannot carry, next to it, keyed like the PGN's.
     provenance_path = _write_provenance(document, written.path, format_name, indices, source)

@@ -160,7 +160,8 @@ def _import(pdf: Path, page: int, lang: str) -> Any:
     from caissa.ingest.pdf.finders import combined_finder
 
     return import_pdf(
-        pdf, PdfImportOptions(pages=[page], lang=lang, diagram_finder=combined_finder())
+        pdf, PdfImportOptions(pages=[page], lang=lang, diagram_finder=combined_finder(),
+                              page_reader="servico")
     )
 
 

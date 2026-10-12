@@ -647,9 +647,12 @@ def layout_page(
         diagrams=tuple(_to_bbox(d) for d in diagrams),
         rules=tuple(_to_bbox(r) for r in page.rules),
         page_index=frame.index,
+        columns=tuple(_to_bbox(c) for c in page.columns),
     )
     layout = analyze_page(layout_input, config=config.layout, furniture=furniture)
-    if layout.column_count > 1 and not _columns_are_real(layout, config):
+    # Columns the reader handed over are not second-guessed: the trunk's page
+    # reader measured them on the page's character boxes (its S-523 to S-526).
+    if not page.columns and layout.column_count > 1 and not _columns_are_real(layout, config):
         # The gutters were voted in by short fragments -- a tabular move list
         # ("21     ...     ♖f8-d8") on a single-column page -- while the
         # prose, which spans them, was excluded from the vote as "spanning

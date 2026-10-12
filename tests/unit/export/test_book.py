@@ -135,6 +135,22 @@ def _texts(path: Path) -> str:
 
 
 @requires_pymupdf
+def test_the_book_epub_carries_no_ir_ids(tmp_path: Path):
+    """A book for readers: no ULID on every paragraph (2026-10-12, «os parágrafos estão
+    cheios de id»).  The caller who wants the measurable package says so."""
+    pdf = _book(tmp_path)
+    result = export_book(pdf, None, "epub", enable_ocr=False)
+    body = _texts(result.path)
+    assert "data-ir-id" not in body
+    assert 'data-ir="paragraph"' in body
+    from caissa.export.epub import EpubOptions
+
+    measured = export_book(pdf, tmp_path / "medido.epub", "epub", enable_ocr=False,
+                           export_options=EpubOptions())
+    assert "data-ir-id" in _texts(measured.path)
+
+
+@requires_pymupdf
 @pytest.mark.parametrize("format_name", BOOK_FORMATS)
 def test_the_whole_book_is_written_beside_the_pdf(tmp_path: Path, format_name: str):
     pdf = _book(tmp_path)

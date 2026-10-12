@@ -150,6 +150,34 @@ def test_reading_it_back_gives_a_document(package: Path) -> None:
     assert document.body
 
 
+def test_ir_ids_can_be_left_out_and_the_package_still_reads_back(
+    tmp_path: Path, small: Document
+) -> None:
+    """``ir_ids=False`` drops the ULID on every node and nothing else; the
+    default keeps it, for the measurable round trip."""
+    clean = tmp_path / "limpo.epub"
+    kept = tmp_path / "medido.epub"
+    EpubExporter().export(small, clean, options=EpubOptions(ir_ids=False))
+    EpubExporter().export(small, kept)
+
+    def texts(path: Path) -> str:
+        with zipfile.ZipFile(path) as archive:
+            return "\n".join(
+                archive.read(name).decode("utf-8")
+                for name in archive.namelist()
+                if name.startswith("OEBPS/Text/")
+            )
+
+    body_clean, body_kept = texts(clean), texts(kept)
+    assert "data-ir-id" not in body_clean
+    assert "data-ir-id" in body_kept
+    assert 'data-ir="paragraph"' in body_clean
+    assert body_clean.count("<p") == body_kept.count("<p")
+    assert len(body_clean) < len(body_kept)
+    reread = read_epub(clean)
+    assert len(reread.body) == len(read_epub(kept).body)
+
+
 def test_fixed_layout_declares_itself(tmp_path: Path, small: Document) -> None:
     """A fixed-layout package says so in the OPF, or a reader reflows it."""
     target = tmp_path / "fixo.epub"

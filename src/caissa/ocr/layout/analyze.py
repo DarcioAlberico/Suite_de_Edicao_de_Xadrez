@@ -145,6 +145,13 @@ class LayoutInput:
     #: Vector rules, when the source is a PDF; used to spot the footnote rule.
     rules: tuple[BBox, ...] = ()
     page_index: int = 0
+    #: Columns a reader has already laid out (the trunk's page reader hands
+    #: the importer its ``PaginaLida.colunas``, 2026-10-12).  Given, they are
+    #: the page's columns and :func:`detect_columns` is not asked: on the
+    #: Yusupov solutions page the gutter detector saw one column where the
+    #: trunk had measured two (short lines, a centred title crossing the
+    #: gutter -- its S-523), and the two were interleaved line by line.
+    columns: tuple[BBox, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -428,6 +435,56 @@ def _text_span(lines: Sequence[LayoutLine], page_box: BBox) -> tuple[float, floa
     if not lines:
         return page_box.x0, page_box.x1
     return (min(l.box.x0 for l in lines), max(l.box.x1 for l in lines))
+
+
+def _columns_from_hint(lines: Sequence[LayoutLine],
+                       hint: Sequence[BBox]) -> list[Column]:
+    """The columns a reader handed over, each line dealt to the one its centre falls in.
+
+    The columns keep the order they came in (the reader's reading order:
+    title band, left, right, folio).  A line whose centre is in none (a
+    title across the gutter) is spanning, as :func:`detect_columns` would
+    leave it.
+    """
+    boxes = list(hint)
+    members: list[list[int]] = [[] for _ in boxes]
+    for i, line in enumerate(lines):
+        cx = (line.box.x0 + line.box.x1) / 2.0
+        cy = (line.box.y0 + line.box.y1) / 2.0
+        for k, box in enumerate(boxes):
+            if box.x0 <= cx <= box.x1 and box.y0 - 2.0 <= cy <= box.y1 + 2.0:
+                members[k].append(i)
+                break
+    return [Column(index=k, box=box, line_indices=tuple(members[k]))
+            for k, box in enumerate(boxes)]
+
+
+def _order_from_columns(lines: Sequence[LayoutLine], indices: Sequence[int],
+                        columns: Sequence[Column]) -> list[int]:
+    """Reading order from columns a reader handed over.
+
+    Column after column in the reader's order, top to bottom inside each; a
+    spanning line goes before the first column that starts below it, or last.
+
+    The XY-cut of :func:`reading_order` is for a page whose columns were
+    *detected*; with the columns given, cutting again by whitespace put the
+    two solutions columns of the Yusupov back into one interleaved sequence.
+    """
+    placed: set[int] = set()
+    order: list[int] = []
+    spanning = sorted((i for i in indices
+                       if not any(i in c.line_indices for c in columns)),
+                      key=lambda i: (lines[i].box.y0, lines[i].box.x0))
+    for column in columns:
+        top = column.box.y0
+        while spanning and lines[spanning[0]].box.y0 < top:
+            order.append(spanning.pop(0))
+        for i in sorted(column.line_indices, key=lambda i: (lines[i].box.y0, lines[i].box.x0)):
+            if i not in placed:
+                order.append(i)
+                placed.add(i)
+    order.extend(spanning)
+    return order
 
 
 def detect_columns(lines: Sequence[LayoutLine], page_box: BBox,
@@ -898,8 +955,12 @@ def analyze_page(page: LayoutInput, *,
     # 7. columns and reading order, over body lines only
     body_indices = [i for i in range(n)
                     if i not in excluded and lines[i].text.strip()]
-    columns = detect_columns([lines[i] for i in body_indices],
-                             page.page_box, config)
+    if page.columns:
+        columns = _columns_from_hint([lines[i] for i in body_indices], page.columns)
+        notes.append(f"colunas dadas pelo leitor: {len(page.columns)}")
+    else:
+        columns = detect_columns([lines[i] for i in body_indices],
+                                 page.page_box, config)
     # detect_columns indexes into the subset; map back to page indices.
     columns = [
         Column(index=c.index, box=c.box,
@@ -907,7 +968,16 @@ def analyze_page(page: LayoutInput, *,
                                   if j < len(body_indices)))
         for c in columns
     ]
-    order = reading_order(lines, body_indices, page.page_box, config)
+    if page.columns:
+        body_lines = [lines[i] for i in body_indices]
+        local = _order_from_columns(body_lines, range(len(body_lines)), [
+            Column(index=c.index, box=c.box,
+                   line_indices=tuple(body_indices.index(i) for i in c.line_indices))
+            for c in columns
+        ])
+        order = [body_indices[j] for j in local]
+    else:
+        order = reading_order(lines, body_indices, page.page_box, config)
 
     # 8. regions
     regions = _group_regions(lines, order, kinds, columns, config)

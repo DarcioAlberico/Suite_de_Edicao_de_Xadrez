@@ -378,9 +378,27 @@ class PdfImportOptions:
     #: text will be read another day.
     enable_ocr: bool = True
     #: A custom provider.  ``None`` with ``enable_ocr`` builds the default
-    #: :class:`~caissa.ingest.pdf.ocr_service.OcrService` lazily, on the
-    #: first page that needs it.
+    #: reader lazily, on the first page that needs it -- which one,
+    #: ``page_reader`` says.
     ocr: OcrProvider | None = None
+    #: Who reads a page whose text layer is missing, rejected or damaged
+    #: (:mod:`caissa.ingest.pdf.glyph_reader`, 2026-10-12).  ``"glifo"`` is
+    #: the trunk's page reader -- the «Ler folha» of the Texto tab, the
+    #: glyph classifier that reads figurines as figurines and lays the
+    #: columns out -- and ``"servico"`` the suite's own cascade
+    #: (:class:`~caissa.ingest.pdf.ocr_service.OcrService`: Tesseract and
+    #: RapidOCR, fusion, book cipher).  ``"auto"`` is the glyph reader when
+    #: the trunk and its model are on this machine, the service otherwise.
+    #: Measured on the Yusupov solutions page 19 (a text layer that is
+    #: another OCR's guess): the service's fusion gave ``I.'Wxh6t!``,
+    #: ``E.Jackson ackson`` and the two columns interleaved; the trunk's
+    #: reader gives 72 clean lines in the right columns.  On prose the
+    #: glyph reader is a little worse than the service (Nunn p. 150:
+    #: ``(2("): white`` for ``(206): White``), so the default here stays the
+    #: service -- what the Sol benchmarks measure -- and the book export's
+    #: dialog asks for the glyph reader, on by default, where the moves are
+    #: what matters.
+    page_reader: str = "servico"
     #: Use the Tesseract model fine-tuned for *this* book, when the labelling
     #: window trained and registered one for the PDF's content hash
     #: (:mod:`caissa.ocr.training.books`).  The model is a second opinion
@@ -628,6 +646,9 @@ class PdfImporter:
         self._partial_entries: list[_Entry] = []
         self._ocr_service: Any = None
         self._ocr_unavailable = False
+        #: The trunk's page reader when ``page_reader`` chose it and it built.
+        self._glyph_reader: Any = None
+        self._glyph_reader_probed = False
         #: The language the verdicts and the OCR use: the option, or what the
         #: survey (or the first OCR page) detected.
         self._lang: str = self.options.lang
@@ -728,6 +749,9 @@ class PdfImporter:
         # the reading did not meet -- the diagrams the review should look at first.
         self.report.counters["stipulations_checked"] = self._stipulations_checked
         self.report.counters["stipulations_failed"] = self._stipulations_failed
+        if self._glyph_reader is not None and self._glyph_reader.pages_read:
+            self.report.notes.append(self._glyph_reader.describe_pt())
+            self.report.counters["glyph_reader_pages"] = len(self._glyph_reader.pages_read)
         self._save_book_cipher()
         self.report.duration_s = time.perf_counter() - started
         if self.options.asset_dir is not None and self.report.ocr_traces:
@@ -1043,11 +1067,36 @@ class PdfImporter:
         return "text-layer/review", reason, min(float(verdict.confidence), _DOUBTFUL), text
 
     def _ocr_provider(self) -> OcrProvider | None:
-        """The configured provider, or the default service built once."""
+        """The configured provider, or the default reader built once.
+
+        ``page_reader`` decides the default: the trunk's glyph page reader
+        when asked for (or ``"auto"`` and it is on this machine), else the
+        suite's OCR service.  A reader that cannot be built is a note, and
+        the service takes the page.
+        """
         if self.options.ocr is not None:
             return self.options.ocr
         if not self.options.enable_ocr or self._ocr_unavailable:
             return None
+        wanted = str(self.options.page_reader or "auto")
+        if wanted not in ("auto", "glifo", "servico"):
+            raise ValueError(f"page_reader: {wanted!r} não é um de auto, glifo, servico")
+        if wanted != "servico" and not self._glyph_reader_probed:
+            self._glyph_reader_probed = True
+            from caissa.ingest.pdf.glyph_reader import TrunkPageReader
+
+            reader, why = TrunkPageReader.build()
+            if reader is not None:
+                self._glyph_reader = reader
+            else:
+                # Said in the report, not only in the log: "which reader read
+                # page 19" is the first question when a page reads badly, and
+                # a silent fallback hid exactly that (2026-10-12).
+                self.report.notes.append(
+                    f"leitor de glifo do tronco {'pedido e ' if wanted == 'glifo' else ''}"
+                    f"indisponível ({why}); o serviço de OCR lê as páginas.")
+        if self._glyph_reader is not None:
+            return self._glyph_reader
         if self._ocr_service is None:
             from caissa.ingest.pdf.ocr_service import OcrService
 
@@ -1238,6 +1287,16 @@ class PdfImporter:
         """Copy the service's trace into the page report and the review list."""
         recognition = getattr(provider, "last", None)
         if recognition is None or getattr(recognition, "page_index", -1) != frame.index:
+            # A provider without a trace (the trunk's glyph reader) still
+            # answers "who read page 19, at what resolution"; the page report
+            # does not exist yet, so the answer waits with the service's own.
+            name = str(getattr(provider, "name", "") or "")
+            if name and frame.index in getattr(provider, "pages_read", ()):
+                self._pending_ocr = (frame.index, {
+                    "ocr_engine": name,
+                    "ocr_dpi": float(getattr(provider, "dpi", 0.0) or 0.0),
+                    "ocr_duration_ms": elapsed_ms,
+                })
             return
         report = self._page_reports.get(frame.index)
         pending: dict[str, Any] = {

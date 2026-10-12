@@ -483,7 +483,8 @@ def _page_texts(path: Path, pages: list[int], lang: str, *, contest: bool,
     from caissa.ingest.pdf.importer import PdfImportOptions, import_pdf
 
     options = PdfImportOptions(pages=pages, lang=lang, detect_diagrams=False,
-                               ocr_contests_text_layer=contest, ocr_config=ocr_config)
+                               ocr_contests_text_layer=contest, ocr_config=ocr_config,
+                               page_reader="servico")
     result = import_pdf(path, options)
     texts: dict[int, list[str]] = {p: [] for p in pages}
     for block in result.document.body:
@@ -733,7 +734,8 @@ def report_nags(*, sabotage: str = "") -> dict[str, Any]:
             if not path.is_file():
                 print(f"{label:20s}  AUSENTE")
                 continue
-            result = import_pdf(path, PdfImportOptions(pages=pages, lang=lang))
+            result = import_pdf(path, PdfImportOptions(pages=pages, lang=lang,
+                                                       page_reader="servico"))
             text_tokens = games_scores = nodes = nodes_with = 0
             codes: Counter[int] = Counter()
             for block in result.document.body:

@@ -310,6 +310,9 @@ class PageText:
     rules: tuple[RectT, ...] = ()
     source: str = "pdf-text-layer"
     fonts: Mapping[str, int] = field(default_factory=dict)
+    #: Columns the reader already laid out, in ``page.rect`` points (the
+    #: trunk's page reader gives them); empty lets the layout detect them.
+    columns: tuple[RectT, ...] = ()
 
     @property
     def page_index(self) -> int:

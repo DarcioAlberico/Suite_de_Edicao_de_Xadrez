@@ -67,7 +67,7 @@ FILTRO = {"epub": "EPUB (*.epub)", "docx": "Word (*.docx)"}
 class EscolhaDeExportacao:
     """O que o diálogo respondeu: formato, índices zero-based, destino e OCR."""
 
-    __slots__ = ("destino", "formato", "ocr", "page_count", "paginas")
+    __slots__ = ("destino", "formato", "glifo", "ocr", "page_count", "paginas")
 
     def __init__(
         self,
@@ -77,12 +77,17 @@ class EscolhaDeExportacao:
         *,
         page_count: int,
         ocr: bool,
+        glifo: bool = True,
     ) -> None:
         self.formato = formato
         self.paginas = paginas
         self.destino = destino
         self.page_count = page_count
         self.ocr = ocr
+        #: As páginas sem camada (ou com a camada danificada) vão pelo leitor de
+        #: glifo do tronco -- o «Ler folha» da aba Texto -- e não pelo serviço
+        #: de OCR da suíte (2026-10-12, o usuário sobre o EPUB do Yusupov).
+        self.glifo = glifo
 
     @property
     def alcance(self) -> str:
@@ -195,6 +200,15 @@ class DialogoDeExportacao(QDialog):
         self.ocr.setChecked(True)
         raiz.addWidget(self.ocr)
 
+        self.glifo = QCheckBox(
+            "Ler essas páginas com o leitor de glifo do tronco (o «Ler folha» da aba Texto: "
+            "lances e figurinas certos, colunas certas; prosa um pouco pior)",
+            self,
+        )
+        self.glifo.setAccessibleName("Leitor de glifo")
+        self.glifo.setChecked(True)
+        raiz.addWidget(self.glifo)
+
         self.aviso = QLabel("", self)
         self.aviso.setStyleSheet(f"color:{pele.cor('aviso')};")
         self.aviso.setWordWrap(True)
@@ -244,6 +258,7 @@ class DialogoDeExportacao(QDialog):
             Path(self.destino.text().strip()),
             page_count=self.page_count,
             ocr=self.ocr.isChecked(),
+            glifo=self.glifo.isChecked(),
         )
 
     def accept(self) -> None:
@@ -413,13 +428,19 @@ class ExportadorDeLivro(QObject):
         self, pdf_path: Path, escolha: EscolhaDeExportacao, cancelar: threading.Event
     ) -> None:
         try:
+            from caissa.ingest.pdf import PdfImportOptions
+
+            glifo = bool(getattr(escolha, "glifo", False))
             resultado = export_book(
                 pdf_path,
                 escolha.destino,
                 escolha.formato,
                 pages=escolha.paginas,
                 enable_ocr=escolha.ocr,
-                document=self._documento,
+                import_options=PdfImportOptions(page_reader="glifo" if glifo else "servico"),
+                # O documento já importado pela janela foi lido pelo serviço; com o
+                # leitor de glifo pedido, a exportação reimporta as páginas.
+                document=None if glifo else self._documento,
                 progress=lambda fase, feito, total: self._avancou.emit(fase, feito, total),
                 should_cancel=cancelar.is_set,
             )

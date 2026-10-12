@@ -200,6 +200,7 @@ def measure_product(project: LabelProject, items: list[Any]) -> list[dict[str, A
                 pages=[page_index],
                 lang=project.languages.get(book, "eng"),
                 diagram_finder=combined_finder(),
+                page_reader="servico",
             ),
         )
         diagrams = [node for _path, node in walk(result.document) if isinstance(node, Diagram)]
