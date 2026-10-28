@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -347,6 +347,7 @@ class ExportadorDeLivro(QObject):
         self._pai = pai
         self._cancelar: threading.Event | None = None
         self._documento: Any = None
+        self._folhas: list[Mapping[str, Any]] = []
         self._rodando = False
         self._acabou.connect(self._concluiu)
         self._falhou.connect(self._deu_errado)
@@ -364,12 +365,17 @@ class ExportadorDeLivro(QObject):
         formato: str = "epub",
         pagina_atual: int = 0,
         documento_para: Callable[[Sequence[int] | None], Any] | None = None,
+        folhas_para: Callable[[Sequence[int] | None], Sequence[Mapping[str, Any]]] | None = None,
     ) -> bool:
         """Pergunta e começa. ``False`` se não havia PDF, já rodava, ou a pessoa desistiu.
 
         ``documento_para(paginas)`` (A3) devolve o ``ImportResult`` que o trilho já tem
         quando cobre as páginas pedidas -- a exportação reaproveita-o em vez de reimportar
         (minutos de OCR) -- ou ``None``, e aí importa como sempre.
+
+        ``folhas_para(paginas)`` (R7 do tronco) devolve as folhas que a pessoa corrigiu no
+        caderno da aba Texto, no formato de :mod:`caissa.export.page_texts`; elas entram no
+        lugar da leitura destas páginas.
         """
         if pdf_path is None:
             self.estado.emit("Abra um PDF antes de exportar o livro.")
@@ -383,7 +389,7 @@ class ExportadorDeLivro(QObject):
         if dialogo.exec() != QDialog.DialogCode.Accepted:
             return False
         escolha = dialogo.escolha()
-        self.iniciar(pdf_path, escolha, documento_para=documento_para)
+        self.iniciar(pdf_path, escolha, documento_para=documento_para, folhas_para=folhas_para)
         return True
 
     def iniciar(
@@ -392,6 +398,7 @@ class ExportadorDeLivro(QObject):
         escolha: EscolhaDeExportacao,
         *,
         documento_para: Callable[[Sequence[int] | None], Any] | None = None,
+        folhas_para: Callable[[Sequence[int] | None], Sequence[Mapping[str, Any]]] | None = None,
     ) -> None:
         """Começa sem perguntar — para quem já tem a escolha (testes, macros)."""
         documento = None
@@ -408,6 +415,18 @@ class ExportadorDeLivro(QObject):
                 )
                 documento = None
         self._documento = documento
+        self._folhas = []
+        if folhas_para is not None:
+            # Na thread da janela, como o `documento_para`: o caderno é dela, e a folha da
+            # tela é gravada antes de sair.
+            try:
+                self._folhas = list(folhas_para(escolha.paginas))
+            except Exception as exc:  # sem o caderno, o livro sai com a leitura
+                logger.exception("folhas_para falhou; o livro sai sem as correções do caderno.")
+                self.estado.emit(
+                    f"As folhas corrigidas no caderno não puderam ser lidas ({exc}); o livro "
+                    "sai com a leitura da importação."
+                )
         self._rodando = True
         self._cancelar = threading.Event()
         self.controles.emit(False)
@@ -441,6 +460,7 @@ class ExportadorDeLivro(QObject):
                 # O documento já importado pela janela foi lido pelo serviço; com o
                 # leitor de glifo pedido, a exportação reimporta as páginas.
                 document=None if glifo else self._documento,
+                page_texts=self._folhas or None,
                 progress=lambda fase, feito, total: self._avancou.emit(fase, feito, total),
                 should_cancel=cancelar.is_set,
             )
