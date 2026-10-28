@@ -405,26 +405,13 @@ def _export_book(
             if progress is not None:
                 progress("importando", done, total)
 
-        if document is not None and not _covers_exactly(document, indices, page_count):
-            # The ready document is written as it is: a book of three pages asked for
-            # as "page 1" must not come out with the three.  A bare ``Document`` has no
-            # page list, so it only qualifies for the whole book.
-            LOGGER.warning(
-                "%s: o documento pronto não é exatamente as páginas pedidas; a exportação reimporta.",
-                source.name,
-            )
-            document = None
-        if document is not None and not _images_on_disk(
-            document.document if isinstance(document, ImportResult) else document
-        ):
-            # The window's import without an ``asset_dir`` (or one whose files
-            # are gone) has image resources with no file behind them; the EPUB
-            # would drop those pages' images and call it a success.  Say so and
-            # read the book again instead of writing a hollow one.
-            LOGGER.warning(
-                "%s: o documento pronto não tem as imagens em disco; a exportação reimporta.",
-                source.name,
-            )
+        refused = (
+            None
+            if document is None
+            else _refusal_in_hand(document, source, import_options, indices, page_count)
+        )
+        if refused is not None:
+            LOGGER.warning("%s: %s; a exportação reimporta.", source.name, refused)
             document = None
         if document is not None:
             # Passo A3: the book was read once already; write what is in hand --
@@ -514,6 +501,55 @@ def _with_page_texts(
 
     applied = apply_page_texts(imported, page_texts)
     return applied.imported, len(applied.pages), applied.notes
+
+
+def _refusal_in_hand(
+    document: Document | ImportResult,
+    source: Path,
+    import_options: PdfImportOptions | None,
+    indices: Sequence[int],
+    page_count: int,
+) -> str | None:
+    """Why the document in hand cannot be written as this export (passo A3), or ``None``."""
+    if not _covers_exactly(document, indices, page_count):
+        # The ready document is written as it is: a book of three pages asked for
+        # as "page 1" must not come out with the three.  A bare ``Document`` has no
+        # page list, so it only qualifies for the whole book.
+        return "o documento pronto não é exatamente as páginas pedidas"
+    if not _images_on_disk(document.document if isinstance(document, ImportResult) else document):
+        # The window's import without an ``asset_dir`` (or one whose files
+        # are gone) has image resources with no file behind them; the EPUB
+        # would drop those pages' images and call it a success.  Say so and
+        # read the book again instead of writing a hollow one.
+        return "o documento pronto não tem as imagens em disco"
+    if _review_changed(document, source, import_options, indices):
+        # The text-review window decided something after the import: the decision is in
+        # the file and not in the document, which would ship the reading it corrected.
+        # The text decisions apply to the OCR regions while the page is read, so the
+        # book is read again -- the diagram decisions are the ones applicable in hand.
+        return "há decisões de revisão de texto mais novas que o documento pronto"
+    return None
+
+
+def _review_changed(
+    document: Document | ImportResult,
+    source: Path,
+    import_options: PdfImportOptions | None,
+    indices: Sequence[int],
+) -> bool:
+    """Whether the text-review decisions of now differ from the ones the import in hand saw.
+
+    The import records their fingerprint (``ImportReport.review_decisions_digest``); a bare
+    :class:`Document` records none, so it is as if it saw none.
+    """
+    decisions = import_options.review_decisions if import_options is not None else None
+    if decisions is None:
+        from caissa.ocr.review import ReviewDecisions
+
+        decisions = ReviewDecisions.for_pdf(source)
+    now = decisions.digest(indices) if decisions is not None else ""
+    report = document.report if isinstance(document, ImportResult) else None
+    return now != (getattr(report, "review_decisions_digest", "") or "")
 
 
 def _covers_exactly(

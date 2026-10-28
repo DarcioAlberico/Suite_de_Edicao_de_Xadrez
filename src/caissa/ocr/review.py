@@ -25,6 +25,7 @@ how many doubtful regions remain.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from collections.abc import Callable, Iterable, Sequence
@@ -547,6 +548,25 @@ class ReviewDecisions:
 
     def for_page(self, page_index: int) -> list[Decided]:
         return [d for d in self.entries if d.page_index == page_index]
+
+    def digest(self, pages: Iterable[int]) -> str:
+        """What was decided on ``pages``, as a fingerprint; ``""`` when nothing was.
+
+        The import records it (:attr:`ImportReport.review_decisions_digest`), and the export of an
+        import in hand compares it with the file of now: a decision taken in the review window
+        **after** the import is in the file and not in the document, and writing the document as
+        it is would ship the reading the reviewer corrected.  Accepts of no reading are left out,
+        as :meth:`match` leaves them out.
+        """
+        wanted = {int(p) for p in pages}
+        rows = sorted(
+            json.dumps(d.as_dict(), ensure_ascii=False, sort_keys=True)
+            for d in self.entries
+            if d.page_index in wanted and not accepts_nothing(d.action, d.text)
+        )
+        if not rows:
+            return ""
+        return hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest()[:16]
 
     def match(self, page_index: int, rect: RectT) -> Decided | None:
         """The decision over ``rect`` -- never an accept of no reading (:func:`accepts_nothing`)."""

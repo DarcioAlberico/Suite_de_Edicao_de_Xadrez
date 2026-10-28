@@ -473,11 +473,12 @@ class ExportadorDeLivro(QObject):
         if self._documento is not None and getattr(resultado, "import_report", None) is not getattr(
             self._documento, "report", None
         ):
-            # `export_book` recusou o documento em mãos (páginas diferentes das pedidas, ou
-            # imagens fora do disco) e importou de novo -- dito, não só no log.
+            # `export_book` recusou o documento em mãos (páginas diferentes das pedidas,
+            # imagens fora do disco, ou decisões de revisão de texto mais novas que ele) e
+            # importou de novo -- dito, não só no log.
             self.estado.emit(
-                "A importação já feita não serviu a esta exportação (páginas ou imagens "
-                "diferentes): o livro foi importado de novo."
+                "A importação já feita não serviu a esta exportação (páginas, imagens ou "
+                "decisões de revisão diferentes): o livro foi importado de novo."
             )
         self._acabou.emit(resultado)
 

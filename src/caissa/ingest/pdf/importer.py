@@ -552,6 +552,10 @@ class ImportReport:
     #: actually built are ``len(pages)``.
     canceled: bool = False
     pages_planned: int = 0
+    #: The fingerprint of the review decisions on the pages built, as the import saw them
+    #: (:meth:`caissa.ocr.review.ReviewDecisions.digest`); ``""`` with none.  The export of the
+    #: import in hand reads the book again when the decisions of now differ.
+    review_decisions_digest: str = ""
 
     @property
     def pages_by_source(self) -> dict[str, int]:
@@ -739,6 +743,10 @@ class PdfImporter:
             1 for r in self.report.pages if r.source == "text-layer+ocr")
         # Counted while the pages were read (passo 14): the reviewer's decisions.
         counters["review_decisions_applied"] = self._decisions_applied
+        if self.options.review_decisions is not None:
+            self.report.review_decisions_digest = self.options.review_decisions.digest(
+                p.index for p in self.report.pages
+            )
         self.report.counters = counters
         self.report.figurines_mapped = self._mapper.count
         self.report.figurine_fonts = tuple(sorted(self._mapper.seen_fonts))

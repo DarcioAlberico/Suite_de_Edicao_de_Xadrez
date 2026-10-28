@@ -36,6 +36,7 @@ from caissa.ocr.diagram_decisions import (  # noqa: E402
     DiagramDecisions,
     record,
 )
+from caissa.ocr.review import Action, Decided, ReviewDecisions  # noqa: E402
 from conftest import LOREM, PageSpec, build_pdf, lines_of, requires_pymupdf  # noqa: E402
 
 MACHINE = "8/8/8/4k3/8/8/4K3/8 w - - 0 1"
@@ -226,3 +227,52 @@ def test_a_decision_recorded_after_the_import_still_reaches_the_document_in_hand
     assert any(w.startswith("corrigido pelo revisor (ana)") for w in corrected.recognition.warnings)
     assert corrected.provenance is not None
     assert corrected.provenance.verified_by_human is True
+
+
+# -- the text-review decisions taken after the import in hand ----------------------------- #
+
+
+def _decided(text: str, page: int = 0) -> Decided:
+    return Decided(page_index=page, rect=(72.0, 70.0, 400.0, 160.0), action=Action.EDIT,
+                   text=text, reviewer="ana", at="2026-10-28T10:00:00")
+
+
+def test_the_fingerprint_says_what_was_decided_on_the_pages() -> None:
+    nothing = ReviewDecisions()
+    one = ReviewDecisions(entries=(_decided("lido"),))
+    assert nothing.digest([0, 1]) == ""
+    assert one.digest([1]) == "", "a decision on another page is not on these"
+    assert one.digest([0]) == one.digest([1, 0])
+    assert one.digest([0]) != ReviewDecisions(entries=(_decided("corrigido"),)).digest([0])
+    empty_accept = Decided(page_index=0, rect=(0.0, 0.0, 1.0, 1.0), action=Action.ACCEPT)
+    assert ReviewDecisions(entries=(empty_accept,)).digest([0]) == "", (
+        "an accept of no reading accepted nothing, and the importer does not apply it"
+    )
+
+
+@requires_pymupdf
+def test_a_text_decision_taken_after_the_import_makes_the_export_read_again(
+    book: Path, tmp_path: Path
+) -> None:
+    """The window's flow again, for the text-review window: import, decide, export from memory.
+
+    The text decisions apply to the OCR regions while a page is read, so the document in hand
+    cannot take them; writing it would ship the reading the reviewer corrected.
+    """
+    before = ReviewDecisions(entries=(_decided("primeira"),))
+    imported = import_pdf(book, PdfImportOptions(
+        pages=[0, 1], games=False, enable_ocr=False, asset_dir=tmp_path / "assets",
+        review_decisions=before,
+    ))
+    assert imported.report.review_decisions_digest == before.digest([0, 1])
+    same = export_book(book, tmp_path / "igual.epub", "epub", pages=[0, 1], enable_ocr=False,
+                       import_options=PdfImportOptions(review_decisions=before, games=False),
+                       document=imported)
+    assert same.import_report is imported.report, "nothing new was decided: the import serves"
+
+    after = ReviewDecisions(entries=(_decided("primeira"), _decided("nova", page=1)))
+    again = export_book(book, tmp_path / "depois.epub", "epub", pages=[0, 1], enable_ocr=False,
+                        import_options=PdfImportOptions(review_decisions=after, games=False),
+                        document=imported)
+    assert again.import_report is not imported.report, "the book was read again"
+    assert again.import_report.review_decisions_digest == after.digest([0, 1])

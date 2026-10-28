@@ -207,6 +207,21 @@ def test_the_tab_offers_the_book_export_from_its_menu(app, livro: Path, tmp_path
     assert "Livro para EPUB…" in textos
     assert "Livro para DOCX…" in textos
     assert painel.exportador_de_livro is not None
+
+    # R7 do tronco: com quem dê as folhas do caderno, a aba as pede pelo livro do projeto dela.
+    pedidos: list[tuple[Path, object]] = []
+    painel.folhas_para = lambda pdf, paginas: pedidos.append((pdf, paginas)) or []
+    chamadas: list[dict[str, object]] = []
+    painel.exportador_de_livro.comecar = lambda *a, **k: chamadas.append(k) or True
+    assert painel.export_book("docx")
+    folhas = chamadas[-1]["folhas_para"]
+    assert callable(folhas)
+    folhas((0, 2))
+    assert pedidos == [(Path(painel.project.pdf_for(painel.document)), (0, 2))]
+    painel.folhas_para = None
+    painel.export_book("epub")
+    assert chamadas[-1]["folhas_para"] is None, "sozinha, a aba exporta a leitura"
+
     painel.document = None
     assert not painel.export_book("epub")
     assert "Abra um PDF" in painel.status.text()
