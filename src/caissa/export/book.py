@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import re
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Final
@@ -243,6 +243,10 @@ class BookExportResult:
     provenance_path: Path | None = None
     """The provenance sidecar written next to the book (ciclo 2, passo A11); ``None`` when
     the write failed (the book is still there -- the sidecar is additive)."""
+    page_texts_applied: int = 0
+    """Pages whose text came from the trunk's notebook (:mod:`caissa.export.page_texts`)."""
+    page_text_notes: tuple[str, ...] = field(default_factory=tuple)
+    """What applying them left out, one line each (:attr:`PageTextsApplied.notes`)."""
 
     @property
     def pages(self) -> str:
@@ -271,6 +275,11 @@ class BookExportResult:
             parts.append(
                 f"{self.diagram_decisions_applied} posição(ões) corrigida(s) pelo revisor"
             )
+        if self.page_texts_applied:
+            parts.append(
+                f"{self.page_texts_applied} folha(s) com o texto corrigido no caderno"
+                + (f" ({len(self.page_text_notes)} aviso(s))" if self.page_text_notes else "")
+            )
         if self.warnings:
             parts.append(
                 f"OCR: {'restam ' if self.decisions_applied else ''}"
@@ -291,6 +300,7 @@ def export_book(
     progress: ProgressHook | None = None,
     should_cancel: Callable[[], bool] | None = None,
     document: Document | ImportResult | None = None,
+    page_texts: Iterable[Mapping[str, Any]] | None = None,
 ) -> BookExportResult:
     """Import the pages asked for and write them as one EPUB or DOCX.
 
@@ -326,6 +336,10 @@ def export_book(
             the pages asked for are within the pages imported and the import
             was not cancelled.  Images the document references must still be
             on disk (its ``asset_dir``).
+        page_texts: The pages the person corrected in the trunk's *Texto* tab, as the
+            trunk's notebook hands them over (:class:`~caissa.export.page_texts.PageText`
+            dicts).  They replace the import's reading of those pages, imported now or in
+            hand -- :func:`~caissa.export.page_texts.apply_page_texts` has the rule.
 
     Returns:
         The result with both reports.
@@ -352,6 +366,7 @@ def export_book(
             should_cancel=should_cancel,
             scratch=Path(scratch),
             document=document,
+            page_texts=page_texts,
         )
 
 
@@ -368,6 +383,7 @@ def _export_book(
     should_cancel: Callable[[], bool] | None,
     scratch: Path,
     document: Document | ImportResult | None = None,
+    page_texts: Iterable[Mapping[str, Any]] | None = None,
 ) -> BookExportResult:
     with open_pdf(source) as pdf:
         page_count = pdf.page_count
@@ -389,26 +405,13 @@ def _export_book(
             if progress is not None:
                 progress("importando", done, total)
 
-        if document is not None and not _covers_exactly(document, indices, page_count):
-            # The ready document is written as it is: a book of three pages asked for
-            # as "page 1" must not come out with the three.  A bare ``Document`` has no
-            # page list, so it only qualifies for the whole book.
-            LOGGER.warning(
-                "%s: o documento pronto não é exatamente as páginas pedidas; a exportação reimporta.",
-                source.name,
-            )
-            document = None
-        if document is not None and not _images_on_disk(
-            document.document if isinstance(document, ImportResult) else document
-        ):
-            # The window's import without an ``asset_dir`` (or one whose files
-            # are gone) has image resources with no file behind them; the EPUB
-            # would drop those pages' images and call it a success.  Say so and
-            # read the book again instead of writing a hollow one.
-            LOGGER.warning(
-                "%s: o documento pronto não tem as imagens em disco; a exportação reimporta.",
-                source.name,
-            )
+        refused = (
+            None
+            if document is None
+            else _refusal_in_hand(document, source, import_options, indices, page_count)
+        )
+        if refused is not None:
+            LOGGER.warning("%s: %s; a exportação reimporta.", source.name, refused)
             document = None
         if document is not None:
             # Passo A3: the book was read once already; write what is in hand --
@@ -443,6 +446,7 @@ def _export_book(
 
     if should_cancel is not None and should_cancel():
         raise ImportCanceled("Exportação cancelada antes da gravação; nada foi escrito.")
+    imported, page_texts_applied, page_text_notes = _with_page_texts(imported, page_texts)
     document = _stamp_selection(imported.document, indices, page_count)
     if progress is not None:
         progress("gravando", 0, 1)
@@ -478,7 +482,74 @@ def _export_book(
             imported.report.counters.get("diagram_decisions_applied", 0)
         ),
         provenance_path=provenance_path,
+        page_texts_applied=page_texts_applied,
+        page_text_notes=page_text_notes,
     )
+
+
+def _with_page_texts(
+    imported: ImportResult, page_texts: Iterable[Mapping[str, Any]] | None
+) -> tuple[ImportResult, int, tuple[str, ...]]:
+    """R7 of the trunk: what the person corrected in its *Texto* tab, in place of this reading.
+
+    Applied after the diagram decisions, whose diagrams it keeps.  Returns the import, how many
+    pages came from the notebook and what applying them left out.
+    """
+    if not page_texts:
+        return imported, 0, ()
+    from caissa.export.page_texts import apply_page_texts
+
+    applied = apply_page_texts(imported, page_texts)
+    return applied.imported, len(applied.pages), applied.notes
+
+
+def _refusal_in_hand(
+    document: Document | ImportResult,
+    source: Path,
+    import_options: PdfImportOptions | None,
+    indices: Sequence[int],
+    page_count: int,
+) -> str | None:
+    """Why the document in hand cannot be written as this export (passo A3), or ``None``."""
+    if not _covers_exactly(document, indices, page_count):
+        # The ready document is written as it is: a book of three pages asked for
+        # as "page 1" must not come out with the three.  A bare ``Document`` has no
+        # page list, so it only qualifies for the whole book.
+        return "o documento pronto não é exatamente as páginas pedidas"
+    if not _images_on_disk(document.document if isinstance(document, ImportResult) else document):
+        # The window's import without an ``asset_dir`` (or one whose files
+        # are gone) has image resources with no file behind them; the EPUB
+        # would drop those pages' images and call it a success.  Say so and
+        # read the book again instead of writing a hollow one.
+        return "o documento pronto não tem as imagens em disco"
+    if _review_changed(document, source, import_options, indices):
+        # The text-review window decided something after the import: the decision is in
+        # the file and not in the document, which would ship the reading it corrected.
+        # The text decisions apply to the OCR regions while the page is read, so the
+        # book is read again -- the diagram decisions are the ones applicable in hand.
+        return "há decisões de revisão de texto mais novas que o documento pronto"
+    return None
+
+
+def _review_changed(
+    document: Document | ImportResult,
+    source: Path,
+    import_options: PdfImportOptions | None,
+    indices: Sequence[int],
+) -> bool:
+    """Whether the text-review decisions of now differ from the ones the import in hand saw.
+
+    The import records their fingerprint (``ImportReport.review_decisions_digest``); a bare
+    :class:`Document` records none, so it is as if it saw none.
+    """
+    decisions = import_options.review_decisions if import_options is not None else None
+    if decisions is None:
+        from caissa.ocr.review import ReviewDecisions
+
+        decisions = ReviewDecisions.for_pdf(source)
+    now = decisions.digest(indices) if decisions is not None else ""
+    report = document.report if isinstance(document, ImportResult) else None
+    return now != (getattr(report, "review_decisions_digest", "") or "")
 
 
 def _covers_exactly(

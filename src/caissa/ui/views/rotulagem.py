@@ -24,7 +24,8 @@ import json
 import queue
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -443,6 +444,11 @@ class _Visor(QGraphicsView):
 
 class PainelDeRotulagem(QWidget):
     """A aba: o projeto, o livro aberto, a página e a linha atual."""
+
+    folhas_para: Callable[[Path, Sequence[int] | None], Sequence[Mapping[str, Any]]] | None = None
+    """``folhas_para(pdf, paginas)``: as folhas corrigidas no caderno da aba Texto do tronco, que
+    *Livro para EPUB/DOCX…* leva ao livro (R7 do tronco).  O tronco a dá ao montar a aba; sozinha,
+    a aba exporta a leitura da importação."""
 
     def __init__(
         self,
@@ -1417,8 +1423,10 @@ class PainelDeRotulagem(QWidget):
                 self, "Exportar livro", f"Não foi possível abrir {pdf}:\n{exc}"
             )
             return False
+        folhas = self.folhas_para
         return self.exportador_de_livro.comecar(
-            pdf, total, formato=formato, pagina_atual=self.page_index
+            pdf, total, formato=formato, pagina_atual=self.page_index,
+            folhas_para=None if folhas is None else partial(folhas, Path(pdf)),
         )
 
     def save(self) -> None:

@@ -142,6 +142,55 @@ def test_the_controller_exports_in_a_thread_and_ends_in_the_status_line(
     assert frases[-1] == "Abra um PDF antes de exportar o livro."
 
 
+def _esperar(app, exportador) -> None:
+    limite = time.monotonic() + 30
+    while exportador.rodando and time.monotonic() < limite:
+        app.processEvents()
+        time.sleep(0.02)
+    assert not exportador.rodando
+
+
+def test_the_notebook_pages_reach_the_book_and_a_failing_notebook_is_said(
+    app, livro: Path, tmp_path: Path
+):
+    """R7 do tronco: as folhas do caderno da aba Texto entram no lugar da leitura."""
+    from caissa.export import read_epub
+    from caissa.ui.views.exportacao import EscolhaDeExportacao, ExportadorDeLivro
+
+    exportador = ExportadorDeLivro(None)
+    frases: list[str] = []
+    resultados: list[object] = []
+    exportador.estado.connect(frases.append)
+    exportador.terminou.connect(resultados.append)
+    pedidas: list[object] = []
+
+    def folhas_para(paginas):
+        pedidas.append(paginas)
+        return [{"format": 1, "page_index": 1, "paragraphs": [
+            {"kind": "text", "runs": [{"text": "Corrigida no caderno."}]}]}]
+
+    destino = tmp_path / "caderno.epub"
+    exportador.iniciar(livro, EscolhaDeExportacao("epub", (1, 2), destino, page_count=5, ocr=False),
+                       folhas_para=folhas_para)
+    _esperar(app, exportador)
+    assert pedidas == [(1, 2)], "the range of the dialog, asked once on the window's thread"
+    textos = ["".join(getattr(i, "content", "") for i in getattr(b, "content", ()))
+              for b in read_epub(destino).body]
+    assert "Corrigida no caderno." in textos
+    assert not any(t.startswith("Página 2 ") for t in textos), "the reading of page 2 went"
+    assert any(t.startswith("Página 3 ") for t in textos)
+    assert "1 folha(s) com o texto corrigido no caderno" in frases[-1]
+
+    def quebrado(_paginas):
+        raise OSError("caderno travado")
+
+    exportador.iniciar(livro, EscolhaDeExportacao("epub", (1,), tmp_path / "sem.epub", page_count=5,
+                                                  ocr=False), folhas_para=quebrado)
+    _esperar(app, exportador)
+    assert any("caderno travado" in f and "leitura da importação" in f for f in frases)
+    assert (tmp_path / "sem.epub").is_file(), "the book is still written, with the reading"
+
+
 def test_the_tab_offers_the_book_export_from_its_menu(app, livro: Path, tmp_path: Path):
     from caissa.ui.views.rotulagem import PainelDeRotulagem, abrir_projeto
 
@@ -158,6 +207,21 @@ def test_the_tab_offers_the_book_export_from_its_menu(app, livro: Path, tmp_path
     assert "Livro para EPUB…" in textos
     assert "Livro para DOCX…" in textos
     assert painel.exportador_de_livro is not None
+
+    # R7 do tronco: com quem dê as folhas do caderno, a aba as pede pelo livro do projeto dela.
+    pedidos: list[tuple[Path, object]] = []
+    painel.folhas_para = lambda pdf, paginas: pedidos.append((pdf, paginas)) or []
+    chamadas: list[dict[str, object]] = []
+    painel.exportador_de_livro.comecar = lambda *a, **k: chamadas.append(k) or True
+    assert painel.export_book("docx")
+    folhas = chamadas[-1]["folhas_para"]
+    assert callable(folhas)
+    folhas((0, 2))
+    assert pedidos == [(Path(painel.project.pdf_for(painel.document)), (0, 2))]
+    painel.folhas_para = None
+    painel.export_book("epub")
+    assert chamadas[-1]["folhas_para"] is None, "sozinha, a aba exporta a leitura"
+
     painel.document = None
     assert not painel.export_book("epub")
     assert "Abra um PDF" in painel.status.text()
