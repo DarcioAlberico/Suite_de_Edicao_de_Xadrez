@@ -27,6 +27,12 @@ to the pages it covers.
 A paragraph the import joined across two pages belongs to its first page; replacing that page
 drops the continuation, and :attr:`PageTextsApplied.notes` says so -- it is the one loss the
 rule makes, and saying it is what keeps it from being silent.
+
+**And the way back** (:func:`page_texts_of`, the trunk's R7 de volta): the pages of an import
+written in the same format, so the corrections made in the *Revisão de texto* window reach the
+trunk's notebook.  The page's paragraphs, headings and scores in order, each diagram as a mark
+with its position; emphasis, style and alignment as above, read back.  Who decides which pages go
+and how the import got the decisions is :mod:`caissa.export.reviewed_pages`.
 """
 
 from __future__ import annotations
@@ -40,6 +46,7 @@ from caissa.core.model import (
     Block,
     Diagram,
     Document,
+    Emphasis,
     Figure,
     GameScore,
     Heading,
@@ -50,8 +57,11 @@ from caissa.core.model import (
     RunProps,
     SourceKind,
     StrikeStyle,
+    Strong,
     Text,
     UnderlineStyle,
+    inline_children,
+    plain_text,
 )
 from caissa.ingest.pdf import ImportResult
 
@@ -62,7 +72,9 @@ __all__ = [
     "TextParagraph",
     "TextRun",
     "apply_page_texts",
+    "page_text_of",
     "page_texts_from",
+    "page_texts_of",
 ]
 
 FORMAT: Final = 1
@@ -342,3 +354,113 @@ def apply_page_texts(
         pages=tuple(sorted(wanted)),
         notes=tuple(notes),
     )
+
+
+# --------------------------------------------------------------------------- the way back
+
+
+_STYLE_BACK: Final[dict[str, str]] = {name: key for key, name in _STYLES.items() if key}
+_ALIGNMENT_BACK: Final[dict[Alignment, str]] = {value: key for key, value in _ALIGNMENTS.items()}
+_BOLD_FROM: Final = 600
+"""The weight from which a run reads back as bold: semibold and up, as the trunk draws it."""
+
+
+def _emphasis(props: RunProps | None, inherited: dict[str, bool]) -> dict[str, bool]:
+    marks = dict(inherited)
+    if props is None:
+        return marks
+    if props.font_weight is not None and props.font_weight >= _BOLD_FROM:
+        marks["bold"] = True
+    if props.italic:
+        marks["italic"] = True
+    if props.underline not in (None, UnderlineStyle.NONE):
+        marks["underline"] = True
+    if props.strikethrough not in (None, StrikeStyle.NONE):
+        marks["strike"] = True
+    return marks
+
+
+def _runs(nodes: Iterable[Any], inherited: dict[str, bool]) -> list[dict[str, Any]]:
+    """The inlines as runs of one emphasis each; a move or a glyph reads as its text."""
+    runs: list[dict[str, Any]] = []
+
+    def add(text: str, marks: dict[str, bool]) -> None:
+        if not text:
+            return
+        marks = {k: v for k, v in marks.items() if v}
+        if runs and {k: v for k, v in runs[-1].items() if k != "text"} == marks:
+            runs[-1]["text"] += text
+        else:
+            runs.append({"text": text, **marks})
+
+    def walk(items: Iterable[Any], marks: dict[str, bool]) -> None:
+        for node in items:
+            if isinstance(node, Text):
+                add(node.content, _emphasis(node.props, marks))
+                continue
+            inner = _emphasis(getattr(node, "props", None), marks)
+            if isinstance(node, Emphasis):
+                inner["italic"] = True
+            elif isinstance(node, Strong):
+                inner["bold"] = True
+            children = inline_children(node)
+            if children:
+                walk(children, inner)
+            else:
+                add(plain_text((node,)), inner)
+
+    walk(nodes, inherited)
+    return runs
+
+
+def _paragraph_dict(block: Paragraph | Heading) -> dict[str, Any] | None:
+    props = block.props
+    marks = _emphasis(getattr(block, "run_props", None), {})
+    runs = _runs(block.content, marks)
+    if not "".join(r["text"] for r in runs).strip():
+        return None
+    style = "heading" if isinstance(block, Heading) else _STYLE_BACK.get(props.style or "", "")
+    alignment = _ALIGNMENT_BACK.get(props.alignment, "") if props.alignment is not None else ""
+    return {"kind": "text", "style": style, "alignment": alignment, "runs": runs}
+
+
+def page_text_of(
+    imported: ImportResult, page_index: int, *, state: str = "editada", saved_at: str = ""
+) -> dict[str, Any]:
+    """One page of the import in the trunk's format: its text in order, its diagrams as marks.
+
+    A score reads as its movetext, in the notation style -- the notebook has no game object, and
+    the moves are what the page printed.  Pictures that are not diagrams stay out: the notebook
+    holds words and diagram marks.
+    """
+    from caissa.export.text import game_to_pgn
+
+    paragraphs: list[dict[str, Any]] = []
+    for block in imported.document.body:
+        if _page_of(block) != page_index:
+            continue
+        if isinstance(block, (Paragraph, Heading)):
+            paragraph = _paragraph_dict(block)
+            if paragraph is not None:
+                paragraphs.append(paragraph)
+        elif isinstance(block, GameScore):
+            moves = game_to_pgn(block, include_headers=False).strip()
+            if moves:
+                paragraphs.append({"kind": "text", "style": "notation", "alignment": "",
+                                   "runs": [{"text": moves}]})
+        elif isinstance(block, Diagram):
+            paragraphs.append({"kind": "diagram", "fen": block.fen, "alignment": ""})
+    return {"format": FORMAT, "page_index": int(page_index), "state": state, "saved_at": saved_at,
+            "paragraphs": paragraphs}
+
+
+def page_texts_of(
+    imported: ImportResult, pages: Iterable[int], *, saved_at: Mapping[int, str] | None = None
+) -> list[dict[str, Any]]:
+    """:func:`page_text_of` for each page the import built, in page order."""
+    built = {int(p.index) for p in getattr(imported.report, "pages", ())}
+    if not built:
+        built = {p for p in (_page_of(b) for b in imported.document.body) if p is not None}
+    when = saved_at or {}
+    return [page_text_of(imported, index, saved_at=when.get(index, ""))
+            for index in sorted({int(p) for p in pages} & built)]
