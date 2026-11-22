@@ -196,10 +196,10 @@ def test_the_printed_marks_go_onto_the_diagram_the_mark_took() -> None:
     marked = {**MARK, "marks": {"c6": "bolinha-branca", "d4": "x", "e5": "estrela-preta"}}
     applied = apply_page_texts(_imported(first, second), [_page(0, marked, MARK)])
     diagrams = [b for b in applied.imported.document.body if isinstance(b, Diagram)]
-    assert [(m.kind, m.squares, m.text) for m in diagrams[0].marks] == [
-        (MarkKind.CIRCLE, ("c6",), None),
-        (MarkKind.CROSS, ("d4",), None),
-        (MarkKind.LABEL, ("e5",), "★"),
+    assert [(m.kind, m.squares, m.text, m.filled) for m in diagrams[0].marks] == [
+        (MarkKind.DOT, ("c6",), None, False),
+        (MarkKind.CROSS, ("d4",), None, False),
+        (MarkKind.LABEL, ("e5",), "★", False),
     ]
     assert diagrams[0].fen == first.fen, "the marks change nothing but the marks"
     assert diagrams[1] is second, "a mark without printed marks leaves its diagram as it was"
@@ -211,7 +211,7 @@ def test_every_trunk_mark_has_an_ir_mark() -> None:
     marks, unknown = ir_marks((f"{'abcdef'[i]}1", name) for i, name in enumerate(names))
     assert unknown == ()
     assert [m.kind for m in marks] == [
-        MarkKind.CIRCLE,
+        MarkKind.DOT,
         MarkKind.DOT,
         MarkKind.LABEL,
         MarkKind.LABEL,

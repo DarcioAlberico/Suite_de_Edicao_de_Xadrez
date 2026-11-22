@@ -95,6 +95,7 @@ from caissa.export.base import ExportContext, Exporter, ExportOptions, ExportRes
 from caissa.export.diagrams import DiagramRenderer
 from caissa.export.profiles import LATEX_PROFILE
 from caissa.export.text import game_to_pgn, inline_plain_text, nag_symbol, render_move
+from caissa.typeset import board_svg as bsvg
 from caissa.typeset import latex as tex
 
 __all__ = ["LatexExporter", "LatexOptions", "read_latex"]
@@ -509,10 +510,37 @@ class LatexExporter(Exporter):
         )
         return f"\\begin{{figure}}[htbp]\n\\centering\n{body}{caption}\n\\end{{figure}}"
 
+    def _latex_marks(self, node: Diagram | InlineDiagram) -> tuple[bsvg.Mark, ...]:
+        """The renderer's marks as ``chessboard`` can draw them.
+
+        ``chessboard`` has no star, dot or cross of its own, so a printed symbol
+        (:class:`~caissa.typeset.board_svg.SymbolMark`) goes in as the ring it does draw,
+        and the degradation report says so -- the same move the SVG path made before it
+        learned the symbols.
+        """
+        marks: list[bsvg.Mark] = []
+        for mark in self._diagrams._marks_for(node):
+            if isinstance(mark, bsvg.SymbolMark):
+                self._context.recorder.substituted(
+                    prop="mark",
+                    node=node,
+                    path=self._context.path,
+                    original=mark.shape,
+                    replacement="circulo",
+                    detail=(
+                        "O chessboard do LaTeX desenha circulo; o simbolo impresso virou "
+                        "um circulo."
+                    ),
+                )
+                marks.append(bsvg.CircleMark(square=mark.square, colour=mark.colour))
+            else:
+                marks.append(mark)
+        return tuple(marks)
+
     def _block_diagram(self, node: Diagram) -> str:
         """A diagram as ``\\chessboard``: still editable, never an image."""
         self._context.count("diagrams")
-        marks = tuple(self._diagrams._marks_for(node))
+        marks = self._latex_marks(node)
         caption = self.inlines(node.caption) if node.caption else None
         return tex.diagram_block(
             node.fen,
@@ -740,7 +768,7 @@ class LatexExporter(Exporter):
         self._context.count("diagrams")
         return tex.chessboard_command(
             node.fen,
-            marks=tuple(self._diagrams._marks_for(node)),
+            marks=self._latex_marks(node),
             inverse=node.orientation.value == "black",
             board_font_size="8pt",
         )

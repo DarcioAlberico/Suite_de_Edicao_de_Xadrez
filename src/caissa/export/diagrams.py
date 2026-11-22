@@ -75,17 +75,17 @@ _COORD_BY_PLACEMENT: Mapping[str, bsvg.CoordinateStyle] = {
     "inside": bsvg.CoordinateStyle.INSIDE,
 }
 
+# Labels the renderer draws as a printed symbol (`bsvg.SymbolMark`): the cross and the two
+# stars of endgame books, which reach the IR from the trunk's notebook as labels.
+_SYMBOL_OF_LABEL: Mapping[str, bsvg.SymbolShape] = {
+    "+": "plus",
+    "★": "star",
+    "☆": "star-outline",
+}
+
 # Marks the IR can express that the canonical renderer has no primitive for. The value
 # is what stands in, and the reason, both shown to the user.
 _MARK_FALLBACK: Mapping[MarkKind, tuple[str, str]] = {
-    MarkKind.CROSS: (
-        "circulo",
-        "O renderizador desenha destaque, circulo e seta; a cruz virou um circulo.",
-    ),
-    MarkKind.DOT: (
-        "circulo",
-        "O renderizador desenha destaque, circulo e seta; o ponto virou um circulo.",
-    ),
     MarkKind.LABEL: (
         "destaque",
         "O renderizador nao escreve rotulos sobre casas; a casa foi apenas destacada e o "
@@ -733,6 +733,11 @@ class DiagramRenderer:
                 for square in mark.squares:
                     yield bsvg.CircleMark(square=square, colour=colour)
                 continue
+            symbol = _symbol_of(mark)
+            if symbol is not None:
+                for square in mark.squares:
+                    yield bsvg.SymbolMark(square=square, shape=symbol, colour=colour)
+                continue
 
             replacement, detail = _MARK_FALLBACK[mark.kind]
             self._context.recorder.substituted(
@@ -774,6 +779,21 @@ class DiagramRenderer:
         return wanted
 
 
+def _symbol_of(mark: Mark) -> bsvg.SymbolShape | None:
+    """The printed symbol a mark is drawn as, or ``None`` for one the renderer has no shape for.
+
+    ``CROSS`` is the X, ``DOT`` the dot (solid, or hollow when not ``filled``), and a label is
+    a symbol when its text is one of :data:`_SYMBOL_OF_LABEL`.
+    """
+    if mark.kind is MarkKind.CROSS:
+        return "cross"
+    if mark.kind is MarkKind.DOT:
+        return "dot" if mark.filled else "ring"
+    if mark.kind is MarkKind.LABEL:
+        return _SYMBOL_OF_LABEL.get(mark.text or "")
+    return None
+
+
 def _mark_key(marks: Sequence[bsvg.Mark]) -> tuple[object, ...]:
     """Build a hashable cache key from a mark list.
 
@@ -791,6 +811,8 @@ def _mark_key(marks: Sequence[bsvg.Mark]) -> tuple[object, ...]:
             key.append(("h", mark.square, mark.colour, mark.opacity, mark.style))
         elif isinstance(mark, bsvg.CircleMark):
             key.append(("c", mark.square, mark.colour))
+        elif isinstance(mark, bsvg.SymbolMark):
+            key.append(("s", mark.square, mark.shape, mark.colour))
     return tuple(key)
 
 

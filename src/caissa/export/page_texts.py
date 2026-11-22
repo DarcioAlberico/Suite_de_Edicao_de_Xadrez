@@ -100,21 +100,21 @@ _ALIGNMENTS: Final[dict[str, Alignment]] = {
     "right": Alignment.RIGHT,
     "justify": Alignment.JUSTIFY,
 }
-_MARK_OF_NOTEBOOK: Final[dict[str, tuple[MarkKind, str | None]]] = {
-    "bolinha-branca": (MarkKind.CIRCLE, None),
-    "bolinha-preta": (MarkKind.DOT, None),
-    "x": (MarkKind.CROSS, None),
-    "cruz": (MarkKind.LABEL, "+"),
-    "estrela-preta": (MarkKind.LABEL, "★"),
-    "estrela-branca": (MarkKind.LABEL, "☆"),
+_MARK_OF_NOTEBOOK: Final[dict[str, tuple[MarkKind, str | None, bool]]] = {
+    "bolinha-branca": (MarkKind.DOT, None, False),
+    "bolinha-preta": (MarkKind.DOT, None, True),
+    "x": (MarkKind.CROSS, None, False),
+    "cruz": (MarkKind.LABEL, "+", False),
+    "estrela-preta": (MarkKind.LABEL, "★", False),
+    "estrela-branca": (MarkKind.LABEL, "☆", False),
 }
-"""The trunk's square marks (its ``marcas_de_casa``) as IR marks: kind, and the label text.
+"""The trunk's square marks (its ``marcas_de_casa``) as IR marks: kind, label text, filled.
 
-The IR says what the book printed; how it is drawn is :mod:`caissa.export.diagrams`, which today
-draws the ring and turns the dot, the X and the labels into a circle or a highlight -- and says
-so in the degradation report.  When the renderer learns them, the book improves without the
-trunk sending anything else.  A mark the trunk names and this table does not is left out, with a
-note, rather than drawn as something else."""
+The book's hollow dot is a ``DOT`` that is not ``filled``, and not a ``CIRCLE``: the circle is
+the analysis ring round the whole square, and the printed one is under half of it.
+:mod:`caissa.export.diagrams` draws all six as the book's symbols (``bsvg.SymbolMark``).  A mark
+the trunk names and this table does not is left out, with a note, rather than drawn as
+something else."""
 
 _JOINED: Final = "continua até a página"
 """What the importer writes in ``provenance.note`` of a paragraph joined across pages."""
@@ -231,8 +231,8 @@ def ir_marks(pairs: Iterable[tuple[str, str]]) -> tuple[tuple[Mark, ...], tuple[
         if known is None:
             unknown.append(name)
             continue
-        kind, text = known
-        marks.append(Mark(kind=kind, squares=(square,), text=text))
+        kind, text, filled = known
+        marks.append(Mark(kind=kind, squares=(square,), text=text, filled=filled))
     return tuple(marks), tuple(unknown)
 
 
