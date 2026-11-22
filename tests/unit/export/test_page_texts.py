@@ -8,6 +8,7 @@ para EPUB…/DOCX…* wrote the suite's reading of the same pages.  What is pinn
 * the image of an unread page and the figure of an abstained region go with the text;
 * the report of the import in hand is never touched -- the window exports it again;
 * the losses are said: a paragraph joined across pages, a mark with no diagram;
+* the marks printed on a diagram go onto the diagram the notebook mark took, as IR marks;
 * end to end, a synthetic PDF exported with one corrected page carries the correction on that
   page and the reading on the other, and the summary says how many pages came from the notebook.
 """
@@ -31,13 +32,14 @@ from caissa.core.model import (  # noqa: E402
     Figure,
     Heading,
     ImageBlock,
+    MarkKind,
     Paragraph,
     Provenance,
     SourceKind,
     Text,
 )
 from caissa.export import export_book, read_epub  # noqa: E402
-from caissa.export.page_texts import PageText, apply_page_texts  # noqa: E402
+from caissa.export.page_texts import PageText, apply_page_texts, ir_marks  # noqa: E402
 from caissa.ingest.pdf import (  # noqa: E402
     ImportReport,
     ImportResult,
@@ -187,6 +189,52 @@ def test_an_unknown_format_is_refused() -> None:
         PageText.from_dict({"format": 2, "page_index": 0})
     with pytest.raises(ValueError, match="tipo"):
         PageText.from_dict({"format": 1, "page_index": 0, "paragraphs": [{"kind": "tabela"}]})
+
+
+def test_the_printed_marks_go_onto_the_diagram_the_mark_took() -> None:
+    first, second = _diagram(0), _diagram(0, "8/8/8/8/8/8/8/K6k w - - 0 1")
+    marked = {**MARK, "marks": {"c6": "bolinha-branca", "d4": "x", "e5": "estrela-preta"}}
+    applied = apply_page_texts(_imported(first, second), [_page(0, marked, MARK)])
+    diagrams = [b for b in applied.imported.document.body if isinstance(b, Diagram)]
+    assert [(m.kind, m.squares, m.text) for m in diagrams[0].marks] == [
+        (MarkKind.CIRCLE, ("c6",), None),
+        (MarkKind.CROSS, ("d4",), None),
+        (MarkKind.LABEL, ("e5",), "★"),
+    ]
+    assert diagrams[0].fen == first.fen, "the marks change nothing but the marks"
+    assert diagrams[1] is second, "a mark without printed marks leaves its diagram as it was"
+    assert applied.notes == ()
+
+
+def test_every_trunk_mark_has_an_ir_mark() -> None:
+    names = ["bolinha-branca", "bolinha-preta", "estrela-branca", "estrela-preta", "x", "cruz"]
+    marks, unknown = ir_marks((f"{'abcdef'[i]}1", name) for i, name in enumerate(names))
+    assert unknown == ()
+    assert [m.kind for m in marks] == [
+        MarkKind.CIRCLE,
+        MarkKind.DOT,
+        MarkKind.LABEL,
+        MarkKind.LABEL,
+        MarkKind.CROSS,
+        MarkKind.LABEL,
+    ]
+
+
+def test_a_mark_the_suite_does_not_know_is_left_out_and_said() -> None:
+    marked = {**MARK, "marks": {"c6": "triangulo", "d4": "x"}}
+    applied = apply_page_texts(_imported(_diagram(0)), [_page(0, marked)])
+    (diagram,) = [b for b in applied.imported.document.body if isinstance(b, Diagram)]
+    assert [m.squares for m in diagram.marks] == [("d4",)]
+    assert applied.notes == (
+        "página 1: marca(s) do caderno que a suíte não conhece, deixada(s) de fora: triangulo",
+    )
+
+
+def test_a_mark_on_a_square_that_is_not_one_is_refused() -> None:
+    with pytest.raises(ValueError, match="marca"):
+        PageText.from_dict(
+            {"format": 1, "page_index": 0, "paragraphs": [{**MARK, "marks": {"z9": "x"}}]}
+        )
 
 
 @pytest.fixture

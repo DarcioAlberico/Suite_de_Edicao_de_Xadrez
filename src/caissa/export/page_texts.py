@@ -21,6 +21,10 @@ to the pages it covers.
 * The page's **pictures** stay -- diagrams, figures -- in their order, and each diagram mark
   of the notebook takes the next one, so the diagram lands between the paragraphs where the
   person sees it.  What no mark took follows the page's text.
+* The **marks printed on a diagram** (the trunk's ``marks``: star, X, ring, dot, cross, read
+  from the crop by two readers that agreed) go onto the diagram the mark took, as IR
+  :class:`Mark` s -- see :data:`_MARK_OF_NOTEBOOK`.  The import's reading has no such marks, so
+  nothing of it is lost.
 * The new blocks take the place of the page's first block, or follow the previous page's last
   one when the import had nothing on the page.
 
@@ -51,6 +55,8 @@ from caissa.core.model import (
     GameScore,
     Heading,
     ImageBlock,
+    Mark,
+    MarkKind,
     Paragraph,
     ParagraphProps,
     Provenance,
@@ -63,6 +69,7 @@ from caissa.core.model import (
     inline_children,
     plain_text,
 )
+from caissa.core.model.marks import is_square_name
 from caissa.ingest.pdf import ImportResult
 
 __all__ = [
@@ -72,6 +79,7 @@ __all__ = [
     "TextParagraph",
     "TextRun",
     "apply_page_texts",
+    "ir_marks",
     "page_text_of",
     "page_texts_from",
     "page_texts_of",
@@ -92,6 +100,22 @@ _ALIGNMENTS: Final[dict[str, Alignment]] = {
     "right": Alignment.RIGHT,
     "justify": Alignment.JUSTIFY,
 }
+_MARK_OF_NOTEBOOK: Final[dict[str, tuple[MarkKind, str | None]]] = {
+    "bolinha-branca": (MarkKind.CIRCLE, None),
+    "bolinha-preta": (MarkKind.DOT, None),
+    "x": (MarkKind.CROSS, None),
+    "cruz": (MarkKind.LABEL, "+"),
+    "estrela-preta": (MarkKind.LABEL, "★"),
+    "estrela-branca": (MarkKind.LABEL, "☆"),
+}
+"""The trunk's square marks (its ``marcas_de_casa``) as IR marks: kind, and the label text.
+
+The IR says what the book printed; how it is drawn is :mod:`caissa.export.diagrams`, which today
+draws the ring and turns the dot, the X and the labels into a circle or a highlight -- and says
+so in the degradation report.  When the renderer learns them, the book improves without the
+trunk sending anything else.  A mark the trunk names and this table does not is left out, with a
+note, rather than drawn as something else."""
+
 _JOINED: Final = "continua até a página"
 """What the importer writes in ``provenance.note`` of a paragraph joined across pages."""
 
@@ -127,6 +151,8 @@ class TextParagraph:
     alignment: str = ""
     fen: str = ""
     """For a diagram mark: the placement the trunk read, or ``""``.  Informative only."""
+    marks: tuple[tuple[str, str], ...] = ()
+    """For a diagram mark: ``(square, trunk mark)`` pairs, sorted by square."""
 
     @property
     def is_diagram(self) -> bool:
@@ -171,6 +197,7 @@ class PageText:
                     style=str(item.get("style", "")),
                     alignment=str(item.get("alignment", "")),
                     fen=str(item.get("fen", "")),
+                    marks=_marks_from(item.get("marks")),
                 )
             )
         return cls(
@@ -179,6 +206,34 @@ class PageText:
             state=str(data.get("state", "")),
             saved_at=str(data.get("saved_at", "")),
         )
+
+
+def _marks_from(value: object) -> tuple[tuple[str, str], ...]:
+    """``{"c6": "x"}`` as sorted pairs; absent is none.  ``ValueError`` for a bad square."""
+    if value is None:
+        return ()
+    if not isinstance(value, Mapping):
+        raise ValueError(f"marcas do diagrama ilegíveis: {value!r}")
+    pairs = []
+    for square, kind in value.items():
+        if not isinstance(square, str) or not is_square_name(square) or not isinstance(kind, str):
+            raise ValueError(f"marca de diagrama inválida: {square!r}: {kind!r}")
+        pairs.append((square, kind))
+    return tuple(sorted(pairs))
+
+
+def ir_marks(pairs: Iterable[tuple[str, str]]) -> tuple[tuple[Mark, ...], tuple[str, ...]]:
+    """The trunk's marks as IR marks, one per square; and the ones this suite does not know."""
+    marks: list[Mark] = []
+    unknown: list[str] = []
+    for square, name in pairs:
+        known = _MARK_OF_NOTEBOOK.get(name)
+        if known is None:
+            unknown.append(name)
+            continue
+        kind, text = known
+        marks.append(Mark(kind=kind, squares=(square,), text=text))
+    return tuple(marks), tuple(unknown)
 
 
 def page_texts_from(items: Iterable[PageText | Mapping[str, Any]]) -> dict[int, PageText]:
@@ -252,12 +307,17 @@ def _provenance(page: PageText, model: Provenance | None) -> Provenance:
 
 def _new_blocks(
     page: PageText, kept: Sequence[Block], model: Provenance | None
-) -> tuple[list[Block], int]:
-    """The page as the notebook has it, with the kept pictures; and the marks left without one."""
+) -> tuple[list[Block], int, list[str]]:
+    """The page as the notebook has it, with the kept pictures.
+
+    Also returns the diagram marks left without a picture, and the printed marks this suite does
+    not know.
+    """
     provenance = _provenance(page, model)
     queue = list(kept)
     blocks: list[Block] = []
     unmatched = 0
+    unknown_marks: list[str] = []
     for item in page.paragraphs:
         if not item.is_diagram:
             if any(run.text for run in item.runs):
@@ -267,10 +327,15 @@ def _new_blocks(
         if index is None:
             unmatched += 1
             continue
+        diagram = queue[index]
+        if item.marks and isinstance(diagram, Diagram):
+            marks, unknown = ir_marks(item.marks)
+            queue[index] = replace(diagram, marks=(*diagram.marks, *marks))
+            unknown_marks.extend(unknown)
         blocks.extend(queue[: index + 1])
         del queue[: index + 1]
     blocks.extend(queue)
-    return blocks, unmatched
+    return blocks, unmatched, unknown_marks
 
 
 def _page_blocks(page: PageText, blocks: Sequence[Block]) -> tuple[list[Block], list[str]]:
@@ -282,7 +347,12 @@ def _page_blocks(page: PageText, blocks: Sequence[Block]) -> tuple[list[Block], 
         for block in blocks
         if _is_text(block) and _JOINED in (getattr(block.provenance, "note", None) or "")
     ]
-    new, unmatched = _new_blocks(page, [b for b in blocks if not _is_text(b)], model)
+    new, unmatched, unknown_marks = _new_blocks(page, [b for b in blocks if not _is_text(b)], model)
+    if unknown_marks:
+        notes.append(
+            f"página {page.page_index + 1}: marca(s) do caderno que a suíte não conhece, "
+            f"deixada(s) de fora: {', '.join(sorted(set(unknown_marks)))}"
+        )
     if unmatched:
         notes.append(
             f"página {page.page_index + 1}: {unmatched} diagrama(s) do caderno sem diagrama "
