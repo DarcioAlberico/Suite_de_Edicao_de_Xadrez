@@ -135,8 +135,8 @@ class Mark:
         text: Label content, required for ``MarkKind.LABEL``.
         layer: Paint order; higher numbers are drawn later, so an arrow can be
             put above or below a highlight deliberately.
-        filled: Whether ``CIRCLE`` and ``SQUARE`` are painted solid rather than
-            outlined.
+        filled: Whether ``CIRCLE``, ``SQUARE`` and ``DOT`` are painted solid rather
+            than outlined. A book's hollow dot is a ``DOT`` that is not filled.
     """
 
     kind: MarkKind

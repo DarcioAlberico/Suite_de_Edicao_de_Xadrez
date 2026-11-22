@@ -63,6 +63,7 @@ __all__ = [
     "Mark",
     "SideToMove",
     "SquareHighlight",
+    "SymbolMark",
     "THEMES",
     "board_from_fen",
     "contrast_ratio",
@@ -609,6 +610,28 @@ class CircleMark(Mark):
     square: str
     colour: str | None = None
     width_scale: float = 0.075
+
+
+SymbolShape = Literal["cross", "plus", "dot", "ring", "star", "star-outline"]
+"""The printed square marks of endgame books: X, cross, solid and hollow dot, solid and
+outlined five-pointed star."""
+
+
+@dataclass(frozen=True)
+class SymbolMark(Mark):
+    """A symbol printed in the middle of a square, the way an endgame book marks it.
+
+    Not the analysis ring (:class:`CircleMark`), which goes round the whole square: a book's
+    hollow dot is under half the square and sits inside it, and its star, X and cross are ink
+    on the paper of an empty square.  Drawn in the theme's piece ink, under the pieces; the
+    hollow shapes keep the paper inside, so a hatched dark square shows through only round
+    them.  The proportions are the trunk's (``qt/desenho_de_marcas.py``), so the book and the
+    window that annotated it agree.
+    """
+
+    square: str
+    shape: SymbolShape
+    colour: str | None = None
 
 
 @dataclass(frozen=True)
@@ -1368,6 +1391,8 @@ def render_svg(
     for mark in marks:
         if isinstance(mark, CircleMark):
             _draw_circle(canvas, mark, lay, theme, flip)
+        elif isinstance(mark, SymbolMark):
+            _draw_symbol(canvas, mark, lay, theme, flip)
         elif isinstance(mark, Arrow):
             _draw_arrow(canvas, mark, lay, theme, flip, occupied)
 
@@ -2053,6 +2078,60 @@ def _draw_circle(
         cx, cy, r,
         fill="none", stroke=mark.colour or theme.circle, stroke_width=w,
     )
+
+
+_SYMBOL_DOT_RADIUS = 0.2
+_SYMBOL_STAR_RADIUS = 0.36
+_SYMBOL_STAR_INNER = 0.42
+"""Inner to outer radius of the five-pointed star."""
+_SYMBOL_ARM = 0.28
+_SYMBOL_OUTLINE = 0.05
+"""Stroke of the hollow dot and the outlined star, as a fraction of a square."""
+_SYMBOL_STROKE = 0.10
+"""Stroke of the X and the cross."""
+
+
+def _star_points(cx: float, cy: float, radius: float) -> str:
+    points = []
+    for step in range(10):
+        angle = -math.pi / 2 + step * math.pi / 5
+        reach = radius if step % 2 == 0 else radius * _SYMBOL_STAR_INNER
+        points.append(f"{_n(cx + reach * math.cos(angle))},{_n(cy + reach * math.sin(angle))}")
+    return "M" + " L".join(points) + " Z"
+
+
+def _draw_symbol(
+    canvas: _Canvas, mark: SymbolMark, lay: _Layout, theme: BoardTheme, flip: bool
+) -> None:
+    """A book's square mark, centred in the square. See :class:`SymbolMark`."""
+    x, y = _square_xy(lay, mark.square, flip)
+    sq = lay.square
+    cx, cy = x + sq / 2.0, y + sq / 2.0
+    ink = mark.colour or theme.piece_ink
+    outline = max(MIN_RULE_MM, sq * _SYMBOL_OUTLINE)
+    if mark.shape in ("dot", "ring"):
+        canvas.circle(
+            cx, cy, sq * _SYMBOL_DOT_RADIUS,
+            fill=ink if mark.shape == "dot" else theme.page,
+            stroke=ink, stroke_width=outline,
+        )
+    elif mark.shape in ("star", "star-outline"):
+        canvas.path(
+            _star_points(cx, cy, sq * _SYMBOL_STAR_RADIUS),
+            fill=ink if mark.shape == "star" else theme.page,
+            stroke=ink, stroke_width=outline, linejoin="round",
+        )
+    else:
+        arm = sq * _SYMBOL_ARM
+        if mark.shape == "cross":
+            d = (f"M{_n(cx - arm)},{_n(cy - arm)} L{_n(cx + arm)},{_n(cy + arm)} "
+                 f"M{_n(cx - arm)},{_n(cy + arm)} L{_n(cx + arm)},{_n(cy - arm)}")
+        else:
+            d = (f"M{_n(cx - arm)},{_n(cy)} L{_n(cx + arm)},{_n(cy)} "
+                 f"M{_n(cx)},{_n(cy - arm)} L{_n(cx)},{_n(cy + arm)}")
+        canvas.path(
+            d, stroke=ink, stroke_width=max(MIN_RULE_MM, sq * _SYMBOL_STROKE), linecap="round"
+        )
 
 
 def _arrow_paths(
